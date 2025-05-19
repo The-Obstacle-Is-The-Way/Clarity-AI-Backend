@@ -5,8 +5,9 @@ This module provides utilities to help tests bypass issues with unexpected
 query parameters in FastAPI routes.
 """
 
+import inspect
 from collections.abc import Awaitable, Callable
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 T = TypeVar("T")
 
@@ -28,13 +29,11 @@ def with_query_params(
         A wrapped dependency function that accepts arbitrary kwargs
     """
 
-    async def wrapper(*args, **kwargs) -> T:
+    async def wrapper(*args: Any, **kwargs: Any) -> T:
         """
         Wrapper function that strips unknown kwargs before calling the dependency.
         """
         # Get the parameter names from the original function
-        import inspect
-
         sig = inspect.signature(dependency_fn)
         param_names = sig.parameters.keys()
 
@@ -47,13 +46,13 @@ def with_query_params(
         # Handle awaitable results
         if inspect.isawaitable(result):
             return await result
-        return result
+        return cast(T, result)
 
     return wrapper
 
 
 def create_query_param_wrapper(
-    params: dict[str, Any] = None
+    params: dict[str, Any] | None = None
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """
     Creates a wrapper for route handlers that adds required query parameters.
@@ -70,7 +69,7 @@ def create_query_param_wrapper(
     params = params or {"args": None, "kwargs": None}
 
     def decorator(handler: Callable[..., T]) -> Callable[..., T]:
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args: Any, **kwargs: Any) -> T:
             # Add the specified query parameters if they're not already present
             for name, value in params.items():
                 if name not in kwargs:

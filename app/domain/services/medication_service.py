@@ -126,9 +126,7 @@ class MedicationService:
             reason_prescribed=reason_prescribed,
             refills_remaining=refills,
             status=MedicationStatus.ACTIVE,
-            refill_status=(
-                RefillStatus.AVAILABLE if refills > 0 else RefillStatus.EXPIRED
-            ),
+            refill_status=(RefillStatus.AVAILABLE if refills > 0 else RefillStatus.EXPIRED),
         )
 
         # Save to repository
@@ -174,22 +172,16 @@ class MedicationService:
 
         # Check if medication can be updated
         if not medication.is_active:
-            raise ValueError(
-                f"Cannot update inactive medication with status {medication.status}"
-            )
+            raise ValueError(f"Cannot update inactive medication with status {medication.status}")
 
         # Update dosage schedule if any dosage parameters changed
         if any([dosage, frequency, timing, max_daily]):
             new_dosage = DosageSchedule(
                 amount=dosage or medication.dosage_schedule.amount,
                 frequency=frequency or medication.dosage_schedule.frequency,
-                timing=(
-                    timing if timing is not None else medication.dosage_schedule.timing
-                ),
+                timing=(timing if timing is not None else medication.dosage_schedule.timing),
                 max_daily=(
-                    max_daily
-                    if max_daily is not None
-                    else medication.dosage_schedule.max_daily
+                    max_daily if max_daily is not None else medication.dosage_schedule.max_daily
                 ),
             )
             medication.update_dosage(new_dosage)
@@ -241,9 +233,7 @@ class MedicationService:
         # Save to repository
         return await self._medication_repo.update(medication)
 
-    async def approve_refill(
-        self, medication_id: UUID, refills_granted: int = 1
-    ) -> Medication:
+    async def approve_refill(self, medication_id: UUID, refills_granted: int = 1) -> Medication:
         """
         Approve a medication refill request
 
@@ -268,9 +258,7 @@ class MedicationService:
         # Save to repository
         return await self._medication_repo.update(medication)
 
-    async def deny_refill(
-        self, medication_id: UUID, reason: str | None = None
-    ) -> Medication:
+    async def deny_refill(self, medication_id: UUID, reason: str | None = None) -> Medication:
         """
         Deny a medication refill request
 
@@ -358,24 +346,18 @@ class MedicationService:
         result: list[tuple[Medication, str]] = []
 
         # Get medications needing refill
-        refill_medications = (
-            await self._medication_repo.get_medications_needing_refill()
-        )
+        refill_medications = await self._medication_repo.get_medications_needing_refill()
         for med in refill_medications:
             result.append((med, "Needs refill"))
 
         # Get medications expiring soon
-        expiring_medications = (
-            await self._medication_repo.get_medications_expiring_soon(days=7)
-        )
+        expiring_medications = await self._medication_repo.get_medications_expiring_soon(days=7)
         for med in expiring_medications:
             result.append((med, f"Expires in {med.days_remaining} days"))
 
         return result
 
-    async def _check_interactions(
-        self, patient_id: UUID, new_medication_name: str
-    ) -> None:
+    async def _check_interactions(self, patient_id: UUID, new_medication_name: str) -> None:
         """
         Check for potential interactions between a new medication and existing medications
 
@@ -387,9 +369,7 @@ class MedicationService:
             MedicationInteractionError: If there is a potential interaction
         """
         # Get active medications for the patient
-        active_medications = await self._medication_repo.list_active_by_patient(
-            patient_id
-        )
+        active_medications = await self._medication_repo.list_active_by_patient(patient_id)
 
         # Check for interactions
         potential_interactions = []

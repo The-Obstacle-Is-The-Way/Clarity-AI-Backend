@@ -63,9 +63,7 @@ async def get_patient_id(
         user_id_str = str(current_user.id)
         patient_id_str = str(validated_patient_uuid)
 
-        logger.debug(
-            f"Comparing user_id: {user_id_str} to patient_id: {patient_id_str}"
-        )
+        logger.debug(f"Comparing user_id: {user_id_str} to patient_id: {patient_id_str}")
 
         if user_id_str != patient_id_str:
             logger.warning(
@@ -98,14 +96,10 @@ async def get_patient_id(
 
     # Retrieve patient from repository
     # db_patient = await patient_repo.get_by_id(patient_id=validated_patient_uuid, session=session) # Old way with session
-    db_patient = await patient_repo.get_by_id(
-        patient_id=validated_patient_uuid
-    )  # Corrected call
+    db_patient = await patient_repo.get_by_id(patient_id=validated_patient_uuid)  # Corrected call
 
     if db_patient is None:
-        logger.warning(
-            f"Patient with id {validated_patient_uuid} not found in database."
-        )
+        logger.warning(f"Patient with id {validated_patient_uuid} not found in database.")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Patient with id {validated_patient_uuid} not found",

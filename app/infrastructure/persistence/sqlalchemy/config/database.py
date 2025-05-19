@@ -65,13 +65,9 @@ class Database:
         """
         # DIAGNOSTIC LOGGING
         env_uri_override = os.getenv("SQLALCHEMY_DATABASE_URI")
-        logger.info(
-            f"[DB._create_engine] ENTERING. ENVIRONMENT={self.settings.ENVIRONMENT}"
-        )
+        logger.info(f"[DB._create_engine] ENTERING. ENVIRONMENT={self.settings.ENVIRONMENT}")
         logger.info(f"[DB._create_engine] Settings URI: {self.settings.DATABASE_URL}")
-        logger.info(
-            f"[DB._create_engine] [REDACTED NAME] Override URI: {env_uri_override}"
-        )
+        logger.info(f"[DB._create_engine] [REDACTED NAME] Override URI: {env_uri_override}")
 
         # Use the assembled connection string directly from main settings
         connection_url = str(self.settings.DATABASE_URL)
@@ -99,9 +95,7 @@ class Database:
                 "pool_recycle": 1800,
                 "pool_pre_ping": True,
             }
-            logger.info(
-                f"[DB._create_engine] Using {pooling_args.get('poolclass')} pool."
-            )
+            logger.info(f"[DB._create_engine] Using {pooling_args.get('poolclass')} pool.")
 
         # Create engine
         return create_async_engine(

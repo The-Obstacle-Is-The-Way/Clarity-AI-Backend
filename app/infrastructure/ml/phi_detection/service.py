@@ -33,9 +33,7 @@ def phi_error_handler(func):
             if func.__name__ == "contains_phi":
                 raise PHIDetectionError(f"Failed to detect PHI: {e!s}") from e
             elif func.__name__ == "detect_phi":
-                raise PHIDetectionError(
-                    f"Failed to detect PHI details: {e!s}"
-                ) from e
+                raise PHIDetectionError(f"Failed to detect PHI details: {e!s}") from e
             elif func.__name__ == "redact_phi":
                 raise PHIDetectionError(f"Failed to redact PHI: {e!s}") from e
             elif func.__name__ == "anonymize_phi":
@@ -76,12 +74,8 @@ class PHIDetectionService:
         """Initialize the PHI detection service."""
         self.logger = get_logger(__name__)
         base_dir = Path(__file__).resolve().parent.parent.parent.parent.parent
-        default_pattern_path = (
-            base_dir / "app/infrastructure/security/phi/phi_patterns.yaml"
-        )
-        self.pattern_file: Path = (
-            Path(pattern_file) if pattern_file else default_pattern_path
-        )
+        default_pattern_path = base_dir / "app/infrastructure/security/phi/phi_patterns.yaml"
+        self.pattern_file: Path = Path(pattern_file) if pattern_file else default_pattern_path
         self.patterns: list[PHIPattern] = []
         self._initialized = False
 
@@ -103,9 +97,7 @@ class PHIDetectionService:
 
     def _load_patterns(self) -> None:
         """Load PHI detection patterns from file."""
-        self.logger.debug(
-            f"Attempting to load PHI patterns from: {self.pattern_file.resolve()}"
-        )
+        self.logger.debug(f"Attempting to load PHI patterns from: {self.pattern_file.resolve()}")
         if not self.pattern_file.is_file():
             self.logger.warning(f"PHI pattern file not found: {self.pattern_file}")
             self.logger.info("Falling back to default PHI patterns.")
@@ -118,9 +110,7 @@ class PHIDetectionService:
                 config = yaml.safe_load(f)
 
             if not isinstance(config, dict):
-                raise ValueError(
-                    f"Invalid format in PHI pattern file: {self.pattern_file}"
-                )
+                raise ValueError(f"Invalid format in PHI pattern file: {self.pattern_file}")
 
             # Check for patterns key in the YAML structure
             if "patterns" in config and isinstance(config["patterns"], list):
@@ -162,14 +152,10 @@ class PHIDetectionService:
                             )
                         )
 
-            self.logger.info(
-                f"Loaded {len(patterns_loaded)} PHI patterns from {self.pattern_file}"
-            )
+            self.logger.info(f"Loaded {len(patterns_loaded)} PHI patterns from {self.pattern_file}")
             self.patterns = patterns_loaded
         except (yaml.YAMLError, FileNotFoundError) as e:
-            self.logger.error(
-                f"Error loading PHI patterns from {self.pattern_file}: {e}"
-            )
+            self.logger.error(f"Error loading PHI patterns from {self.pattern_file}: {e}")
             self.logger.warning("Falling back to default PHI patterns.")
             self.patterns = self._get_default_patterns()
         except Exception as e:
@@ -236,9 +222,7 @@ class PHIDetectionService:
             return False
         self.ensure_initialized()
         # Use a generator expression with any() for short-circuiting
-        return any(
-            pattern.regex and pattern.regex.search(text) for pattern in self.patterns
-        )
+        return any(pattern.regex and pattern.regex.search(text) for pattern in self.patterns)
 
     @phi_error_handler
     def detect_phi(self, text: str) -> list[dict]:
@@ -287,9 +271,7 @@ class PHIDetectionService:
         result = text
         for match in reversed(matches):
             # Format the replacement to include category for testing compatibility
-            pattern = next(
-                (p for p in self.patterns if p.name == match.pattern_name), None
-            )
+            pattern = next((p for p in self.patterns if p.name == match.pattern_name), None)
             category = pattern.category if pattern else "unknown"
             redaction = f"[REDACTED:{category}]"
             result = result[: match.start] + redaction + result[match.end :]

@@ -35,9 +35,7 @@ class TestEncryptionService:
 
     def test_initialization(self):
         """Test encryption service initialization."""
-        with patch.dict(
-            os.environ, {"ENCRYPTION_KEY": "test_key_for_encryption_abracadabra"}
-        ):
+        with patch.dict(os.environ, {"ENCRYPTION_KEY": "test_key_for_encryption_abracadabra"}):
             service = EncryptionService()
             assert service.cipher is not None
 
@@ -114,9 +112,7 @@ class TestEncryptionService:
         data = "sensitive_data"
 
         # Generate hash
-        hash_value, salt_hex = encryption_service.generate_hash(
-            data
-        )  # salt is now salt_hex
+        hash_value, salt_hex = encryption_service.generate_hash(data)  # salt is now salt_hex
 
         # Verify hash is a string and salt_hex is string (hex-encoded)
         assert isinstance(hash_value, str)

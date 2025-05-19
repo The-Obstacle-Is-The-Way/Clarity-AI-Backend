@@ -26,9 +26,7 @@ class BiometricDataInput(BaseModel):
         example=72.5,
     )
 
-    source: str = Field(
-        ..., description="Source of the biometric data", example="wearable"
-    )
+    source: str = Field(..., description="Source of the biometric data", example="wearable")
 
     timestamp: datetime = Field(
         default_factory=datetime.now,
@@ -82,9 +80,7 @@ class BiometricDataOutput(BaseModel):
         example=72.5,
     )
 
-    source: str = Field(
-        ..., description="Source of the biometric data", example="wearable"
-    )
+    source: str = Field(..., description="Source of the biometric data", example="wearable")
 
     metadata: dict[str, Any] | None = Field(
         default=None,
@@ -142,13 +138,9 @@ class BiometricHistoryParams(BaseModel):
 class PhysiologicalRangeModel(BaseModel):
     """API model for physiological range data."""
 
-    min: float = Field(
-        ..., description="Minimum value of the normal range", example=60.0
-    )
+    min: float = Field(..., description="Minimum value of the normal range", example=60.0)
 
-    max: float = Field(
-        ..., description="Maximum value of the normal range", example=100.0
-    )
+    max: float = Field(..., description="Maximum value of the normal range", example=100.0)
 
     critical_min: float = Field(
         ...,
@@ -171,27 +163,19 @@ class PhysiologicalRangeModel(BaseModel):
         return max_val
 
     @field_validator("critical_min")
-    def validate_critical_min(
-        cls, critical_min: float, values: dict[str, Any]
-    ) -> float:
+    def validate_critical_min(cls, critical_min: float, values: dict[str, Any]) -> float:
         """Ensure critical_min is less than or equal to min."""
         min_val = values.get("min")
         if min_val is not None and critical_min > min_val:
-            raise ValueError(
-                "Critical min value must be less than or equal to min value"
-            )
+            raise ValueError("Critical min value must be less than or equal to min value")
         return critical_min
 
     @field_validator("critical_max")
-    def validate_critical_max(
-        cls, critical_max: float, values: dict[str, Any]
-    ) -> float:
+    def validate_critical_max(cls, critical_max: float, values: dict[str, Any]) -> float:
         """Ensure critical_max is greater than or equal to max."""
         max_val = values.get("max")
         if max_val is not None and critical_max < max_val:
-            raise ValueError(
-                "Critical max value must be greater than or equal to max value"
-            )
+            raise ValueError("Critical max value must be greater than or equal to max value")
         return critical_max
 
     model_config = ConfigDict(

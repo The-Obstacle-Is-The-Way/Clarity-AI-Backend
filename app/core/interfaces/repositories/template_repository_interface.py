@@ -28,9 +28,7 @@ class ITemplateRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_template_by_id(
-        self, template_id: uuid.UUID
-    ) -> BiometricAlertRule | None:
+    async def get_template_by_id(self, template_id: uuid.UUID) -> BiometricAlertRule | None:
         """
         Get a template by its ID.
 
@@ -46,9 +44,7 @@ class ITemplateRepository(ABC):
         pass
 
     @abstractmethod
-    async def create_template(
-        self, template_data: dict[str, Any]
-    ) -> BiometricAlertRule:
+    async def create_template(self, template_data: dict[str, Any]) -> BiometricAlertRule:
         """
         Create a new template.
 

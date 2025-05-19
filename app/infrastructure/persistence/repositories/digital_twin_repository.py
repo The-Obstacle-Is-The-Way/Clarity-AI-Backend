@@ -129,9 +129,7 @@ class DigitalTwinRepository:
             self.session.commit()
             return True
         except SQLAlchemyError as e:
-            logger.error(
-                f"Error creating digital twin for patient {twin.patient_id}: {e}"
-            )
+            logger.error(f"Error creating digital twin for patient {twin.patient_id}: {e}")
             self.session.rollback()
             return False
 
@@ -148,9 +146,7 @@ class DigitalTwinRepository:
         try:
             # Check if exists
             existing = (
-                self.session.query(DigitalTwinModel)
-                .filter(DigitalTwinModel.id == twin.id)
-                .first()
+                self.session.query(DigitalTwinModel).filter(DigitalTwinModel.id == twin.id).first()
             )
 
             if not existing:
@@ -166,9 +162,7 @@ class DigitalTwinRepository:
             self.session.commit()
             return True
         except SQLAlchemyError as e:
-            logger.error(
-                f"Error updating digital twin for patient {twin.patient_id}: {e}"
-            )
+            logger.error(f"Error updating digital twin for patient {twin.patient_id}: {e}")
             self.session.rollback()
             return False
 
@@ -185,9 +179,7 @@ class DigitalTwinRepository:
         try:
             # Find the model
             model = (
-                self.session.query(DigitalTwinModel)
-                .filter(DigitalTwinModel.id == twin_id)
-                .first()
+                self.session.query(DigitalTwinModel).filter(DigitalTwinModel.id == twin_id).first()
             )
 
             if not model:
@@ -329,9 +321,7 @@ class DigitalTwinRepository:
 
         return twin_model
 
-    def _update_timeseries_data(
-        self, model: DigitalTwinModel, entity: BiometricTwin
-    ) -> None:
+    def _update_timeseries_data(self, model: DigitalTwinModel, entity: BiometricTwin) -> None:
         """
         Update timeseries data in the ORM model.
 
@@ -360,16 +350,12 @@ class DigitalTwinRepository:
 
                 # Update physiological range
                 if timeseries.physiological_range:
-                    ts_model.physiological_range = (
-                        timeseries.physiological_range.to_dict()
-                    )
+                    ts_model.physiological_range = timeseries.physiological_range.to_dict()
                 else:
                     ts_model.physiological_range = None
 
                 # Map existing data points by timestamp for lookup
-                existing_data_points = {
-                    dp.timestamp.isoformat(): dp for dp in ts_model.data_points
-                }
+                existing_data_points = {dp.timestamp.isoformat(): dp for dp in ts_model.data_points}
 
                 # Process each data point
                 for data_point in timeseries.data_points:
@@ -409,9 +395,7 @@ class DigitalTwinRepository:
 
                 # Set physiological range
                 if timeseries.physiological_range:
-                    ts_model.physiological_range = (
-                        timeseries.physiological_range.to_dict()
-                    )
+                    ts_model.physiological_range = timeseries.physiological_range.to_dict()
 
                 # Add data points
                 for data_point in timeseries.data_points:

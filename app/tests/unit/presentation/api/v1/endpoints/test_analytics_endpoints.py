@@ -101,28 +101,18 @@ def mock_sqlalchemy_base(monkeypatch):
     monkeypatch.setattr("sqlalchemy.orm.configure_mappers", MagicMock())
 
     # Patch SQLAlchemy's registry attributes at the module level
-    monkeypatch.setattr(
-        "app.infrastructure.persistence.sqlalchemy.registry._class_registry", {}
-    )
+    monkeypatch.setattr("app.infrastructure.persistence.sqlalchemy.registry._class_registry", {})
     monkeypatch.setattr(
         "app.infrastructure.persistence.sqlalchemy.registry.metadata", mock_metadata
     )
-    monkeypatch.setattr(
-        "app.infrastructure.persistence.sqlalchemy.models.base.Base", FakeBase
-    )
+    monkeypatch.setattr("app.infrastructure.persistence.sqlalchemy.models.base.Base", FakeBase)
 
     # Patch the entire registry module
-    monkeypatch.setattr(
-        "app.infrastructure.persistence.sqlalchemy.registry", mock_registry
-    )
+    monkeypatch.setattr("app.infrastructure.persistence.sqlalchemy.registry", mock_registry)
 
     # Patch mixins to avoid initialization errors
-    monkeypatch.setattr(
-        "app.infrastructure.database.base_class.TimestampMixin", MagicMock()
-    )
-    monkeypatch.setattr(
-        "app.infrastructure.database.base_class.AuditMixin", MagicMock()
-    )
+    monkeypatch.setattr("app.infrastructure.database.base_class.TimestampMixin", MagicMock())
+    monkeypatch.setattr("app.infrastructure.database.base_class.AuditMixin", MagicMock())
 
     # Prevent model registration, which can trigger mapper validation
     monkeypatch.setattr(
@@ -131,9 +121,7 @@ def mock_sqlalchemy_base(monkeypatch):
     )
 
     # Also patch the Session factory to prevent attempts to use the real database
-    monkeypatch.setattr(
-        "sqlalchemy.orm.sessionmaker", lambda **kwargs: lambda: mock_session
-    )
+    monkeypatch.setattr("sqlalchemy.orm.sessionmaker", lambda **kwargs: lambda: mock_session)
     monkeypatch.setattr("sqlalchemy.ext.asyncio.AsyncSession", MagicMock())
 
     # Mock engine creation to prevent connection attempts
@@ -167,9 +155,7 @@ def mock_batch_process_use_case():
 @pytest.fixture
 def mock_background_tasks():
     """Create a mock background tasks object."""
-    mock = MagicMock(
-        spec=BackgroundTasks
-    )  # Use fastapi.BackgroundTasks for spec if imported
+    mock = MagicMock(spec=BackgroundTasks)  # Use fastapi.BackgroundTasks for spec if imported
     mock.add_task = MagicMock()  # Ensure add_task is its own mock for assertion
     return mock
 
@@ -180,9 +166,7 @@ def mock_user():
     user = MagicMock()
     user.id = uuid.uuid4()
     user.email = "test@example.com"
-    user.role = (
-        UserRole.ADMIN
-    )  # Changed to ADMIN for broader access if needed, or keep as needed
+    user.role = UserRole.ADMIN  # Changed to ADMIN for broader access if needed, or keep as needed
     user.roles = {UserRole.ADMIN}  # Use a set for roles, matching domain entity
     user.status = UserStatus.ACTIVE  # Set status to ACTIVE
     user.is_active = True  # Also ensure is_active is True if checked elsewhere
@@ -398,9 +382,7 @@ class TestAnalyticsEndpoints:
                 phi_mock_instance.ensure_initialized = AsyncMock(return_value=None)
                 phi_mock_instance.contains_phi_async = AsyncMock(return_value=False)
                 # Mock redact to return original data as string since no PHI detected
-                phi_mock_instance.redact_phi_async = AsyncMock(
-                    side_effect=lambda d: json.dumps(d)
-                )
+                phi_mock_instance.redact_phi_async = AsyncMock(side_effect=lambda d: json.dumps(d))
 
                 # Endpoint expects a list of events as the JSON body
                 response = await client.post(

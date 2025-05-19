@@ -37,9 +37,7 @@ async def force_404_error() -> dict[str, Any]:
     Endpoint that deliberately raises a 404 not found error.
     Used to test 404 error responses.
     """
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND, detail="Test resource not found"
-    )
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Test resource not found")
 
 
 @router.get("/403-error")
@@ -48,9 +46,7 @@ async def force_403_error() -> dict[str, Any]:
     Endpoint that deliberately raises a 403 forbidden error.
     Used to test 403 error responses.
     """
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN, detail="Test forbidden access"
-    )
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Test forbidden access")
 
 
 @router.get("/401-error")
@@ -59,9 +55,7 @@ async def force_401_error() -> dict[str, Any]:
     Endpoint that deliberately raises a 401 unauthorized error.
     Used to test 401 error responses.
     """
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="Test unauthorized access"
-    )
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Test unauthorized access")
 
 
 @router.get("/validation-error")
@@ -84,17 +78,13 @@ async def test_hello():
 @router.get("/error")
 async def test_error():
     """Test endpoint that raises an HTTP exception."""
-    raise HTTPException(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Test error"
-    )
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Test error")
 
 
 @router.get("/runtime-error")
 async def test_runtime_error():
     """Test endpoint that raises a RuntimeError with sensitive information that should be masked."""
-    raise RuntimeError(
-        "This is a sensitive internal error detail that should be masked"
-    )
+    raise RuntimeError("This is a sensitive internal error detail that should be masked")
 
 
 @router.get("/value-error")

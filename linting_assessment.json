@@ -1,0 +1,19 @@
+{
+  "timestamp": "2025-05-19T16:00:23.456982",
+  "linting": {
+    "total_issues": 0,
+    "categories": {}
+  },
+  "typing": {
+    "total_issues": 1715,
+    "total_files": 162,
+    "common_patterns": {
+      "missing_attribute": 232,
+      "incompatible_type": 81
+    }
+  },
+  "formatting": {},
+  "recommendations": [
+    "Add type annotations to 162 files"
+  ]
+}

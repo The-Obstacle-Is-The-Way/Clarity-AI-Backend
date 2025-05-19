@@ -115,12 +115,8 @@ class SymptomForecastingEnsemble(BaseModel):
                 metadata = json.load(f)
 
             # Update ensemble attributes from metadata
-            self.ensemble_weights = metadata.get(
-                "ensemble_weights", self.ensemble_weights
-            )
-            self.forecast_horizon = metadata.get(
-                "forecast_horizon", self.forecast_horizon
-            )
+            self.ensemble_weights = metadata.get("ensemble_weights", self.ensemble_weights)
+            self.forecast_horizon = metadata.get("forecast_horizon", self.forecast_horizon)
             self.symptom_types = metadata.get("symptom_types", self.symptom_types)
             self.version = metadata.get("version", self.version)
             self.last_training_date = metadata.get("last_training_date")
@@ -131,9 +127,7 @@ class SymptomForecastingEnsemble(BaseModel):
                 model.model_path = f"{self.model_path}/{model_name}.model"
                 model.load()
 
-            self.logger.info(
-                f"Successfully loaded ensemble model from {self.model_path}"
-            )
+            self.logger.info(f"Successfully loaded ensemble model from {self.model_path}")
 
         except Exception as e:
             self.logger.error(f"Failed to load ensemble model: {e!s}")
@@ -303,10 +297,7 @@ class SymptomForecastingEnsemble(BaseModel):
 
                 # Calculate confidence intervals based on model disagreement
                 model_forecasts = np.array(
-                    [
-                        model_predictions[model_name][symptom_type]
-                        for model_name in self.models
-                    ]
+                    [model_predictions[model_name][symptom_type] for model_name in self.models]
                 )
 
                 # Standard deviation across models as uncertainty measure
@@ -354,9 +345,7 @@ class SymptomForecastingEnsemble(BaseModel):
             self.logger.error(f"Error during postprocessing: {e!s}")
             raise ValueError(f"Failed to postprocess predictions: {e!s}")
 
-    def evaluate(
-        self, test_data: dict[str, Any], test_labels: dict[str, Any]
-    ) -> dict[str, float]:
+    def evaluate(self, test_data: dict[str, Any], test_labels: dict[str, Any]) -> dict[str, float]:
         """
         Evaluate the ensemble model on test data.
 
@@ -557,8 +546,7 @@ class SymptomForecastingEnsemble(BaseModel):
 
             # Calculate weights based on inverse error (lower error = higher weight)
             inverse_errors = {
-                model_name: 1.0
-                / (error + 1e-10)  # Add small constant to avoid division by zero
+                model_name: 1.0 / (error + 1e-10)  # Add small constant to avoid division by zero
                 for model_name, error in model_errors.items()
             }
 
@@ -619,8 +607,7 @@ class SymptomForecastingEnsemble(BaseModel):
             # Add forecast dates
             start_date = datetime.now()
             forecast_dates = [
-                (start_date + timedelta(days=i)).strftime("%Y-%m-%d")
-                for i in range(forecast_days)
+                (start_date + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(forecast_days)
             ]
             processed_results["forecast_dates"] = forecast_dates
 

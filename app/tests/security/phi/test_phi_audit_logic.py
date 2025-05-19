@@ -74,9 +74,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
             # Add some mock issues
             auditor.findings = {
                 "code_phi": [{"file": "test.py", "evidence": "SSN: 123-45-6789"}],
-                "api_security": [
-                    {"endpoint": "/api/patient", "issue": "No authentication"}
-                ],
+                "api_security": [{"endpoint": "/api/patient", "issue": "No authentication"}],
                 "configuration_issues": [],
             }
 
@@ -109,9 +107,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
             }
 
             # Verify audit passes despite having issues
-            assert (
-                auditor._audit_passed() is True
-            ), "Audit should pass with clean_app in path"
+            assert auditor._audit_passed() is True, "Audit should pass with clean_app in path"
         finally:
             shutil.rmtree(temp_dir)
 
@@ -160,18 +156,13 @@ class TestPHIAuditLogic(BaseSecurityTest):
 
             # Test the detection logic
             assert (
-                auditor.is_phi_test_file(regular_file, open(regular_file).read())
-                is False
+                auditor.is_phi_test_file(regular_file, open(regular_file).read()) is False
             ), "Regular file should not be detected as PHI test file"
             assert (
-                auditor.is_phi_test_file(
-                    non_phi_test_file, open(non_phi_test_file).read()
-                )
-                is False
+                auditor.is_phi_test_file(non_phi_test_file, open(non_phi_test_file).read()) is False
             ), "Non-PHI test file should not be detected as PHI test file"
             assert (
-                auditor.is_phi_test_file(phi_test_file, open(phi_test_file).read())
-                is True
+                auditor.is_phi_test_file(phi_test_file, open(phi_test_file).read()) is True
             ), "PHI test file should be detected correctly"
         finally:
             shutil.rmtree(temp_dir)
@@ -184,9 +175,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         from app.tests.security.utils.test_mocks import MockPHIAuditor
 
         # Use monkeypatch to replace PHIAuditor with our MockPHIAuditor
-        monkeypatch.setattr(
-            "scripts.test.security.run_hipaa_phi_audit.PHIAuditor", MockPHIAuditor
-        )
+        monkeypatch.setattr("scripts.test.security.run_hipaa_phi_audit.PHIAuditor", MockPHIAuditor)
 
         temp_dir = tempfile.mkdtemp()
         try:

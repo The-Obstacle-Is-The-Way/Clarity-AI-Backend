@@ -59,9 +59,7 @@ class MentaLLaMAInterface(ABC):
         pass
 
     @abstractmethod
-    async def detect_depression(
-        self, text: str, user_id: str, **kwargs: Any
-    ) -> dict[str, Any]:
+    async def detect_depression(self, text: str, user_id: str, **kwargs: Any) -> dict[str, Any]:
         """
         Detect signs of depression in text.
 

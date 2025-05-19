@@ -210,9 +210,7 @@ class TestBiometricEventProcessor:
         assert observer in processor.observers[AlertPriority.INFORMATIONAL]
 
     @pytest.mark.standalone()
-    def test_process_data_point_no_alert(
-        self, processor, sample_data_point, sample_rule
-    ):
+    def test_process_data_point_no_alert(self, processor, sample_data_point, sample_rule):
         """
         Test processing a data point that doesn't trigger an alert.
         """

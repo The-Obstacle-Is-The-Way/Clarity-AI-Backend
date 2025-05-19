@@ -164,7 +164,6 @@ class TestMLModelPHISecurity:
         """Test that PHI is never logged during ML processing."""
         import logging
 
-
         # Create a test logger with a handler to ensure logs are captured
         test_logger = logging.getLogger("test_phi_logger")
         test_logger.setLevel(logging.INFO)
@@ -177,18 +176,12 @@ class TestMLModelPHISecurity:
         phi_log_message = f"Processing patient: {sample_patient_data['name']} with SSN: {sample_patient_data['ssn']}"
 
         # We'll use this later to verify our log has been sanitized
-        expected_sanitized = (
-            "Processing patient: [REDACTED NAME] with SSN: [REDACTED SSN]"
-        )
+        expected_sanitized = "Processing patient: [REDACTED NAME] with SSN: [REDACTED SSN]"
 
         # We need to manually sanitize the log message here since we're not using the
         # proper logging configuration/handlers that would do it in production
-        sanitized_message = phi_log_message.replace(
-            sample_patient_data["name"], "[REDACTED NAME]"
-        )
-        sanitized_message = sanitized_message.replace(
-            sample_patient_data["ssn"], "[REDACTED SSN]"
-        )
+        sanitized_message = phi_log_message.replace(sample_patient_data["name"], "[REDACTED NAME]")
+        sanitized_message = sanitized_message.replace(sample_patient_data["ssn"], "[REDACTED SSN]")
 
         # Log the sanitized message
         with caplog.at_level(logging.INFO):
@@ -208,12 +201,8 @@ class TestMLModelPHISecurity:
             # Check if this is our specific test log message
             if "Processing patient" in record.message:
                 phi_found = True
-                assert (
-                    "[REDACTED NAME]" in record.message
-                ), "Name should be redacted in logs"
-                assert (
-                    "[REDACTED SSN]" in record.message
-                ), "SSN should be redacted in logs"
+                assert "[REDACTED NAME]" in record.message, "Name should be redacted in logs"
+                assert "[REDACTED SSN]" in record.message, "SSN should be redacted in logs"
 
         # Ensure our test log was actually captured
         assert phi_found, "Test log message not found in captured logs"

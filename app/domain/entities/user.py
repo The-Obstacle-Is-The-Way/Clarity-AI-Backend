@@ -57,15 +57,9 @@ class User(BaseModel):
     password_changed_at: datetime | None = Field(
         default=None, description="When password was last changed"
     )
-    is_active: bool = Field(
-        default=True, description="Whether the user account is active"
-    )
-    is_verified: bool = Field(
-        default=False, description="Whether the user account is verified"
-    )
-    email_verified: bool = Field(
-        default=False, description="Whether the email address is verified"
-    )
+    is_active: bool = Field(default=True, description="Whether the user account is active")
+    is_verified: bool = Field(default=False, description="Whether the user account is verified")
+    email_verified: bool = Field(default=False, description="Whether the email address is verified")
     failed_login_attempts: int = Field(
         default=0, description="Number of consecutive failed login attempts"
     )
@@ -89,12 +83,8 @@ class User(BaseModel):
     created_at: datetime = Field(
         default_factory=datetime.now, description="When the user was created"
     )
-    updated_at: datetime | None = Field(
-        default=None, description="When the user was last updated"
-    )
-    last_login_at: datetime | None = Field(
-        default=None, description="When the user last logged in"
-    )
+    updated_at: datetime | None = Field(default=None, description="When the user was last updated")
+    last_login_at: datetime | None = Field(default=None, description="When the user last logged in")
 
     # Extended data
     preferences: dict | None = Field(

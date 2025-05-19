@@ -175,9 +175,7 @@ async def simulate_treatment(
         )
 
         # Convert UUIDs to strings for JSON serialization
-        sequence_ids_str = {
-            nt.value: str(seq_id) for nt, seq_id in sequence_ids.items()
-        }
+        sequence_ids_str = {nt.value: str(seq_id) for nt, seq_id in sequence_ids.items()}
 
         return TreatmentSimulationResponse(sequence_ids=sequence_ids_str)
     except Exception as e:
@@ -219,9 +217,7 @@ async def get_visualization_data(
         if not sequence.feature_names:
             # Use the keys from the first time point
             feature_names = (
-                list(sequence.time_points[0].data.keys())
-                if sequence.time_points
-                else []
+                list(sequence.time_points[0].data.keys()) if sequence.time_points else []
             )
         else:
             feature_names = sequence.feature_names
@@ -256,9 +252,7 @@ async def get_visualization_data(
 )
 async def analyze_neurotransmitter(
     request: AnalyzeNeurotransmitterRequest = Body(...),
-    service: TemporalNeurotransmitterService = Depends(
-        get_temporal_neurotransmitter_service
-    ),
+    service: TemporalNeurotransmitterService = Depends(get_temporal_neurotransmitter_service),
     current_user: dict = Depends(get_current_user),
 ) -> Any:
     """Analyze neurotransmitter levels for a patient."""
@@ -291,8 +285,7 @@ async def analyze_neurotransmitter(
         "effect_size": effect.effect_size,
         "confidence_interval": effect.confidence_interval,
         "p_value": effect.p_value,
-        "is_statistically_significant": effect.p_value is not None
-        and effect.p_value < 0.05,
+        "is_statistically_significant": effect.p_value is not None and effect.p_value < 0.05,
         "clinical_significance": effect.clinical_significance.value
         if effect.clinical_significance
         else None,
@@ -309,9 +302,7 @@ async def analyze_neurotransmitter(
 )
 async def get_cascade_visualization(
     request: CascadeVisualizationRequest = Body(...),
-    service: TemporalNeurotransmitterService = Depends(
-        get_temporal_neurotransmitter_service
-    ),
+    service: TemporalNeurotransmitterService = Depends(get_temporal_neurotransmitter_service),
     current_user: dict = Depends(get_current_user),
 ) -> Any:
     """Get visualization data for neurotransmitter cascade effects."""

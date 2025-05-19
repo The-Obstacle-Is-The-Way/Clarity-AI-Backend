@@ -165,17 +165,12 @@ class Biometric:
         if self.biometric_type == BiometricType.HEART_RATE:
             if "bpm" not in self.value:
                 raise ValueError("Heart rate must include 'bpm' value")
-            if (
-                not isinstance(self.value["bpm"], (int, float))
-                or self.value["bpm"] <= 0
-            ):
+            if not isinstance(self.value["bpm"], (int, float)) or self.value["bpm"] <= 0:
                 raise ValueError("Heart rate bpm must be a positive number")
 
         elif self.biometric_type == BiometricType.BLOOD_PRESSURE:
             if "systolic" not in self.value or "diastolic" not in self.value:
-                raise ValueError(
-                    "Blood pressure must include 'systolic' and 'diastolic' values"
-                )
+                raise ValueError("Blood pressure must include 'systolic' and 'diastolic' values")
 
     def get_summary_value(self) -> dict[str, Any]:
         """

@@ -9,18 +9,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings  # Added for JWT settings
 from app.domain.entities.user import User as DomainUser
-from app.domain.exceptions import (
+from app.domain.exceptions import (  # Add other relevant exceptions from this module if needed
     AuthenticationError,
     InvalidTokenError,
-    # Add other relevant exceptions from this module if needed
     TokenExpiredError,
 )
-from app.domain.repositories.user_repository import (
-    UserRepository as UserRepositoryInterface,
-)
-from app.infrastructure.database.session import (
+from app.domain.repositories.user_repository import UserRepository as UserRepositoryInterface
+from app.infrastructure.database.session import (  # Assuming get_db provides AsyncSession
     get_db,
-)  # Assuming get_db provides AsyncSession
+)
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
     UserRepository as SqlAlchemyUserRepositoryImpl,
 )
@@ -72,9 +69,7 @@ def get_jwt_service() -> JWTService:
 # Dependency provider for AuthenticationService (depends on get_jwt_service)
 def get_authentication_service(
     # Declare dependencies using Depends
-    user_repo: UserRepositoryInterface = Depends(
-        get_user_repository
-    ),  # Use interface hint
+    user_repo: UserRepositoryInterface = Depends(get_user_repository),  # Use interface hint
     password_handler: PasswordHandler = Depends(get_password_handler),
     jwt_service: JWTService = Depends(get_jwt_service),
 ) -> AuthenticationService:
@@ -129,9 +124,7 @@ async def get_current_user(
     try:
         logger.debug("Attempting to validate token and retrieve user.")
         # Validate token and get user using the service
-        user, _ = await auth_service.validate_token(
-            token
-        )  # Ignoring permissions for now
+        user, _ = await auth_service.validate_token(token)  # Ignoring permissions for now
         if user is None:
             # Should not happen if validate_token raises exceptions properly
             logger.error("validate_token returned None user without raising error.")

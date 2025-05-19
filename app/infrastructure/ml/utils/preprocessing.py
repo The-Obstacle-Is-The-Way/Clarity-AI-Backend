@@ -203,9 +203,7 @@ def format_as_clinical_prompt(
 
         # Add treatment history if available
         if context.get("treatment_history"):
-            context_section += (
-                "- Treatment history: Patient has previous treatment experience\n"
-            )
+            context_section += "- Treatment history: Patient has previous treatment experience\n"
 
         # Add a spacing line
         context_section += "\n"

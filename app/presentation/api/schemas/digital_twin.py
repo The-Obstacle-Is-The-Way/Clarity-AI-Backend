@@ -59,9 +59,7 @@ class TwinSimulationRequest(BaseModelConfig):
 
     simulation_type: SimulationType
     parameters: dict[str, Any] = Field(..., description="Simulation parameters")
-    timeframe_days: int = Field(
-        30, ge=1, le=365, description="Simulation timeframe in days"
-    )
+    timeframe_days: int = Field(30, ge=1, le=365, description="Simulation timeframe in days")
 
 
 class TwinSimulationResponse(BaseModelConfig):
@@ -92,9 +90,7 @@ class DigitalTwinStatusResponse(BaseModelConfig):
 
     patient_id: str
     status: str  # "complete", "partial", "initializing", etc.
-    completeness: int = Field(
-        ..., ge=0, le=100, description="Percentage of completeness"
-    )
+    completeness: int = Field(..., ge=0, le=100, description="Percentage of completeness")
     components: dict[str, ComponentStatus]
     last_checked: datetime
 

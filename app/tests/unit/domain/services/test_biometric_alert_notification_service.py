@@ -47,9 +47,7 @@ class TestBiometricAlertNotificationService:
     @pytest.fixture
     def notification_service(self, mock_alert_repository, mock_notification_service):
         """Create a BiometricAlertNotificationService with mock dependencies."""
-        return BiometricAlertNotificationService(
-            mock_alert_repository, mock_notification_service
-        )
+        return BiometricAlertNotificationService(mock_alert_repository, mock_notification_service)
 
     @pytest.fixture
     def sample_patient_id(self):
@@ -153,9 +151,7 @@ class TestBiometricAlertNotificationService:
         await notification_service.notify_alert(sample_warning_alert)
 
         # Verify
-        assert (
-            mock_notification_service.send_sms.call_count == 0
-        )  # SMS not used for warnings
+        assert mock_notification_service.send_sms.call_count == 0  # SMS not used for warnings
         assert mock_notification_service.send_email.call_count == 1
         assert mock_notification_service.send_in_app_notification.call_count == 1
         assert mock_notification_service.send_push_notification.call_count == 1
@@ -208,15 +204,9 @@ class TestBiometricAlertNotificationService:
     async def test_get_channels_for_priority(self, notification_service):
         """Test that appropriate channels are selected based on alert priority."""
         # Execute
-        urgent_channels = notification_service._get_channels_for_priority(
-            AlertPriority.URGENT
-        )
-        warning_channels = notification_service._get_channels_for_priority(
-            AlertPriority.WARNING
-        )
-        info_channels = notification_service._get_channels_for_priority(
-            AlertPriority.INFORMATIONAL
-        )
+        urgent_channels = notification_service._get_channels_for_priority(AlertPriority.URGENT)
+        warning_channels = notification_service._get_channels_for_priority(AlertPriority.WARNING)
+        info_channels = notification_service._get_channels_for_priority(AlertPriority.INFORMATIONAL)
 
         # Verify
         assert len(urgent_channels) == 4
@@ -235,14 +225,10 @@ class TestBiometricAlertNotificationService:
         assert info_channels[0] == NotificationChannel.IN_APP
 
     @pytest.mark.asyncio
-    async def test_get_alert_recipients(
-        self, notification_service, sample_urgent_alert
-    ):
+    async def test_get_alert_recipients(self, notification_service, sample_urgent_alert):
         """Test that alert recipients are correctly determined."""
         # Execute
-        recipients = await notification_service._get_alert_recipients(
-            sample_urgent_alert
-        )
+        recipients = await notification_service._get_alert_recipients(sample_urgent_alert)
 
         # Verify
         assert len(recipients) == 1

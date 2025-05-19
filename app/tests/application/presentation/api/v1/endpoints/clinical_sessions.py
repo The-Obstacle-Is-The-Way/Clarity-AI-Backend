@@ -9,9 +9,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.domain.entities.clinical_session import (
+from app.domain.entities.clinical_session import (  # For query param validation
     SessionType,
-)  # For query param validation
+)
 
 # Assuming User type from auth dependency matches this import or is compatible (e.g., dict)
 from app.domain.entities.user import User
@@ -83,9 +83,9 @@ async def record_clinical_session(
     #        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Provider can only record sessions for themselves.")
 
     try:
-        from app.domain.entities.clinical_session import (
+        from app.domain.entities.clinical_session import (  # Import entity
             ClinicalSession,
-        )  # Import entity
+        )
 
         new_session_entity = ClinicalSession(**session_data.model_dump())
 
@@ -176,10 +176,8 @@ async def list_clinical_sessions(
     appointment_id: UUID | None = Query(None, description="Filter by appointment ID"),
     start_date: datetime
     | None = Query(None, description="Filter by session start date (inclusive)"),
-    end_date: datetime
-    | None = Query(None, description="Filter by session end date (exclusive)"),
-    session_type: SessionType
-    | None = Query(None, description="Filter by session type"),
+    end_date: datetime | None = Query(None, description="Filter by session end date (exclusive)"),
+    session_type: SessionType | None = Query(None, description="Filter by session type"),
     limit: int = Query(50, ge=1, le=200, description="Maximum sessions to return"),
     offset: int = Query(0, ge=0, description="Number of sessions to skip"),
     current_user: User = Depends(get_current_user),

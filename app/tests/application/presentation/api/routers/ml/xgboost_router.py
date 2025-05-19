@@ -108,9 +108,7 @@ async def predict_treatment_response(
         )
         return result
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Treatment response prediction failed: {e!s}"
-        )
+        raise HTTPException(status_code=500, detail=f"Treatment response prediction failed: {e!s}")
 
 
 @router.post("/predict/outcome")
@@ -243,9 +241,7 @@ async def get_feature_importance_v1(
         )
         return result
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get feature importance: {e!s}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get feature importance: {e!s}")
 
 
 @router.get("/predictions/{prediction_id}/feature-importance")
@@ -274,9 +270,7 @@ async def get_feature_importance_v2(
         )
         return result
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get feature importance: {e!s}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get feature importance: {e!s}")
 
 
 @router.post("/integrate/{prediction_id}")
@@ -311,9 +305,7 @@ async def integrate_with_digital_twin(
         )
         return result
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to integrate with digital twin: {e!s}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to integrate with digital twin: {e!s}")
 
 
 @router.get("/health")

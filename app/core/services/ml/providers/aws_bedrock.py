@@ -109,9 +109,7 @@ class AWSBedrockMentaLLaMA(BaseMentaLLaMA):
             raise InvalidConfigurationError(f"Import error: {e!s}")
         except Exception as e:
             logger.error(f"Failed to initialize AWS Bedrock provider: {e!s}")
-            raise InvalidConfigurationError(
-                f"Failed to initialize AWS Bedrock provider: {e!s}"
-            )
+            raise InvalidConfigurationError(f"Failed to initialize AWS Bedrock provider: {e!s}")
 
     def _discover_available_models(self) -> dict[str, dict[str, Any]]:
         """
@@ -219,9 +217,7 @@ class AWSBedrockMentaLLaMA(BaseMentaLLaMA):
                     **kwargs,
                 )
             else:
-                raise InvalidRequestError(
-                    f"Unsupported model provider for model '{model}'"
-                )
+                raise InvalidRequestError(f"Unsupported model provider for model '{model}'")
 
             # Extract the text from the response
             text = self._extract_text_from_response(response, model)
@@ -294,9 +290,7 @@ class AWSBedrockMentaLLaMA(BaseMentaLLaMA):
             request_body["top_k"] = top_k
 
         # Invoke model
-        response = self._bedrock_client.invoke_model(
-            modelId=model, body=json.dumps(request_body)
-        )
+        response = self._bedrock_client.invoke_model(modelId=model, body=json.dumps(request_body))
 
         # Process response
         response_body = json.loads(response.get("body").read())
@@ -362,9 +356,7 @@ class AWSBedrockMentaLLaMA(BaseMentaLLaMA):
             request_body["textGenerationConfig"]["topP"] = top_p
 
         # Invoke model
-        response = self._bedrock_client.invoke_model(
-            modelId=model, body=json.dumps(request_body)
-        )
+        response = self._bedrock_client.invoke_model(modelId=model, body=json.dumps(request_body))
 
         # Process response
         response_body = json.loads(response.get("body").read())
@@ -378,8 +370,7 @@ class AWSBedrockMentaLLaMA(BaseMentaLLaMA):
             "raw_response": response_body,
             "text": text,
             "processing_time": processing_time,
-            "tokens_used": len(prompt.split())
-            + len(text.split()),  # Approximate token count
+            "tokens_used": len(prompt.split()) + len(text.split()),  # Approximate token count
             "confidence": 0.85,  # Titan doesn't provide confidence scores
         }
 

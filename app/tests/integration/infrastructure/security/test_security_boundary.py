@@ -298,10 +298,8 @@ class TestSecurityBoundary:
         user_data = {"sub": user_id, "roles": [Role.PATIENT.value]}
 
         # Create token that expired 1 minute ago
-        expired_token = (
-            jwt_service._create_token(  # Assuming _create_token is also sync
-                data=user_data, token_type=TokenType.ACCESS, expires_delta_minutes=-1
-            )
+        expired_token = jwt_service._create_token(  # Assuming _create_token is also sync
+            data=user_data, token_type=TokenType.ACCESS, expires_delta_minutes=-1
         )
 
         with pytest.raises(TokenExpiredException):

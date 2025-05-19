@@ -121,9 +121,7 @@ async def run_demo():
     patient = await create_demo_patient()
     saved_patient = await patient_repo.save(patient)
     print(f"Created patient: {saved_patient.full_name}, ID: {saved_patient.id}")
-    print(
-        f"Diagnoses: {', '.join([d.name for d in saved_patient.diagnoses if d.is_active])}"
-    )
+    print(f"Diagnoses: {', '.join([d.name for d in saved_patient.diagnoses if d.is_active])}")
     print(
         f"Current medications: {', '.join([m.name for m in saved_patient.medications if m.is_active])}"
     )
@@ -164,8 +162,7 @@ async def run_demo():
                 "date": (datetime.now() - timedelta(days=i)).date().isoformat(),
                 "steps": 3000 + (i * 500),  # Gradually increasing steps
                 "active_minutes": 20 + (i * 5),  # Gradually increasing activity
-                "sedentary_hours": 14
-                - (i * 0.5),  # Gradually decreasing sedentary time
+                "sedentary_hours": 14 - (i * 0.5),  # Gradually decreasing sedentary time
                 "calories_burned": 1800 + (i * 100),
             }
             for i in range(7)
@@ -174,8 +171,7 @@ async def run_demo():
             {
                 "date": (datetime.now() - timedelta(days=i)).date().isoformat(),
                 "duration_hours": 5.5 + (i * 0.2),  # Gradually improving sleep duration
-                "onset_latency_minutes": 45
-                - (i * 3),  # Gradually improving sleep onset
+                "onset_latency_minutes": 45 - (i * 3),  # Gradually improving sleep onset
                 "awakenings": 4 - (i % 3),  # Variable awakenings
                 "efficiency": 0.75 + (i * 0.02),  # Gradually improving efficiency
                 "deep_sleep_percentage": 0.15 + (i * 0.01),
@@ -206,9 +202,7 @@ async def run_demo():
     print(f"New clinical insights: {len(updated_state.clinical_insights)}")
 
     # Extract and display interesting insights
-    sleep_insights = [
-        i for i in updated_state.clinical_insights if "sleep" in i.title.lower()
-    ]
+    sleep_insights = [i for i in updated_state.clinical_insights if "sleep" in i.title.lower()]
     activity_insights = [
         i for i in updated_state.clinical_insights if "activity" in i.title.lower()
     ]
@@ -264,9 +258,7 @@ async def run_demo():
 
     # Display some new insights from the clinical notes
     new_insights = [
-        i
-        for i in notes_state.clinical_insights
-        if i not in updated_state.clinical_insights
+        i for i in notes_state.clinical_insights if i not in updated_state.clinical_insights
     ]
     if new_insights:
         print("\nNew insights from clinical notes:")
@@ -280,9 +272,7 @@ async def run_demo():
         patient_id=saved_patient.id, visualization_type="brain_model"
     )
 
-    print(
-        f"Generated visualization with {len(brain_data['brain_regions'])} brain regions"
-    )
+    print(f"Generated visualization with {len(brain_data['brain_regions'])} brain regions")
     print(f"Highlighted regions: {', '.join(brain_data['highlighted_regions'][:3])}...")
     print(f"Connectivity edges: {len(brain_data['connectivity'])}")
 
@@ -312,12 +302,8 @@ async def run_demo():
     )
 
     print("Clinical summary generated.")
-    print(
-        f"Summary includes {len(summary.get('significant_insights', []))} significant insights"
-    )
-    print(
-        f"Summary includes {len(summary.get('treatment_recommendations', []))} recommendations"
-    )
+    print(f"Summary includes {len(summary.get('significant_insights', []))} significant insights")
+    print(f"Summary includes {len(summary.get('treatment_recommendations', []))} recommendations")
 
     # Save outputs to files for review
     output_dir = Path("app/demo/output")

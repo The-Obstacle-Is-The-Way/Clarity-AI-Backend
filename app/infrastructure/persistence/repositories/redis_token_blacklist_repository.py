@@ -88,9 +88,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             }
             await self._redis.set(jti_key, jti_data, ttl=ttl)
 
-            logger.info(
-                f"Token {jti} blacklisted until {expires_at.isoformat()}, reason: {reason}"
-            )
+            logger.info(f"Token {jti} blacklisted until {expires_at.isoformat()}, reason: {reason}")
         except Exception as e:
             logger.error(f"Failed to blacklist token: {e!s}")
             raise RepositoryException(f"Failed to blacklist token: {e!s}")

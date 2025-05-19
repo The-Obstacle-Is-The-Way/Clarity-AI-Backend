@@ -170,10 +170,7 @@ except ImportError as e:
     # For RBAC permission tests - use a real function that can be mocked
     def check_permission(user_id=None, permission=None, resource_id=None):
         # This will be replaced by the mock in tests that use the mock_rbac fixture
-        if (
-            hasattr(check_permission, "implementation")
-            and check_permission.implementation
-        ):
+        if hasattr(check_permission, "implementation") and check_permission.implementation:
             return check_permission.implementation(user_id, permission, resource_id)
 
         # Default implementation for tests that don't use the mock
@@ -186,9 +183,7 @@ except ImportError as e:
     AuditLogger = MagicMock()
 
     # For audit logging tests - use a real function that can be mocked
-    def log_phi_access(
-        user_id=None, action=None, resource_type=None, resource_id=None, **kwargs
-    ):
+    def log_phi_access(user_id=None, action=None, resource_type=None, resource_id=None, **kwargs):
         # This will be replaced by the mock in tests that use the mock_audit_logger fixture
         if hasattr(log_phi_access, "implementation") and log_phi_access.implementation:
             return log_phi_access.implementation(
@@ -300,9 +295,7 @@ def mock_rbac():
 
     # Store the original implementation for restoration
     original_implementation = (
-        check_permission.implementation
-        if hasattr(check_permission, "implementation")
-        else None
+        check_permission.implementation if hasattr(check_permission, "implementation") else None
     )
 
     # Create a simple function we can track
@@ -431,9 +424,7 @@ class TestAuthorization(BaseSecurityTest):
         # If MockRBACService is needed, instantiate it here
         # return MockRBACService()
         # Using simpler patching for check_permission seems more direct
-        return (
-            MagicMock()
-        )  # Return a simple mock if MockRBACService isn't strictly needed
+        return MagicMock()  # Return a simple mock if MockRBACService isn't strictly needed
 
     def test_rbac_permission_check(self, test_user, mock_rbac_fixture):
         """Verify RBAC permission checks allow authorized actions."""
@@ -441,9 +432,7 @@ class TestAuthorization(BaseSecurityTest):
         required_permission = "read:own_data"
 
         # Patch the check_permission function for the duration of this test
-        with patch(
-            "app.tests.security.hipaa.test_hipaa_compliance.check_permission"
-        ) as mock_check:
+        with patch("app.tests.security.hipaa.test_hipaa_compliance.check_permission") as mock_check:
             mock_check.return_value = True  # Simulate permission granted
 
             # Simulate checking permission (assuming this is how it would be called)
@@ -467,12 +456,8 @@ class TestAuthorization(BaseSecurityTest):
         required_permission = "delete:other_data"
 
         # Patch the check_permission function
-        with patch(
-            "app.tests.security.hipaa.test_hipaa_compliance.check_permission"
-        ) as mock_check:
-            mock_check.side_effect = AuthorizationError(
-                "Permission denied"
-            )  # Simulate denial
+        with patch("app.tests.security.hipaa.test_hipaa_compliance.check_permission") as mock_check:
+            mock_check.side_effect = AuthorizationError("Permission denied")  # Simulate denial
 
             # Simulate checking permission
             with pytest.raises(AuthorizationError, match="Permission denied"):
@@ -495,15 +480,13 @@ class TestAuthorization(BaseSecurityTest):
         permission = "read:phi_data"  # Assuming specific permission for PHI
 
         # Patch check_permission to simulate denial for cross-patient access
-        with patch(
-            "app.tests.security.hipaa.test_hipaa_compliance.check_permission"
-        ) as mock_check:
+        with patch("app.tests.security.hipaa.test_hipaa_compliance.check_permission") as mock_check:
 
             def raise_auth_error(*args, **kwargs):
                 # Simulate the logic: deny if user_id != resource_id for this permission
-                if kwargs.get("permission") == permission and kwargs.get(
-                    "user_id"
-                ) != kwargs.get("resource_id"):
+                if kwargs.get("permission") == permission and kwargs.get("user_id") != kwargs.get(
+                    "resource_id"
+                ):
                     raise AuthorizationError("Access denied to other patient data")
                 return True  # Allow otherwise for this simulation
 
@@ -524,9 +507,7 @@ class TestAuthorization(BaseSecurityTest):
             # Simulate accessing own data (should pass)
             mock_check.reset_mock()  # Reset call count for next check
             assert (
-                check_permission(
-                    user_id=user_id, permission=permission, resource_id=user_id
-                )
+                check_permission(user_id=user_id, permission=permission, resource_id=user_id)
                 is True
             )
             mock_check.assert_called_once_with(
@@ -648,9 +629,7 @@ class TestHIPAACompliance(BaseSecurityTest):
         """Test that only necessary PHI fields are included in responses."""
         # Create a response with only necessary fields
         necessary_fields = ["patient_id", "first_name", "last_name"]
-        response_data = {
-            k: test_phi_data[k] for k in necessary_fields if k in test_phi_data
-        }
+        response_data = {k: test_phi_data[k] for k in necessary_fields if k in test_phi_data}
 
         # Verify unnecessary PHI is excluded
         assert "ssn" not in response_data

@@ -203,9 +203,7 @@ class PHICodeAnalyzer:
 
         # Add the PHI patterns from the class constant
         for pattern in self.PHI_PATTERNS:
-            self.patterns.append(
-                (pattern, "Direct PHI found in code", CodeSeverity.CRITICAL)
-            )
+            self.patterns.append((pattern, "Direct PHI found in code", CodeSeverity.CRITICAL))
 
     def analyze_file(self, file_path: str) -> list[PHIFinding]:
         """
@@ -341,8 +339,7 @@ class PHICodeAnalyzer:
                 for d in dirs
                 if d not in exclude_set
                 and not any(
-                    excluded in Path(os.path.join(root, d)).parts
-                    for excluded in exclude_set
+                    excluded in Path(os.path.join(root, d)).parts for excluded in exclude_set
                 )
             ]
 
@@ -385,9 +382,7 @@ class PHICodeAnalyzer:
 
         return all_findings
 
-    def analyze_code_string(
-        self, code: str, file_path: str = "<string>"
-    ) -> list[PHIFinding]:
+    def analyze_code_string(self, code: str, file_path: str = "<string>") -> list[PHIFinding]:
         """
         Analyze a code string for potential PHI leaks.
 
@@ -472,9 +467,7 @@ class PHICodeAnalyzer:
                 def visit_Str(self, node):
                     """Legacy method for string literals (Python < 3.8)."""
                     self.visit_Constant(
-                        ast.Constant(
-                            value=node.s, lineno=node.lineno, col_offset=node.col_offset
-                        )
+                        ast.Constant(value=node.s, lineno=node.lineno, col_offset=node.col_offset)
                     )
 
                 def visit_Name(self, node):
@@ -676,9 +669,7 @@ class PHICodeAnalyzer:
 
                 # Recurse into nested dictionaries
                 if isinstance(value, (dict, list)):
-                    self._check_config_dict(
-                        value, file_path, findings, current_path, line
-                    )
+                    self._check_config_dict(value, file_path, findings, current_path, line)
 
                 # Check string values for PHI patterns
                 elif isinstance(value, str):
@@ -701,9 +692,7 @@ class PHICodeAnalyzer:
             for i, item in enumerate(config):
                 current_path = f"{path}[{i}]"
                 if isinstance(item, (dict, list)):
-                    self._check_config_dict(
-                        item, file_path, findings, current_path, line
-                    )
+                    self._check_config_dict(item, file_path, findings, current_path, line)
                 elif isinstance(item, str):
                     for pattern in self.PHI_PATTERNS:
                         if re.search(pattern, item):
@@ -725,9 +714,7 @@ class PHICodeAnalyzer:
         key_lower = key.lower()
         return any(pattern in key_lower for pattern in self.SENSITIVE_CONFIG_PATTERNS)
 
-    def audit_api_endpoints(
-        self, api_spec_file: str | None = None
-    ) -> list[PHIFinding]:
+    def audit_api_endpoints(self, api_spec_file: str | None = None) -> list[PHIFinding]:
         """
         Audit API endpoints for potential PHI exposure.
 
@@ -889,9 +876,7 @@ class PHICodeAnalyzer:
                             if "responses" in operation and isinstance(
                                 operation["responses"], dict
                             ):
-                                for status_code, response in operation[
-                                    "responses"
-                                ].items():
+                                for status_code, response in operation["responses"].items():
                                     if not isinstance(response, dict):
                                         continue
 
@@ -909,9 +894,7 @@ class PHICodeAnalyzer:
                                             continue
 
                                         # Direct search for sensitive field names in the schema
-                                        def search_for_phi_properties(
-                                            obj, path_prefix=""
-                                        ):
+                                        def search_for_phi_properties(obj, path_prefix=""):
                                             """Recursively search for PHI properties in nested schema objects"""
                                             if not isinstance(obj, dict):
                                                 return
@@ -950,9 +933,7 @@ class PHICodeAnalyzer:
                                                         )
 
                                             # Check for items in arrays
-                                            if "items" in obj and isinstance(
-                                                obj["items"], dict
-                                            ):
+                                            if "items" in obj and isinstance(obj["items"], dict):
                                                 search_for_phi_properties(
                                                     obj["items"],
                                                     f"{path_prefix}[items]",

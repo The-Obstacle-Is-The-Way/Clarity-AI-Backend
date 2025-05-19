@@ -31,9 +31,7 @@ class SQLAlchemyBiometricAlertTemplateRepository(BiometricAlertTemplateRepositor
         # Replace with actual database query logic
         # Example: templates = self.db.query(BiometricAlertTemplateModel).all()
         # return [template.to_dict() for template in templates]
-        print(
-            "SQLAlchemyBiometricAlertTemplateRepository.get_all_templates (placeholder)"
-        )
+        print("SQLAlchemyBiometricAlertTemplateRepository.get_all_templates (placeholder)")
         return []
 
     async def get_template_by_id(self, template_id: UUID) -> dict[str, Any] | None:
@@ -59,9 +57,7 @@ class SQLAlchemyBiometricAlertTemplateRepository(BiometricAlertTemplateRepositor
         )
         return []
 
-    async def get_templates_by_metric_type(
-        self, metric_type: str
-    ) -> list[dict[str, Any]]:
+    async def get_templates_by_metric_type(self, metric_type: str) -> list[dict[str, Any]]:
         """
         Retrieve templates filtered by metric type (Placeholder).
         """

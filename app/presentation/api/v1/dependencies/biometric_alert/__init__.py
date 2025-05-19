@@ -69,9 +69,7 @@ async def get_biometric_repository(
     Returns:
         Biometric repository instance
     """
-    return BiometricAlertRepository(
-        db_session=db_session, encryption_service=encryption_service
-    )
+    return BiometricAlertRepository(db_session=db_session, encryption_service=encryption_service)
 
 
 async def get_rule_repository(

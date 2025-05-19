@@ -77,9 +77,7 @@ class SymptomForecastingService:
 
         logging.info("Symptom Forecasting Service initialized")
 
-    async def preprocess_patient_data(
-        self, patient_id: UUID, data: dict[str, Any]
-    ) -> np.ndarray:
+    async def preprocess_patient_data(self, patient_id: UUID, data: dict[str, Any]) -> np.ndarray:
         """
         Preprocess patient data for model input.
 
@@ -119,9 +117,7 @@ class SymptomForecastingService:
                 col_max = features_array[:, i].max()
 
                 if col_max > col_min:
-                    features_array[:, i] = (features_array[:, i] - col_min) / (
-                        col_max - col_min
-                    )
+                    features_array[:, i] = (features_array[:, i] - col_min) / (col_max - col_min)
 
             return features_array
 
@@ -163,9 +159,7 @@ class SymptomForecastingService:
             # Generate forecasts
             if use_ensemble:
                 # Run both models in parallel
-                transformer_future = self.transformer_model.predict(
-                    model_input, horizon
-                )
+                transformer_future = self.transformer_model.predict(model_input, horizon)
                 xgboost_future = self.xgboost_model.predict(model_input, horizon)
 
                 # Await results
@@ -194,9 +188,7 @@ class SymptomForecastingService:
                 }
             else:
                 # Use only transformer model
-                forecast_results = await self.transformer_model.predict(
-                    model_input, horizon
-                )
+                forecast_results = await self.transformer_model.predict(model_input, horizon)
 
             # Add metadata
             forecast_results.update(
@@ -239,19 +231,13 @@ class SymptomForecastingService:
         """
         try:
             # Preprocess baseline data
-            baseline_preprocessed = await self.preprocess_patient_data(
-                patient_id, baseline_data
-            )
+            baseline_preprocessed = await self.preprocess_patient_data(patient_id, baseline_data)
 
             if baseline_preprocessed.shape[0] < 5:
-                raise Exception(
-                    "Insufficient baseline data for treatment impact evaluation"
-                )
+                raise Exception("Insufficient baseline data for treatment impact evaluation")
 
             # Reshape for model input
-            baseline_input = baseline_preprocessed.reshape(
-                1, *baseline_preprocessed.shape
-            )
+            baseline_input = baseline_preprocessed.reshape(1, *baseline_preprocessed.shape)
 
             # Generate baseline forecast
             baseline_forecast = await self.forecast_symptoms(
@@ -278,12 +264,8 @@ class SymptomForecastingService:
                             baseline_preprocessed[-i, idx] *= 1 - effect
 
                 # Generate forecast with treatment effect
-                treatment_input = baseline_preprocessed.reshape(
-                    1, *baseline_preprocessed.shape
-                )
-                treatment_forecast = await self.transformer_model.predict(
-                    treatment_input, horizon
-                )
+                treatment_input = baseline_preprocessed.reshape(1, *baseline_preprocessed.shape)
+                treatment_forecast = await self.transformer_model.predict(treatment_input, horizon)
 
                 # Add treatment metadata
                 treatment_forecast.update(
@@ -312,9 +294,7 @@ class SymptomForecastingService:
                     treatment_mean = np.mean(treatment_values[0, :, i])
 
                     if baseline_mean > 0:
-                        percent_improvement = (
-                            (baseline_mean - treatment_mean) / baseline_mean * 100
-                        )
+                        percent_improvement = (baseline_mean - treatment_mean) / baseline_mean * 100
                     else:
                         percent_improvement = 0
 
@@ -330,9 +310,7 @@ class SymptomForecastingService:
                 )
 
             # Sort treatments by average improvement
-            comparative_metrics.sort(
-                key=lambda x: x["average_improvement"], reverse=True
-            )
+            comparative_metrics.sort(key=lambda x: x["average_improvement"], reverse=True)
 
             return {
                 "patient_id": str(patient_id),
@@ -423,9 +401,7 @@ class SymptomForecastingService:
 
                     seasonality[feature] = {
                         "weekly_pattern": weekly_pattern,
-                        "weekly_correlation": (
-                            float(autocorr[7]) if len(autocorr) > 7 else 0
-                        ),
+                        "weekly_correlation": (float(autocorr[7]) if len(autocorr) > 7 else 0),
                     }
 
             # Detect correlations between symptoms

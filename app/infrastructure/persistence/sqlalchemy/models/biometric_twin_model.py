@@ -18,16 +18,12 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     String,
-)
-from sqlalchemy import (
     UUID as SQLAlchemyUUID,
 )
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import relationship
 
 from app.domain.utils.datetime_utils import now_utc
-
-# Import the shared base class to ensure consistent registry
 from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin
 
 
@@ -129,9 +125,7 @@ class BiometricTimeseriesDataModel(Base, TimestampMixin):
     unit = Column(String(50), nullable=True)
     metadata_ = Column("metadata", MutableDict.as_mutable(JSON), nullable=True)
 
-    biometric_twin = relationship(
-        "BiometricTwinModel", back_populates="timeseries_data"
-    )
+    biometric_twin = relationship("BiometricTwinModel", back_populates="timeseries_data")
 
 
 # Export the models in a safe way that helps prevent registry conflicts in tests

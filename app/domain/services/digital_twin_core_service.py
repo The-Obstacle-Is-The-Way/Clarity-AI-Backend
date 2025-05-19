@@ -36,9 +36,7 @@ class DigitalTwinCoreService:
             Digital twin data
         """
         # This is a stub implementation meant to be overridden by concrete implementations
-        raise NotImplementedError(
-            "This method must be implemented by concrete service classes"
-        )
+        raise NotImplementedError("This method must be implemented by concrete service classes")
 
     async def create_session(self, twin_id: str) -> dict[str, Any]:
         """
@@ -51,9 +49,7 @@ class DigitalTwinCoreService:
             Session data
         """
         # This is a stub implementation meant to be overridden by concrete implementations
-        raise NotImplementedError(
-            "This method must be implemented by concrete service classes"
-        )
+        raise NotImplementedError("This method must be implemented by concrete service classes")
 
     async def send_message(self, session_id: str, message: str) -> dict[str, Any]:
         """
@@ -67,9 +63,7 @@ class DigitalTwinCoreService:
             Response data
         """
         # This is a stub implementation meant to be overridden by concrete implementations
-        raise NotImplementedError(
-            "This method must be implemented by concrete service classes"
-        )
+        raise NotImplementedError("This method must be implemented by concrete service classes")
 
     async def end_session(self, session_id: str) -> dict[str, Any]:
         """
@@ -82,6 +76,4 @@ class DigitalTwinCoreService:
             Session summary
         """
         # This is a stub implementation meant to be overridden by concrete implementations
-        raise NotImplementedError(
-            "This method must be implemented by concrete service classes"
-        )
+        raise NotImplementedError("This method must be implemented by concrete service classes")

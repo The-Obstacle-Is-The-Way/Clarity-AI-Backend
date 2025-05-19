@@ -31,9 +31,7 @@ class DeviceInfo(BaseModel):
     """Information about the wearable device."""
 
     device_id: str = Field(..., description="Unique identifier for the device")
-    device_type: str = Field(
-        ..., description="Type of device (e.g., 'fitbit', 'apple_watch')"
-    )
+    device_type: str = Field(..., description="Type of device (e.g., 'fitbit', 'apple_watch')")
     model: str | None = Field(None, description="Device model")
     firmware_version: str | None = Field(None, description="Device firmware version")
     sampling_rate_hz: float = Field(30.0, description="Sampling rate in Hz")
@@ -77,21 +75,11 @@ class AccelerometerDataRequest(BaseModel):
 
     model_config = ConfigDict(protected_namespaces=())
 
-    readings: list[AccelerometerReading] = Field(
-        ..., description="List of accelerometer readings"
-    )
-    device_info: DeviceInfo = Field(
-        ..., description="Information about the wearable device"
-    )
-    patient_metadata: PatientMetadata | None = Field(
-        None, description="Patient metadata"
-    )
-    analysis_type: AnalysisTypeEnum = Field(
-        ..., description="Type of analysis to perform"
-    )
-    start_time: datetime | None = Field(
-        None, description="Start time for analysis window"
-    )
+    readings: list[AccelerometerReading] = Field(..., description="List of accelerometer readings")
+    device_info: DeviceInfo = Field(..., description="Information about the wearable device")
+    patient_metadata: PatientMetadata | None = Field(None, description="Patient metadata")
+    analysis_type: AnalysisTypeEnum = Field(..., description="Type of analysis to perform")
+    start_time: datetime | None = Field(None, description="Start time for analysis window")
     end_time: datetime | None = Field(None, description="End time for analysis window")
     model_size: PATModelSizeEnum = Field(
         PATModelSizeEnum.MEDIUM, description="PAT model size to use"
@@ -111,9 +99,7 @@ class SleepQualityMetrics(AnalysisMetrics):
     total_sleep_time: float = Field(..., description="Total sleep time in hours")
     sleep_efficiency: float = Field(..., description="Sleep efficiency as a percentage")
     sleep_latency: float = Field(..., description="Sleep latency in minutes")
-    wake_after_sleep_onset: float = Field(
-        ..., description="Wake after sleep onset in minutes"
-    )
+    wake_after_sleep_onset: float = Field(..., description="Wake after sleep onset in minutes")
     rem_percentage: float = Field(..., description="REM sleep percentage")
     deep_sleep_percentage: float = Field(..., description="Deep sleep percentage")
     light_sleep_percentage: float = Field(..., description="Light sleep percentage")
@@ -126,15 +112,9 @@ class ActivityPatternsMetrics(AnalysisMetrics):
     daily_step_count: int = Field(..., description="Estimated daily step count")
     sedentary_hours: float = Field(..., description="Hours of sedentary activity")
     light_activity_hours: float = Field(..., description="Hours of light activity")
-    moderate_activity_minutes: float = Field(
-        ..., description="Minutes of moderate activity"
-    )
-    vigorous_activity_minutes: float = Field(
-        ..., description="Minutes of vigorous activity"
-    )
-    activity_regularity: float = Field(
-        ..., description="Regularity of activity patterns"
-    )
+    moderate_activity_minutes: float = Field(..., description="Minutes of moderate activity")
+    vigorous_activity_minutes: float = Field(..., description="Minutes of vigorous activity")
+    activity_regularity: float = Field(..., description="Regularity of activity patterns")
 
 
 class CircadianRhythmMetrics(AnalysisMetrics):
@@ -143,13 +123,9 @@ class CircadianRhythmMetrics(AnalysisMetrics):
     sleep_onset_time: str = Field(..., description="Typical sleep onset time (HH:MM)")
     wake_time: str = Field(..., description="Typical wake time (HH:MM)")
     rhythm_stability: float = Field(..., description="Stability of circadian rhythm")
-    day_to_day_variation_minutes: float = Field(
-        ..., description="Day-to-day variation in minutes"
-    )
+    day_to_day_variation_minutes: float = Field(..., description="Day-to-day variation in minutes")
     social_jet_lag_hours: float = Field(..., description="Social jet lag in hours")
-    light_exposure_morning_lux: float = Field(
-        ..., description="Morning light exposure in lux"
-    )
+    light_exposure_morning_lux: float = Field(..., description="Morning light exposure in lux")
 
 
 class EnergyExpenditureMetrics(AnalysisMetrics):
@@ -159,9 +135,7 @@ class EnergyExpenditureMetrics(AnalysisMetrics):
         ..., description="Total daily energy expenditure in kcal"
     )
     base_metabolic_rate: int = Field(..., description="Base metabolic rate in kcal")
-    active_energy_expenditure: int = Field(
-        ..., description="Active energy expenditure in kcal"
-    )
+    active_energy_expenditure: int = Field(..., description="Active energy expenditure in kcal")
     activity_level_factor: float = Field(..., description="Activity level factor")
     peak_energy_hour: int = Field(..., description="Hour of peak energy expenditure")
 
@@ -191,18 +165,14 @@ class MedicationResponseMetrics(AnalysisMetrics):
     pre_post_activity_change: float = Field(
         ..., description="Change in activity pre/post medication"
     )
-    pre_post_sleep_change: float = Field(
-        ..., description="Change in sleep pre/post medication"
-    )
+    pre_post_sleep_change: float = Field(..., description="Change in sleep pre/post medication")
     pre_post_circadian_change: float = Field(
         ..., description="Change in circadian rhythm pre/post medication"
     )
     side_effect_probability: float = Field(
         ..., description="Probability of medication side effects"
     )
-    response_trajectory: str = Field(
-        ..., description="Trajectory of medication response"
-    )
+    response_trajectory: str = Field(..., description="Trajectory of medication response")
     days_to_observable_change: int = Field(..., description="Days to observable change")
 
 
@@ -213,14 +183,10 @@ class AnalysisResult(BaseModel):
 
     analysis_id: str = Field(..., description="Unique identifier for the analysis")
     patient_id: str | None = Field(None, description="Patient identifier")
-    analysis_type: AnalysisTypeEnum = Field(
-        ..., description="Type of analysis performed"
-    )
+    analysis_type: AnalysisTypeEnum = Field(..., description="Type of analysis performed")
     timestamp: datetime = Field(..., description="Timestamp of the analysis")
     model_version: str = Field(..., description="Version of the PAT model used")
-    confidence_score: float = Field(
-        ..., description="Confidence score for the analysis"
-    )
+    confidence_score: float = Field(..., description="Confidence score for the analysis")
     metrics: dict[str, Any] = Field(..., description="Analysis metrics")
     insights: list[str] = Field(..., description="Insights derived from the analysis")
     warnings: list[str] = Field([], description="Warnings or alerts from the analysis")
@@ -304,12 +270,8 @@ class HistoricalAnalysisRequest(BaseModel):
     analysis_type: AnalysisTypeEnum | None = Field(
         None, description="Type of analysis to filter by"
     )
-    start_date: datetime | None = Field(
-        None, description="Start date for filtering results"
-    )
-    end_date: datetime | None = Field(
-        None, description="End date for filtering results"
-    )
+    start_date: datetime | None = Field(None, description="Start date for filtering results")
+    end_date: datetime | None = Field(None, description="End date for filtering results")
     limit: int = Field(10, description="Maximum number of results to return")
     skip: int = Field(0, description="Number of results to skip")
 
@@ -323,8 +285,6 @@ class ModelInfoResponse(BaseModel):
     model_size: PATModelSizeEnum = Field(..., description="Size of the PAT model")
     model_path: str = Field(..., description="Path to the PAT model")
     parameters: str = Field(..., description="Number of model parameters")
-    supported_analysis_types: list[str] = Field(
-        ..., description="Supported analysis types"
-    )
+    supported_analysis_types: list[str] = Field(..., description="Supported analysis types")
     gpu_enabled: bool = Field(..., description="Whether GPU acceleration is enabled")
     cache_enabled: bool = Field(..., description="Whether result caching is enabled")

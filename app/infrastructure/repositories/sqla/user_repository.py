@@ -10,9 +10,7 @@ class SQLAlchemyUserRepository(IUserRepository):
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
 
-    async def get_user_by_id(
-        self, user_id: UUID
-    ) -> User | None:  # Matching middleware usage
+    async def get_user_by_id(self, user_id: UUID) -> User | None:  # Matching middleware usage
         """Retrieve a user by their unique ID."""
         # Placeholder implementation - replace with actual SQLAlchemy query
         # For example:

@@ -92,7 +92,5 @@ class MedicationSideEffectReported(MedicationEvent):
     side_effect_description: str
     severity: str  # e.g., "Mild", "Moderate", "Severe"
     onset_date: datetime | None = None
-    action_taken: str | None = (
-        None  # e.g., "Discontinued", "Reduced Dosage", "Monitoring"
-    )
+    action_taken: str | None = None  # e.g., "Discontinued", "Reduced Dosage", "Monitoring"
     is_serious_adverse_event: bool = False

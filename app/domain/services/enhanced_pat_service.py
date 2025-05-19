@@ -6,9 +6,9 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from uuid import UUID
 
-from app.domain.entities.digital_twin_enums import (
+from app.domain.entities.digital_twin_enums import (  # Corrected import path
     TemporalPattern,
-)  # Corrected import path
+)
 from app.domain.entities.knowledge_graph import TemporalKnowledgeGraph
 
 

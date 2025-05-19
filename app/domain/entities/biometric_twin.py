@@ -26,9 +26,7 @@ class BiometricDataPoint(BaseModel):
     """
 
     data_id: UUID | str = Field(..., description="Unique identifier for the data point")
-    patient_id: UUID | None = Field(
-        ..., description="ID of the patient this data belongs to"
-    )
+    patient_id: UUID | None = Field(..., description="ID of the patient this data belongs to")
     data_type: str = Field(
         ...,
         description="Type of biometric data (e.g., heart_rate, blood_pressure, sleep_quality)",
@@ -140,9 +138,9 @@ class BiometricTwinState(BaseModel):
             return None
 
         # Sort by timestamp and get the most recent
-        latest_point = sorted(
-            self.data_points[data_type], key=lambda x: x.timestamp, reverse=True
-        )[0]
+        latest_point = sorted(self.data_points[data_type], key=lambda x: x.timestamp, reverse=True)[
+            0
+        ]
 
         return latest_point.value
 
@@ -160,9 +158,7 @@ class BiometricTwinState(BaseModel):
         safe_insights = []
         for insight in self.clinical_insights:
             safe_insight = {
-                k: v
-                for k, v in insight.items()
-                if k not in ["raw_data", "detailed_analysis"]
+                k: v for k, v in insight.items() if k not in ["raw_data", "detailed_analysis"]
             }
             safe_insights.append(safe_insight)
 

@@ -12,25 +12,18 @@ from sqlalchemy import (
     JSON,
     Column,
     DateTime,
+    Enum as SQLAlchemyEnum,
     ForeignKey,
     String,
     Text,
-)
-from sqlalchemy import (
     UUID as SQLAlchemyUUID,
-)
-from sqlalchemy import (
-    Enum as SQLAlchemyEnum,
 )
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import relationship
 
-# from app.infrastructure.persistence.sqlalchemy.types import GUID # REMOVED
 from app.domain.entities.biometric_alert import AlertStatusEnum
 from app.domain.entities.biometric_alert_rule import AlertPriority as AlertPriorityEnum
 from app.domain.utils.datetime_utils import now_utc
-
-# from app.infrastructure.persistence.sqlalchemy.config.database import Base # Old Base
 from app.infrastructure.persistence.sqlalchemy.models.base import (
     AuditMixin,
     Base,
@@ -96,9 +89,7 @@ class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
     notes = Column(Text, nullable=True)
 
     patient = relationship("Patient")  # Add backref in Patient model if needed
-    rule = relationship(
-        "BiometricRuleModel"
-    )  # Add backref in BiometricRuleModel if needed
+    rule = relationship("BiometricRuleModel")  # Add backref in BiometricRuleModel if needed
     acknowledged_by_user = relationship("User", foreign_keys=[acknowledged_by_user_id])
     resolved_by_user = relationship("User", foreign_keys=[resolved_by_user_id])
 

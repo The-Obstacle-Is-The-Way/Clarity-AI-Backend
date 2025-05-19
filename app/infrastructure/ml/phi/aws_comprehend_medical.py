@@ -54,9 +54,7 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
         self._initialized = False
         self._config = None
         self._aws_service_factory = aws_service_factory or get_aws_service_factory()
-        self._comprehend_medical_service: ComprehendMedicalServiceInterface | None = (
-            None
-        )
+        self._comprehend_medical_service: ComprehendMedicalServiceInterface | None = None
 
         # Audit logging for HIPAA compliance
         self._last_operation_timestamp: str | None = None
@@ -103,9 +101,7 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
             self._initialized = False
             self._config = None
             self._comprehend_medical_service = None
-            raise InvalidConfigurationError(
-                f"Failed to initialize PHI detection service: {e!s}"
-            )
+            raise InvalidConfigurationError(f"Failed to initialize PHI detection service: {e!s}")
 
     def is_healthy(self) -> bool:
         """
@@ -226,9 +222,7 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
             raise ServiceUnavailableError(f"Error detecting PHI: {e!s}")
         except Exception as e:
             logger.error(f"Unexpected error during PHI detection: {e!s}")
-            raise ServiceUnavailableError(
-                f"Unexpected error during PHI detection: {e!s}"
-            )
+            raise ServiceUnavailableError(f"Unexpected error during PHI detection: {e!s}")
 
     def redact_phi(self, text: str, replacement: str = "[PHI]") -> str:
         """
@@ -266,9 +260,7 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
                 return text
 
             # Sort entities by position from end to beginning to avoid offset issues
-            sorted_entities = sorted(
-                entities, key=lambda x: x["begin_offset"], reverse=True
-            )
+            sorted_entities = sorted(entities, key=lambda x: x["begin_offset"], reverse=True)
 
             # Apply redactions
             redacted_text = text
@@ -285,9 +277,7 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
 
                 # Apply the redaction
                 if 0 <= begin < end <= len(redacted_text):
-                    redacted_text = (
-                        redacted_text[:begin] + typed_replacement + redacted_text[end:]
-                    )
+                    redacted_text = redacted_text[:begin] + typed_replacement + redacted_text[end:]
                     redaction_types.add(entity_type)
 
             # Create audit log (without PHI content)
@@ -314,9 +304,7 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
             raise
         except Exception as e:
             logger.error(f"Unexpected error during PHI redaction: {e!s}")
-            raise ServiceUnavailableError(
-                f"Unexpected error during PHI redaction: {e!s}"
-            )
+            raise ServiceUnavailableError(f"Unexpected error during PHI redaction: {e!s}")
 
     def contains_phi(self, text: str) -> bool:
         """

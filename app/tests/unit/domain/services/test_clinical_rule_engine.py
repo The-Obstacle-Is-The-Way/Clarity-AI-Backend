@@ -271,9 +271,7 @@ class TestClinicalRuleEngine:
         assert updated_rule.alert_priority == sample_rule.alert_priority
 
     @pytest.mark.asyncio
-    async def test_update_rule_conditions(
-        self, engine, mock_rule_repository, sample_rule
-    ):
+    async def test_update_rule_conditions(self, engine, mock_rule_repository, sample_rule):
         """Test that update_rule correctly updates rule conditions."""
         # Setup
         rule_id = sample_rule.rule_id
@@ -399,7 +397,5 @@ class TestClinicalRuleEngine:
         assert patient_specific_rule.rule_id in result_rule_ids
         assert global_rule_id in result_rule_ids
 
-        mock_rule_repository.get_by_patient_id.assert_called_once_with(
-            sample_patient_id
-        )
+        mock_rule_repository.get_by_patient_id.assert_called_once_with(sample_patient_id)
         mock_rule_repository.get_all_active.assert_called_once()

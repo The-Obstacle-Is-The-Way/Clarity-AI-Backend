@@ -39,9 +39,7 @@ async def get_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
     """
     if not hasattr(request.app.state, "actual_session_factory"):
         logger.error("Database session factory not found on app.state")
-        raise RuntimeError(
-            "Database not initialized. Session factory missing from app state."
-        )
+        raise RuntimeError("Database not initialized. Session factory missing from app state.")
 
     session_factory = request.app.state.actual_session_factory
     session = None
@@ -84,9 +82,7 @@ def get_unit_of_work_factory(request: Request) -> UnitOfWorkFactory:
                 request.app.state.actual_session_factory
             )
         else:
-            logger.error(
-                "Cannot create UnitOfWorkFactory: actual_session_factory not found"
-            )
+            logger.error("Cannot create UnitOfWorkFactory: actual_session_factory not found")
             raise RuntimeError("Database not initialized. Session factory not found.")
 
     return request.app.state.unit_of_work_factory

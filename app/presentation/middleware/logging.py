@@ -25,9 +25,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.logger = logger or logging.getLogger(__name__)
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Log request start and finish details."""
         start_time = time.time()
 
@@ -35,16 +33,12 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         try:
             # Use attribute access, which is standard for Starlette state
             request_id = request.state.request_id
-        except (
-            AttributeError
-        ):  # Handle case where RequestIdMiddleware might not have run
+        except AttributeError:  # Handle case where RequestIdMiddleware might not have run
             request_id = "N/A"  # Fallback if not set
 
         # Extract safe headers
         safe_headers = {
-            k: v
-            for k, v in request.headers.items()
-            if k.lower() in SAFE_HEADERS_ALLOWLIST
+            k: v for k, v in request.headers.items() if k.lower() in SAFE_HEADERS_ALLOWLIST
         }
 
         response = None

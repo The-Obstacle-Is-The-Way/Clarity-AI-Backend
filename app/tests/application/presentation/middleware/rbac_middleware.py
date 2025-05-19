@@ -56,9 +56,7 @@ class RBACMiddleware(BaseHTTPMiddleware):
                 content="Access Denied: User context missing.",
             )
 
-        user_roles = getattr(
-            user, "roles", []
-        )  # Expecting user object with roles attribute
+        user_roles = getattr(user, "roles", [])  # Expecting user object with roles attribute
         if not user_roles:
             logger.warning(
                 f"User {getattr(user, 'id', 'Unknown')} has no roles assigned. Denying access potentially."

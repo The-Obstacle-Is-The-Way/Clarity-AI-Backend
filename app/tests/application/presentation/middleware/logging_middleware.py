@@ -67,9 +67,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             self.log_response_body,
         )
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """
         Process the request and log relevant information.
 
@@ -119,8 +117,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             # Log unhandled exceptions
             process_time = time.time() - start_time
             logger.exception(
-                "Unhandled exception in request %s %s (ID: %s): %s. "
-                "Processed in %.4f seconds",
+                "Unhandled exception in request %s %s (ID: %s): %s. " "Processed in %.4f seconds",
                 request.method,
                 self.anonymizer.anonymize_text(str(request.url)),
                 request_id,

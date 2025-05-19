@@ -159,9 +159,7 @@ def phi_detection_service():
             category = match["category"]
             replacement = replacements.get(category, f"REDACTED_{category.upper()}")
 
-            anonymized_text = (
-                anonymized_text[:start] + replacement + anonymized_text[end:]
-            )
+            anonymized_text = anonymized_text[:start] + replacement + anonymized_text[end:]
 
         return anonymized_text
 
@@ -279,9 +277,7 @@ class TestPHIDetectionService:
             # ("Patient is 95 years old", "Age over 90"), # Not in mock
         ],
     )
-    def test_detect_phi_finds_different_types(
-        self, phi_detection_service, text, phi_type
-    ):
+    def test_detect_phi_finds_different_types(self, phi_detection_service, text, phi_type):
         """Test that detect_phi finds different types of PHI based on mocked patterns."""
         results = phi_detection_service.detect_phi(text)
 
@@ -408,9 +404,7 @@ class TestPHIDetectionService:
         assert "Failed to detect PHI" in str(exc_info.value)
 
         # Also test detect_phi error handling
-        mock_pattern.regex.finditer = MagicMock(
-            side_effect=Exception("Test error in detect")
-        )
+        mock_pattern.regex.finditer = MagicMock(side_effect=Exception("Test error in detect"))
 
         with pytest.raises(PHIDetectionError) as exc_info:
             service.detect_phi("test text")

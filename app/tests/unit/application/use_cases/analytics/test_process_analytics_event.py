@@ -91,9 +91,7 @@ class TestProcessAnalyticsEventUseCase:
     """Test suite for the ProcessAnalyticsEventUseCase."""
 
     @pytest.mark.asyncio
-    async def test_execute_with_all_parameters(
-        self, use_case, mock_analytics_repository
-    ):
+    async def test_execute_with_all_parameters(self, use_case, mock_analytics_repository):
         """
         Test processing an analytics event with all parameters provided.
         """
@@ -135,9 +133,7 @@ class TestProcessAnalyticsEventUseCase:
             assert kwargs.get("session_id") == session_id
 
     @pytest.mark.asyncio
-    async def test_execute_with_minimal_parameters(
-        self, use_case, mock_analytics_repository
-    ):
+    async def test_execute_with_minimal_parameters(self, use_case, mock_analytics_repository):
         """
         Test processing an analytics event with only required parameters.
         """
@@ -174,15 +170,11 @@ class TestProcessAnalyticsEventUseCase:
         user_id = "provider-789"
 
         # Act
-        await use_case.execute(
-            event_type=event_type, event_data=event_data, user_id=user_id
-        )
+        await use_case.execute(event_type=event_type, event_data=event_data, user_id=user_id)
 
         # Assert - verify cache service was called to update counters
         mock_cache_service.increment.assert_any_call(f"analytics:counter:{event_type}")
-        mock_cache_service.increment.assert_any_call(
-            f"analytics:user:{user_id}:{event_type}"
-        )
+        mock_cache_service.increment.assert_any_call(f"analytics:user:{user_id}:{event_type}")
 
     @pytest.mark.asyncio
     async def test_phi_not_logged(self, use_case, mock_analytics_repository, capsys):
@@ -228,9 +220,7 @@ class TestProcessAnalyticsEventUseCase:
         Test proper error handling when repository operations fail.
         """
         # Arrange
-        mock_analytics_repository.save_event.side_effect = Exception(
-            "Database connection error"
-        )
+        mock_analytics_repository.save_event.side_effect = Exception("Database connection error")
 
         # Act & Assert
         with pytest.raises(Exception) as excinfo:

@@ -37,9 +37,7 @@ class MockEncryptionService(BaseEncryptionService):
         # Initialize the cipher using Fernet for actual encryption
         try:
             self._cipher = Fernet(
-                self._direct_key.encode()
-                if isinstance(self._direct_key, str)
-                else self._direct_key
+                self._direct_key.encode() if isinstance(self._direct_key, str) else self._direct_key
             )
             if self._direct_previous_key:
                 self._previous_cipher = Fernet(
@@ -154,9 +152,7 @@ class MockEncryptionService(BaseEncryptionService):
 class MockAuthService:
     def __init__(self):
         self.create_token = MagicMock(return_value="mock_token")
-        self.validate_token = MagicMock(
-            return_value={"user_id": "test_user", "roles": ["user"]}
-        )
+        self.validate_token = MagicMock(return_value={"user_id": "test_user", "roles": ["user"]})
         self.has_role = MagicMock(return_value=True)
         self.refresh_token = MagicMock(
             return_value={
@@ -213,9 +209,7 @@ class MockPatient:
 # Mock PHI Detection Service
 class MockPHIDetection:
     def __init__(self):
-        self.detect_phi = MagicMock(
-            return_value={"has_phi": False, "redacted_text": "redacted"}
-        )
+        self.detect_phi = MagicMock(return_value={"has_phi": False, "redacted_text": "redacted"})
 
 
 # Mock Role-Based Access Control
@@ -261,9 +255,7 @@ class MockEntityFactory:
     def __init__(self):
         self._entities = {}
         self.create_patient = MagicMock(return_value=MockPatient())
-        self.create_user = MagicMock(
-            return_value={"id": "test_user", "roles": ["user"]}
-        )
+        self.create_user = MagicMock(return_value={"id": "test_user", "roles": ["user"]})
 
     def create(self, entity_type, **kwargs):
         entity_id = str(uuid.uuid4())
@@ -442,9 +434,7 @@ class PHIRedactionService:
 
         # List/tuple/set sanitization
         elif isinstance(data, (list, tuple, set)):
-            sanitized = [
-                self._sanitize(item, sensitivity, replacement) for item in data
-            ]
+            sanitized = [self._sanitize(item, sensitivity, replacement) for item in data]
             if isinstance(data, tuple):
                 return tuple(sanitized)
             elif isinstance(data, set):

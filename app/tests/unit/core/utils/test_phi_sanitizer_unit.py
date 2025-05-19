@@ -166,13 +166,8 @@ class TestPHISanitizer:
         # Assert
         assert sanitized["patient"]["personal"]["ssn"] != "123-45-6789"
         assert sanitized["patient"]["personal"]["name"] != "John Smith"
-        assert (
-            sanitized["patient"]["personal"]["contacts"][0]["value"]
-            != "john.smith@example.com"
-        )
-        assert (
-            sanitized["patient"]["personal"]["contacts"][1]["value"] != "(555) 123-4567"
-        )
+        assert sanitized["patient"]["personal"]["contacts"][0]["value"] != "john.smith@example.com"
+        assert sanitized["patient"]["personal"]["contacts"][1]["value"] != "(555) 123-4567"
 
         # Non-PHI should be preserved
         assert sanitized["non_phi_data"]["appointment_type"] == "Follow-up"

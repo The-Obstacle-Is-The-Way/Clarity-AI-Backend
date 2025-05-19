@@ -134,35 +134,23 @@ class TestPHISanitization:
         log_content = log_capture.getvalue()
 
         # Verify PHI was sanitized
-        assert (
-            test_patient.email not in log_content
-        ), "Email should be sanitized in logs"
-        assert (
-            test_patient.phone not in log_content
-        ), "Phone should be sanitized in logs"
-        assert (
-            test_patient.first_name not in log_content
-        ), "First name should be sanitized in logs"
-        assert (
-            test_patient.last_name not in log_content
-        ), "Last name should be sanitized in logs"
+        assert test_patient.email not in log_content, "Email should be sanitized in logs"
+        assert test_patient.phone not in log_content, "Phone should be sanitized in logs"
+        assert test_patient.first_name not in log_content, "First name should be sanitized in logs"
+        assert test_patient.last_name not in log_content, "Last name should be sanitized in logs"
 
         # Look for "[REDACTED" markers which indicate sanitization
         assert "[REDACTED" in log_content, "Log should contain redaction markers"
 
         # Even with sanitization, there should be some part of the original message structure
         # The sanitization should maintain the message format while replacing sensitive values
-        assert (
-            "phone" in log_content
-        ), "Log should maintain some non-PHI terms like 'phone'"
+        assert "phone" in log_content, "Log should maintain some non-PHI terms like 'phone'"
         assert (
             "email" in log_content or "@" in log_content
         ), "Log should maintain some reference to email format"
 
     @pytest.mark.asyncio
-    async def test_phi_sanitization_in_exception_handling(
-        self, test_patient, log_capture
-    ):
+    async def test_phi_sanitization_in_exception_handling(self, test_patient, log_capture):
         """Test that PHI is sanitized even in exception handling."""
         # Create a sanitized logger
         logger = get_sanitized_logger("test.phi.exception")
@@ -192,9 +180,7 @@ class TestPHISanitization:
         log_content = log_capture.getvalue()
 
         # Verify PHI was sanitized in the exception
-        assert (
-            test_patient.email not in log_content
-        ), "Email should be sanitized in exception logs"
+        assert test_patient.email not in log_content, "Email should be sanitized in exception logs"
         assert (
             test_patient.first_name not in log_content
         ), "First name should be sanitized in exception logs"

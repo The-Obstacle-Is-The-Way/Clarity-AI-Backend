@@ -91,9 +91,7 @@ class TestPHIDetectionService:
             ("name", "John Doe", 8, 16),
             ("contact", "(555) 123-4567", 29, 43),
         ]
-        with patch.object(
-            phi_detection_service, "detect_phi", return_value=expected_results
-        ):
+        with patch.object(phi_detection_service, "detect_phi", return_value=expected_results):
             results = phi_detection_service.detect_phi(text)
 
             assert len(results) == 2
@@ -120,11 +118,7 @@ class TestPHIDetectionService:
 
         assert "John Doe" not in anonymized
         assert "(555) 123-4567" not in anonymized
-        assert (
-            "JOHN DOE" in anonymized
-            or "NAME" in anonymized
-            or "name" in anonymized.lower()
-        )
+        assert "JOHN DOE" in anonymized or "NAME" in anonymized or "name" in anonymized.lower()
         assert "CONTACT-INFO" in anonymized or "contact" in anonymized.lower()
 
     def test_error_handling(self, phi_detection_service):

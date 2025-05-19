@@ -17,9 +17,7 @@ from app.config.settings import Settings, get_settings
 from app.core.dependencies.database import get_engine, get_session, get_session_local
 
 # Test settings (override if necessary for testing environment)
-TEST_DATABASE_URL = (
-    "postgresql+asyncpg://test_user:test_password@test_host:5432/test_db"
-)
+TEST_DATABASE_URL = "postgresql+asyncpg://test_user:test_password@test_host:5432/test_db"
 # Define a dummy Base for testing if the actual one isn't available/needed here
 # from sqlalchemy.orm import declarative_base
 # Base = declarative_base()
@@ -51,9 +49,7 @@ def event_loop():
 async def test_get_engine(mock_create_engine, test_settings: Settings):
     """Test the get_engine function."""
     # Ensure the test_settings fixture provides the DATABASE_URL
-    assert (
-        test_settings.DATABASE_URL is not None
-    ), "DATABASE_URL must be set in test_settings"
+    assert test_settings.DATABASE_URL is not None, "DATABASE_URL must be set in test_settings"
 
     # Mock the return value of create_async_engine
     mock_engine_instance = AsyncMock()

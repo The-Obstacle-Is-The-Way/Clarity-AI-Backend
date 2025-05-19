@@ -60,9 +60,7 @@ class TestTransformerTimeSeriesModel:
     def sample_input_data(self):
         """Create sample input data for testing."""
         # Correct DataFrame creation
-        dates = pd.date_range(
-            start=datetime.now() - timedelta(days=10), periods=10, freq="D"
-        )
+        dates = pd.date_range(start=datetime.now() - timedelta(days=10), periods=10, freq="D")
         data = {
             "date": dates,
             "symptom_type": ["anxiety"] * 10,
@@ -95,9 +93,7 @@ class TestTransformerTimeSeriesModel:
             await model.initialize()
 
             # Verify
-            mock_torch.load.assert_called_once_with(
-                "test_model_path", map_location=model.device
-            )
+            mock_torch.load.assert_called_once_with("test_model_path", map_location=model.device)
             assert model.is_initialized
             assert model._model is mock_loaded_model
 
@@ -213,9 +209,7 @@ class TestTransformerTimeSeriesModel:
             postprocessed_result = mock_postprocess.return_value
             assert "predictions" in postprocessed_result
             assert "std" in postprocessed_result
-            np.testing.assert_array_equal(
-                postprocessed_result["predictions"], raw_predictions
-            )
+            np.testing.assert_array_equal(postprocessed_result["predictions"], raw_predictions)
             np.testing.assert_array_equal(postprocessed_result["std"], raw_std)
 
     @pytest.mark.asyncio

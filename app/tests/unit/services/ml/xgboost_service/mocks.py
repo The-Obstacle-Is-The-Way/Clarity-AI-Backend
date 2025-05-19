@@ -140,9 +140,7 @@ class MockS3Service(S3ServiceInterface):
             "ResponseMetadata": {"HTTPStatusCode": 200},
         }
 
-    def list_objects(
-        self, bucket_name: str, prefix: str | None = None
-    ) -> dict[str, Any]:
+    def list_objects(self, bucket_name: str, prefix: str | None = None) -> dict[str, Any]:
         """List objects in an S3 bucket with optional prefix."""
         if bucket_name not in self.objects:
             return {"Contents": [], "ResponseMetadata": {"HTTPStatusCode": 200}}
@@ -362,9 +360,7 @@ class MockBedrockService(BedrockServiceInterface):
             ]
         }
 
-    def invoke_model(
-        self, model_id: str, body: dict[str, Any], **kwargs
-    ) -> dict[str, Any]:
+    def invoke_model(self, model_id: str, body: dict[str, Any], **kwargs) -> dict[str, Any]:
         """Invoke a foundation model."""
         return {
             "body": json.dumps(
@@ -387,9 +383,7 @@ class MockBedrockRuntimeService(BedrockRuntimeServiceInterface):
     ) -> dict[str, Any]:
         """Invoke a foundation model."""
         return {
-            "body": MockResponseBody(
-                {"completion": "Mock LLM response for testing purposes."}
-            ),
+            "body": MockResponseBody({"completion": "Mock LLM response for testing purposes."}),
             "contentType": "application/json",
         }
 
@@ -405,23 +399,9 @@ class MockBedrockRuntimeService(BedrockRuntimeServiceInterface):
         return {
             "stream": MockStreamIterator(
                 [
-                    {
-                        "chunk": {
-                            "bytes": json.dumps({"completion": "Mock"}).encode("utf-8")
-                        }
-                    },
-                    {
-                        "chunk": {
-                            "bytes": json.dumps({"completion": " LLM"}).encode("utf-8")
-                        }
-                    },
-                    {
-                        "chunk": {
-                            "bytes": json.dumps({"completion": " response"}).encode(
-                                "utf-8"
-                            )
-                        }
-                    },
+                    {"chunk": {"bytes": json.dumps({"completion": "Mock"}).encode("utf-8")}},
+                    {"chunk": {"bytes": json.dumps({"completion": " LLM"}).encode("utf-8")}},
+                    {"chunk": {"bytes": json.dumps({"completion": " response"}).encode("utf-8")}},
                 ]
             )
         }
@@ -490,16 +470,12 @@ class MockAWSServiceFactory(AWSServiceFactoryInterface):
         self.dynamodb_service = dynamodb_service or MockDynamoDBService()
         self.s3_service = s3_service or MockS3Service()
         self.sagemaker_service = sagemaker_service or MockSageMakerService()
-        self.sagemaker_runtime_service = (
-            sagemaker_runtime_service or MockSageMakerRuntimeService()
-        )
+        self.sagemaker_runtime_service = sagemaker_runtime_service or MockSageMakerRuntimeService()
         self.comprehend_medical_service = (
             comprehend_medical_service or MockComprehendMedicalService()
         )
         self.bedrock_service = bedrock_service or MockBedrockService()
-        self.bedrock_runtime_service = (
-            bedrock_runtime_service or MockBedrockRuntimeService()
-        )
+        self.bedrock_runtime_service = bedrock_runtime_service or MockBedrockRuntimeService()
         self.session_service = session_service or MockAWSSessionService()
 
         # Testing flags
@@ -529,9 +505,7 @@ class MockAWSServiceFactory(AWSServiceFactoryInterface):
         elif service_name == "session":
             return self.session_service
         else:
-            raise ValueError(
-                f"Unknown service name requested from mock factory: {service_name}"
-            )
+            raise ValueError(f"Unknown service name requested from mock factory: {service_name}")
 
 
 class AsyncMock:

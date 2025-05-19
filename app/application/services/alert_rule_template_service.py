@@ -124,9 +124,7 @@ class AlertRuleTemplateService(AlertRuleTemplateServiceInterface):
                     "name",
                     template_dict.get("name", f"Rule from template {template_id}"),
                 ),
-                "description": customization.get(
-                    "description", template_dict.get("description")
-                ),
+                "description": customization.get("description", template_dict.get("description")),
                 "patient_id": patient_id,
                 "is_active": customization.get("is_active", True),
                 "template_id": template_id,
@@ -183,9 +181,7 @@ class AlertRuleTemplateService(AlertRuleTemplateServiceInterface):
             logger.error(error_msg)
             raise ApplicationError(code=ErrorCode.INTERNAL_ERROR, message=error_msg)
 
-    async def _create_rule_from_dict(
-        self, rule_data: dict[str, Any]
-    ) -> BiometricAlertRule:
+    async def _create_rule_from_dict(self, rule_data: dict[str, Any]) -> BiometricAlertRule:
         """
         Create a rule entity from a dictionary and save it.
 
@@ -226,9 +222,7 @@ class AlertRuleTemplateService(AlertRuleTemplateServiceInterface):
                     continue
 
                 # Map operator name to enum
-                operator_name = condition_data.get(
-                    "comparator_operator", "greater_than"
-                ).lower()
+                operator_name = condition_data.get("comparator_operator", "greater_than").lower()
                 operator_map = {
                     "greater_than": ComparatorOperator.GREATER_THAN,
                     "less_than": ComparatorOperator.LESS_THAN,
@@ -243,9 +237,7 @@ class AlertRuleTemplateService(AlertRuleTemplateServiceInterface):
                     "<=": ComparatorOperator.LESS_THAN_OR_EQUAL,
                     "!=": ComparatorOperator.NOT_EQUAL,
                 }
-                operator = operator_map.get(
-                    operator_name, ComparatorOperator.GREATER_THAN
-                )
+                operator = operator_map.get(operator_name, ComparatorOperator.GREATER_THAN)
 
                 # Create condition
                 condition = RuleCondition(

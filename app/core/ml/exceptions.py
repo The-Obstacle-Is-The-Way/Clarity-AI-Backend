@@ -49,7 +49,9 @@ class MentalLLaMAInferenceError(MentalLLaMABaseError):
             details: Additional error details
         """
         self.model_id = model_id
-        self.input_text = input_text  # Store privately but don't include in logs or string representations
+        self.input_text = (
+            input_text  # Store privately but don't include in logs or string representations
+        )
         self.error_type = error_type
 
         # Combine details, excluding input_text to prevent PHI leakage

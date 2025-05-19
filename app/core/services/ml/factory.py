@@ -85,9 +85,7 @@ class MLServiceFactory:
             phi_detection_service.initialize({})
 
         else:
-            raise InvalidConfigurationError(
-                f"Invalid PHI detection service type: {service_type}"
-            )
+            raise InvalidConfigurationError(f"Invalid PHI detection service type: {service_type}")
 
         # Store instance for reuse
         self._phi_detection_instances[service_type] = phi_detection_service

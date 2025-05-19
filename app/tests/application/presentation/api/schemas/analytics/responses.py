@@ -86,17 +86,11 @@ class AnalyticsEventsBatchResponse(BaseModel):
         None, description="Identifier for this batch of events (if provided)"
     )
 
-    processed_count: int = Field(
-        ..., description="Number of events successfully processed", ge=0
-    )
+    processed_count: int = Field(..., description="Number of events successfully processed", ge=0)
 
-    failed_count: int = Field(
-        ..., description="Number of events that failed to process", ge=0
-    )
+    failed_count: int = Field(..., description="Number of events that failed to process", ge=0)
 
-    total_count: int = Field(
-        ..., description="Total number of events in the batch", ge=0
-    )
+    total_count: int = Field(..., description="Total number of events in the batch", ge=0)
 
     events: list[AnalyticsEventResponse] = Field(
         ..., description="List of successfully processed events", max_items=1000
@@ -211,9 +205,7 @@ class AnalyticsAggregatesListResponse(BaseModel):
         ..., description="List of analytics aggregates"
     )
 
-    total_count: int = Field(
-        ..., description="Total number of aggregates returned", ge=0
-    )
+    total_count: int = Field(..., description="Total number of aggregates returned", ge=0)
 
     query_info: dict[str, Any] = Field(
         ...,

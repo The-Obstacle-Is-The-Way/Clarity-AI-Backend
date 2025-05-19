@@ -76,9 +76,7 @@ class MentalLLaMAService(ABC):
         pass
 
     @abstractmethod
-    async def semantic_search(
-        self, patient_id: UUID, query: str, limit: int = 10
-    ) -> list[dict]:
+    async def semantic_search(self, patient_id: UUID, query: str, limit: int = 10) -> list[dict]:
         """
         Perform semantic search across patient records.
 

@@ -40,9 +40,7 @@ class SleepStage(str, Enum):
 class BaseSchema(BaseModel):
     """Base schema with common configuration."""
 
-    model_config = ConfigDict(
-        from_attributes=True, extra="ignore", protected_namespaces=()
-    )
+    model_config = ConfigDict(from_attributes=True, extra="ignore", protected_namespaces=())
 
 
 class ActigraphyDataPoint(BaseSchema):

@@ -104,9 +104,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
         """
         # Get sequence model
         sequence_model = await self.session.execute(
-            sa.select(TemporalSequenceModel).where(
-                TemporalSequenceModel.sequence_id == sequence_id
-            )
+            sa.select(TemporalSequenceModel).where(TemporalSequenceModel.sequence_id == sequence_id)
         )
         sequence_model = sequence_model.scalars().first()
 
@@ -143,9 +141,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
         """
         # Get sequence models
         sequence_models = await self.session.execute(
-            sa.select(TemporalSequenceModel).where(
-                TemporalSequenceModel.patient_id == patient_id
-            )
+            sa.select(TemporalSequenceModel).where(TemporalSequenceModel.patient_id == patient_id)
         )
         sequence_models = sequence_models.scalars().all()
 
@@ -191,9 +187,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
 
         # Delete sequence
         result = await self.session.execute(
-            sa.delete(TemporalSequenceModel).where(
-                TemporalSequenceModel.sequence_id == sequence_id
-            )
+            sa.delete(TemporalSequenceModel).where(TemporalSequenceModel.sequence_id == sequence_id)
         )
 
         return result.rowcount > 0

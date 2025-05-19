@@ -58,9 +58,7 @@ class AWSXGBoostService(XGBoostInterface):
         """
         super().__init__()
         self._aws_factory = aws_service_factory
-        self._factory = (
-            aws_service_factory  # Alias for compatibility with both naming conventions
-        )
+        self._factory = aws_service_factory  # Alias for compatibility with both naming conventions
         self._logger = logging.getLogger(__name__)
 
     async def predict(
@@ -103,9 +101,7 @@ class AWSXGBoostService(XGBoostInterface):
             )
 
         elif model_type.lower() == "outcome":
-            outcome_timeframe = kwargs.get(
-                "outcome_timeframe", {"timeframe": "short_term"}
-            )
+            outcome_timeframe = kwargs.get("outcome_timeframe", {"timeframe": "short_term"})
             clinical_data = features
             treatment_plan = kwargs.get("treatment_plan", {})
             social_determinants = kwargs.get("social_determinants")
@@ -219,9 +215,7 @@ class AWSXGBoostService(XGBoostInterface):
             self._logger.error(f"Failed to initialize AWS XGBoost service: {e!s}")
             raise ConfigurationError(f"Failed to initialize AWS XGBoost service: {e!s}")
 
-    async def register_observer(
-        self, event_type: EventType | str, observer: Observer
-    ) -> None:
+    async def register_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Register an observer for a specific event type.
 
@@ -233,13 +227,9 @@ class AWSXGBoostService(XGBoostInterface):
             self._observers[event_type] = set()
 
         self._observers[event_type].add(observer)
-        self._logger.debug(
-            f"Observer {observer} registered for event type {event_type}"
-        )
+        self._logger.debug(f"Observer {observer} registered for event type {event_type}")
 
-    async def unregister_observer(
-        self, event_type: EventType | str, observer: Observer
-    ) -> None:
+    async def unregister_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Unregister an observer for a specific event type.
 
@@ -249,9 +239,7 @@ class AWSXGBoostService(XGBoostInterface):
         """
         if event_type in self._observers and observer in self._observers[event_type]:
             self._observers[event_type].remove(observer)
-            self._logger.debug(
-                f"Observer {observer} unregistered for event type {event_type}"
-            )
+            self._logger.debug(f"Observer {observer} unregistered for event type {event_type}")
 
     async def predict_risk(
         self, patient_id: str, risk_type: str, clinical_data: dict[str, Any], **kwargs
@@ -334,9 +322,7 @@ class AWSXGBoostService(XGBoostInterface):
 
             # Make prediction request
             try:
-                self._logger.debug(
-                    f"Invoking endpoint {endpoint_name} with payload: {payload}"
-                )
+                self._logger.debug(f"Invoking endpoint {endpoint_name} with payload: {payload}")
                 response = await sagemaker_runtime.invoke_endpoint(
                     EndpointName=endpoint_name,
                     ContentType="application/json",
@@ -345,9 +331,7 @@ class AWSXGBoostService(XGBoostInterface):
 
                 # Parse response
                 if response is None or "Body" not in response:
-                    raise PredictionError(
-                        f"Invalid response from SageMaker: {response}"
-                    )
+                    raise PredictionError(f"Invalid response from SageMaker: {response}")
 
                 response_body = await response["Body"].read()
                 self._logger.debug(f"Received response: {response_body}")
@@ -360,15 +344,10 @@ class AWSXGBoostService(XGBoostInterface):
                         f"Failed to connect to SageMaker endpoint: {endpoint_name}"
                     ) from e
                 else:
-                    raise PredictionError(
-                        f"Failed to get prediction from SageMaker: {e!s}"
-                    ) from e
+                    raise PredictionError(f"Failed to get prediction from SageMaker: {e!s}") from e
 
             # Extract prediction values
-            if (
-                not isinstance(prediction_result, dict)
-                or "prediction" not in prediction_result
-            ):
+            if not isinstance(prediction_result, dict) or "prediction" not in prediction_result:
                 raise PredictionError(
                     "Invalid prediction result format from SageMaker",
                     details=prediction_result,
@@ -527,9 +506,7 @@ class AWSXGBoostService(XGBoostInterface):
         """
         # In a real implementation, this would store the prediction in DynamoDB
         # For this implementation, we'll just log it
-        self._logger.info(
-            f"Storing prediction {prediction_id} for patient {patient_id}"
-        )
+        self._logger.info(f"Storing prediction {prediction_id} for patient {patient_id}")
 
     def _notify_observers(self, event_type: EventType, data: dict[str, Any]) -> None:
         """
@@ -602,9 +579,7 @@ class AWSXGBoostService(XGBoostInterface):
             # Check S3 bucket
             s3 = self._aws_factory.get_s3_service()
             bucket_exists = s3.check_bucket_exists(self._bucket_name)
-            health_status["components"]["s3"]["status"] = (
-                "healthy" if bucket_exists else "degraded"
-            )
+            health_status["components"]["s3"]["status"] = "healthy" if bucket_exists else "degraded"
 
             # Check DynamoDB table
             dynamodb = self._aws_factory.get_dynamodb_service()
@@ -655,8 +630,7 @@ class AWSXGBoostService(XGBoostInterface):
 
                     available_models.append(
                         {
-                            "model_type": model_type
-                            or endpoint_name.replace(prefix, ""),
+                            "model_type": model_type or endpoint_name.replace(prefix, ""),
                             "endpoint_name": endpoint_name,
                             "status": endpoint.get("EndpointStatus", "Unknown"),
                             "creation_time": endpoint.get("CreationTime", "Unknown"),
@@ -718,9 +692,7 @@ class AWSXGBoostService(XGBoostInterface):
                 break
 
         if not model_mapping:
-            raise ModelNotFoundError(
-                f"No model found for treatment type: {treatment_type}"
-            )
+            raise ModelNotFoundError(f"No model found for treatment type: {treatment_type}")
 
         # Prepare payload
         payload = {
@@ -991,9 +963,7 @@ class AWSXGBoostService(XGBoostInterface):
 
         return integration_result
 
-    def _generate_synthetic_feature_importance(
-        self, prediction: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _generate_synthetic_feature_importance(self, prediction: dict[str, Any]) -> dict[str, Any]:
         """
         Generate synthetic feature importance when no explanation endpoint is available.
 
@@ -1135,9 +1105,7 @@ class AWSXGBoostService(XGBoostInterface):
             # Check S3 bucket
             try:
                 bucket_exists = self._s3.check_bucket_exists(self._bucket_name)
-                health_status["components"]["s3"] = (
-                    "HEALTHY" if bucket_exists else "UNHEALTHY"
-                )
+                health_status["components"]["s3"] = "HEALTHY" if bucket_exists else "UNHEALTHY"
                 if not bucket_exists:
                     health_status["status"] = "DEGRADED"
             except Exception as e:
@@ -1213,16 +1181,12 @@ class AWSXGBoostService(XGBoostInterface):
         # Endpoint prefix
         self._endpoint_prefix = config.get("endpoint_prefix")
         if not self._endpoint_prefix:
-            self._endpoint_prefix = os.environ.get(
-                "SAGEMAKER_ENDPOINT_PREFIX", "xgboost-"
-            )
+            self._endpoint_prefix = os.environ.get("SAGEMAKER_ENDPOINT_PREFIX", "xgboost-")
 
         # S3 bucket name
         self._bucket_name = config.get("bucket_name")
         if not self._bucket_name:
-            self._bucket_name = os.environ.get(
-                "XGBOOST_S3_BUCKET", "novamind-xgboost-data"
-            )
+            self._bucket_name = os.environ.get("XGBOOST_S3_BUCKET", "novamind-xgboost-data")
 
         # DynamoDB table name
         self._dynamodb_table_name = config.get("dynamodb_table_name")
@@ -1234,9 +1198,7 @@ class AWSXGBoostService(XGBoostInterface):
         # Audit table name
         self._audit_table_name = config.get("audit_table_name")
         if not self._audit_table_name:
-            self._audit_table_name = os.environ.get(
-                "XGBOOST_AUDIT_TABLE", "xgboost-audit-log"
-            )
+            self._audit_table_name = os.environ.get("XGBOOST_AUDIT_TABLE", "xgboost-audit-log")
 
         # Model mappings
         model_mappings = config.get("model_mappings", {})
@@ -1300,18 +1262,12 @@ class AWSXGBoostService(XGBoostInterface):
             await self.initialize(
                 {
                     "aws_region": os.environ.get("AWS_REGION", "us-east-1"),
-                    "endpoint_prefix": os.environ.get(
-                        "SAGEMAKER_ENDPOINT_PREFIX", "xgboost-"
-                    ),
-                    "bucket_name": os.environ.get(
-                        "XGBOOST_S3_BUCKET", "novamind-xgboost-data"
-                    ),
+                    "endpoint_prefix": os.environ.get("SAGEMAKER_ENDPOINT_PREFIX", "xgboost-"),
+                    "bucket_name": os.environ.get("XGBOOST_S3_BUCKET", "novamind-xgboost-data"),
                     "dynamodb_table_name": os.environ.get(
                         "XGBOOST_DYNAMODB_TABLE", "xgboost-predictions"
                     ),
-                    "audit_table_name": os.environ.get(
-                        "XGBOOST_AUDIT_TABLE", "xgboost-audit-log"
-                    ),
+                    "audit_table_name": os.environ.get("XGBOOST_AUDIT_TABLE", "xgboost-audit-log"),
                     "model_mappings": {
                         ModelType.RISK_SUICIDE.value: "suicide-risk",
                         ModelType.RISK_HOSPITALIZATION.value: "readmission-risk",
@@ -1406,9 +1362,7 @@ class AWSXGBoostService(XGBoostInterface):
             prediction_id = str(uuid.uuid4())
 
             # Store prediction in DynamoDB
-            self._store_prediction(
-                prediction_id, patient_id, risk_type, clinical_data, prediction
-            )
+            self._store_prediction(prediction_id, patient_id, risk_type, clinical_data, prediction)
 
             # Create response with risk level
             risk_score = prediction.get("risk_score", 0)
@@ -1442,9 +1396,7 @@ class AWSXGBoostService(XGBoostInterface):
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             error_message = e.response.get("Error", {}).get("Message", str(e))
 
-            self._logger.error(
-                f"SageMaker invocation error: {error_code} - {error_message}"
-            )
+            self._logger.error(f"SageMaker invocation error: {error_code} - {error_message}")
 
             raise PredictionError(
                 f"Failed to invoke SageMaker endpoint: {error_message}",
@@ -1566,8 +1518,7 @@ class AWSXGBoostService(XGBoostInterface):
             "timestamp": now_utc().isoformat(),
             "clinical_data": json.dumps(clinical_data),
             "prediction": json.dumps(prediction),
-            "ttl": int(time.time())
-            + (90 * 24 * 60 * 60),  # 90 days TTL for HIPAA compliance
+            "ttl": int(time.time()) + (90 * 24 * 60 * 60),  # 90 days TTL for HIPAA compliance
         }
 
         self._dynamodb.put_item(self._dynamodb_table_name, item)
@@ -1653,9 +1604,7 @@ class AWSXGBoostService(XGBoostInterface):
         # Get model information for the treatment type
         endpoint_name = self._get_endpoint_for_treatment_type(treatment_type)
         if not endpoint_name:
-            raise ModelNotFoundError(
-                f"No model found for treatment type: {treatment_type}"
-            )
+            raise ModelNotFoundError(f"No model found for treatment type: {treatment_type}")
 
         # Prepare input payload
         payload = {
@@ -1727,9 +1676,7 @@ class AWSXGBoostService(XGBoostInterface):
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             error_message = e.response.get("Error", {}).get("Message", str(e))
 
-            self._logger.error(
-                f"SageMaker invocation error: {error_code} - {error_message}"
-            )
+            self._logger.error(f"SageMaker invocation error: {error_code} - {error_message}")
 
             raise PredictionError(
                 f"Failed to invoke SageMaker endpoint: {error_message}",
@@ -1785,8 +1732,7 @@ class AWSXGBoostService(XGBoostInterface):
             "treatment_details": json.dumps(treatment_details),
             "clinical_data": json.dumps(clinical_data),
             "prediction": json.dumps(prediction),
-            "ttl": int(time.time())
-            + (90 * 24 * 60 * 60),  # 90 days TTL for HIPAA compliance
+            "ttl": int(time.time()) + (90 * 24 * 60 * 60),  # 90 days TTL for HIPAA compliance
         }
 
         self._dynamodb.put_item(self._dynamodb_table_name, item)

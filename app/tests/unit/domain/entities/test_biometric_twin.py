@@ -43,9 +43,7 @@ def sample_data_points():
 @pytest.fixture
 def sample_physiological_range():
     """Create a sample physiological range for testing."""
-    return PhysiologicalRange(
-        min=60.0, max=100.0, critical_min=40.0, critical_max=140.0
-    )
+    return PhysiologicalRange(min=60.0, max=100.0, critical_min=40.0, critical_max=140.0)
 
 
 @pytest.fixture
@@ -206,10 +204,7 @@ class TestBiometricTwin:
     def test_init(self, sample_biometric_twin, sample_timeseries):
         """Test initialization of BiometricTwin."""
         assert sample_biometric_twin.patient_id == "patient-123"
-        assert (
-            sample_biometric_twin.timeseries_data[BiometricType.HEART_RATE]
-            == sample_timeseries
-        )
+        assert sample_biometric_twin.timeseries_data[BiometricType.HEART_RATE] == sample_timeseries
 
     def test_add_biometric_data(self, sample_biometric_twin):
         """Test adding a new biometric timeseries."""
@@ -231,10 +226,7 @@ class TestBiometricTwin:
         sample_biometric_twin.add_biometric_data(bp_timeseries)
 
         assert BiometricType.BLOOD_PRESSURE in sample_biometric_twin.timeseries_data
-        assert (
-            sample_biometric_twin.timeseries_data[BiometricType.BLOOD_PRESSURE]
-            == bp_timeseries
-        )
+        assert sample_biometric_twin.timeseries_data[BiometricType.BLOOD_PRESSURE] == bp_timeseries
 
     def test_add_data_point(self, sample_biometric_twin):
         """Test adding a data point to an existing timeseries."""
@@ -252,11 +244,7 @@ class TestBiometricTwin:
         sample_biometric_twin.add_data_point(BiometricType.HEART_RATE, new_point)
 
         assert (
-            len(
-                sample_biometric_twin.timeseries_data[
-                    BiometricType.HEART_RATE
-                ].data_points
-            )
+            len(sample_biometric_twin.timeseries_data[BiometricType.HEART_RATE].data_points)
             == initial_count + 1
         )
 
@@ -273,17 +261,9 @@ class TestBiometricTwin:
 
         assert BiometricType.TEMPERATURE in sample_biometric_twin.timeseries_data
         assert (
-            len(
-                sample_biometric_twin.timeseries_data[
-                    BiometricType.TEMPERATURE
-                ].data_points
-            )
-            == 1
+            len(sample_biometric_twin.timeseries_data[BiometricType.TEMPERATURE].data_points) == 1
         )
-        assert (
-            sample_biometric_twin.timeseries_data[BiometricType.TEMPERATURE].unit
-            == "°C"
-        )
+        assert sample_biometric_twin.timeseries_data[BiometricType.TEMPERATURE].unit == "°C"
 
     def test_get_biometric_data(self, sample_biometric_twin, sample_timeseries):
         """Test getting biometric data for a specific type."""
@@ -302,9 +282,7 @@ class TestBiometricTwin:
             metadata={"position": "sitting"},
         )
 
-        sample_biometric_twin.add_data_point(
-            BiometricType.BLOOD_PRESSURE, bp_data_point, "mmHg"
-        )
+        sample_biometric_twin.add_data_point(BiometricType.BLOOD_PRESSURE, bp_data_point, "mmHg")
 
         latest_values = sample_biometric_twin.get_latest_values()
 
@@ -366,6 +344,4 @@ class TestBiometricTwin:
         assert BiometricType.HEART_RATE in twin.timeseries_data
         assert twin.timeseries_data[BiometricType.HEART_RATE].unit == "bpm"
         assert len(twin.timeseries_data[BiometricType.HEART_RATE].data_points) == 1
-        assert (
-            twin.timeseries_data[BiometricType.HEART_RATE].data_points[0].value == 72.5
-        )
+        assert twin.timeseries_data[BiometricType.HEART_RATE].data_points[0].value == 72.5

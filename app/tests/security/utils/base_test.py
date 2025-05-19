@@ -109,9 +109,7 @@ class BaseSecurityTest(TestCase):
         def mock_has_role(role):
             return role in self.test_roles
 
-        has_role_patcher = patch(
-            "app.core.security.auth.has_role", side_effect=mock_has_role
-        )
+        has_role_patcher = patch("app.core.security.auth.has_role", side_effect=mock_has_role)
         self.patchers.append(has_role_patcher)
 
     def _setup_audit_patches(self):
@@ -123,9 +121,7 @@ class BaseSecurityTest(TestCase):
         )
         self.patchers.append(audit_logger_patcher)
 
-    def assert_phi_access_logged(
-        self, resource_type: str, resource_id: str, action: str
-    ):
+    def assert_phi_access_logged(self, resource_type: str, resource_id: str, action: str):
         """Assert that PHI access was properly logged.
 
         Args:

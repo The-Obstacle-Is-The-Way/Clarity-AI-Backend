@@ -69,9 +69,7 @@ class TestLogExecutionTime:
             failing_function()
 
         mock_logger.exception.assert_called_once()
-        assert (
-            "Exception in 'failing_function'" in mock_logger.exception.call_args[0][0]
-        )
+        assert "Exception in 'failing_function'" in mock_logger.exception.call_args[0][0]
 
     def test_log_execution_time_creates_logger(self):
         """Test that log_execution_time creates a logger if none is provided."""
@@ -160,6 +158,4 @@ class TestLogMethodCalls:
         with pytest.raises(ValueError):
             instance.failing_method()
         mock_logger.error.assert_called_once()
-        assert (
-            "Exception in TestClass.failing_method" in mock_logger.error.call_args[0][0]
-        )
+        assert "Exception in TestClass.failing_method" in mock_logger.error.call_args[0][0]

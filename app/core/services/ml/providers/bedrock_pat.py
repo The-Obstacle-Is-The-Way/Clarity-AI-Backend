@@ -58,13 +58,9 @@ class BedrockPAT(PATInterface):
             session = boto3.Session(region_name=region)
 
         # Create clients
-        self.bedrock_runtime = session.client(
-            service_name="bedrock-runtime", region_name=region
-        )
+        self.bedrock_runtime = session.client(service_name="bedrock-runtime", region_name=region)
         self.s3_client = session.client(service_name="s3", region_name=region)
-        self.dynamodb_client = session.client(
-            service_name="dynamodb", region_name=region
-        )
+        self.dynamodb_client = session.client(service_name="dynamodb", region_name=region)
 
         # Get model mapping
         self.model_mapping = config.get("model_mapping", {})
@@ -395,9 +391,7 @@ class BedrockPAT(PATInterface):
                 for item in response.get("Items", []):
                     results = json.loads(item["results"]["S"])
                     if "activity" in results.get("results", {}):
-                        activity_metrics["metrics"].append(
-                            results["results"]["activity"]
-                        )
+                        activity_metrics["metrics"].append(results["results"]["activity"])
 
                 return activity_metrics
 
@@ -560,9 +554,7 @@ class BedrockPAT(PATInterface):
         """
         self._validate_initialization()
 
-        logger.info(
-            f"Integrating actigraphy analysis with digital twin for patient {patient_id}"
-        )
+        logger.info(f"Integrating actigraphy analysis with digital twin for patient {patient_id}")
 
         # Get model ID for digital twin integration
         model_id = self._get_model_id("digital_twin_integration")

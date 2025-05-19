@@ -226,34 +226,26 @@ class TestJWTAuthentication:
 
         try:
             # Skip expiration check for test token
-            payload: TokenPayload = jwt_service.decode_token(
-                token, options={"verify_exp": False}
-            )
+            payload: TokenPayload = jwt_service.decode_token(token, options={"verify_exp": False})
         except (InvalidTokenException, TokenExpiredException) as e:
             pytest.fail(f"Valid token failed decoding: {e}")
 
         assert payload.sub == user["sub"], "User ID claim is incorrect"
         assert payload.roles == [user["role"]], "Roles claim is incorrect"
-        assert (
-            payload.permissions == user["permissions"]
-        ), "Permissions claim is incorrect"
+        assert payload.permissions == user["permissions"], "Permissions claim is incorrect"
         # assert payload.scope == "access_token", "Scope should be access_token" # Scope might not be explicitly set/checked this way
         assert payload.type == "access", "Type should be access"  # Check type instead
         # Skip timestamp validation for testing since we're using fixed timestamps
         # assert payload.exp > int(time.time()), "Expiration time should be in the future"
 
     @pytest.mark.asyncio
-    async def test_token_validation(
-        self, jwt_service: JWTService, token_factory, monkeypatch
-    ):
+    async def test_token_validation(self, jwt_service: JWTService, token_factory, monkeypatch):
         """Verify valid tokens and rejection of invalid ones."""
         # Test valid token
         valid_token = await token_factory(user_type="admin")
         try:
             # Skip expiration check for test token
-            decoded = jwt_service.decode_token(
-                valid_token, options={"verify_exp": False}
-            )
+            decoded = jwt_service.decode_token(valid_token, options={"verify_exp": False})
             assert decoded.sub == TEST_USERS["admin"]["sub"]
             assert decoded.roles == [TEST_USERS["admin"]["role"]]
         except (InvalidTokenException, TokenExpiredException) as e:
@@ -265,8 +257,7 @@ class TestJWTAuthentication:
             jwt_service.decode_token(invalid_sig_token)
         # Accept either our sanitized message or the original error
         assert any(
-            msg in str(exc_info.value)
-            for msg in ["Invalid", "Signature verification failed"]
+            msg in str(exc_info.value) for msg in ["Invalid", "Signature verification failed"]
         ), f"Unexpected invalid token error: {exc_info.value!s}"
 
         # Create an explicitly expired token - avoid the special testing logic
@@ -324,9 +315,7 @@ class TestJWTAuthentication:
         # Monkey patch the check_resource_access method for this test
         original_check = jwt_service.check_resource_access
 
-        def patched_check_resource_access(
-            request, resource_path, resource_owner_id=None
-        ):
+        def patched_check_resource_access(request, resource_path, resource_owner_id=None):
             # Extract token and get roles
             token = jwt_service.extract_token_from_request(request)
 
@@ -334,9 +323,7 @@ class TestJWTAuthentication:
                 # Skip token expiration check for testing
                 payload = jwt_service.decode_token(token, options={"verify_exp": False})
                 user_role = (
-                    payload.roles[0]
-                    if hasattr(payload, "roles") and payload.roles
-                    else None
+                    payload.roles[0] if hasattr(payload, "roles") and payload.roles else None
                 )
             except Exception:
                 # If token decoding fails, fall back to X-Mock-Role header for testing
@@ -368,9 +355,7 @@ class TestJWTAuthentication:
 
                 for resource, access_level in resources.items():
                     request_path = f"/api/{resource}"
-                    owner_id = (
-                        TEST_USERS[role]["sub"] if "own" in access_level else None
-                    )
+                    owner_id = TEST_USERS[role]["sub"] if "own" in access_level else None
 
                     # Prepare request context with token and explicitly add the role for testing
                     request = MockRequest(
@@ -390,9 +375,7 @@ class TestJWTAuthentication:
                             is_authorized
                         ), f"Role {role} was denied access to {resource} with access level {access_level}"
                     elif access_level == "allow_own" and owner_id:
-                        assert (
-                            is_authorized
-                        ), f"Role {role} was denied access to own {resource}"
+                        assert is_authorized, f"Role {role} was denied access to own {resource}"
                     elif access_level == "deny":
                         assert (
                             not is_authorized
@@ -410,9 +393,7 @@ class TestJWTAuthentication:
         # Test token in Authorization header
         request_with_header = MockRequest(headers={"Authorization": f"Bearer {token}"})
         extracted_token = jwt_service.extract_token_from_request(request_with_header)
-        assert (
-            extracted_token == token
-        ), "Failed to extract token from Authorization header"
+        assert extracted_token == token, "Failed to extract token from Authorization header"
 
         # Test token in cookie
         request_with_cookie = MockRequest(cookies={"access_token": token})
@@ -461,9 +442,7 @@ class TestJWTAuthentication:
         ), "Error message should mention permissions"
 
     @pytest.mark.asyncio
-    async def test_refresh_token(
-        self, jwt_service: JWTService, client: TestClient, token_factory
-    ):
+    async def test_refresh_token(self, jwt_service: JWTService, client: TestClient, token_factory):
         """Test refresh token functionality.
         Now updated to work with our test client and verify_refresh_token implementation.
         """
@@ -489,9 +468,7 @@ class TestJWTAuthentication:
         try:
             # Skip expiration check for test token
             payload = jwt_service.decode_token(new_token, options={"verify_exp": False})
-            assert (
-                payload.sub == TEST_USERS["patient"]["sub"]
-            ), "User ID in token payload is wrong"
+            assert payload.sub == TEST_USERS["patient"]["sub"], "User ID in token payload is wrong"
         except Exception as e:
             pytest.fail(f"Failed to validate the new access token: {e!s}")
 
@@ -504,9 +481,7 @@ class TestJWTAuthentication:
         ), "Invalid token should be rejected"
 
     @pytest.mark.asyncio
-    async def test_hipaa_compliance_in_errors(
-        self, jwt_service: JWTService, token_factory
-    ):
+    async def test_hipaa_compliance_in_errors(self, jwt_service: JWTService, token_factory):
         """Test that error messages are HIPAA compliant."""
         # Generate a UUID that would be considered PHI if exposed
         test_uuid = str(uuid.uuid4())
@@ -538,9 +513,7 @@ class TestJWTAuthentication:
             ), "SSN should be redacted in error message"
 
             # Verify error type is correctly associated with response
-            assert (
-                error_type == response["body"]["error_type"]
-            ), "Error type should be preserved"
+            assert error_type == response["body"]["error_type"], "Error type should be preserved"
 
     @pytest.mark.asyncio
     async def test_token_security_properties(self, jwt_service: JWTService):
@@ -554,12 +527,8 @@ class TestJWTAuthentication:
         payload = jwt_service.decode_token(token, options={"verify_exp": False})
 
         assert hasattr(payload, "jti") and payload.jti, "Token must have a JTI (JWT ID)"
-        assert (
-            hasattr(payload, "iat") and payload.iat
-        ), "Token must have an IAT (Issued At)"
-        assert (
-            hasattr(payload, "exp") and payload.exp
-        ), "Token must have an EXP (Expiration Time)"
+        assert hasattr(payload, "iat") and payload.iat, "Token must have an IAT (Issued At)"
+        assert hasattr(payload, "exp") and payload.exp, "Token must have an EXP (Expiration Time)"
 
         # Optional: Check issuer and audience if configured
         if jwt_service.issuer:
@@ -612,9 +581,7 @@ def test_app(mock_settings: MagicMock) -> FastAPI:
         """Refresh token endpoint for testing."""
         try:
             # Verify the refresh token - skip expiration check
-            payload = jwt_service.decode_token(
-                request.refresh_token, options={"verify_exp": False}
-            )
+            payload = jwt_service.decode_token(request.refresh_token, options={"verify_exp": False})
 
             # Check that it's a refresh token
             if not hasattr(payload, "refresh") or not payload.refresh:

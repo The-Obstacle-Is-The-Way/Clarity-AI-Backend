@@ -86,12 +86,8 @@ class ErrorResponse(BaseResponse):
     error: str = Field(..., description="Error message")
     error_type: str = Field(..., description="Type of error")
     details: dict[str, Any] | None = Field(None, description="Additional error details")
-    field: str | None = Field(
-        None, description="Field that caused the error, if applicable"
-    )
-    value: Any | None = Field(
-        None, description="Value that caused the error, if applicable"
-    )
+    field: str | None = Field(None, description="Field that caused the error, if applicable")
+    value: Any | None = Field(None, description="Value that caused the error, if applicable")
 
 
 class TimeFrame(BaseModel):
@@ -106,9 +102,7 @@ class TimeFrame(BaseModel):
     def validate_at_least_one(cls, m):
         """Validate that at least one time unit is provided."""
         if m.days is None and m.weeks is None and m.months is None:
-            raise ValueError(
-                "At least one time unit (days, weeks, months) must be provided"
-            )
+            raise ValueError("At least one time unit (days, weeks, months) must be provided")
         return m
 
 
@@ -121,21 +115,13 @@ class RiskPredictionRequest(BaseModel):
     patient_id: str = Field(..., description="Patient identifier")
     # Use str for risk_type to allow model lookup to handle unknown types
     risk_type: str = Field(..., description="Type of risk to predict")
-    clinical_data: dict[str, Any] = Field(
-        ..., description="Clinical data for prediction"
-    )
+    clinical_data: dict[str, Any] = Field(..., description="Clinical data for prediction")
     patient_data: dict[str, Any] = Field(
         default_factory=dict, description="Patient demographic data for prediction"
     )
-    temporal_data: dict[str, Any] | None = Field(
-        None, description="Temporal data for prediction"
-    )
-    confidence_threshold: float = Field(
-        0.5, description="Confidence threshold for prediction"
-    )
-    time_frame_days: int | None = Field(
-        None, description="Time frame in days for prediction"
-    )
+    temporal_data: dict[str, Any] | None = Field(None, description="Temporal data for prediction")
+    confidence_threshold: float = Field(0.5, description="Confidence threshold for prediction")
+    time_frame_days: int | None = Field(None, description="Time frame in days for prediction")
 
     model_config = ConfigDict(extra="allow")
 
@@ -174,9 +160,7 @@ class RiskPredictionResponse(BaseResponse):
     risk_type: RiskType = Field(..., description="Type of risk predicted")
     risk_level: RiskLevel = Field(..., description="Predicted risk level")
     risk_score: float = Field(..., ge=0, le=1, description="Numerical risk score")
-    confidence: float = Field(
-        ..., ge=0, le=1, description="Confidence in the prediction"
-    )
+    confidence: float = Field(..., ge=0, le=1, description="Confidence in the prediction")
     supporting_evidence: list[SupportingEvidence] = Field(
         default_factory=list, description="Evidence supporting the prediction"
     )
@@ -185,9 +169,7 @@ class RiskPredictionResponse(BaseResponse):
         default_factory=dict, description="Features used in the prediction"
     )
     timestamp: str = Field(..., description="Timestamp of the prediction")
-    time_frame_days: int = Field(
-        ..., ge=1, description="Time frame for prediction in days"
-    )
+    time_frame_days: int = Field(..., ge=1, description="Time frame for prediction in days")
 
     @field_validator("timestamp", mode="before")
     @classmethod
@@ -213,15 +195,11 @@ class MedicationDetails(BaseModel):
 class TherapyDetails(BaseModel):
     """Schema for therapy treatment details."""
 
-    frequency: str = Field(
-        ..., description="Frequency of sessions (weekly, twice_weekly, monthly)"
-    )
+    frequency: str = Field(..., description="Frequency of sessions (weekly, twice_weekly, monthly)")
     duration_minutes: int | None = Field(
         None, gt=0, description="Duration of each session in minutes"
     )
-    modality: str | None = Field(
-        None, description="Therapy modality (individual, group)"
-    )
+    modality: str | None = Field(None, description="Therapy modality (individual, group)")
 
     model_config = ConfigDict(extra="allow")
 
@@ -234,15 +212,9 @@ class TreatmentResponseRequest(BaseModel):
     treatment_details: MedicationDetails | TherapyDetails | dict[str, Any] = Field(
         ..., description="Treatment details"
     )
-    clinical_data: dict[str, Any] = Field(
-        ..., description="Clinical data for prediction"
-    )
-    prediction_horizon: str | None = Field(
-        "8_weeks", description="Time horizon for prediction"
-    )
-    genetic_data: list[Any] = Field(
-        default_factory=list, description="Genetic data for prediction"
-    )
+    clinical_data: dict[str, Any] = Field(..., description="Clinical data for prediction")
+    prediction_horizon: str | None = Field("8_weeks", description="Time horizon for prediction")
+    genetic_data: list[Any] = Field(default_factory=list, description="Genetic data for prediction")
     treatment_history: list[dict[str, Any]] = Field(
         default_factory=list, description="Treatment history"
     )
@@ -275,12 +247,8 @@ class SideEffect(BaseModel):
 class SideEffectRisk(BaseModel):
     """Schema for side effect risk collections."""
 
-    common: list[SideEffect] = Field(
-        default_factory=list, description="Common side effects"
-    )
-    rare: list[SideEffect] = Field(
-        default_factory=list, description="Rare side effects"
-    )
+    common: list[SideEffect] = Field(default_factory=list, description="Common side effects")
+    rare: list[SideEffect] = Field(default_factory=list, description="Rare side effects")
 
 
 class ExpectedOutcome(BaseModel):
@@ -291,9 +259,7 @@ class ExpectedOutcome(BaseModel):
     sustained_response_likelihood: ResponseLikelihood = Field(
         ..., description="Likelihood of sustained response"
     )
-    functional_improvement: str = Field(
-        ..., description="Expected functional improvement"
-    )
+    functional_improvement: str = Field(..., description="Expected functional improvement")
 
 
 class TreatmentResponseResponse(BaseResponse):
@@ -306,18 +272,10 @@ class TreatmentResponseResponse(BaseResponse):
     response_likelihood: ResponseLikelihood = Field(
         ..., description="Likelihood of positive response"
     )
-    efficacy_score: float = Field(
-        ..., ge=0, le=1, description="Numerical efficacy score"
-    )
-    confidence: float = Field(
-        ..., ge=0, le=1, description="Confidence in the prediction"
-    )
-    expected_outcome: ExpectedOutcome = Field(
-        ..., description="Expected outcome details"
-    )
-    side_effect_risk: SideEffectRisk = Field(
-        ..., description="Side effect risk assessment"
-    )
+    efficacy_score: float = Field(..., ge=0, le=1, description="Numerical efficacy score")
+    confidence: float = Field(..., ge=0, le=1, description="Confidence in the prediction")
+    expected_outcome: ExpectedOutcome = Field(..., description="Expected outcome details")
+    side_effect_risk: SideEffectRisk = Field(..., description="Side effect risk assessment")
     features: dict[str, Any] = Field(
         default_factory=dict, description="Clinical features used in the prediction"
     )
@@ -342,12 +300,8 @@ class OutcomePredictionRequest(BaseModel):
     """Schema for outcome prediction requests."""
 
     patient_id: str = Field(..., description="Patient identifier")
-    outcome_timeframe: TimeFrame = Field(
-        ..., description="Timeframe for outcome prediction"
-    )
-    clinical_data: dict[str, Any] = Field(
-        ..., description="Clinical data for prediction"
-    )
+    outcome_timeframe: TimeFrame = Field(..., description="Timeframe for outcome prediction")
+    clinical_data: dict[str, Any] = Field(..., description="Clinical data for prediction")
     treatment_plan: dict[str, Any] = Field(..., description="Treatment plan details")
     social_determinants: dict[str, Any] = Field(
         default_factory=dict, description="Social determinants data for prediction"
@@ -376,9 +330,7 @@ class OutcomeTrajectory(BaseModel):
     """Schema for outcome trajectory data."""
 
     points: list[OutcomeTrajectoryPoint] = Field(..., description="Trajectory points")
-    final_improvement: int = Field(
-        ..., ge=0, le=100, description="Final improvement percentage"
-    )
+    final_improvement: int = Field(..., ge=0, le=100, description="Final improvement percentage")
     time_frame_days: int = Field(..., ge=1, description="Time frame in days")
     visualization_type: VisualizationType = Field(
         ..., description="Visualization type for the trajectory"
@@ -409,15 +361,9 @@ class OutcomePredictionResponse(BaseResponse):
     outcome_type: OutcomeType = Field(..., description="Type of outcome predicted")
     outcome_score: float = Field(..., ge=0, le=1, description="Numerical outcome score")
     time_frame_days: int = Field(..., ge=1, description="Time frame in days")
-    confidence: float = Field(
-        ..., ge=0, le=1, description="Confidence in the prediction"
-    )
-    trajectory: OutcomeTrajectory = Field(
-        ..., description="Outcome trajectory over time"
-    )
-    outcome_details: OutcomeDetails = Field(
-        ..., description="Detailed outcome information"
-    )
+    confidence: float = Field(..., ge=0, le=1, description="Confidence in the prediction")
+    trajectory: OutcomeTrajectory = Field(..., description="Outcome trajectory over time")
+    outcome_details: OutcomeDetails = Field(..., description="Detailed outcome information")
     features: dict[str, Any] = Field(
         default_factory=dict, description="Clinical features used in the prediction"
     )
@@ -469,13 +415,9 @@ class FeatureImportanceResponse(BaseResponse):
     prediction_id: str = Field(..., description="Prediction identifier")
     patient_id: str = Field(..., description="Patient identifier")
     model_type: str = Field(..., description="Type of model")
-    feature_importance: dict[str, float] = Field(
-        ..., description="Feature importance values"
-    )
+    feature_importance: dict[str, float] = Field(..., description="Feature importance values")
     visualization: Visualization = Field(..., description="Visualization data")
-    timestamp: str = Field(
-        ..., description="Timestamp of the feature importance calculation"
-    )
+    timestamp: str = Field(..., description="Timestamp of the feature importance calculation")
 
     @field_validator("timestamp", mode="before")
     @classmethod
@@ -559,9 +501,7 @@ class ModelInfoResponse(BaseResponse):
         return v
 
     features: list[str] = Field(..., description="Features used by the model")
-    performance_metrics: PerformanceMetrics = Field(
-        ..., description="Performance metrics"
-    )
+    performance_metrics: PerformanceMetrics = Field(..., description="Performance metrics")
     hyperparameters: dict[str, Any] = Field(..., description="Model hyperparameters")
     status: str = Field(..., description="Model status")
     hyperparameters: dict[str, Any] = Field(..., description="Model hyperparameters")

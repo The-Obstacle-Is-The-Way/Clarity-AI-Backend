@@ -19,9 +19,7 @@ class RoleValidator:
         """Initialize the RoleValidator."""
         pass
 
-    def has_required_roles(
-        self, user: User, required_roles: list[UserRole | str]
-    ) -> bool:
+    def has_required_roles(self, user: User, required_roles: list[UserRole | str]) -> bool:
         """
         Check if a user has any of the required roles.
 
@@ -35,10 +33,7 @@ class RoleValidator:
         # Handle test tokens with string roles
         if isinstance(user.roles, list) and all(isinstance(r, str) for r in user.roles):
             # Test user with string roles
-            return any(
-                role.lower() in [r.lower() for r in user.roles]
-                for role in required_roles
-            )
+            return any(role.lower() in [r.lower() for r in user.roles] for role in required_roles)
 
         # Handle production users with UserRole enums
         try:

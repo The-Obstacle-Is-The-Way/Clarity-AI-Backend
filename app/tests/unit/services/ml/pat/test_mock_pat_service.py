@@ -49,9 +49,7 @@ def sample_readings() -> list[dict[str, Any]]:
     readings = []
     for i in range(100):
         timestamp = (
-            (base_time + datetime.timedelta(seconds=i / 10))
-            .isoformat()
-            .replace("+00:00", "Z")
+            (base_time + datetime.timedelta(seconds=i / 10)).isoformat().replace("+00:00", "Z")
         )
         reading = {
             "timestamp": timestamp,
@@ -167,9 +165,7 @@ class TestMockPAT:
         assert result["data_summary"]["sampling_rate_hz"] == sampling_rate_hz
 
         # Verify results for each analysis type
-        assert all(
-            analysis_type in result["results"] for analysis_type in analysis_types
-        )
+        assert all(analysis_type in result["results"] for analysis_type in analysis_types)
 
         # Verify the analysis is stored
         analysis_id = result["analysis_id"]
@@ -324,14 +320,10 @@ class TestMockPAT:
         # Verify result
         assert retrieved == result
 
-    def test_get_analysis_by_id_not_found(
-        self, initialized_mock_pat: MockPATService
-    ) -> None:
+    def test_get_analysis_by_id_not_found(self, initialized_mock_pat: MockPATService) -> None:
         """Test retrieving a non-existent analysis."""
         # Using proper pytest.raises context manager and explicitly checking error message
-        with pytest.raises(
-            ResourceNotFoundError, match="Analysis not found: nonexistent_id"
-        ):
+        with pytest.raises(ResourceNotFoundError, match="Analysis not found: nonexistent_id"):
             initialized_mock_pat.get_analysis_by_id("nonexistent_id")
 
     def test_get_patient_analyses(
@@ -372,9 +364,7 @@ class TestMockPAT:
         assert any(a["analysis_id"] == result2["analysis_id"] for a in analyses)
 
         # Test with limit
-        limited_analyses = initialized_mock_pat.get_patient_analyses(
-            patient_id, limit=1
-        )
+        limited_analyses = initialized_mock_pat.get_patient_analyses(patient_id, limit=1)
         assert len(limited_analyses) == 1
 
         # Test with analysis_type filter
@@ -456,9 +446,7 @@ class TestMockPAT:
         assert "categories" in integration_result
         assert "recommendations" in integration_result
         assert "integration_results" in integration_result
-        assert (
-            "physiological" in integration_result["integration_results"]
-        )  # Now this should pass
+        assert "physiological" in integration_result["integration_results"]  # Now this should pass
 
     def test_integrate_with_digital_twin_resource_not_found(
         self, initialized_mock_pat: MockPATService, digital_twin_repository_mock: Mock

@@ -35,8 +35,6 @@ except (ImportError, AttributeError):
     AUDIT_LOG_DIR = os.path.join(tempfile.gettempdir(), "novamind_audit")
 
 
-
-
 class AuditLogger(IAuditLogger):
     """
     HIPAA-compliant audit logger for PHI operations.
@@ -76,9 +74,7 @@ class AuditLogger(IAuditLogger):
 
             # Create a file handler for the audit log
             today = date.today()
-            audit_file = os.path.join(
-                audit_log_dir, f"hipaa_audit_{today.isoformat()}.log"
-            )
+            audit_file = os.path.join(audit_log_dir, f"hipaa_audit_{today.isoformat()}.log")
             handler = logging.FileHandler(audit_file)
         except (OSError, PermissionError):
             # Fallback to memory handler for tests

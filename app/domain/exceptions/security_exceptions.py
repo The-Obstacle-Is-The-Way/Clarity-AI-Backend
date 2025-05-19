@@ -32,9 +32,7 @@ class PHIAccessError(SecurityError, AuthorizationError):
         **kwargs,
     ):
         if user_id and resource_type and action:
-            message = (
-                f"User {user_id} attempted unauthorized {action} on {resource_type} PHI"
-            )
+            message = f"User {user_id} attempted unauthorized {action} on {resource_type} PHI"
         super().__init__(message, *args, **kwargs)
         self.user_id = user_id
         self.resource_type = resource_type

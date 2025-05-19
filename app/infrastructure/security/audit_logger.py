@@ -109,9 +109,7 @@ class AuditLogger:
             "action": action,
             "ip_address": ip_address,
             "reason": reason or "Not specified",  # HIPAA requires a reason
-            "hash_chain": self._calculate_chain_hash(
-                log_id, timestamp, user_id, action
-            ),
+            "hash_chain": self._calculate_chain_hash(log_id, timestamp, user_id, action),
         }
 
         # Add HMAC signature for integrity verification
@@ -169,9 +167,7 @@ class AuditLogger:
             "reason": reason,
             "ip_address": ip_address,
             "additional_context": additional_context or {},
-            "hash_chain": self._calculate_chain_hash(
-                log_id, timestamp, user_id, action
-            ),
+            "hash_chain": self._calculate_chain_hash(log_id, timestamp, user_id, action),
         }
 
         # Add HMAC signature for integrity verification
@@ -231,9 +227,7 @@ class AuditLogger:
             "details": details or "No details provided",
             "phi_fields": phi_fields or [],
             "log_type": "data_modification",
-            "hash_chain": self._calculate_chain_hash(
-                log_id, timestamp, user_id, action
-            ),
+            "hash_chain": self._calculate_chain_hash(log_id, timestamp, user_id, action),
         }
 
         # Add HMAC signature for integrity verification
@@ -279,9 +273,7 @@ class AuditLogger:
             "description": description,
             "severity": severity,
             "log_type": "security",
-            "hash_chain": self._calculate_chain_hash(
-                log_id, timestamp, user_id, "security_event"
-            ),
+            "hash_chain": self._calculate_chain_hash(log_id, timestamp, user_id, "security_event"),
         }
 
         # Add HMAC signature for integrity verification
@@ -482,9 +474,7 @@ class AuditLogger:
         """
         # Create export file path
         if format.lower() == "json":
-            export_path = (
-                f"audit_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            )
+            export_path = f"audit_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         elif format.lower() == "csv":
             export_path = f"audit_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
         else:
@@ -524,9 +514,7 @@ class AuditLogger:
         for log_id, log_entry in self._logs.items():
             # Skip logs that fail integrity check if verification is enabled
             if verify_integrity and not self.verify_log_integrity(log_id):
-                logger.warning(
-                    f"Log {log_id} failed integrity verification during export"
-                )
+                logger.warning(f"Log {log_id} failed integrity verification during export")
                 continue
 
             # Apply date filters if specified
@@ -581,9 +569,7 @@ class AuditLogger:
         logger.info(f"Exported {len(logs_to_export)} audit logs to {export_path}")
         return export_path
 
-    def modify_log_entry_for_testing(
-        self, log_id: str, changes: dict[str, Any]
-    ) -> bool:
+    def modify_log_entry_for_testing(self, log_id: str, changes: dict[str, Any]) -> bool:
         """
         Test utility to attempt modifying a log entry for testing tamper resistance.
 

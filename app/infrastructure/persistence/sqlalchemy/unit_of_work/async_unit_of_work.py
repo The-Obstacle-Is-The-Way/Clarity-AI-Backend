@@ -62,9 +62,7 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
             biometric_twin_repository_cls: Biometric twin repository class
         """
         self.logger = get_logger(__name__)
-        self.logger.debug(
-            f"UoW {id(self)}: __init__ called. Session factory: {session_factory}"
-        )
+        self.logger.debug(f"UoW {id(self)}: __init__ called. Session factory: {session_factory}")
         self.session_factory = session_factory
         self._session: AsyncSession | None = None
 
@@ -95,9 +93,7 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
         self._session = self.session_factory()
         await self._session.begin()
         self._transaction_started = True
-        self.logger.debug(
-            "Started async UoW context: Session created, transaction begun."
-        )
+        self.logger.debug("Started async UoW context: Session created, transaction begun.")
         return self
 
     async def __aexit__(
@@ -126,9 +122,7 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
         try:
             if exc_type:
                 # Exception occurred, rollback the transaction
-                self.logger.info(
-                    f"Rolling back transaction due to exception: {exc_val}"
-                )
+                self.logger.info(f"Rolling back transaction due to exception: {exc_val}")
                 await self._session.rollback()
             else:
                 # No exception, commit the transaction
@@ -142,13 +136,9 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
         finally:
             if self._session:
                 await self._session.close()
-                self.logger.debug(
-                    f"UoW {id(self)}: Session {id(self._session)} closed."
-                )
+                self.logger.debug(f"UoW {id(self)}: Session {id(self._session)} closed.")
             self._session = None
-            self.logger.debug(
-                f"UoW {id(self)}: self._session reset to None after __aexit__."
-            )
+            self.logger.debug(f"UoW {id(self)}: self._session reset to None after __aexit__.")
             # Clear cached repository instances
             self._repositories = {}
 
@@ -205,17 +195,13 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
             self.logger.error(
                 f"UoW {id(self)} users property: self._session is None. Raising RepositoryError."
             )
-            raise RepositoryError(
-                "No active session. Use 'async with unit_of_work:' context."
-            )
+            raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
 
         if "users" not in self._repositories:
             self.logger.debug(
                 f"UoW {id(self)} users property: Creating new repository instance with session ID {id(self._session)}."
             )
-            self._repositories["users"] = self._user_repository_cls(
-                uow_session=self._session
-            )
+            self._repositories["users"] = self._user_repository_cls(uow_session=self._session)
         else:
             self.logger.debug(
                 f"UoW {id(self)} users property: Returning existing repository instance. Its uow_session ID: {id(self._repositories['users'].uow_session) if hasattr(self._repositories['users'], 'uow_session') and self._repositories['users'].uow_session else 'N/A or None'}"
@@ -233,17 +219,13 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
             self.logger.error(
                 f"UoW {id(self)} patients property: self._session is None. Raising RepositoryError."
             )
-            raise RepositoryError(
-                "No active session. Use 'async with unit_of_work:' context."
-            )
+            raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
 
         if "patients" not in self._repositories:
             self.logger.debug(
                 f"UoW {id(self)} patients property: Creating new repository instance with session ID {id(self._session)}."
             )
-            self._repositories["patients"] = self._patient_repository_cls(
-                uow_session=self._session
-            )
+            self._repositories["patients"] = self._patient_repository_cls(uow_session=self._session)
         else:
             self.logger.debug(
                 f"UoW {id(self)} patients property: Returning existing repository instance. Its uow_session ID: {id(self._repositories['patients'].uow_session) if hasattr(self._repositories['patients'], 'uow_session') and self._repositories['patients'].uow_session else 'N/A or None'}"
@@ -261,9 +243,7 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
             self.logger.error(
                 f"UoW {id(self)} digital_twins property: self._session is None. Raising RepositoryError."
             )
-            raise RepositoryError(
-                "No active session. Use 'async with unit_of_work:' context."
-            )
+            raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
 
         if "digital_twins" not in self._repositories:
             self.logger.debug(
@@ -289,9 +269,7 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
             self.logger.error(
                 f"UoW {id(self)} biometric_rules property: self._session is None. Raising RepositoryError."
             )
-            raise RepositoryError(
-                "No active session. Use 'async with unit_of_work:' context."
-            )
+            raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
 
         if "biometric_rules" not in self._repositories:
             self.logger.debug(
@@ -317,17 +295,15 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
             self.logger.error(
                 f"UoW {id(self)} biometric_alerts property: self._session is None. Raising RepositoryError."
             )
-            raise RepositoryError(
-                "No active session. Use 'async with unit_of_work:' context."
-            )
+            raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
 
         if "biometric_alerts" not in self._repositories:
             self.logger.debug(
                 f"UoW {id(self)} biometric_alerts property: Creating new repository instance with session ID {id(self._session)}."
             )
-            self._repositories[
-                "biometric_alerts"
-            ] = self._biometric_alert_repository_cls(uow_session=self._session)
+            self._repositories["biometric_alerts"] = self._biometric_alert_repository_cls(
+                uow_session=self._session
+            )
         else:
             self.logger.debug(
                 f"UoW {id(self)} biometric_alerts property: Returning existing repository instance. Its uow_session ID: {id(self._repositories['biometric_alerts'].uow_session) if hasattr(self._repositories['biometric_alerts'], 'uow_session') and self._repositories['biometric_alerts'].uow_session else 'N/A or None'}"
@@ -345,9 +321,7 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
             self.logger.error(
                 f"UoW {id(self)} biometric_twins property: self._session is None. Raising RepositoryError."
             )
-            raise RepositoryError(
-                "No active session. Use 'async with unit_of_work:' context."
-            )
+            raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
 
         if "biometric_twins" not in self._repositories:
             self.logger.debug(

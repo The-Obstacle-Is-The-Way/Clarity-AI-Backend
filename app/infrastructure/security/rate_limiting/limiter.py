@@ -132,9 +132,7 @@ def create_rate_limiter(settings: Settings) -> RateLimiter:
         # Check if rate limiting is enabled
         if getattr(settings, "RATE_LIMITING_ENABLED", True):
             # Get configuration from settings
-            default_limits = getattr(
-                settings, "DEFAULT_RATE_LIMITS", ["60/minute", "1000/hour"]
-            )
+            default_limits = getattr(settings, "DEFAULT_RATE_LIMITS", ["60/minute", "1000/hour"])
             strategy = getattr(settings, "RATE_LIMIT_STRATEGY", "ip")
 
             # Create the underlying slowapi limiter if available
@@ -144,15 +142,11 @@ def create_rate_limiter(settings: Settings) -> RateLimiter:
             logger.info(
                 f"Rate limiter initialized with limits: {default_limits}, strategy: {strategy}"
             )
-            return RateLimiter(
-                limiter=limiter, default_limits=default_limits, strategy=strategy
-            )
+            return RateLimiter(limiter=limiter, default_limits=default_limits, strategy=strategy)
         else:
             logger.warning("Rate limiting disabled by settings")
             return RateLimiter()  # Return a no-op limiter
     except Exception as e:
         logger.error(f"Error initializing rate limiter: {e!s}")
-        logger.warning(
-            "Falling back to unlimited rate limiter due to initialization error"
-        )
+        logger.warning("Falling back to unlimited rate limiter due to initialization error")
         return RateLimiter()  # Return a no-op limiter

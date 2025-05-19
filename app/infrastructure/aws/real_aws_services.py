@@ -90,9 +90,7 @@ class RealS3Service(S3ServiceInterface):
         """Get an object from S3."""
         return self._client.get_object(Bucket=bucket_name, Key=key)
 
-    def list_objects(
-        self, bucket_name: str, prefix: str | None = None
-    ) -> dict[str, Any]:
+    def list_objects(self, bucket_name: str, prefix: str | None = None) -> dict[str, Any]:
         """List objects in an S3 bucket with optional prefix."""
         params = {"Bucket": bucket_name}
         if prefix is not None:
@@ -172,9 +170,7 @@ class RealBedrockService(BedrockServiceInterface):
         """List available foundation models."""
         return self._client.list_foundation_models()
 
-    def invoke_model(
-        self, model_id: str, body: dict[str, Any], **kwargs
-    ) -> dict[str, Any]:
+    def invoke_model(self, model_id: str, body: dict[str, Any], **kwargs) -> dict[str, Any]:
         """Invoke a foundation model."""
         # Convert dict to JSON string if needed
         if isinstance(body, dict):
@@ -257,9 +253,7 @@ class RealAWSSessionService(AWSSessionServiceInterface):
 
     def get_current_region_name(self) -> str:
         """Get the current AWS region name."""
-        return (
-            self._session.region_name or "us-east-1"
-        )  # Default to us-east-1 if not set
+        return self._session.region_name or "us-east-1"  # Default to us-east-1 if not set
 
 
 class RealAWSServiceFactory(AWSServiceFactory):

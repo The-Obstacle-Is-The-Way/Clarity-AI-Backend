@@ -137,9 +137,7 @@ class BiometricIntegrationService:
                 metadata=current_metadata,
             )
 
-            twin.add_data_point(
-                biometric_type=biometric_type_enum, data_point=data_point
-            )
+            twin.add_data_point(biometric_type=biometric_type_enum, data_point=data_point)
 
             self.biometric_twin_repository.save(twin)
             logger.info(
@@ -157,9 +155,7 @@ class BiometricIntegrationService:
                 f"Failed to add biometric data for patient {patient_id}: {e!s}",
                 exc_info=True,
             )
-            raise DomainError(
-                f"Failed to add biometric data for patient {patient_id}: {e!s}"
-            )
+            raise DomainError(f"Failed to add biometric data for patient {patient_id}: {e!s}")
 
     def batch_add_biometric_data(
         self, patient_id: UUID, data_points_dicts: list[dict]
@@ -221,7 +217,9 @@ class BiometricIntegrationService:
                             point_timestamp_input.replace("Z", "+00:00")
                         )
                     except ValueError:
-                        err_msg = f"Batch item {i}: Invalid timestamp format '{point_timestamp_input}'."
+                        err_msg = (
+                            f"Batch item {i}: Invalid timestamp format '{point_timestamp_input}'."
+                        )
                         logger.warning(err_msg)
                         raise ValueError(err_msg)
                 elif isinstance(point_timestamp_input, datetime):
@@ -238,9 +236,7 @@ class BiometricIntegrationService:
                     raise ValueError(err_msg)
 
                 point_confidence = point_data.get("confidence", 1.0)
-                point_metadata[
-                    "confidence"
-                ] = point_confidence  # Corrected string literal
+                point_metadata["confidence"] = point_confidence  # Corrected string literal
 
                 data_point = BiometricDataPoint(
                     timestamp=point_timestamp,
@@ -249,9 +245,7 @@ class BiometricIntegrationService:
                     metadata=point_metadata,
                 )
 
-                twin.add_data_point(
-                    biometric_type=biometric_type_enum, data_point=data_point
-                )
+                twin.add_data_point(biometric_type=biometric_type_enum, data_point=data_point)
                 created_points.append(data_point)
 
             if created_points:
@@ -271,9 +265,7 @@ class BiometricIntegrationService:
                 f"Failed to batch add biometric data for patient {patient_id}: {e!s}",
                 exc_info=True,
             )
-            raise DomainError(
-                f"Failed to batch add biometric data for patient {patient_id}: {e!s}"
-            )
+            raise DomainError(f"Failed to batch add biometric data for patient {patient_id}: {e!s}")
 
     def get_biometric_data(
         self,
@@ -320,9 +312,7 @@ class BiometricIntegrationService:
                 if timeseries:
                     all_points.extend(timeseries.data_points)
             else:
-                if hasattr(twin, "timeseries_data") and isinstance(
-                    twin.timeseries_data, dict
-                ):
+                if hasattr(twin, "timeseries_data") and isinstance(twin.timeseries_data, dict):
                     for ts_type, timeseries_obj in twin.timeseries_data.items():
                         if hasattr(timeseries_obj, "data_points"):
                             all_points.extend(timeseries_obj.data_points)
@@ -334,14 +324,10 @@ class BiometricIntegrationService:
             filtered_points = all_points
 
             if start_time:
-                filtered_points = [
-                    dp for dp in filtered_points if dp.timestamp >= start_time
-                ]
+                filtered_points = [dp for dp in filtered_points if dp.timestamp >= start_time]
 
             if end_time:
-                filtered_points = [
-                    dp for dp in filtered_points if dp.timestamp <= end_time
-                ]
+                filtered_points = [dp for dp in filtered_points if dp.timestamp <= end_time]
 
             if biometric_source_filter:
                 filtered_points = [
@@ -354,9 +340,7 @@ class BiometricIntegrationService:
                 f"Failed to retrieve biometric data for patient {patient_id}: {e!s}",
                 exc_info=True,
             )
-            raise DomainError(
-                f"Failed to retrieve biometric data for patient {patient_id}: {e!s}"
-            )
+            raise DomainError(f"Failed to retrieve biometric data for patient {patient_id}: {e!s}")
 
     def analyze_trends(
         self,
@@ -424,9 +408,7 @@ class BiometricIntegrationService:
                 "maximum": max_val,
                 "trend": trend_direction,
                 "last_value": values[-1] if values else None,
-                "last_timestamp": data_points[-1].timestamp.isoformat()
-                if data_points
-                else None,
+                "last_timestamp": data_points[-1].timestamp.isoformat() if data_points else None,
             }
         except Exception as e:
             logger.error(
@@ -518,13 +500,9 @@ class BiometricIntegrationService:
         (Functionality related to twin.disconnect_device is commented out as method does not exist on EnhancedBiometricTwin)
         Calls to repository are synchronous. add_biometric_data is synchronous.
         """
-        logger.info(
-            f"Attempting to disconnect device {device_id} for patient {patient_id}"
-        )
+        logger.info(f"Attempting to disconnect device {device_id} for patient {patient_id}")
         try:
-            twin = self.biometric_twin_repository.get_by_patient_id(
-                patient_id
-            )  # Synchronous
+            twin = self.biometric_twin_repository.get_by_patient_id(patient_id)  # Synchronous
             if not twin:
                 logger.warning(
                     f"BiometricTwin not found for patient {patient_id} during disconnect_device."

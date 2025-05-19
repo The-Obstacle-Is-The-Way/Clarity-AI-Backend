@@ -18,9 +18,7 @@ from app.presentation.models.biometric_data import (
 class BiometricTimeseriesOutput(BaseModel):
     """API model for biometric timeseries data."""
 
-    biometric_type: str = Field(
-        ..., description="Type of biometric data", example="heart_rate"
-    )
+    biometric_type: str = Field(..., description="Type of biometric data", example="heart_rate")
 
     unit: str = Field(..., description="Unit of measurement", example="bpm")
 
@@ -87,9 +85,7 @@ class DigitalTwinOutput(BaseModel):
         example="550e8400-e29b-41d4-a716-446655440000",
     )
 
-    patient_id: str = Field(
-        ..., description="ID of the associated patient", example="patient-123"
-    )
+    patient_id: str = Field(..., description="ID of the associated patient", example="patient-123")
 
     timeseries_data: dict[str, BiometricTimeseriesOutput] = Field(
         ...,
@@ -181,13 +177,9 @@ class DigitalTwinOutput(BaseModel):
 class DigitalTwinCreate(BaseModel):
     """API model for creating a new digital twin."""
 
-    patient_id: str = Field(
-        ..., description="ID of the associated patient", example="patient-123"
-    )
+    patient_id: str = Field(..., description="ID of the associated patient", example="patient-123")
 
-    model_config = ConfigDict(
-        json_schema_extra={"example": {"patient_id": "patient-123"}}
-    )
+    model_config = ConfigDict(json_schema_extra={"example": {"patient_id": "patient-123"}})
 
 
 class DigitalTwinSummary(BaseModel):
@@ -199,9 +191,7 @@ class DigitalTwinSummary(BaseModel):
         example="550e8400-e29b-41d4-a716-446655440000",
     )
 
-    patient_id: str = Field(
-        ..., description="ID of the associated patient", example="patient-123"
-    )
+    patient_id: str = Field(..., description="ID of the associated patient", example="patient-123")
 
     latest_readings: dict[str, BiometricDataOutput] = Field(
         ...,

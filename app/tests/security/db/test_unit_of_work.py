@@ -59,9 +59,7 @@ class TestSQLAlchemyUnitOfWork:
         mock_session.rollback.assert_not_called()
         mock_session.close.assert_called_once()  # Close happens at end of top-level context
 
-    def test_transaction_rollback_on_exception(
-        self, unit_of_work, mock_session_factory
-    ):
+    def test_transaction_rollback_on_exception(self, unit_of_work, mock_session_factory):
         """Test that an exception inside the transaction triggers rollback."""
         factory, mock_session = mock_session_factory
 
@@ -77,9 +75,7 @@ class TestSQLAlchemyUnitOfWork:
         mock_session.commit.assert_not_called()
         mock_session.close.assert_called_once()
 
-    def test_transaction_rollback_without_commit(
-        self, unit_of_work, mock_session_factory
-    ):
+    def test_transaction_rollback_without_commit(self, unit_of_work, mock_session_factory):
         """Test that the transaction rolls back if commit is not called."""
         factory, mock_session = mock_session_factory
 
@@ -95,9 +91,7 @@ class TestSQLAlchemyUnitOfWork:
         mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()
 
-    def test_nested_transaction_support_commit(
-        self, unit_of_work, mock_session_factory
-    ):
+    def test_nested_transaction_support_commit(self, unit_of_work, mock_session_factory):
         """Test nested transaction (savepoint) support with commit."""
         factory, mock_session = mock_session_factory
 
@@ -119,9 +113,7 @@ class TestSQLAlchemyUnitOfWork:
         mock_session.rollback.assert_not_called()
         mock_session.close.assert_called_once()
 
-    def test_nested_transaction_support_rollback_inner(
-        self, unit_of_work, mock_session_factory
-    ):
+    def test_nested_transaction_support_rollback_inner(self, unit_of_work, mock_session_factory):
         """Test nested transaction (savepoint) rollback on inner level."""
         factory, mock_session = mock_session_factory
 
@@ -145,9 +137,7 @@ class TestSQLAlchemyUnitOfWork:
         mock_session.rollback.assert_called_once()  # Only called for the nested part
         mock_session.close.assert_called_once()
 
-    def test_nested_transaction_support_rollback_outer(
-        self, unit_of_work, mock_session_factory
-    ):
+    def test_nested_transaction_support_rollback_outer(self, unit_of_work, mock_session_factory):
         """Test nested transaction (savepoint) rollback on outer level."""
         factory, mock_session = mock_session_factory
         exc_message = "Outer rollback"
@@ -180,9 +170,7 @@ class TestSQLAlchemyUnitOfWork:
         mock_session.commit.assert_not_called()
         mock_session.close.assert_called_once()
 
-    def test_read_only_transaction_prevents_commits(
-        self, unit_of_work, mock_session_factory
-    ):
+    def test_read_only_transaction_prevents_commits(self, unit_of_work, mock_session_factory):
         """Test that read-only transactions cannot commit changes."""
         factory, mock_session = mock_session_factory
 
@@ -228,9 +216,7 @@ class TestSQLAlchemyUnitOfWork:
         assert mock_session.rollback.call_count >= 1
         mock_session.close.assert_called_once()
 
-    def test_transaction_metadata_for_audit(
-        self, unit_of_work, mock_session_factory, caplog
-    ):
+    def test_transaction_metadata_for_audit(self, unit_of_work, mock_session_factory, caplog):
         """Test that transaction metadata is captured for audit logging."""
         _, mock_session = mock_session_factory
 
@@ -264,9 +250,7 @@ class TestSQLAlchemyUnitOfWork:
             # Verify that the metadata was used correctly
             assert unit_of_work._metadata == {}  # Metadata is cleared after transaction
 
-    def test_transaction_failure_audit(
-        self, unit_of_work, mock_session_factory, caplog
-    ):
+    def test_transaction_failure_audit(self, unit_of_work, mock_session_factory, caplog):
         """Test that failed transactions are properly audited."""
         _, mock_session = mock_session_factory
 

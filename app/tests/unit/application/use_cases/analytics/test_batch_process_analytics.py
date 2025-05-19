@@ -59,9 +59,7 @@ def mock_event_processor():
     processor = MagicMock()
 
     # Set up execute method to return a processed event
-    async def execute_mock(
-        event_type, event_data, user_id=None, session_id=None, timestamp=None
-    ):
+    async def execute_mock(event_type, event_data, user_id=None, session_id=None, timestamp=None):
         if event_type == "error_type":
             raise ValueError("Simulated error in event processing")
 
@@ -300,9 +298,7 @@ class TestBatchProcessAnalyticsUseCase:
         # Create a large batch of 250 events
         events = []
         for i in range(250):
-            events.append(
-                {"event_type": "test_event", "event_data": {"test": f"data-{i}"}}
-            )
+            events.append({"event_type": "test_event", "event_data": {"test": f"data-{i}"}})
 
         batch_id = "large-batch-123"
 

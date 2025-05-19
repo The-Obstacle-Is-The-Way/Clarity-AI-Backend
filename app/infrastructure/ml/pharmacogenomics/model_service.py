@@ -118,9 +118,7 @@ class PharmacogenomicsService:
 
                 for med in meds:
                     if med in predictions.get("medication_predictions", {}):
-                        category_predictions[med] = predictions[
-                            "medication_predictions"
-                        ][med]
+                        category_predictions[med] = predictions["medication_predictions"][med]
 
                 if category_predictions:
                     categorized_predictions[category] = category_predictions
@@ -169,9 +167,7 @@ class PharmacogenomicsService:
 
                 top_by_category[category] = {
                     "top_medication": sorted_meds[0],
-                    "score": medication_predictions[sorted_meds[0]][
-                        "effectiveness_score"
-                    ],
+                    "score": medication_predictions[sorted_meds[0]]["effectiveness_score"],
                     "category": category,
                 }
 
@@ -226,9 +222,7 @@ class PharmacogenomicsService:
             genetic_markers = patient_data.get("genetic_markers", {})
 
             # Analyze gene-medication interactions
-            interactions = await self.model.analyze_gene_medication_interactions(
-                genetic_markers
-            )
+            interactions = await self.model.analyze_gene_medication_interactions(genetic_markers)
 
             # Group interactions by medication
             interactions_by_medication = {}
@@ -247,9 +241,7 @@ class PharmacogenomicsService:
             interactions["interactions_by_medication"] = interactions_by_medication
 
             # Generate summary recommendations
-            interactions[
-                "recommendations"
-            ] = await self._generate_interaction_recommendations(
+            interactions["recommendations"] = await self._generate_interaction_recommendations(
                 interactions["gene_medication_interactions"]
             )
 
@@ -257,9 +249,7 @@ class PharmacogenomicsService:
 
         except Exception as e:
             logging.error(f"Error analyzing gene-medication interactions: {e!s}")
-            raise ModelExecutionError(
-                f"Failed to analyze gene-medication interactions: {e!s}"
-            )
+            raise ModelExecutionError(f"Failed to analyze gene-medication interactions: {e!s}")
 
     async def _generate_interaction_recommendations(
         self, interactions: list[dict[str, Any]]
@@ -304,8 +294,7 @@ class PharmacogenomicsService:
             # Generate recommendation for each variant
             for variant, variant_interactions in interactions_by_variant.items():
                 medications = [
-                    interaction.get("medication")
-                    for interaction in variant_interactions
+                    interaction.get("medication") for interaction in variant_interactions
                 ]
                 medications = [med for med in medications if med]
 
@@ -347,9 +336,7 @@ class PharmacogenomicsService:
                 raise ValidationError("Patient data must include genetic markers")
 
             if not medications:
-                raise ValidationError(
-                    "No medications specified for side effect prediction"
-                )
+                raise ValidationError("No medications specified for side effect prediction")
 
             # Get side effect predictions for each medication
             side_effect_predictions = {}
@@ -364,9 +351,7 @@ class PharmacogenomicsService:
                 side_effect_predictions[medication] = prediction
 
             # Identify common side effects across medications
-            common_effects = await self._identify_common_side_effects(
-                side_effect_predictions
-            )
+            common_effects = await self._identify_common_side_effects(side_effect_predictions)
 
             # Generate summary insights
             insights = await self._generate_side_effect_insights(
@@ -413,9 +398,7 @@ class PharmacogenomicsService:
                         }
 
                     all_effects[effect_name]["medications"].append(medication)
-                    all_effects[effect_name]["probabilities"].append(
-                        effect.get("probability", 0)
-                    )
+                    all_effects[effect_name]["probabilities"].append(effect.get("probability", 0))
 
                     for gene in effect.get("genetic_factors", []):
                         all_effects[effect_name]["genetic_factors"].add(gene)
@@ -427,8 +410,7 @@ class PharmacogenomicsService:
             if len(data["medications"]) > 1:
                 common_effects[effect] = {
                     "medications": data["medications"],
-                    "average_probability": sum(data["probabilities"])
-                    / len(data["probabilities"]),
+                    "average_probability": sum(data["probabilities"]) / len(data["probabilities"]),
                     "max_probability": max(data["probabilities"]),
                     "genetic_factors": list(data["genetic_factors"]),
                     "count": len(data["medications"]),
@@ -476,9 +458,7 @@ class PharmacogenomicsService:
             if data["genetic_factors"]:
                 genes = data["genetic_factors"]
                 gene_text = (
-                    f"{', '.join(genes[:-1])} and {genes[-1]}"
-                    if len(genes) > 1
-                    else genes[0]
+                    f"{', '.join(genes[:-1])} and {genes[-1]}" if len(genes) > 1 else genes[0]
                 )
                 insight_text += f", influenced by {gene_text} genetic factors"
 
@@ -638,9 +618,7 @@ class PharmacogenomicsService:
                 "diagnosis": diagnosis,
                 "current_medications": current_medications,
                 "medication_predictions": predictions.get("medication_predictions", {}),
-                "gene_interactions": interactions.get(
-                    "gene_medication_interactions", []
-                ),
+                "gene_interactions": interactions.get("gene_medication_interactions", []),
                 "recommendations": recommendations,
                 "generated_at": datetime.now(UTC).isoformat(),
             }
@@ -733,9 +711,7 @@ class PharmacogenomicsService:
                         recommendation_text = interaction.get("recommendation")
 
                         if gene and variant and recommendation_text:
-                            interaction_texts.append(
-                                f"{gene} {variant}: {recommendation_text}"
-                            )
+                            interaction_texts.append(f"{gene} {variant}: {recommendation_text}")
 
                     recommendation["dosing_guidance"] = interaction_texts
 
@@ -751,9 +727,7 @@ class PharmacogenomicsService:
 
         if first_line:
             # Check for high effectiveness first line options
-            high_effectiveness = [
-                med for med in first_line if med["effectiveness_score"] >= 0.7
-            ]
+            high_effectiveness = [med for med in first_line if med["effectiveness_score"] >= 0.7]
 
             if high_effectiveness:
                 for med in high_effectiveness[:2]:  # Top 2
@@ -784,9 +758,7 @@ class PharmacogenomicsService:
 
         if second_line:
             # Check for high effectiveness second line options
-            high_effectiveness = [
-                med for med in second_line if med["effectiveness_score"] >= 0.7
-            ]
+            high_effectiveness = [med for med in second_line if med["effectiveness_score"] >= 0.7]
 
             if high_effectiveness:
                 med = high_effectiveness[0]

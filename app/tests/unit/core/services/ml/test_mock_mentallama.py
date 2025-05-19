@@ -17,9 +17,9 @@ from app.core.exceptions import (
     ServiceUnavailableError,
 )
 from app.domain.utils.datetime_utils import UTC
-from app.infrastructure.ml.mentallama.mock import (
+from app.infrastructure.ml.mentallama.mock import (  # Corrected import path
     MockMentaLLaMA,
-)  # Corrected import path
+)
 
 
 @pytest.fixture(scope="function")
@@ -204,9 +204,7 @@ class TestMockMentaLLaMA:
         twin_id = twin_result["digital_twin_id"]
 
         # Create a session with the digital twin
-        session_result = self.service.create_digital_twin_session(
-            twin_id, session_type="therapy"
-        )
+        session_result = self.service.create_digital_twin_session(twin_id, session_type="therapy")
         assert "session_id" in session_result
         session_id = session_result["session_id"]
 

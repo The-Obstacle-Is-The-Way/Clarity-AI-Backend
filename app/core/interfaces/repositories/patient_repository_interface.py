@@ -30,9 +30,7 @@ class IPatientRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_patient(
-        self, patient_id: str | UUID
-    ) -> dict[str, Any] | None:
+    async def get_patient(self, patient_id: str | UUID) -> dict[str, Any] | None:
         """
         Get a patient by ID.
 
@@ -74,9 +72,7 @@ class IPatientRepository(ABC):
         pass
 
     @abstractmethod
-    async def list_patients(
-        self, query: dict[str, Any] | None = None
-    ) -> list[dict[str, Any]]:
+    async def list_patients(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """
         List all patients, optionally filtered by query.
 

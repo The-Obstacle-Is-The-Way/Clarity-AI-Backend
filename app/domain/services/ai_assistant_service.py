@@ -425,9 +425,7 @@ class AIAssistantService:
             "ai_model_version": "NovaMind-Research-2.0",
         }
 
-    def _is_provider_authorized_for_patient(
-        self, provider_id: UUID, patient_id: UUID
-    ) -> bool:
+    def _is_provider_authorized_for_patient(self, provider_id: UUID, patient_id: UUID) -> bool:
         """
         Check if a provider is authorized to access a patient's data
 

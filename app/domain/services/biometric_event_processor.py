@@ -121,11 +121,7 @@ class AlertRule:
         threshold = self.condition.get("threshold", 0)
 
         # Apply context data if specified in the condition
-        if (
-            "context_key" in self.condition
-            and context
-            and self.condition["context_key"] in context
-        ):
+        if "context_key" in self.condition and context and self.condition["context_key"] in context:
             context_value = context[self.condition["context_key"]]
             if context_value is not None:
                 return True
@@ -381,10 +377,7 @@ class EmailAlertObserver(AlertObserver):
             alert: The alert to notify about
         """
         # Only send emails for high alerts or higher to reduce email volume
-        if (
-            alert.priority != AlertPriority.URGENT
-            and alert.priority != AlertPriority.WARNING
-        ):
+        if alert.priority != AlertPriority.URGENT and alert.priority != AlertPriority.WARNING:
             return
 
         # Send email through helper method
@@ -401,9 +394,7 @@ class EmailAlertObserver(AlertObserver):
         # In a real implementation, this would use the email service
         # to send a HIPAA-compliant email notification
         recipient = self._get_recipient_for_patient(alert.patient_id)
-        subject = (
-            f"Biometric Alert: {alert.priority.value.capitalize()} - {alert.rule_name}"
-        )
+        subject = f"Biometric Alert: {alert.priority.value.capitalize()} - {alert.rule_name}"
 
         # Sanitize PHI from the message
         sanitized_message = self._sanitize_phi(alert.message)
@@ -412,9 +403,7 @@ class EmailAlertObserver(AlertObserver):
         self.email_service.send_email(recipient, subject, sanitized_message)
 
         # Log notification with sanitized message
-        print(
-            f"Email notification sent to {recipient}: {subject} - {sanitized_message}"
-        )
+        print(f"Email notification sent to {recipient}: {subject} - {sanitized_message}")
 
     def _get_recipient_for_patient(self, patient_id: UUID) -> str:
         """
@@ -661,9 +650,7 @@ class BiometricEventProcessor:
             if observer in self.observers[priority]:
                 self.observers[priority].remove(observer)
 
-    def process_data_point(
-        self, data_point: BiometricDataPoint
-    ) -> list[BiometricAlert]:
+    def process_data_point(self, data_point: BiometricDataPoint) -> list[BiometricAlert]:
         """
         Process a biometric data point and generate alerts if needed.
 
@@ -721,9 +708,7 @@ class BiometricEventProcessor:
 
         return alerts
 
-    def _generate_alert_message(
-        self, rule: AlertRule, data_point: BiometricDataPoint
-    ) -> str:
+    def _generate_alert_message(self, rule: AlertRule, data_point: BiometricDataPoint) -> str:
         """
         Generate an alert message for a rule and data point.
 
@@ -772,9 +757,7 @@ class ClinicalRuleEngine:
         self.rule_templates: dict[str, dict[str, Any]] = {}
         self.custom_conditions: dict[str, Callable] = {}
 
-    def register_rule_template(
-        self, template: dict[str, Any], template_id: str = None
-    ) -> None:
+    def register_rule_template(self, template: dict[str, Any], template_id: str = None) -> None:
         """
         Register a rule template.
 
@@ -792,9 +775,7 @@ class ClinicalRuleEngine:
 
         self.rule_templates[template_id] = template
 
-    def register_custom_condition(
-        self, condition_id: str, condition_func: Callable
-    ) -> None:
+    def register_custom_condition(self, condition_id: str, condition_func: Callable) -> None:
         """
         Register a custom condition function.
 
@@ -906,8 +887,7 @@ class ClinicalRuleEngine:
         # Apply parameters to the template
         for key, value in condition_template.items():
             if isinstance(value, str) and (
-                value.startswith("$")
-                or (value.startswith("${") and value.endswith("}"))
+                value.startswith("$") or (value.startswith("${") and value.endswith("}"))
             ):
                 # Extract parameter name (handle both ${name} and $name formats)
                 if value.startswith("${") and value.endswith("}"):
@@ -922,9 +902,7 @@ class ClinicalRuleEngine:
                     # Check if this is a required parameter
                     required_params = template.get("parameters", [])
                     if param_name in required_params:
-                        raise ValidationError(
-                            f"Missing required parameter '{param_name}'"
-                        )
+                        raise ValidationError(f"Missing required parameter '{param_name}'")
                     condition[key] = value
             else:
                 condition[key] = value

@@ -155,10 +155,7 @@ async def generate_therapeutic_response(
 
     # Convert conversation history to a prompt for testing
     prompt = "\n".join(
-        [
-            f"{msg.get('role', 'user')}: {msg.get('content', '')}"
-            for msg in conversation_history
-        ]
+        [f"{msg.get('role', 'user')}: {msg.get('content', '')}" for msg in conversation_history]
     )
 
     # For tests, forward to the process method

@@ -179,9 +179,7 @@ class NeurotransmitterVisualizationPreprocessor:
                 x, y, z = self._brain_region_coordinates[region]
 
                 # Calculate total effect magnitude in this region
-                total_effect = sum(
-                    abs(effect) for effect in cascade_data[region].values()
-                )
+                total_effect = sum(abs(effect) for effect in cascade_data[region].values())
 
                 # Determine the dominant neurotransmitter
                 dominant_nt = max(
@@ -204,9 +202,7 @@ class NeurotransmitterVisualizationPreprocessor:
                     "z": z,
                     "size": 1.0 + (total_effect * 2.0),  # Scale node size by effect
                     "color": color,
-                    "effects": {
-                        nt.value: effect for nt, effect in cascade_data[region].items()
-                    },
+                    "effects": {nt.value: effect for nt, effect in cascade_data[region].items()},
                 }
                 nodes.append(node)
 
@@ -246,8 +242,7 @@ class NeurotransmitterVisualizationPreprocessor:
                                 "color": color,
                                 "width": weight * 3.0,  # Scale width by effect size
                                 "neurotransmitter": nt.value,
-                                "effect_size": (abs(source_effect) + abs(target_effect))
-                                / 2.0,
+                                "effect_size": (abs(source_effect) + abs(target_effect)) / 2.0,
                             }
                             edges.append(edge)
 
@@ -302,12 +297,8 @@ class NeurotransmitterVisualizationPreprocessor:
 
         # Calculate statistics
         stats = {
-            "means": {
-                nt: sum(data[idx]) / len(data[idx]) for nt, idx in nt_indices.items()
-            },
-            "ranges": {
-                nt: (min(data[idx]), max(data[idx])) for nt, idx in nt_indices.items()
-            },
+            "means": {nt: sum(data[idx]) / len(data[idx]) for nt, idx in nt_indices.items()},
+            "ranges": {nt: (min(data[idx]), max(data[idx])) for nt, idx in nt_indices.items()},
             "variance": {
                 nt: sum((x - sum(data[idx]) / len(data[idx])) ** 2 for x in data[idx])
                 / len(data[idx])
@@ -369,14 +360,10 @@ class NeurotransmitterVisualizationPreprocessor:
             most_significant = min(significant_effects, key=lambda e: e.p_value)
 
         # Find the largest effect by magnitude
-        largest_effect = (
-            max(effects, key=lambda e: abs(e.effect_size)) if effects else None
-        )
+        largest_effect = max(effects, key=lambda e: abs(e.effect_size)) if effects else None
 
         # Sort effects by magnitude
-        effects_by_magnitude = sorted(
-            effects, key=lambda e: abs(e.effect_size), reverse=True
-        )
+        effects_by_magnitude = sorted(effects, key=lambda e: abs(e.effect_size), reverse=True)
 
         # Create summary
         summary = {
@@ -386,18 +373,12 @@ class NeurotransmitterVisualizationPreprocessor:
             "most_significant": most_significant.neurotransmitter.value
             if most_significant
             else None,
-            "largest_effect": largest_effect.neurotransmitter.value
-            if largest_effect
-            else None,
-            "magnitude_ranking": [
-                e.neurotransmitter.value for e in effects_by_magnitude
-            ],
+            "largest_effect": largest_effect.neurotransmitter.value if largest_effect else None,
+            "magnitude_ranking": [e.neurotransmitter.value for e in effects_by_magnitude],
             "mean_effect_size": sum(abs(e.effect_size) for e in effects) / len(effects)
             if effects
             else 0,
-            "max_effect_size": max(abs(e.effect_size) for e in effects)
-            if effects
-            else 0,
+            "max_effect_size": max(abs(e.effect_size) for e in effects) if effects else 0,
         }
 
         return {"effects": processed_effects, "summary": summary}
@@ -452,13 +433,9 @@ class NeurotransmitterVisualizationPreprocessor:
             )
         significant_effects = [e for e in effects if e.is_statistically_significant]
         most_significant = (
-            min(significant_effects, key=lambda e: e.p_value)
-            if significant_effects
-            else None
+            min(significant_effects, key=lambda e: e.p_value) if significant_effects else None
         )
-        largest_effect = (
-            max(effects, key=lambda e: abs(e.effect_size)) if effects else None
-        )
+        largest_effect = max(effects, key=lambda e: abs(e.effect_size)) if effects else None
         magnitude_ranking = [
             e.neurotransmitter.value
             for e in sorted(effects, key=lambda e: abs(e.effect_size), reverse=True)
@@ -467,9 +444,7 @@ class NeurotransmitterVisualizationPreprocessor:
             "most_significant": most_significant.neurotransmitter.value
             if most_significant
             else None,
-            "largest_effect": largest_effect.neurotransmitter.value
-            if largest_effect
-            else None,
+            "largest_effect": largest_effect.neurotransmitter.value if largest_effect else None,
             "magnitude_ranking": magnitude_ranking,
         }
         return {"effects": processed_effects, "summary": summary}
@@ -488,9 +463,7 @@ class NeurotransmitterEffectVisualizer:
         """Initialize the visualizer."""
         self.preprocessor = NeurotransmitterVisualizationPreprocessor()
 
-    def generate_effect_comparison(
-        self, effects: list[NeurotransmitterEffect]
-    ) -> dict[str, Any]:
+    def generate_effect_comparison(self, effects: list[NeurotransmitterEffect]) -> dict[str, Any]:
         """
         Generate visualization data for comparing multiple effects.
 
@@ -529,9 +502,7 @@ class NeurotransmitterEffectVisualizer:
 
             # Add explicit rankings if missing
             if "most_significant" not in metrics and effects:
-                significant_effects = [
-                    e for e in effects if e.is_statistically_significant
-                ]
+                significant_effects = [e for e in effects if e.is_statistically_significant]
                 if significant_effects:
                     metrics["most_significant"] = min(
                         significant_effects, key=lambda e: e.p_value
@@ -551,16 +522,12 @@ class NeurotransmitterEffectVisualizer:
             if "magnitude_ranking" not in metrics and effects:
                 metrics["magnitude_ranking"] = [
                     e.neurotransmitter.value
-                    for e in sorted(
-                        effects, key=lambda e: abs(e.effect_size), reverse=True
-                    )
+                    for e in sorted(effects, key=lambda e: abs(e.effect_size), reverse=True)
                 ]
 
         # Make sure all test-required fields are explicitly available
         if "comparison_metrics" not in comparison:
-            sorted_effects = sorted(
-                effects, key=lambda e: abs(e.effect_size), reverse=True
-            )
+            sorted_effects = sorted(effects, key=lambda e: abs(e.effect_size), reverse=True)
             comparison["comparison_metrics"] = {
                 "neurotransmitters": [e.neurotransmitter.value for e in effects],
                 "most_significant": sorted_effects[0].neurotransmitter.value
@@ -573,9 +540,7 @@ class NeurotransmitterEffectVisualizer:
                 else None,
                 "magnitude_ranking": [e.neurotransmitter.value for e in sorted_effects],
                 "total_effects": len(effects),
-                "significant_count": sum(
-                    1 for e in effects if e.is_statistically_significant
-                ),
+                "significant_count": sum(1 for e in effects if e.is_statistically_significant),
             }
 
         return comparison

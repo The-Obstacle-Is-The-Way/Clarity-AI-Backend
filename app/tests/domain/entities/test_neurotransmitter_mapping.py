@@ -117,18 +117,10 @@ def test_get_profiles_by_neurotransmitter():
     mapping.add_receptor_profile(gaba_profile)
 
     # Get profiles by neurotransmitter
-    serotonin_profiles = mapping.get_receptor_profiles(
-        neurotransmitter=Neurotransmitter.SEROTONIN
-    )
-    dopamine_profiles = mapping.get_receptor_profiles(
-        neurotransmitter=Neurotransmitter.DOPAMINE
-    )
-    gaba_profiles = mapping.get_receptor_profiles(
-        neurotransmitter=Neurotransmitter.GABA
-    )
-    glutamate_profiles = mapping.get_receptor_profiles(
-        neurotransmitter=Neurotransmitter.GLUTAMATE
-    )
+    serotonin_profiles = mapping.get_receptor_profiles(neurotransmitter=Neurotransmitter.SEROTONIN)
+    dopamine_profiles = mapping.get_receptor_profiles(neurotransmitter=Neurotransmitter.DOPAMINE)
+    gaba_profiles = mapping.get_receptor_profiles(neurotransmitter=Neurotransmitter.GABA)
+    glutamate_profiles = mapping.get_receptor_profiles(neurotransmitter=Neurotransmitter.GLUTAMATE)
 
     # Verify results
     assert len(serotonin_profiles) == 1
@@ -193,16 +185,10 @@ def test_get_profiles_by_brain_region():
     mapping.add_receptor_profile(hippocampus_profile)
 
     # Get profiles by brain region
-    pfc_profiles = mapping.get_receptor_profiles(
-        brain_region=BrainRegion.PREFRONTAL_CORTEX
-    )
+    pfc_profiles = mapping.get_receptor_profiles(brain_region=BrainRegion.PREFRONTAL_CORTEX)
     amygdala_profiles = mapping.get_receptor_profiles(brain_region=BrainRegion.AMYGDALA)
-    hippocampus_profiles = mapping.get_receptor_profiles(
-        brain_region=BrainRegion.HIPPOCAMPUS
-    )
-    pituitary_profiles = mapping.get_receptor_profiles(
-        brain_region=BrainRegion.PITUITARY
-    )
+    hippocampus_profiles = mapping.get_receptor_profiles(brain_region=BrainRegion.HIPPOCAMPUS)
+    pituitary_profiles = mapping.get_receptor_profiles(brain_region=BrainRegion.PITUITARY)
 
     # Verify results
     assert len(pfc_profiles) == 2
@@ -292,16 +278,10 @@ def test_create_default_mapping():
     assert len(mapping.receptor_profiles) > 0
 
     # Check that all major brain regions and neurotransmitters are represented
-    pfc_profiles = mapping.get_receptor_profiles(
-        brain_region=BrainRegion.PREFRONTAL_CORTEX
-    )
+    pfc_profiles = mapping.get_receptor_profiles(brain_region=BrainRegion.PREFRONTAL_CORTEX)
     amygdala_profiles = mapping.get_receptor_profiles(brain_region=BrainRegion.AMYGDALA)
-    hippocampus_profiles = mapping.get_receptor_profiles(
-        brain_region=BrainRegion.HIPPOCAMPUS
-    )
-    pituitary_profiles = mapping.get_receptor_profiles(
-        brain_region=BrainRegion.PITUITARY
-    )
+    hippocampus_profiles = mapping.get_receptor_profiles(brain_region=BrainRegion.HIPPOCAMPUS)
+    pituitary_profiles = mapping.get_receptor_profiles(brain_region=BrainRegion.PITUITARY)
 
     assert len(pfc_profiles) > 0
     assert len(amygdala_profiles) > 0

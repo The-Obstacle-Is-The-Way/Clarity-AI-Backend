@@ -72,26 +72,18 @@ class PATRepository:
                 os.makedirs(patient_dir, exist_ok=True)
 
                 # Create analysis type subdirectory
-                analysis_type_dir = os.path.join(
-                    patient_dir, result.analysis_type.value
-                )
+                analysis_type_dir = os.path.join(patient_dir, result.analysis_type.value)
                 os.makedirs(analysis_type_dir, exist_ok=True)
 
                 # Save result to file
-                file_path = os.path.join(
-                    analysis_type_dir, f"{result.analysis_id}.json"
-                )
+                file_path = os.path.join(analysis_type_dir, f"{result.analysis_id}.json")
             else:
                 # Create analysis type subdirectory in anonymous directory
-                analysis_type_dir = os.path.join(
-                    self.anonymous_dir, result.analysis_type.value
-                )
+                analysis_type_dir = os.path.join(self.anonymous_dir, result.analysis_type.value)
                 os.makedirs(analysis_type_dir, exist_ok=True)
 
                 # Save result to file
-                file_path = os.path.join(
-                    analysis_type_dir, f"{result.analysis_id}.json"
-                )
+                file_path = os.path.join(analysis_type_dir, f"{result.analysis_id}.json")
 
             # Convert result to dictionary
             result_dict = result.model_dump()
@@ -138,17 +130,13 @@ class PATRepository:
                             result_dict = json.load(f)
 
                         # Convert ISO format strings to datetime objects
-                        result_dict["timestamp"] = datetime.fromisoformat(
-                            result_dict["timestamp"]
-                        )
+                        result_dict["timestamp"] = datetime.fromisoformat(result_dict["timestamp"])
 
                         return AnalysisResult(**result_dict)
 
             # If not found in patient directory or patient ID not provided, look in anonymous directory
             for analysis_type in AnalysisTypeEnum:
-                analysis_type_dir = os.path.join(
-                    self.anonymous_dir, analysis_type.value
-                )
+                analysis_type_dir = os.path.join(self.anonymous_dir, analysis_type.value)
                 file_path = os.path.join(analysis_type_dir, f"{analysis_id}.json")
 
                 if os.path.exists(file_path):
@@ -156,9 +144,7 @@ class PATRepository:
                         result_dict = json.load(f)
 
                     # Convert ISO format strings to datetime objects
-                    result_dict["timestamp"] = datetime.fromisoformat(
-                        result_dict["timestamp"]
-                    )
+                    result_dict["timestamp"] = datetime.fromisoformat(result_dict["timestamp"])
 
                     return AnalysisResult(**result_dict)
 
@@ -269,9 +255,7 @@ class PATRepository:
             logger.error(f"Error retrieving patient analysis results: {e}")
             raise RepositoryError(f"Failed to retrieve patient analysis results: {e}")
 
-    async def delete_analysis_result(
-        self, analysis_id: str, patient_id: str | None = None
-    ) -> bool:
+    async def delete_analysis_result(self, analysis_id: str, patient_id: str | None = None) -> bool:
         """
         Delete an analysis result.
 
@@ -294,23 +278,17 @@ class PATRepository:
 
                     if os.path.exists(file_path):
                         os.remove(file_path)
-                        logger.info(
-                            f"Deleted analysis result {analysis_id} from {file_path}"
-                        )
+                        logger.info(f"Deleted analysis result {analysis_id} from {file_path}")
                         return True
 
             # If not found in patient directory or patient ID not provided, look in anonymous directory
             for analysis_type in AnalysisTypeEnum:
-                analysis_type_dir = os.path.join(
-                    self.anonymous_dir, analysis_type.value
-                )
+                analysis_type_dir = os.path.join(self.anonymous_dir, analysis_type.value)
                 file_path = os.path.join(analysis_type_dir, f"{analysis_id}.json")
 
                 if os.path.exists(file_path):
                     os.remove(file_path)
-                    logger.info(
-                        f"Deleted analysis result {analysis_id} from {file_path}"
-                    )
+                    logger.info(f"Deleted analysis result {analysis_id} from {file_path}")
                     return True
 
             # If not found anywhere, return False

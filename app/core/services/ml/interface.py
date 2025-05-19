@@ -69,9 +69,7 @@ class MentaLLaMAInterface(BaseMLInterface):
         pass
 
     @abstractmethod
-    def detect_depression(
-        self, text: str, options: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def detect_depression(self, text: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Detect depression signals in text.
 
@@ -126,9 +124,7 @@ class DigitalTwinInterface(BaseMLInterface):
     """Interface for Digital Twin services."""
 
     @abstractmethod
-    def create_digital_twin(
-        self, patient_id: str, initial_data: dict[str, Any]
-    ) -> dict[str, Any]:
+    def create_digital_twin(self, patient_id: str, initial_data: dict[str, Any]) -> dict[str, Any]:
         """
         Create a new digital twin for a patient.
 

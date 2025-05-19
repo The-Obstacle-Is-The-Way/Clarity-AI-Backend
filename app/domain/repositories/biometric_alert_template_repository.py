@@ -64,9 +64,7 @@ class BiometricAlertTemplateRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_templates_by_metric_type(
-        self, metric_type: str
-    ) -> list[dict[str, Any]]:
+    async def get_templates_by_metric_type(self, metric_type: str) -> list[dict[str, Any]]:
         """
         Retrieve templates filtered by metric type.
 

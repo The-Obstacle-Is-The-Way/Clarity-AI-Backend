@@ -20,9 +20,7 @@ class IEncryptionService(ABC):
     """
 
     @abstractmethod
-    def encrypt(
-        self, data: str | bytes, context: dict[str, Any] | None = None
-    ) -> bytes:
+    def encrypt(self, data: str | bytes, context: dict[str, Any] | None = None) -> bytes:
         """
         Encrypt data with optional context.
 
@@ -36,9 +34,7 @@ class IEncryptionService(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def decrypt(
-        self, encrypted_data: bytes, context: dict[str, Any] | None = None
-    ) -> bytes:
+    def decrypt(self, encrypted_data: bytes, context: dict[str, Any] | None = None) -> bytes:
         """
         Decrypt previously encrypted data with optional context.
 

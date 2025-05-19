@@ -97,9 +97,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
     """Test suite for the RetrieveAggregatedAnalyticsUseCase."""
 
     @pytest.mark.asyncio
-    async def test_execute_with_basic_parameters(
-        self, use_case, mock_analytics_repository
-    ):
+    async def test_execute_with_basic_parameters(self, use_case, mock_analytics_repository):
         """
         Test retrieving aggregates with basic parameters.
         """
@@ -110,16 +108,12 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         # Configure mock to return sample aggregates
         mock_analytics_repository.get_aggregates = AsyncMock(
             return_value=[
-                AnalyticsAggregate(
-                    dimensions={"event_type": "page_view"}, metrics={"count": 42}
-                )
+                AnalyticsAggregate(dimensions={"event_type": "page_view"}, metrics={"count": 42})
             ]
         )
 
         # Act
-        result = await use_case.execute(
-            aggregate_type=aggregate_type, dimensions=dimensions
-        )
+        result = await use_case.execute(aggregate_type=aggregate_type, dimensions=dimensions)
 
         # Assert
         assert len(result) == 1
@@ -267,9 +261,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         assert isinstance(call_args["filters"]["platform"], str)
 
     @pytest.mark.asyncio
-    async def test_caching_behavior(
-        self, use_case, mock_analytics_repository, mock_cache_service
-    ):
+    async def test_caching_behavior(self, use_case, mock_analytics_repository, mock_cache_service):
         """
         Test that results are cached and cache is used on subsequent requests.
         """
@@ -280,9 +272,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         # Make sure the mock returns a predictable result
         mock_analytics_repository.get_aggregates = AsyncMock(
             return_value=[
-                AnalyticsAggregate(
-                    dimensions={"event_type": "page_view"}, metrics={"count": 42}
-                )
+                AnalyticsAggregate(dimensions={"event_type": "page_view"}, metrics={"count": 42})
             ]
         )
 
@@ -290,9 +280,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         mock_cache_service.set = AsyncMock(return_value=True)
 
         # First call should hit repository
-        result1 = await use_case.execute(
-            aggregate_type=aggregate_type, dimensions=dimensions
-        )
+        result1 = await use_case.execute(aggregate_type=aggregate_type, dimensions=dimensions)
 
         # Verify repository was called
         assert mock_analytics_repository.get_aggregates.called
@@ -305,16 +293,12 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         # The cached data should be actual AnalyticsAggregate objects
         mock_cache_service.get = AsyncMock(
             return_value=[
-                AnalyticsAggregate(
-                    dimensions={"event_type": "cached_event"}, metrics={"count": 99}
-                )
+                AnalyticsAggregate(dimensions={"event_type": "cached_event"}, metrics={"count": 99})
             ]
         )
 
         # Second call should use cache
-        result2 = await use_case.execute(
-            aggregate_type=aggregate_type, dimensions=dimensions
-        )
+        result2 = await use_case.execute(aggregate_type=aggregate_type, dimensions=dimensions)
 
         # Repository should not be called for second request
         assert not mock_analytics_repository.get_aggregates.called
@@ -338,13 +322,9 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         realtime_range = (now - timedelta(minutes=30), now)
 
         # Act - get TTL for each range
-        historical_ttl = use_case._get_cache_ttl(
-            "count", historical_range[0], historical_range[1]
-        )
+        historical_ttl = use_case._get_cache_ttl("count", historical_range[0], historical_range[1])
         recent_ttl = use_case._get_cache_ttl("count", recent_range[0], recent_range[1])
-        realtime_ttl = use_case._get_cache_ttl(
-            "count", realtime_range[0], realtime_range[1]
-        )
+        realtime_ttl = use_case._get_cache_ttl("count", realtime_range[0], realtime_range[1])
 
         # Assert
         assert historical_ttl == 60 * 60  # 1 hour for historical data
@@ -407,9 +387,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         assert call_args["dimensions"] == ["event_type"]
 
     @pytest.mark.asyncio
-    async def test_very_large_time_range_limit(
-        self, use_case, mock_analytics_repository
-    ):
+    async def test_very_large_time_range_limit(self, use_case, mock_analytics_repository):
         """
         Test limiting of very large time ranges.
         """

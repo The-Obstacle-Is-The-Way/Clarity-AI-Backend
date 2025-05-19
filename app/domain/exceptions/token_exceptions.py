@@ -31,18 +31,14 @@ class InvalidTokenException(TokenException):
 class TokenExpiredException(TokenException):
     """Raised when a token has expired."""
 
-    def __init__(
-        self, message: str = "Authentication token has expired", *args, **kwargs
-    ):
+    def __init__(self, message: str = "Authentication token has expired", *args, **kwargs):
         super().__init__(message, status_code=401, *args, **kwargs)
 
 
 class TokenBlacklistedException(TokenException):
     """Raised when a token has been blacklisted."""
 
-    def __init__(
-        self, message: str = "Authentication token has been revoked", *args, **kwargs
-    ):
+    def __init__(self, message: str = "Authentication token has been revoked", *args, **kwargs):
         super().__init__(message, status_code=401, *args, **kwargs)
 
 
@@ -51,18 +47,14 @@ class TokenGenerationException(TokenException):
 
     status_code = 500  # Server error for generation issues
 
-    def __init__(
-        self, message: str = "Unable to generate authentication token", *args, **kwargs
-    ):
+    def __init__(self, message: str = "Unable to generate authentication token", *args, **kwargs):
         super().__init__(message, status_code=500, *args, **kwargs)
 
 
 class MissingTokenException(TokenException):
     """Raised when a token is required but not provided."""
 
-    def __init__(
-        self, message: str = "Authentication token is required", *args, **kwargs
-    ):
+    def __init__(self, message: str = "Authentication token is required", *args, **kwargs):
         super().__init__(message, status_code=401, *args, **kwargs)
 
 

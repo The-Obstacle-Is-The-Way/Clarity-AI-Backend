@@ -23,9 +23,7 @@ def create_standalone_app():
     @app.get("/direct-test/runtime-error")
     async def direct_runtime_error():
         """Test endpoint that raises a RuntimeError."""
-        raise RuntimeError(
-            "This is a sensitive internal error detail that should be masked"
-        )
+        raise RuntimeError("This is a sensitive internal error detail that should be masked")
 
     # Add specific handler for RuntimeError
     @app.exception_handler(RuntimeError)
@@ -78,6 +76,4 @@ async def test_direct_error_masking():
 
 if __name__ == "__main__":
     logger.debug("This should be run using pytest, not directly")
-    logger.debug(
-        "Use: python -m pytest app/tests/security/api/direct_endpoint_test.py -v"
-    )
+    logger.debug("Use: python -m pytest app/tests/security/api/direct_endpoint_test.py -v")

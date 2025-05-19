@@ -34,9 +34,7 @@ def test_s3_service(s3_service):
     # Verify we can perform operations
     test_key = "test/file.txt"
     test_content = b"test content"
-    s3_service.put_object(
-        bucket_name="novamind-test-bucket", key=test_key, body=test_content
-    )
+    s3_service.put_object(bucket_name="novamind-test-bucket", key=test_key, body=test_content)
     # Check that the object was stored - need to access the internal structure since there's no direct accessor
     assert "novamind-test-bucket" in s3_service._buckets
     assert test_key in s3_service._buckets["novamind-test-bucket"]

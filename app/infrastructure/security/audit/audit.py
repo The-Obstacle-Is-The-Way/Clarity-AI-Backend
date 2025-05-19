@@ -48,9 +48,7 @@ class AuditLogger:
         self.audit_log_file = self.settings.AUDIT_LOG_FILE
 
         # Default setting for external audit if not available in settings
-        self.external_audit_enabled = getattr(
-            self.settings, "EXTERNAL_AUDIT_ENABLED", False
-        )
+        self.external_audit_enabled = getattr(self.settings, "EXTERNAL_AUDIT_ENABLED", False)
 
         # Configure the audit logger
         self.logger = logging.getLogger(logger_name)
@@ -83,9 +81,7 @@ class AuditLogger:
                     exc_info=True,
                 )
         else:
-            logger.warning(
-                "AUDIT_LOG_FILE not set. Audit logs will not be written to a file."
-            )
+            logger.warning("AUDIT_LOG_FILE not set. Audit logs will not be written to a file.")
 
         # Add a console handler as well for visibility during development/debugging
         console_handler = logging.StreamHandler()

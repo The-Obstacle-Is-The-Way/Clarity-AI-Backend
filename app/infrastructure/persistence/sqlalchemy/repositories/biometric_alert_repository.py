@@ -97,9 +97,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
                 self.logger.debug(f"Successfully saved alert: {alert_model_id}")
                 return saved_entity
             except Exception as mapping_err:
-                self.logger.error(
-                    f"Error mapping model to entity after save: {mapping_err}"
-                )
+                self.logger.error(f"Error mapping model to entity after save: {mapping_err}")
                 raise RepositoryError(
                     f"Error mapping saved model to entity: {mapping_err}"
                 ) from mapping_err
@@ -130,9 +128,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             self.logger.debug(f"Retrieving alert by ID: {alert_id}")
 
             # Use modern SQLAlchemy 2.0 pattern with execute and select
-            query = select(BiometricAlertModel).where(
-                BiometricAlertModel.alert_id == str(alert_id)
-            )
+            query = select(BiometricAlertModel).where(BiometricAlertModel.alert_id == str(alert_id))
 
             try:
                 # Execute query and get scalar result
@@ -141,9 +137,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
 
                 if not alert_model:
                     self.logger.info(f"Alert with ID {alert_id} not found")
-                    raise EntityNotFoundError(
-                        f"Biometric alert with ID {alert_id} not found"
-                    )
+                    raise EntityNotFoundError(f"Biometric alert with ID {alert_id} not found")
 
                 # Direct mapping for test compatibility
                 if hasattr(alert_model, "__await__"):
@@ -228,9 +222,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
 
                 # Check if the result has an __await__ attribute (if it's a coroutine in tests)
                 if hasattr(scalars_result, "__await__"):
-                    self.logger.debug(
-                        "Scalars result is a coroutine, handling for tests"
-                    )
+                    self.logger.debug("Scalars result is a coroutine, handling for tests")
                     scalars_result = await scalars_result
 
                 # Get all items from the result
@@ -241,9 +233,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
                 else:
                     alert_models = all_method()
 
-                self.logger.debug(
-                    f"Found {len(alert_models)} alerts for patient {patient_id}"
-                )
+                self.logger.debug(f"Found {len(alert_models)} alerts for patient {patient_id}")
 
                 # Map database models to domain entities
                 entities = []
@@ -256,9 +246,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
                         entity = self._map_to_entity(model)
                         entities.append(entity)
                     except Exception as mapping_err:
-                        self.logger.error(
-                            f"Error mapping alert model to entity: {mapping_err}"
-                        )
+                        self.logger.error(f"Error mapping alert model to entity: {mapping_err}")
                         # Continue with other models even if one fails
 
                 return entities
@@ -271,9 +259,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
 
         except Exception as e:
             self.logger.error(f"Error retrieving alerts for patient {patient_id}: {e}")
-            raise RepositoryError(
-                f"Error retrieving biometric alerts by patient: {e!s}"
-            ) from e
+            raise RepositoryError(f"Error retrieving biometric alerts by patient: {e!s}") from e
 
     async def get_unacknowledged_alerts(
         self,
@@ -299,9 +285,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         """
         try:
             # Build the query for unacknowledged alerts
-            query = select(BiometricAlertModel).where(
-                BiometricAlertModel.acknowledged == False
-            )
+            query = select(BiometricAlertModel).where(BiometricAlertModel.acknowledged == False)
 
             if patient_id:
                 query = query.where(BiometricAlertModel.patient_id == str(patient_id))
@@ -343,16 +327,12 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         """
         try:
             # Use modern SQLAlchemy 2.0 pattern with execute and select
-            query = select(BiometricAlertModel).where(
-                BiometricAlertModel.alert_id == str(alert_id)
-            )
+            query = select(BiometricAlertModel).where(BiometricAlertModel.alert_id == str(alert_id))
             result = await self.session.execute(query)
             alert_model = result.scalar_one_or_none()
 
             if not alert_model:
-                raise EntityNotFoundError(
-                    f"Biometric alert with ID {alert_id} not found"
-                )
+                raise EntityNotFoundError(f"Biometric alert with ID {alert_id} not found")
 
             # Update the model
             alert_model.acknowledged = acknowledged
@@ -373,9 +353,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             raise
         except Exception as e:
             await self.session.rollback()
-            raise RepositoryError(
-                f"Error updating biometric alert status: {e!s}"
-            ) from e
+            raise RepositoryError(f"Error updating biometric alert status: {e!s}") from e
 
     async def count_unacknowledged_by_patient(
         self, patient_id: UUID, min_priority: AlertPriority | None = None
@@ -426,9 +404,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         """
         try:
             # Use modern SQLAlchemy 2.0 pattern with execute and select
-            query = select(BiometricAlertModel).where(
-                BiometricAlertModel.alert_id == str(alert_id)
-            )
+            query = select(BiometricAlertModel).where(BiometricAlertModel.alert_id == str(alert_id))
             result = await self.session.execute(query)
             alert_model = result.scalar_one_or_none()
 
@@ -468,9 +444,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             query = select(func.count(BiometricAlertModel.alert_id)).where(
                 BiometricAlertModel.patient_id == str(patient_id)
             )
-            query = self._apply_filters_for_count(
-                query, acknowledged, start_date, end_date
-            )
+            query = self._apply_filters_for_count(query, acknowledged, start_date, end_date)
 
             result = await self.session.execute(query)
             count = result.scalar_one_or_none()
@@ -529,9 +503,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
 
         # Handle the case where model is actually a Mock in tests
         if hasattr(model, "_extract_mock_name") and hasattr(model, "__class__"):
-            self.logger.debug(
-                "Detected a Mock object during mapping, handling specially"
-            )
+            self.logger.debug("Detected a Mock object during mapping, handling specially")
             # This is a mock - special case for testing
             try:
                 # In test scenarios, we allow some simplifications for mocked models
@@ -542,9 +514,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
 
                 # Handle UUID conversion safely
                 patient_id = UUID(patient_id_str) if patient_id_str else None
-                acknowledged_by = (
-                    UUID(acknowledged_by_str) if acknowledged_by_str else None
-                )
+                acknowledged_by = UUID(acknowledged_by_str) if acknowledged_by_str else None
 
                 return BiometricAlert(
                     alert_id=alert_id,
@@ -570,9 +540,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         try:
             # Handle UUID conversion safely
             patient_id = UUID(model.patient_id) if model.patient_id else None
-            acknowledged_by = (
-                UUID(model.acknowledged_by) if model.acknowledged_by else None
-            )
+            acknowledged_by = UUID(model.acknowledged_by) if model.acknowledged_by else None
 
             # Create entity with proper field mapping
             return BiometricAlert(
@@ -587,18 +555,14 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
                 message=model.message,
                 context=model.context,
                 created_at=model.created_at,
-                acknowledged=model.acknowledged
-                if model.acknowledged is not None
-                else False,
+                acknowledged=model.acknowledged if model.acknowledged is not None else False,
                 acknowledged_at=model.acknowledged_at,
                 acknowledged_by=acknowledged_by,
             )
         except Exception as e:
             # Log error details for debugging
             self.logger.error(f"Error mapping model to entity: {e!s}")
-            raise RepositoryError(
-                f"Failed to map database model to domain entity: {e!s}"
-            ) from e
+            raise RepositoryError(f"Failed to map database model to domain entity: {e!s}") from e
 
     def _map_to_model(self, entity: BiometricAlert) -> BiometricAlertModel:
         """
@@ -624,20 +588,14 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
                 context=entity.context or {},  # Ensure non-null dict
                 created_at=entity.created_at
                 or datetime.now(timezone.utc),  # Ensure non-null timestamp
-                acknowledged=entity.acknowledged
-                if entity.acknowledged is not None
-                else False,
+                acknowledged=entity.acknowledged if entity.acknowledged is not None else False,
                 acknowledged_at=entity.acknowledged_at,
-                acknowledged_by=str(entity.acknowledged_by)
-                if entity.acknowledged_by
-                else None,
+                acknowledged_by=str(entity.acknowledged_by) if entity.acknowledged_by else None,
             )
         except Exception as e:
             # Log error details for debugging
             self.logger.error(f"Error mapping entity to model: {e!s}")
-            raise RepositoryError(
-                f"Failed to map domain entity to database model: {e!s}"
-            ) from e
+            raise RepositoryError(f"Failed to map domain entity to database model: {e!s}") from e
 
     def _update_model(self, model: BiometricAlertModel, entity: BiometricAlert) -> None:
         """
@@ -656,18 +614,14 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             model.rule_id = entity.rule_id
             model.rule_name = entity.rule_name or ""  # Ensure non-null string
             model.priority = (
-                entity.priority.value
-                if hasattr(entity.priority, "value")
-                else str(entity.priority)
+                entity.priority.value if hasattr(entity.priority, "value") else str(entity.priority)
             )
             model.message = entity.message or ""  # Ensure non-null string
             model.context = entity.context or {}  # Ensure non-null dict
 
             # Update acknowledgment fields
             model.acknowledged = (
-                entity.acknowledged
-                if entity.acknowledged is not None
-                else model.acknowledged
+                entity.acknowledged if entity.acknowledged is not None else model.acknowledged
             )
 
             # Only update acknowledged_at if entity.acknowledged is True or acknowledged_at is explicitly set

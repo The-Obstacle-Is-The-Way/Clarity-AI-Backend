@@ -92,9 +92,7 @@ def patient_record() -> dict[str, Any]:
                 "route": "Oral",
             }
         ],
-        "allergies": [
-            {"substance": "Penicillin", "reaction": "Hives", "severity": "Moderate"}
-        ],
+        "allergies": [{"substance": "Penicillin", "reaction": "Hives", "severity": "Moderate"}],
         "insurance": {
             "provider": "Blue Cross Blue Shield",
             "policy_number": "BCB123456789",
@@ -131,29 +129,21 @@ class TestEncryptionService:
             MLEncryptionService,
         )
 
-        ml_encryption_service = MLEncryptionService(
-            direct_key="test_key_for_ml_unit_tests_only"
-        )
+        ml_encryption_service = MLEncryptionService(direct_key="test_key_for_ml_unit_tests_only")
 
         # Test encrypt_embeddings with a list
         encrypted_embedding = ml_encryption_service.encrypt_embeddings(embedding)
-        assert encrypted_embedding.startswith(
-            "ml-v1:"
-        ) or encrypted_embedding.startswith("v1:")
+        assert encrypted_embedding.startswith("ml-v1:") or encrypted_embedding.startswith("v1:")
         assert "0.123" not in encrypted_embedding
 
         # Test decrypt_embeddings
-        decrypted_embedding = ml_encryption_service.decrypt_embeddings(
-            encrypted_embedding
-        )
+        decrypted_embedding = ml_encryption_service.decrypt_embeddings(encrypted_embedding)
         assert decrypted_embedding == embedding
 
         # Test encrypt_tensor with numpy array
         tensor = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
         encrypted_tensor = ml_encryption_service.encrypt_tensor(tensor)
-        assert encrypted_tensor.startswith("ml-v1:") or encrypted_tensor.startswith(
-            "v1:"
-        )
+        assert encrypted_tensor.startswith("ml-v1:") or encrypted_tensor.startswith("v1:")
 
         # Test decrypt_tensor
         decrypted_tensor = ml_encryption_service.decrypt_tensor(encrypted_tensor)
@@ -221,12 +211,8 @@ class TestEncryptionService:
             MLEncryptionService,
         )
 
-        base_service = BaseEncryptionService(
-            direct_key="test_key_for_unit_tests_only_12345678"
-        )
-        ml_service = MLEncryptionService(
-            direct_key="test_key_for_unit_tests_only_12345678"
-        )
+        base_service = BaseEncryptionService(direct_key="test_key_for_unit_tests_only_12345678")
+        ml_service = MLEncryptionService(direct_key="test_key_for_unit_tests_only_12345678")
 
         # Test string -> encryption -> decryption -> string
         encrypted_string = base_service.encrypt_string(string_data)
@@ -250,9 +236,7 @@ class TestEncryptionService:
         decrypted_array = ml_service.decrypt_tensor(encrypted_array)
         assert np.array_equal(decrypted_array, array_data)
 
-    def test_encryption_is_non_deterministic_but_decrypts_correctly(
-        self, encryption_service
-    ):
+    def test_encryption_is_non_deterministic_but_decrypts_correctly(self, encryption_service):
         """Test that encryption is non-deterministic but decrypts correctly."""
         # Arrange
         original_data = "Sensitive patient data"
@@ -292,12 +276,8 @@ class TestEncryptionService:
     def test_different_keys(self):
         """Test that different encryption keys produce different outputs."""
         # Create two services with different keys using direct key injection
-        service1 = BaseEncryptionService(
-            direct_key="test_key_for_unit_tests_only_12345678"
-        )
-        service2 = BaseEncryptionService(
-            direct_key="different_test_key_for_unit_tests_456"
-        )
+        service1 = BaseEncryptionService(direct_key="test_key_for_unit_tests_only_12345678")
+        service2 = BaseEncryptionService(direct_key="different_test_key_for_unit_tests_456")
 
         # Create test data
         test_value = "HIPAA_PHI_TEST_DATA_123"
@@ -348,8 +328,7 @@ class TestEncryptionService:
         # Check that the error message contains useful information about the failure
         error_message = str(excinfo_invalid.value)
         assert any(
-            err in error_message
-            for err in ["Decryption failed", "Invalid token", "Invalid base64"]
+            err in error_message for err in ["Decryption failed", "Invalid token", "Invalid base64"]
         ), f"Unexpected error message: {error_message}"
 
         # Test None input handling
@@ -476,10 +455,7 @@ class TestEncryptionService:
     def test_type_conversion(self, encryption_service):
         """Test conversion of different types during encryption/decryption."""
         # Test integer
-        assert (
-            encryption_service.decrypt_string(encryption_service.encrypt_string(123))
-            == "123"
-        )
+        assert encryption_service.decrypt_string(encryption_service.encrypt_string(123)) == "123"
 
         # Test complex nested structure
         complex_data = {
@@ -566,10 +542,7 @@ class TestFieldEncryption:
         assert encrypted_record["vital_signs"]["weight"] == "75kg"
 
         # Verify decryption restores original values
-        assert (
-            decrypted_record["medical_record_number"]
-            == patient_record["medical_record_number"]
-        )
+        assert decrypted_record["medical_record_number"] == patient_record["medical_record_number"]
         assert (
             decrypted_record["demographics"]["name"]["first"]
             == patient_record["demographics"]["name"]["first"]
@@ -578,10 +551,7 @@ class TestFieldEncryption:
             decrypted_record["demographics"]["name"]["last"]
             == patient_record["demographics"]["name"]["last"]
         )
-        assert (
-            decrypted_record["demographics"]["ssn"]
-            == patient_record["demographics"]["ssn"]
-        )
+        assert decrypted_record["demographics"]["ssn"] == patient_record["demographics"]["ssn"]
 
         # Verify complex nested structures - address fields
         # Note: JSON serialization might convert some string numbers to integers,

@@ -78,9 +78,7 @@ class BiometricAlertService(AlertServiceInterface):
 
         return []
 
-    async def get_alert_by_id(
-        self, alert_id: str, user_id: str | None = None
-    ) -> Alert | None:
+    async def get_alert_by_id(self, alert_id: str, user_id: str | None = None) -> Alert | None:
         """
         Get a specific alert by ID.
 
@@ -173,9 +171,7 @@ class BiometricAlertService(AlertServiceInterface):
             return False, "", "Description is required"
 
         # Create a new random ID for testing
-        new_id = str(
-            UUID(int=int.from_bytes(UUID(patient_id).bytes, byteorder="big") + 1)
-        )
+        new_id = str(UUID(int=int.from_bytes(UUID(patient_id).bytes, byteorder="big") + 1))
 
         # For testing, just return success with the new ID
         return True, new_id, None
@@ -229,9 +225,7 @@ class BiometricAlertService(AlertServiceInterface):
         Returns:
             True if access is allowed, False otherwise
         """
-        logger.debug(
-            f"Validating access for provider {provider_id} to patient {patient_id}"
-        )
+        logger.debug(f"Validating access for provider {provider_id} to patient {patient_id}")
 
         # For testing, always return true
         return True

@@ -115,12 +115,8 @@ class BiometricAlertAuditService(AlertObserver):
             "priority": alert.priority.value,
             "acknowledged": alert.acknowledged,  # Use boolean acknowledged field
             "created_at": alert.created_at.isoformat(),
-            "acknowledged_at": alert.acknowledged_at.isoformat()
-            if alert.acknowledged_at
-            else None,
-            "acknowledged_by": str(alert.acknowledged_by)
-            if alert.acknowledged_by
-            else None,
+            "acknowledged_at": alert.acknowledged_at.isoformat() if alert.acknowledged_at else None,
+            "acknowledged_by": str(alert.acknowledged_by) if alert.acknowledged_by else None,
             # Potentially add data_point timestamp or type if safe and useful
             # "data_point_timestamp": alert.data_point.timestamp.isoformat() if alert.data_point else None,
             # "data_point_type": alert.data_point.data_type if alert.data_point else None,
@@ -193,6 +189,4 @@ class BiometricAlertAuditService(AlertObserver):
             criteria["end_date"] = end_date
 
         # Search the audit logs
-        return await self.audit_logger.search_events(
-            criteria=criteria, limit=limit, offset=offset
-        )
+        return await self.audit_logger.search_events(criteria=criteria, limit=limit, offset=offset)

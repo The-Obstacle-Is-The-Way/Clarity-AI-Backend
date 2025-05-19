@@ -137,9 +137,7 @@ class FloatListDecorator(types.TypeDecorator):
 
         # Ensure we have a list or sequence
         if not isinstance(value, (list, tuple, Sequence)):
-            raise ValueError(
-                f"Expected list, tuple or sequence, got {type(value)}: {value}"
-            )
+            raise ValueError(f"Expected list, tuple or sequence, got {type(value)}: {value}")
 
         # For PostgreSQL, return the list directly
         if dialect.name == "postgresql":

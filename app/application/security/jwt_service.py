@@ -125,9 +125,7 @@ class JWTService:
         }
 
         # Create token
-        access_token = jwt.encode(
-            payload, self.settings.jwt_secret_key, algorithm=self.algorithm
-        )
+        access_token = jwt.encode(payload, self.settings.jwt_secret_key, algorithm=self.algorithm)
 
         # Log token creation
         self.audit_logger.log_security_event(
@@ -175,9 +173,7 @@ class JWTService:
         }
 
         # Create token
-        refresh_token = jwt.encode(
-            payload, self.settings.jwt_secret_key, algorithm=self.algorithm
-        )
+        refresh_token = jwt.encode(payload, self.settings.jwt_secret_key, algorithm=self.algorithm)
 
         # Log token creation
         self.audit_logger.log_security_event(
@@ -210,9 +206,7 @@ class JWTService:
             TokenBlacklistedException: If the token is blacklisted
         """
         try:
-            payload = jwt.decode(
-                token, self.settings.jwt_secret_key, algorithms=[self.algorithm]
-            )
+            payload = jwt.decode(token, self.settings.jwt_secret_key, algorithms=[self.algorithm])
             token_payload = TokenPayload(**payload)
 
             # Check if token is blacklisted using JTI
@@ -225,9 +219,7 @@ class JWTService:
                     severity=AuditSeverity.HIGH,
                     metadata={"jti": jti, "token_type": token_type},
                 )
-                raise TokenBlacklistedException(
-                    f"{token_type.capitalize()} token is blacklisted."
-                )
+                raise TokenBlacklistedException(f"{token_type.capitalize()} token is blacklisted.")
 
             # Verify expiration
             if token_payload.exp < time.time():
@@ -238,9 +230,7 @@ class JWTService:
                     severity=AuditSeverity.HIGH,
                     metadata={"jti": jti, "token_type": token_type},
                 )
-                raise TokenExpiredException(
-                    f"{token_type.capitalize()} token has expired."
-                )
+                raise TokenExpiredException(f"{token_type.capitalize()} token has expired.")
 
             # Return payload
             return token_payload.model_dump()
@@ -252,9 +242,7 @@ class JWTService:
                 severity=AuditSeverity.MEDIUM,
                 metadata={"token_type": token_type, "error": str(e)},
             )
-            raise TokenExpiredException(
-                f"{token_type.capitalize()} token has expired."
-            ) from e
+            raise TokenExpiredException(f"{token_type.capitalize()} token has expired.") from e
 
         except jwt.InvalidTokenError as e:
             self.audit_logger.log_security_event(
@@ -263,9 +251,7 @@ class JWTService:
                 severity=AuditSeverity.HIGH,
                 metadata={"token_type": token_type, "error": str(e)},
             )
-            raise InvalidTokenException(
-                f"{token_type.capitalize()} token is invalid."
-            ) from e
+            raise InvalidTokenException(f"{token_type.capitalize()} token is invalid.") from e
 
     async def blacklist_token(self, token: str, user_id: str | None = None) -> None:
         """
@@ -280,9 +266,7 @@ class JWTService:
         """
         try:
             # Decode token without verification for logging
-            token_data = jwt.decode(
-                token, options={"verify_signature": False, "verify_exp": False}
-            )
+            token_data = jwt.decode(token, options={"verify_signature": False, "verify_exp": False})
 
             # Check if we need to extract user_id from token
             if user_id is None:
@@ -317,9 +301,7 @@ class JWTService:
                 metadata={"error": str(e)},
             )
 
-    async def blacklist_session_tokens(
-        self, session_id: str, user_id: str | None = None
-    ) -> None:
+    async def blacklist_session_tokens(self, session_id: str, user_id: str | None = None) -> None:
         """
         Blacklist all tokens associated with a session.
 

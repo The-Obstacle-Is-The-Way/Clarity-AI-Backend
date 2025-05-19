@@ -42,9 +42,7 @@ class GUID(TypeDecorator):
             return dialect.type_descriptor(PG_UUID(as_uuid=True))
         return dialect.type_descriptor(String(36))
 
-    def process_bind_param(
-        self, value: str | uuid.UUID | None, dialect: Dialect
-    ) -> str | None:
+    def process_bind_param(self, value: str | uuid.UUID | None, dialect: Dialect) -> str | None:
         """
         Process the parameter value before binding to SQL statement.
 

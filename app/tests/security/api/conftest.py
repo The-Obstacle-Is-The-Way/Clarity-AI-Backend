@@ -143,9 +143,7 @@ def app_instance(
                         # Extract info from token
                         user_id = unverified_payload.get("sub", "")
                         username = unverified_payload.get("username", "test_user")
-                        email = unverified_payload.get(
-                            "email", f"{username}@example.com"
-                        )
+                        email = unverified_payload.get("email", f"{username}@example.com")
 
                         # Handle roles in the token payload
                         roles_data = unverified_payload.get("roles", ["patient"])
@@ -246,10 +244,8 @@ def app_instance(
                             },
                         )
 
-                        if (
-                            "testing" in payload
-                            or ("iss" in payload
-                            and payload.get("iss") == "test-issuer")
+                        if "testing" in payload or (
+                            "iss" in payload and payload.get("iss") == "test-issuer"
                         ):
                             # This is a test token, create a user from it
                             from app.presentation.schemas.auth import AuthenticatedUser
@@ -294,9 +290,7 @@ def app_instance(
             )
 
         # For security, patients can only access their own data
-        if UserRole.PATIENT in current_user.roles and str(current_user.id) != str(
-            patient_id
-        ):
+        if UserRole.PATIENT in current_user.roles and str(current_user.id) != str(patient_id):
             return JSONResponse(
                 {"detail": "Not authorized to access this patient's data"},
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -336,9 +330,7 @@ def app_instance(
             )
 
         # For security, patients can only access their own PHI
-        if UserRole.PATIENT in current_user.roles and str(current_user.id) != str(
-            patient_id
-        ):
+        if UserRole.PATIENT in current_user.roles and str(current_user.id) != str(patient_id):
             return JSONResponse(
                 {"detail": "Not authorized to access this patient's PHI"},
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -402,9 +394,7 @@ def app_instance(
 
         # Return user list
         return {
-            "users": [
-                {"id": str(user.id), "username": user.username} for user in users
-            ],
+            "users": [{"id": str(user.id), "username": user.username} for user in users],
             "total": total,
         }
 
@@ -502,18 +492,14 @@ def app_instance(
         # Completely bypass middleware for test endpoints
         if "/test-api/" in request.url.path or "/test/" in request.url.path:
             try:
-                logger.debug(
-                    f"Bypassing security headers for test endpoint: {request.url.path}"
-                )
+                logger.debug(f"Bypassing security headers for test endpoint: {request.url.path}")
                 try:
                     response = await call_next(request)
                     return response
                 except Exception as e:
                     # For test endpoints, convert exceptions to JSON responses
                     # This allows our error testing to work properly
-                    logger.info(
-                        f"Converting test endpoint error to JSONResponse: {e!s}"
-                    )
+                    logger.info(f"Converting test endpoint error to JSONResponse: {e!s}")
                     from fastapi.responses import JSONResponse
                     from starlette import status
 
@@ -545,9 +531,7 @@ def app_instance(
             response.headers["Access-Control-Allow-Origin"] = "*"
             return response
         except Exception as e:
-            logger.error(
-                f"Exception in add_security_headers: {type(e).__name__}: {e!s}"
-            )
+            logger.error(f"Exception in add_security_headers: {type(e).__name__}: {e!s}")
             # Re-raise the exception to ensure it's properly handled
             raise
 
@@ -795,8 +779,7 @@ async def get_valid_auth_headers(
         "last_name": authenticated_user.last_name,
         "full_name": authenticated_user.full_name,
         "roles": [
-            role.value if hasattr(role, "value") else role
-            for role in authenticated_user.roles
+            role.value if hasattr(role, "value") else role for role in authenticated_user.roles
         ],
         "status": authenticated_user.status.value
         if hasattr(authenticated_user.status, "value")
@@ -820,9 +803,9 @@ async def get_valid_auth_headers(
     if hasattr(global_mock_jwt_service, "token_store"):
         global_mock_jwt_service.token_store[token] = token_data
         # Set expiration far in the future for test tokens
-        global_mock_jwt_service.token_exp_store[token] = datetime.now(
-            timezone.utc
-        ) + timedelta(days=7)
+        global_mock_jwt_service.token_exp_store[token] = datetime.now(timezone.utc) + timedelta(
+            days=7
+        )
 
         # Also register the exact token string in the service's decode_token mock
         # This is necessary to ensure the token is recognized by the service
@@ -890,9 +873,7 @@ async def get_valid_provider_auth_headers(
 
     # Store the token data in the mock service's stores
     global_mock_jwt_service.token_store[token] = user_data
-    global_mock_jwt_service.token_exp_store[token] = datetime.now(
-        timezone.utc
-    ) + timedelta(days=7)
+    global_mock_jwt_service.token_exp_store[token] = datetime.now(timezone.utc) + timedelta(days=7)
 
     # Create a special handler for this specific token
     async def patched_decode_token_for_provider(
@@ -959,9 +940,7 @@ def global_mock_jwt_service() -> JWTServiceInterface:
     mock_service._token_blacklist = {}
 
     # Create simplified implementation functions for JWT service
-    async def mock_create_access_token(
-        data: dict, expires_delta: timedelta | None = None
-    ) -> str:
+    async def mock_create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
         """Mock create_access_token method for JWTService."""
         to_encode = data.copy()
 
@@ -1002,9 +981,7 @@ def global_mock_jwt_service() -> JWTServiceInterface:
         return encoded_jwt
 
     # Create refresh token implementation
-    async def mock_create_refresh_token(
-        data: dict, expires_delta: timedelta | None = None
-    ) -> str:
+    async def mock_create_refresh_token(data: dict, expires_delta: timedelta | None = None) -> str:
         """Mock create_refresh_token method for JWTService."""
         to_encode = data.copy()
 
@@ -1079,14 +1056,8 @@ def global_mock_jwt_service() -> JWTServiceInterface:
 
             # Check if this is a test token
             is_test_token = (
-                (
-                    "iss" in unverified_payload
-                    and unverified_payload.get("iss") == "test-issuer"
-                )
-                or (
-                    "sub" in unverified_payload
-                    and "test" in unverified_payload.get("sub", "")
-                )
+                ("iss" in unverified_payload and unverified_payload.get("iss") == "test-issuer")
+                or ("sub" in unverified_payload and "test" in unverified_payload.get("sub", ""))
                 or (getattr(test_settings, "TEST_MODE", False))
             )
 
@@ -1094,9 +1065,7 @@ def global_mock_jwt_service() -> JWTServiceInterface:
                 # If it's a test token, add it to our store for future reference
                 mock_service.token_store[token] = unverified_payload
                 # Set a default expiration far in the future
-                mock_service.token_exp_store[token] = datetime.now(
-                    timezone.utc
-                ) + timedelta(days=7)
+                mock_service.token_exp_store[token] = datetime.now(timezone.utc) + timedelta(days=7)
                 return unverified_payload
         except Exception as e:
             # If not a token we recognize, raise the appropriate exception
@@ -1115,9 +1084,7 @@ def global_mock_jwt_service() -> JWTServiceInterface:
         # Add roles from user object if available
         if hasattr(user, "roles"):
             if isinstance(user.roles, list) or isinstance(user.roles, set):
-                user_data["roles"] = [
-                    r.value if hasattr(r, "value") else r for r in user.roles
-                ]
+                user_data["roles"] = [r.value if hasattr(r, "value") else r for r in user.roles]
             else:
                 user_data["roles"] = [user.roles]
         else:
@@ -1251,18 +1218,9 @@ def jwt_service_patch():
 
             # Check if this seems like a test token
             is_test_token = (
-                (
-                    "iss" in unverified_payload
-                    and unverified_payload.get("iss") == "test-issuer"
-                )
-                or (
-                    "sub" in unverified_payload
-                    and "test" in unverified_payload.get("sub", "")
-                )
-                or (
-                    getattr(self, "settings", None)
-                    and getattr(self.settings, "TESTING", False)
-                )
+                ("iss" in unverified_payload and unverified_payload.get("iss") == "test-issuer")
+                or ("sub" in unverified_payload and "test" in unverified_payload.get("sub", ""))
+                or (getattr(self, "settings", None) and getattr(self.settings, "TESTING", False))
             )
 
             if is_test_token:
@@ -1280,24 +1238,18 @@ def jwt_service_patch():
 
                 # Set default expiration if missing (1 hour from now)
                 if "exp" not in unverified_payload:
-                    unverified_payload["exp"] = (
-                        int(datetime.now(timezone.utc).timestamp()) + 3600
-                    )
+                    unverified_payload["exp"] = int(datetime.now(timezone.utc).timestamp()) + 3600
 
                 # Set defaults for other required fields if missing
                 if "iat" not in unverified_payload:
-                    unverified_payload["iat"] = int(
-                        datetime.now(timezone.utc).timestamp()
-                    )
+                    unverified_payload["iat"] = int(datetime.now(timezone.utc).timestamp())
                 if "jti" not in unverified_payload:
                     unverified_payload["jti"] = str(uuid.uuid4())
 
                 # Map token type string to enum
                 token_type_str = unverified_payload.get("type", "access")
                 token_type_enum = (
-                    TokenType.REFRESH
-                    if token_type_str.lower() == "refresh"
-                    else TokenType.ACCESS
+                    TokenType.REFRESH if token_type_str.lower() == "refresh" else TokenType.ACCESS
                 )
 
                 # Create and return TokenPayload
@@ -1307,9 +1259,7 @@ def jwt_service_patch():
                     exp=unverified_payload.get(
                         "exp", int(datetime.now(timezone.utc).timestamp()) + 3600
                     ),
-                    iat=unverified_payload.get(
-                        "iat", int(datetime.now(timezone.utc).timestamp())
-                    ),
+                    iat=unverified_payload.get("iat", int(datetime.now(timezone.utc).timestamp())),
                     jti=unverified_payload.get("jti", str(uuid.uuid4())),
                     iss=unverified_payload.get("iss", "test-issuer"),
                     aud=unverified_payload.get("aud", "test-audience"),
@@ -1363,9 +1313,7 @@ def middleware_patch(test_settings):
     AuthenticationMiddleware.algorithm = test_settings.JWT_ALGORITHM
 
     # Create a patched _validate_and_prepare_user_context method to handle test tokens
-    async def patched_validate_and_prepare_user_context(
-        self, token: str, request: Request
-    ):
+    async def patched_validate_and_prepare_user_context(self, token: str, request: Request):
         """Patched validation method that will process test tokens without calling the database."""
         try:
             # First try to decode the token with JWT library (no signature verification)
@@ -1383,29 +1331,17 @@ def middleware_patch(test_settings):
 
                 # Check if this is a test token
                 is_test_token = (
-                    (
-                        "iss" in unverified_payload
-                        and unverified_payload.get("iss") == "test-issuer"
-                    )
-                    or (
-                        "sub" in unverified_payload
-                        and "test" in unverified_payload.get("sub", "")
-                    )
+                    ("iss" in unverified_payload and unverified_payload.get("iss") == "test-issuer")
+                    or ("sub" in unverified_payload and "test" in unverified_payload.get("sub", ""))
                     or ("testing" in unverified_payload)
                 )
 
                 if is_test_token:
-                    logger.debug(
-                        f"Processing test token: {unverified_payload.get('sub')}"
-                    )
+                    logger.debug(f"Processing test token: {unverified_payload.get('sub')}")
 
                     # Extract user info from token
-                    user_id = uuid.UUID(
-                        unverified_payload.get("sub", str(uuid.uuid4()))
-                    )
-                    username = unverified_payload.get(
-                        "username", f"test_user_{user_id}"
-                    )
+                    user_id = uuid.UUID(unverified_payload.get("sub", str(uuid.uuid4())))
+                    username = unverified_payload.get("username", f"test_user_{user_id}")
                     email = unverified_payload.get("email", f"{username}@example.com")
                     roles_data = unverified_payload.get("roles", ["patient"])
 
@@ -1425,9 +1361,7 @@ def middleware_patch(test_settings):
                         user_roles = [UserRole.PATIENT]
 
                     # Get scopes directly from token or use roles
-                    scopes = unverified_payload.get(
-                        "scopes", [r.value for r in user_roles]
-                    )
+                    scopes = unverified_payload.get("scopes", [r.value for r in user_roles])
 
                     # Create AuthenticatedUser
                     auth_user = AuthenticatedUser(
@@ -1512,12 +1446,8 @@ def middleware_patch(test_settings):
                     # Create user context
                     auth_user = AuthenticatedUser(
                         id=user_id,
-                        username=token_data.get(
-                            "username", f"test_{role_enum.value}_user"
-                        ),
-                        email=token_data.get(
-                            "email", f"test_{role_enum.value}@example.com"
-                        ),
+                        username=token_data.get("username", f"test_{role_enum.value}_user"),
+                        email=token_data.get("email", f"test_{role_enum.value}@example.com"),
                         roles=[role_enum],
                         status=UserStatus.ACTIVE,
                     )
@@ -1544,16 +1474,12 @@ def middleware_patch(test_settings):
                     # Get user ID and roles from token data
                     user_id = token_data.get("sub", None)
                     if not user_id:
-                        return self._create_unauthorized_response(
-                            "Invalid user ID in token"
-                        )
+                        return self._create_unauthorized_response("Invalid user ID in token")
 
                     # Get roles from token
                     roles_data = token_data.get("roles", [])
                     if not roles_data:
-                        return self._create_unauthorized_response(
-                            "No roles specified in token"
-                        )
+                        return self._create_unauthorized_response("No roles specified in token")
 
                     # Convert role strings to UserRole enums
                     from app.core.domain.entities.user import UserRole, UserStatus
@@ -1619,9 +1545,7 @@ def middleware_patch(test_settings):
 
     # Apply the patches to the middleware
     AuthenticationMiddleware.dispatch = patched_dispatch
-    AuthenticationMiddleware._create_unauthorized_response = (
-        _create_unauthorized_response
-    )
+    AuthenticationMiddleware._create_unauthorized_response = _create_unauthorized_response
 
     # Now patch the rate limiting middleware too
     from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
@@ -1650,9 +1574,7 @@ def middleware_patch(test_settings):
             try:
                 return await original_rate_limit_dispatch(self, request, call_next)
             except Exception as e:
-                logger.error(
-                    f"Exception in rate limiting dispatch: {type(e).__name__}: {e!s}"
-                )
+                logger.error(f"Exception in rate limiting dispatch: {type(e).__name__}: {e!s}")
                 # Re-raise to allow proper error handling
                 raise
 
@@ -1663,10 +1585,7 @@ def middleware_patch(test_settings):
 
     # Restore the original methods
     AuthenticationMiddleware.dispatch = original_dispatch
-    if (
-        hasattr(RateLimitingMiddleware, "dispatch")
-        and "original_rate_limit_dispatch" in locals()
-    ):
+    if hasattr(RateLimitingMiddleware, "dispatch") and "original_rate_limit_dispatch" in locals():
         RateLimitingMiddleware.dispatch = original_rate_limit_dispatch
 
 
@@ -1690,9 +1609,7 @@ class EnhancedAuthTestHelper:
     authenticated users, and auth headers for various test scenarios.
     """
 
-    def __init__(
-        self, jwt_secret="test_secret_key_for_testing_only", algorithm="HS256"
-    ):
+    def __init__(self, jwt_secret="test_secret_key_for_testing_only", algorithm="HS256"):
         self.jwt_secret = jwt_secret
         self.algorithm = algorithm
         self._tokens = {}  # cache tokens by user_id
@@ -1803,10 +1720,7 @@ class EnhancedAuthTestHelper:
                 email = user.email
             if roles is None and hasattr(user, "roles"):
                 # Convert roles from UserRole enum to strings
-                roles = [
-                    role.value if hasattr(role, "value") else role
-                    for role in user.roles
-                ]
+                roles = [role.value if hasattr(role, "value") else role for role in user.roles]
         else:
             user_id = user_or_id
 

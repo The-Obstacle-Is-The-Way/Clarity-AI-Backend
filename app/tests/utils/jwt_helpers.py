@@ -10,9 +10,7 @@ from typing import Any
 import jwt
 
 # Constants for testing
-TEST_SECRET_KEY = (
-    "test_jwt_secret_key_that_is_sufficiently_long_for_testing_purposes_only"
-)
+TEST_SECRET_KEY = "test_jwt_secret_key_that_is_sufficiently_long_for_testing_purposes_only"
 TEST_ALGORITHM = "HS256"
 TEST_ISSUER = "clarity-tests"
 TEST_AUDIENCE = "test-audience"

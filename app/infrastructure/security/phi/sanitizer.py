@@ -72,9 +72,7 @@ class PHIPattern:
         self._regex_pattern = re.compile(regex) if regex else None
         self._exact_matches = set(exact_match) if exact_match else set()
         self._fuzzy_patterns = (
-            [re.compile(pattern, re.IGNORECASE) for pattern in fuzzy_match]
-            if fuzzy_match
-            else []
+            [re.compile(pattern, re.IGNORECASE) for pattern in fuzzy_match] if fuzzy_match else []
         )
         self._context_patterns = (
             [re.compile(pattern, re.IGNORECASE) for pattern in context_patterns]
@@ -133,9 +131,7 @@ class PatternRepository:
     def _initialize_default_patterns(self):
         """Initialize default patterns for PHI detection."""
         # SSN patterns
-        self.add_pattern(
-            PHIPattern(name="SSN", regex=r"\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b")
-        )
+        self.add_pattern(PHIPattern(name="SSN", regex=r"\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b"))
 
         # Name patterns - both case-sensitive and insensitive variants
         self.add_pattern(
@@ -537,14 +533,10 @@ class PHISanitizer:
 
         # Final check for specific ML test patterns that might have been missed
         if "Regular check-ins" in sanitized_text:
-            sanitized_text = sanitized_text.replace(
-                "[[REDACTED NAME]]-ins", "Regular check-ins"
-            )
+            sanitized_text = sanitized_text.replace("[[REDACTED NAME]]-ins", "Regular check-ins")
 
         if "Medication review" in sanitized_text:
-            sanitized_text = sanitized_text.replace(
-                "[[REDACTED NAME]]", "Medication review"
-            )
+            sanitized_text = sanitized_text.replace("[[REDACTED NAME]]", "Medication review")
 
         # Extra handling for PHI that might be missed by regex
         for phi_term, replacement in [
@@ -558,9 +550,7 @@ class PHISanitizer:
 
         return sanitized_text
 
-    def sanitize_json(
-        self, data: Any, path: str | None = None, parent_key: str = ""
-    ) -> Any:
+    def sanitize_json(self, data: Any, path: str | None = None, parent_key: str = "") -> Any:
         """
         Recursively sanitize a JSON-like data structure.
 
@@ -618,9 +608,7 @@ class PHISanitizer:
             # For context-sensitive checking, check if the parent key indicates PHI
             if (
                 parent_key
-                and any(
-                    pattern.search(parent_key) for pattern in self._compiled_patterns
-                )
+                and any(pattern.search(parent_key) for pattern in self._compiled_patterns)
                 and not self.is_whitelisted(parent_key, path)
             ):
                 # If parent key indicates PHI, redact the value
@@ -655,17 +643,13 @@ class PHISanitizer:
         sanitized = self.sanitize_string(error_msg)
 
         # Further check for potential PHI patterns that might have been missed
-        if re.search(
-            r"@|[\w.-]+@[\w.-]+\.\w+|\d{3}[-.\s]?\d{3}[-.\s]?\d{4}", sanitized
-        ):
+        if re.search(r"@|[\w.-]+@[\w.-]+\.\w+|\d{3}[-.\s]?\d{3}[-.\s]?\d{4}", sanitized):
             return f"[SANITIZED ERROR: {type(error).__name__ if isinstance(error, Exception) else 'Error'}]"
 
         return sanitized
 
     # Add compatibility methods for PHIService API
-    def sanitize(
-        self, data: Any, sensitivity: str | None = None, *args, **kwargs
-    ) -> Any:
+    def sanitize(self, data: Any, sensitivity: str | None = None, *args, **kwargs) -> Any:
         """
         Sanitize any data by removing PHI. Main compatibility method for old PHIService API.
 
@@ -704,9 +688,7 @@ class PHISanitizer:
             # If we can't stringify it, return as is
             return data
 
-    def sanitize_text(
-        self, text: str, sensitivity: str | None = None, *args, **kwargs
-    ) -> str:
+    def sanitize_text(self, text: str, sensitivity: str | None = None, *args, **kwargs) -> str:
         """
         Compatibility method for PHIService's sanitize_text method.
 
@@ -746,10 +728,7 @@ class PHISanitizer:
             return False
 
         # Skip common configuration file patterns
-        if (
-            "# Some settings present" in text
-            or "# Missing critical security settings" in text
-        ):
+        if "# Some settings present" in text or "# Missing critical security settings" in text:
             return False
 
         # Check against all PHI patterns
@@ -932,9 +911,7 @@ class PHISafeLogger(logging.Logger):
 
         return sanitized_kwargs
 
-    def _log(
-        self, level, msg, args, exc_info=None, extra=None, stack_info=False, **kwargs
-    ):
+    def _log(self, level, msg, args, exc_info=None, extra=None, stack_info=False, **kwargs):
         """Sanitize log messages before passing to the parent logger."""
         # Sanitize the message directly with PHI patterns
         sanitized_msg = msg

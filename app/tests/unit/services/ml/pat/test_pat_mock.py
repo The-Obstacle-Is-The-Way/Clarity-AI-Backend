@@ -271,9 +271,7 @@ class TestMockPATAnalyzeActigraphy:
 class TestMockPATGetActigraphyEmbeddings:
     """Tests for MockPAT.get_actigraphy_embeddings method."""
 
-    def test_get_actigraphy_embeddings_success(
-        self, initialized_mock_pat, valid_readings
-    ):
+    def test_get_actigraphy_embeddings_success(self, initialized_mock_pat, valid_readings):
         """Test successful embedding generation."""
         result = initialized_mock_pat.get_actigraphy_embeddings(
             patient_id="patient-123",

@@ -57,9 +57,7 @@ class PhysiologicalRange:
         "hrv": {"min": 20.0, "max": 80.0, "critical_min": 10.0, "critical_max": 100.0},
     }
 
-    def __init__(
-        self, min: float, max: float, critical_min: float, critical_max: float
-    ):
+    def __init__(self, min: float, max: float, critical_min: float, critical_max: float):
         """
         Initialize a physiological range.
 

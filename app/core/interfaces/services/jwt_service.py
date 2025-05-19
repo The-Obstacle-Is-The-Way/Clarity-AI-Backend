@@ -48,9 +48,7 @@ class IJwtService(ABC):
         pass
 
     @abstractmethod
-    def decode_token(
-        self, token: str
-    ) -> TokenPayload:  # No longer async, returns TokenPayload
+    def decode_token(self, token: str) -> TokenPayload:  # No longer async, returns TokenPayload
         """
         Decodes a token and returns its payload as a TokenPayload object.
         Raises AuthenticationError if the token is invalid or expired.
@@ -77,9 +75,7 @@ class IJwtService(ABC):
         pass
 
     @abstractmethod
-    def get_token_payload_subject(
-        self, payload: TokenPayload
-    ) -> str | None:  # Takes TokenPayload
+    def get_token_payload_subject(self, payload: TokenPayload) -> str | None:  # Takes TokenPayload
         """Extracts the subject (user identifier) from the token payload."""
         pass
 

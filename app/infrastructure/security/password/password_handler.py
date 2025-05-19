@@ -46,15 +46,11 @@ class PasswordHandler:
 
         # Use schemes from settings if not provided, default to bcrypt if settings are missing
         default_schemes = ["bcrypt"]
-        self.schemes = schemes or getattr(
-            settings, "PASSWORD_HASHING_SCHEMES", default_schemes
-        )
+        self.schemes = schemes or getattr(settings, "PASSWORD_HASHING_SCHEMES", default_schemes)
         self.deprecated = deprecated
 
         try:
-            self.context = CryptContext(
-                schemes=self.schemes, deprecated=self.deprecated
-            )
+            self.context = CryptContext(schemes=self.schemes, deprecated=self.deprecated)
             logger.info(f"PasswordHandler initialized with schemes: {self.schemes}")
         except Exception as e:
             logger.error(
@@ -100,9 +96,7 @@ class PasswordHandler:
             return self.context.verify(plain_password, hashed_password)
         except Exception as e:
             # Log potential errors during verification (e.g., malformed hash)
-            logger.warning(
-                f"Password verification encountered an issue: {e}", exc_info=True
-            )
+            logger.warning(f"Password verification encountered an issue: {e}", exc_info=True)
             return False
 
     def password_needs_rehash(self, hashed_password: str) -> bool:
@@ -199,11 +193,7 @@ class PasswordHandler:
             return False, "Password must be at least 12 characters long"
 
         # Check for common patterns (basic check)
-        if (
-            "12345" in password
-            or "qwerty" in password.lower()
-            or "password" in password.lower()
-        ):
+        if "12345" in password or "qwerty" in password.lower() or "password" in password.lower():
             return False, "Password contains common patterns"
 
         # Check for repeating characters (at least 3 consecutive same characters)
@@ -216,9 +206,7 @@ class PasswordHandler:
             result = zxcvbn(password)
             if result.get("score", 0) < 3:  # Scores are 0-4, require at least 3
                 suggestions = result.get("feedback", {}).get("suggestions", [])
-                suggestion_text = (
-                    "; ".join(suggestions) if suggestions else "Password is too weak"
-                )
+                suggestion_text = "; ".join(suggestions) if suggestions else "Password is too weak"
                 return False, suggestion_text
         except Exception as e:
             logger.warning(f"Error using zxcvbn for password strength validation: {e}")
@@ -250,9 +238,7 @@ class PasswordHandler:
         if self.require_digit and not any(c.isdigit() for c in password):
             return False, "Password must contain at least one digit"
 
-        if self.require_special and not any(
-            c in "!@#$%^&*()_+-=[]{}|;:,.<>?/~`" for c in password
-        ):
+        if self.require_special and not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/~`" for c in password):
             return False, "Password must contain at least one special character"
 
         return True, None

@@ -105,9 +105,7 @@ class BiometricRuleRepository(ABC):
         pass
 
     @abstractmethod
-    async def update_active_status(
-        self, rule_id: UUID, is_active: bool
-    ) -> BiometricRule:
+    async def update_active_status(self, rule_id: UUID, is_active: bool) -> BiometricRule:
         """
         Update the active status of a biometric rule.
 

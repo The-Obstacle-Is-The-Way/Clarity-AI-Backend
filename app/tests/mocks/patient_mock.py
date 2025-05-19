@@ -118,9 +118,7 @@ class Patient:
         # Convert string dates to date objects
         if isinstance(self.date_of_birth, str):
             try:
-                self.date_of_birth = datetime.strptime(
-                    self.date_of_birth, "%Y-%m-%d"
-                ).date()
+                self.date_of_birth = datetime.strptime(self.date_of_birth, "%Y-%m-%d").date()
             except ValueError:
                 raise ValidationException(f"Invalid date format: {self.date_of_birth}")
 
@@ -145,9 +143,7 @@ class Patient:
             try:
                 self.insurance_status = InsuranceStatus(self.insurance_status)
             except ValueError:
-                raise ValidationException(
-                    f"Invalid insurance status: {self.insurance_status}"
-                )
+                raise ValidationException(f"Invalid insurance status: {self.insurance_status}")
 
         if isinstance(self.status, str):
             try:
@@ -215,9 +211,7 @@ class Patient:
         if "name" not in contact:
             raise ValidationException("Emergency contact must have a name")
         if "phone" not in contact and "email" not in contact:
-            raise ValidationException(
-                "Emergency contact must have either phone or email"
-            )
+            raise ValidationException("Emergency contact must have either phone or email")
         self.emergency_contacts.append(contact)
         self.updated_at = datetime.now()
 
@@ -241,9 +235,7 @@ class Patient:
         if isinstance(medication, str):
             medication = {"name": medication, "dosage": "Unknown"}
         elif not isinstance(medication, dict):
-            raise ValidationException(
-                "Medication must be a string name or a dictionary"
-            )
+            raise ValidationException("Medication must be a string name or a dictionary")
 
         # Validate the dictionary
         if "name" not in medication:
@@ -314,9 +306,7 @@ class Patient:
             "first_name": self.first_name,
             "last_name": self.last_name,
             "date_of_birth": dob,
-            "gender": self.gender.value
-            if isinstance(self.gender, Gender)
-            else self.gender,
+            "gender": self.gender.value if isinstance(self.gender, Gender) else self.gender,
             "email": self.email,
             "phone": self.phone,
             "address": self.address,
@@ -329,9 +319,7 @@ class Patient:
             "medications": self.medications,
             "allergies": self.allergies,
             "notes": self.notes,
-            "status": self.status.value
-            if isinstance(self.status, PatientStatus)
-            else self.status,
+            "status": self.status.value if isinstance(self.status, PatientStatus) else self.status,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "last_appointment": self.last_appointment,
@@ -399,9 +387,7 @@ class MockPatientRepository:
     async def search_by_name(self, name_query):
         """Search patients by name."""
         name_query = name_query.lower()
-        return [
-            p for p in self.patients.values() if name_query in p.get("name", "").lower()
-        ]
+        return [p for p in self.patients.values() if name_query in p.get("name", "").lower()]
 
     async def get_by_email(self, email):
         """Get patient by email."""

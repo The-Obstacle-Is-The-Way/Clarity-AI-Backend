@@ -169,16 +169,11 @@ def process_user_data(data):
         # Check if specific security settings were flagged as missing
         config_found = False
         for finding in auditor.findings["configuration_issues"]:
-            if (
-                "missing_settings" in finding
-                and "encryption" in finding["missing_settings"]
-            ):
+            if "missing_settings" in finding and "encryption" in finding["missing_settings"]:
                 config_found = True
                 break
 
-        assert (
-            config_found
-        ), "Auditor failed to detect missing security settings in config"
+        assert config_found, "Auditor failed to detect missing security settings in config"
 
     def test_audit_report_generation(self, mock_app_directory, temp_dir):
         """Test that the auditor generates a proper report."""
@@ -341,9 +336,7 @@ class Sanitizer:
         assert result is True, "Audit should pass for directories with clean files"
 
         # Check if findings are empty or minimal
-        assert (
-            len(auditor.findings.get("code_phi", [])) == 0
-        ), "Should not find PHI in clean files"
+        assert len(auditor.findings.get("code_phi", [])) == 0, "Should not find PHI in clean files"
 
         # Verify summary contains correct counts
         assert auditor._count_total_issues() == 0
@@ -426,9 +419,7 @@ def process_patient_data():
                 ssn_detected = True
                 break
 
-        assert (
-            ssn_detected
-        ), "Auditor failed to detect SSN pattern '123-45-6789' in code"
+        assert ssn_detected, "Auditor failed to detect SSN pattern '123-45-6789' in code"
 
         # Verify the detection mechanism found the right file
         file_detected = False
@@ -437,9 +428,7 @@ def process_patient_data():
                 file_detected = True
                 break
 
-        assert (
-            file_detected
-        ), "Auditor failed to identify the correct file containing SSN pattern"
+        assert file_detected, "Auditor failed to identify the correct file containing SSN pattern"
 
         # Check that PHI was still detected and logged
         assert "code_phi" in auditor.findings

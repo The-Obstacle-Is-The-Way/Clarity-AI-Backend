@@ -149,9 +149,7 @@ class Settings(BaseSettings):
     )
     TEST_OTHER_ENCRYPTION_KEY: str = Field(
         default=secrets.token_urlsafe(32),
-        json_schema_extra={
-            "description": "Secondary test key for encryption error testing"
-        },
+        json_schema_extra={"description": "Secondary test key for encryption error testing"},
     )
 
     model_config = ConfigDict(
@@ -175,9 +173,7 @@ class Settings(BaseSettings):
             db_url = self.DATABASE_URL
             # If it's a SQLite URL without async driver, convert it
             if db_url.startswith("sqlite:///") and "aiosqlite" not in db_url:
-                self.ASYNC_DATABASE_URL = db_url.replace(
-                    "sqlite:///", "sqlite+aiosqlite:///"
-                )
+                self.ASYNC_DATABASE_URL = db_url.replace("sqlite:///", "sqlite+aiosqlite:///")
             else:
                 # Otherwise, use the original URL
                 self.ASYNC_DATABASE_URL = db_url
@@ -188,9 +184,7 @@ class Settings(BaseSettings):
         # Ensure ASYNC_DATABASE_URL is never None
         if not self.ASYNC_DATABASE_URL:
             self.ASYNC_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-            logger.warning(
-                "ASYNC_DATABASE_URL was None, set to default in-memory SQLite"
-            )
+            logger.warning("ASYNC_DATABASE_URL was None, set to default in-memory SQLite")
 
         # Ensure logs directory exists
         if self.AUDIT_LOG_FILE:
@@ -234,7 +228,9 @@ def get_settings() -> Settings:
             test_db_url = "sqlite+aiosqlite:///:memory:?cache=shared"
         else:
             # File-based SQLite in proper architecture location for persistent test data
-            test_db_url = "sqlite+aiosqlite:///./app/infrastructure/persistence/data/test_db.sqlite3"
+            test_db_url = (
+                "sqlite+aiosqlite:///./app/infrastructure/persistence/data/test_db.sqlite3"
+            )
 
         logger.info(f"Running in TEST environment, using DB: {test_db_url}")
 
@@ -249,9 +245,7 @@ def get_settings() -> Settings:
         # Ensure JWT_SECRET_KEY is set for tests, even if default_factory had issues
         if not hasattr(settings, "JWT_SECRET_KEY") or not settings.JWT_SECRET_KEY:
             settings.JWT_SECRET_KEY = "test_jwt_secret_for_test_environment_only_1234567890_abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ_01234567890_abcdefghijklmnopqrstuvwxyz"
-            logger.warning(
-                "JWT_SECRET_KEY was not set for test environment, fallback applied."
-            )
+            logger.warning("JWT_SECRET_KEY was not set for test environment, fallback applied.")
 
         return settings  # Return the modified global instance
 

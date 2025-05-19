@@ -133,9 +133,7 @@ class TestXGBoostSymptomModel:
         ) as mock_dmatrix:
             # Setup the mock prediction
             # Correct np.array definition
-            model.models["depression_score"].predict.return_value = np.array(
-                [4.2, 3.8, 4.5]
-            )
+            model.models["depression_score"].predict.return_value = np.array([4.2, 3.8, 4.5])
 
             # Execute
             result = await model.predict(X, horizon)
@@ -192,15 +190,11 @@ class TestXGBoostSymptomModel:
         """Test that the model trains correctly."""
         # Setup
         # Correct np.array definitions
-        X_train = np.array(
-            [[3.0, 4.0, 0.8, 0.6], [2.0, 3.0, 0.9, 0.5], [4.0, 5.0, 0.7, 0.8]]
-        )
+        X_train = np.array([[3.0, 4.0, 0.8, 0.6], [2.0, 3.0, 0.9, 0.5], [4.0, 5.0, 0.7, 0.8]])
         y_train = np.array([4.2, 3.8, 4.5])
 
         # Mock the internal training
-        with patch(
-            "app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb"
-        ) as mock_xgb:
+        with patch("app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb") as mock_xgb:
             mock_xgb.DMatrix.return_value = MagicMock()
             mock_train_result = MagicMock()
             mock_xgb.train.return_value = mock_train_result
@@ -222,7 +216,5 @@ class TestXGBoostSymptomModel:
             assert "target_names" in result
             assert "params" in result
             assert "depression_score" in result["training_results"]
-            assert (
-                "feature_importance" in result["training_results"]["depression_score"]
-            )
+            assert "feature_importance" in result["training_results"]["depression_score"]
             assert "params" in result["training_results"]["depression_score"]

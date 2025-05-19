@@ -99,9 +99,7 @@ class TestSettings:
         assert "https://example.com" in settings_local.CORS_ORIGINS
 
         # Test list format
-        monkeypatch.setenv(
-            "CORS_ORIGINS", '["http://localhost:8000", "https://api.example.com"]'
-        )
+        monkeypatch.setenv("CORS_ORIGINS", '["http://localhost:8000", "https://api.example.com"]')
         # Re-initialize settings to pick up list format override
         settings_local = Settings()
         assert len(settings_local.CORS_ORIGINS) == 2

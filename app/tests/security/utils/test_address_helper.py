@@ -6,7 +6,6 @@ while maintaining HIPAA compliance.
 """
 
 
-
 from app.infrastructure.security.encryption.base_encryption_service import (
     BaseEncryptionService,
 )
@@ -21,9 +20,7 @@ from app.infrastructure.security.encryption.field_encryptor import FieldEncrypto
 def test_address_field_encryption():
     """Test address field encryption"""
     # Create a field encryption service
-    encryption_service = BaseEncryptionService(
-        direct_key="test_key_for_address_encryption"
-    )
+    encryption_service = BaseEncryptionService(direct_key="test_key_for_address_encryption")
     field_encryptor = FieldEncryptor(encryption_service=encryption_service)
 
     # Sample data with an address

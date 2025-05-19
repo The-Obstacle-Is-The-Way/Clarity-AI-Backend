@@ -130,9 +130,7 @@ class AWSXGBoostService(XGBoostInterface):
             )
 
         elif model_type.lower() == "outcome":
-            outcome_timeframe = kwargs.get(
-                "outcome_timeframe", {"timeframe": "short_term"}
-            )
+            outcome_timeframe = kwargs.get("outcome_timeframe", {"timeframe": "short_term"})
             clinical_data = features
             treatment_plan = kwargs.get("treatment_plan", {})
             social_determinants = kwargs.get("social_determinants")
@@ -257,9 +255,7 @@ class AWSXGBoostService(XGBoostInterface):
                 # Assuming factory provides a dynamodb resource or similar abstraction
                 dynamo_resource = self._factory.get_service("dynamodb_resource")
                 if hasattr(dynamo_resource, "Table"):
-                    self._predictions_table = dynamo_resource.Table(
-                        self._dynamodb_table_name
-                    )
+                    self._predictions_table = dynamo_resource.Table(self._dynamodb_table_name)
                 else:
                     # Fallback or raise error if factory doesn't provide expected interface
                     # Attempt to get a client and create resource manually if factory only provides client
@@ -281,9 +277,7 @@ class AWSXGBoostService(XGBoostInterface):
                         )
 
             except Exception as e:
-                self._logger.error(
-                    f"Failed to get DynamoDB resource/table from factory: {e}"
-                )
+                self._logger.error(f"Failed to get DynamoDB resource/table from factory: {e}")
                 raise ConfigurationError(
                     f"Failed to initialize DynamoDB predictions table via factory: {e!s}"
                 ) from e
@@ -336,9 +330,7 @@ class AWSXGBoostService(XGBoostInterface):
                 f"Failed to initialize AWS XGBoost service: {e!s}", details=str(e)
             ) from e
 
-    def register_observer(
-        self, event_type: EventType | str, observer: Observer
-    ) -> None:
+    def register_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Register an observer for a specific event type.
 
@@ -352,9 +344,7 @@ class AWSXGBoostService(XGBoostInterface):
         self._observers[event_key].add(observer)
         self._logger.debug(f"Observer registered for event type {event_type}")
 
-    def unregister_observer(
-        self, event_type: EventType | str, observer: Observer
-    ) -> None:
+    def unregister_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Unregister an observer for a specific event type.
 
@@ -451,9 +441,7 @@ class AWSXGBoostService(XGBoostInterface):
                 raise DataPrivacyError("Potential PHI detected in input data")
         # Prepare invocation payload
         tf_days = (
-            time_frame_days
-            if time_frame_days is not None
-            else kwargs.get("time_frame_days", 30)
+            time_frame_days if time_frame_days is not None else kwargs.get("time_frame_days", 30)
         )
         payload = {
             "patient_id": patient_id,
@@ -498,9 +486,7 @@ class AWSXGBoostService(XGBoostInterface):
                         "prediction_id": str(uuid.uuid4()),
                     }
                     return {
-                        "Body": _SN(
-                            read=lambda *_, **__: json.dumps(response_payload).encode()
-                        ),
+                        "Body": _SN(read=lambda *_, **__: json.dumps(response_payload).encode()),
                         "ResponseMetadata": {"HTTPStatusCode": 200},
                     }
 
@@ -629,9 +615,7 @@ class AWSXGBoostService(XGBoostInterface):
 
             # Add predictionId and timestamp if not provided
             if "prediction_id" not in result:
-                result[
-                    "prediction_id"
-                ] = f"treatment-{int(time.time())}-{patient_id[:8]}"
+                result["prediction_id"] = f"treatment-{int(time.time())}-{patient_id[:8]}"
 
             if "timestamp" not in result:
                 result["timestamp"] = datetime.now().isoformat()
@@ -705,9 +689,7 @@ class AWSXGBoostService(XGBoostInterface):
         self._ensure_initialized()
 
         # Validate parameters
-        self._validate_outcome_params(
-            patient_id, outcome_timeframe, clinical_data, treatment_plan
-        )
+        self._validate_outcome_params(patient_id, outcome_timeframe, clinical_data, treatment_plan)
 
         # Calculate total days from timeframe
         time_frame_days = self._calculate_timeframe_days(outcome_timeframe)
@@ -805,9 +787,7 @@ class AWSXGBoostService(XGBoostInterface):
             raise ValidationError("Model type cannot be empty", field="model_type")
 
         if not prediction_id:
-            raise ValidationError(
-                "Prediction ID cannot be empty", field="prediction_id"
-            )
+            raise ValidationError("Prediction ID cannot be empty", field="prediction_id")
 
         # Input data for feature importance calculation
         input_data = {
@@ -882,9 +862,7 @@ class AWSXGBoostService(XGBoostInterface):
             raise ValidationError("Profile ID cannot be empty", field="profile_id")
 
         if not prediction_id:
-            raise ValidationError(
-                "Prediction ID cannot be empty", field="prediction_id"
-            )
+            raise ValidationError("Prediction ID cannot be empty", field="prediction_id")
 
         # Input data for digital twin integration
         input_data = {
@@ -969,9 +947,7 @@ class AWSXGBoostService(XGBoostInterface):
         try:
             # Check if model exists in mapping
             if normalized_type not in self._model_mappings:
-                raise ModelNotFoundError(
-                    f"Model not found: {model_type}", model_type=model_type
-                )
+                raise ModelNotFoundError(f"Model not found: {model_type}", model_type=model_type)
 
             # Get SageMaker model information
             model_name = self._model_mappings[normalized_type]
@@ -982,18 +958,12 @@ class AWSXGBoostService(XGBoostInterface):
             model_info = {
                 "model_type": model_type,
                 "version": response.get("ModelVersion", "1.0.0"),
-                "last_updated": response.get(
-                    "CreationTime", datetime.now()
-                ).isoformat(),
-                "description": response.get(
-                    "ModelDescription", f"XGBoost model for {model_type}"
-                ),
+                "last_updated": response.get("CreationTime", datetime.now()).isoformat(),
+                "description": response.get("ModelDescription", f"XGBoost model for {model_type}"),
                 "features": [],
                 "performance_metrics": {},
                 "hyperparameters": {},
-                "status": "active"
-                if response.get("ModelStatus") == "InService"
-                else "inactive",
+                "status": "active" if response.get("ModelStatus") == "InService" else "inactive",
             }
 
             # For demo/mock purposes, set some placeholder values
@@ -1048,10 +1018,7 @@ class AWSXGBoostService(XGBoostInterface):
                 f"AWS client error during model info retrieval: {error_code} - {error_message}"
             )
 
-            if (
-                error_code == "ValidationError"
-                or error_code == "ResourceNotFoundException"
-            ):
+            if error_code == "ValidationError" or error_code == "ResourceNotFoundException":
                 raise ModelNotFoundError(
                     f"Model not found: {model_type}", model_type=model_type
                 ) from e
@@ -1090,9 +1057,7 @@ class AWSXGBoostService(XGBoostInterface):
         for param in required_params:
             if param not in config:
                 # Raise error for missing AWS parameter
-                raise ConfigurationError(
-                    f"Missing required AWS parameter: {param}", field=param
-                )
+                raise ConfigurationError(f"Missing required AWS parameter: {param}", field=param)
         # Set configuration values
         self._region_name = config["region_name"]
         self._endpoint_prefix = config["endpoint_prefix"]
@@ -1130,9 +1095,7 @@ class AWSXGBoostService(XGBoostInterface):
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             error_message = e.response.get("Error", {}).get("Message", str(e))
 
-            self._logger.error(
-                f"AWS client initialization error: {error_code} - {error_message}"
-            )
+            self._logger.error(f"AWS client initialization error: {error_code} - {error_message}")
 
             # Raise as service connection error with expected message
             raise ExternalServiceException(
@@ -1276,9 +1239,7 @@ class AWSXGBoostService(XGBoostInterface):
 
         # Check if model exists in mapping
         if normalized_type not in self._model_mappings:
-            raise ModelNotFoundError(
-                f"Model not found: {model_type}", model_type=model_type
-            )
+            raise ModelNotFoundError(f"Model not found: {model_type}", model_type=model_type)
 
         # Construct the fully‑qualified endpoint name.  If the mapping already
         # contains the prefix avoid duplicating it.
@@ -1290,9 +1251,7 @@ class AWSXGBoostService(XGBoostInterface):
 
         return endpoint_name
 
-    def _invoke_endpoint(
-        self, endpoint_name: str, input_data: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _invoke_endpoint(self, endpoint_name: str, input_data: dict[str, Any]) -> dict[str, Any]:
         """
         Invoke a SageMaker endpoint with input data.
 
@@ -1441,10 +1400,7 @@ class AWSXGBoostService(XGBoostInterface):
                 )
 
                 # Only retry for certain exceptions, not for all
-                if (
-                    isinstance(e, (ConnectionError, TimeoutError))
-                    and retry_count < max_retries - 1
-                ):
+                if isinstance(e, (ConnectionError, TimeoutError)) and retry_count < max_retries - 1:
                     retry_seconds = retry_delay * (2**retry_count)
                     self._logger.warning(
                         f"Connection error, will retry in {retry_seconds:.2f}s: "
@@ -1508,9 +1464,7 @@ class AWSXGBoostService(XGBoostInterface):
                 "timestamp": {"S": datetime.now().isoformat()},
                 "endpoint_name": {"S": endpoint_name},
                 "patient_id_hash": {"S": hashed_patient_id},
-                "request_type": {
-                    "S": self._get_request_type_from_endpoint(endpoint_name)
-                },
+                "request_type": {"S": self._get_request_type_from_endpoint(endpoint_name)},
                 "input_summary": {"S": json.dumps(sanitized_input)},
                 "output_summary": {"S": json.dumps(sanitized_result)},
                 "privacy_level": {"S": self._privacy_level.value},
@@ -1554,17 +1508,13 @@ class AWSXGBoostService(XGBoostInterface):
 
         except Exception as e:
             # Don't fail the operation if audit logging fails, but log it properly
-            self._logger.error(
-                f"Failed to log audit record: error={e!s}, request_id={request_id}"
-            )
+            self._logger.error(f"Failed to log audit record: error={e!s}, request_id={request_id}")
 
             # Attempt to write to local audit log as fallback
             try:
                 self._log_audit_fallback(endpoint_name, input_data, request_id)
             except Exception as fallback_error:
-                self._logger.error(
-                    f"Audit fallback logging also failed: {fallback_error!s}"
-                )
+                self._logger.error(f"Audit fallback logging also failed: {fallback_error!s}")
 
     def _log_audit_fallback(
         self, endpoint_name: str, input_data: dict[str, Any], request_id: str
@@ -1590,9 +1540,7 @@ class AWSXGBoostService(XGBoostInterface):
         }
 
         # Get fallback log path from environment or use default
-        fallback_log = os.environ.get(
-            "AUDIT_FALLBACK_LOG", "/tmp/xgboost_audit_fallback.log"
-        )
+        fallback_log = os.environ.get("AUDIT_FALLBACK_LOG", "/tmp/xgboost_audit_fallback.log")
 
         # Append to fallback log
         with open(fallback_log, "a") as f:
@@ -1715,9 +1663,7 @@ class AWSXGBoostService(XGBoostInterface):
                     sanitized["metrics"][metric] = data["metrics"][metric]
 
         # For feature importance, only include top N features without values
-        if "feature_importance" in data and isinstance(
-            data["feature_importance"], dict
-        ):
+        if "feature_importance" in data and isinstance(data["feature_importance"], dict):
             # Only include feature names (not values) and exclude any that might contain PHI
             feature_names = list(data["feature_importance"].keys())
             sanitized["feature_names"] = [
@@ -1731,9 +1677,7 @@ class AWSXGBoostService(XGBoostInterface):
         if "brain_regions" in data and isinstance(data["brain_regions"], list):
             sanitized["region_count"] = len(data["brain_regions"])
             # Only include a safe count of active regions, not specific identifiers
-            if len(data["brain_regions"]) > 0 and isinstance(
-                data["brain_regions"][0], dict
-            ):
+            if len(data["brain_regions"]) > 0 and isinstance(data["brain_regions"][0], dict):
                 active_count = sum(
                     1 for region in data["brain_regions"] if region.get("active", False)
                 )
@@ -1997,9 +1941,7 @@ class AWSXGBoostService(XGBoostInterface):
 
         # Validate outcome timeframe
         if not outcome_timeframe:
-            raise ValidationError(
-                "Outcome timeframe cannot be empty", field="outcome_timeframe"
-            )
+            raise ValidationError("Outcome timeframe cannot be empty", field="outcome_timeframe")
 
         valid_units = ["days", "weeks", "months"]
         if not any(unit in outcome_timeframe for unit in valid_units):
@@ -2025,15 +1967,11 @@ class AWSXGBoostService(XGBoostInterface):
 
         # Validate clinical data
         if not clinical_data:
-            raise ValidationError(
-                "Clinical data cannot be empty", field="clinical_data"
-            )
+            raise ValidationError("Clinical data cannot be empty", field="clinical_data")
 
         # Validate treatment plan
         if not treatment_plan:
-            raise ValidationError(
-                "Treatment plan cannot be empty", field="treatment_plan"
-            )
+            raise ValidationError("Treatment plan cannot be empty", field="treatment_plan")
 
     def _calculate_timeframe_days(self, timeframe: dict[str, int]) -> int:
         """
@@ -2066,9 +2004,7 @@ class AWSXGBoostService(XGBoostInterface):
             ConfigurationError: If service is not initialized
         """
         if not hasattr(self, "_initialized") or not self._initialized:
-            raise ConfigurationError(
-                "XGBoost service not initialized. Call initialize() first."
-            )
+            raise ConfigurationError("XGBoost service not initialized. Call initialize() first.")
 
     def get_prediction(self, prediction_id: str) -> Any:
         """
@@ -2077,9 +2013,7 @@ class AWSXGBoostService(XGBoostInterface):
         """
         self._ensure_initialized()
         try:
-            resp = self._predictions_table.get_item(
-                Key={"prediction_id": prediction_id}
-            )
+            resp = self._predictions_table.get_item(Key={"prediction_id": prediction_id})
         except botocore.exceptions.ClientError as e:
             raise ExternalServiceException("Failed to retrieve prediction") from e
         item = resp.get("Item")
@@ -2122,9 +2056,7 @@ class AWSXGBoostService(XGBoostInterface):
         # ------------------------------------------------------------------
         if not item:
             try:
-                resp = self._predictions_table.get_item(
-                    Key={"prediction_id": prediction_id}
-                )
+                resp = self._predictions_table.get_item(Key={"prediction_id": prediction_id})
                 item = (resp or {}).get("Item")
             except Exception:
                 # Any error will be handled by the outer guard below
@@ -2280,9 +2212,7 @@ class AWSXGBoostService(XGBoostInterface):
 
         all_healthy = statuses and all(s == "healthy" for s in statuses)
         all_unhealthy = statuses and all(s == "unhealthy" for s in statuses)
-        models_active = (
-            all(state == "active" for state in models.values()) if models else True
-        )
+        models_active = all(state == "active" for state in models.values()) if models else True
 
         if all_healthy and models_active:
             overall = "healthy"

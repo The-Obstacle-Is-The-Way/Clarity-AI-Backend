@@ -124,9 +124,7 @@ async def analyze_actigraphy(
     )
 
     # Convert AnalysisType enum values to plain strings expected by the service
-    analysis_types: list[str] = [
-        _normalize_analysis_type(a) for a in request_data.analysis_types
-    ]
+    analysis_types: list[str] = [_normalize_analysis_type(a) for a in request_data.analysis_types]
 
     try:
         result = pat_service.analyze_actigraphy(
@@ -139,16 +137,12 @@ async def analyze_actigraphy(
             analysis_types=analysis_types,
         )
 
-        logger.info(
-            "Actigraphy analysis started: analysis_id=%s", result.get("analysis_id")
-        )
+        logger.info("Actigraphy analysis started: analysis_id=%s", result.get("analysis_id"))
         return result  # FastAPI will serialise the dict and Validate via response_model
 
     except ValidationError as e:
         logger.warning("Validation error during actigraphy analysis: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
     except InitializationError as e:
         logger.error("PAT service not initialised: %s", e)
         raise HTTPException(
@@ -221,23 +215,13 @@ async def get_analysis_status(
         # Top-level sleep metrics
         if "sleep_metrics" in result:
             payload["sleep_metrics"] = result["sleep_metrics"]
-        elif (
-            result.get("results")
-            and AnalysisType.SLEEP_QUALITY.value in result["results"]
-        ):
-            payload["sleep_metrics"] = result["results"][
-                AnalysisType.SLEEP_QUALITY.value
-            ]
+        elif result.get("results") and AnalysisType.SLEEP_QUALITY.value in result["results"]:
+            payload["sleep_metrics"] = result["results"][AnalysisType.SLEEP_QUALITY.value]
         # Top-level activity levels
         if "activity_levels" in result:
             payload["activity_levels"] = result["activity_levels"]
-        elif (
-            result.get("results")
-            and AnalysisType.ACTIVITY_LEVELS.value in result["results"]
-        ):
-            payload["activity_levels"] = result["results"][
-                AnalysisType.ACTIVITY_LEVELS.value
-            ]
+        elif result.get("results") and AnalysisType.ACTIVITY_LEVELS.value in result["results"]:
+            payload["activity_levels"] = result["results"][AnalysisType.ACTIVITY_LEVELS.value]
         return payload
 
     except ResourceNotFoundError as e:
@@ -266,9 +250,7 @@ async def get_analysis_status(
     description="Generate embeddings from actigraphy data for machine learning models.",
 )
 async def get_actigraphy_embeddings(
-    payload: GetActigraphyEmbeddingsRequest = Depends(
-        validate_get_actigraphy_embeddings_request
-    ),
+    payload: GetActigraphyEmbeddingsRequest = Depends(validate_get_actigraphy_embeddings_request),
     current_user: dict[str, Any] = Depends(get_current_user),
     pat_service: PATInterface = Depends(get_pat_service),
 ) -> EmbeddingResult:
@@ -291,9 +273,7 @@ async def get_actigraphy_embeddings(
     """
     try:
         # Log embedding request (without PHI)
-        logger.info(
-            f"Generating actigraphy embeddings: readings_count={len(payload.readings)}"
-        )
+        logger.info(f"Generating actigraphy embeddings: readings_count={len(payload.readings)}")
         # Prepare inputs for service
         readings_list = [r.model_dump() for r in payload.readings]
         # Generate embeddings via PAT service
@@ -331,9 +311,7 @@ async def get_actigraphy_embeddings(
         if isinstance(embedding_data, list):
             # Legacy format: list of vector values
             vector = embedding_data
-            dimension = result.get(
-                "embedding_dim", result.get("dimension", len(vector))
-            )
+            dimension = result.get("embedding_dim", result.get("dimension", len(vector)))
             model_version = result.get("model_version", "")
             embedding_payload = {
                 "vector": vector,
@@ -364,9 +342,7 @@ async def get_actigraphy_embeddings(
 
     except ValidationError as e:
         logger.warning(f"Validation error in get_actigraphy_embeddings: {e!s}")
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
     except EmbeddingError as e:
         logger.error(f"Embedding error in get_actigraphy_embeddings: {e!s}")
@@ -444,13 +420,10 @@ async def get_patient_analyses(
         )
 
         # Get the analyses from service
-        result = pat_service.get_patient_analyses(
-            patient_id=patient_id, limit=limit, offset=offset
-        )
+        result = pat_service.get_patient_analyses(patient_id=patient_id, limit=limit, offset=offset)
 
         logger.info(
-            f"Successfully retrieved patient analyses: "
-            f"count={len(result.get('analyses', []))}"
+            f"Successfully retrieved patient analyses: " f"count={len(result.get('analyses', []))}"
         )
         # Shape payload for response
         analyses_payload: list[dict[str, Any]] = []
@@ -467,12 +440,8 @@ async def get_patient_analyses(
                 entry["sleep_metrics"] = a["results"][AnalysisType.SLEEP_QUALITY.value]
             if "activity_levels" in a:
                 entry["activity_levels"] = a["activity_levels"]
-            elif (
-                a.get("results") and AnalysisType.ACTIVITY_LEVELS.value in a["results"]
-            ):
-                entry["activity_levels"] = a["results"][
-                    AnalysisType.ACTIVITY_LEVELS.value
-                ]
+            elif a.get("results") and AnalysisType.ACTIVITY_LEVELS.value in a["results"]:
+                entry["activity_levels"] = a["results"][AnalysisType.ACTIVITY_LEVELS.value]
             analyses_payload.append(entry)
         # Return structured response for patient analyses
         return {
@@ -485,9 +454,7 @@ async def get_patient_analyses(
         raise HTTPException(status_code=e.status_code, detail=e.detail) from e
 
     except Exception as e:
-        logger.error(
-            f"Unexpected error getting analyses for patient {patient_id}: {e!s}"
-        )
+        logger.error(f"Unexpected error getting analyses for patient {patient_id}: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while retrieving analyses",
@@ -640,9 +607,7 @@ async def integrate_with_digital_twin(
 
     except ValidationError as e:
         logger.warning(f"Validation error in integrate_with_digital_twin: {e!s}")
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
     except ResourceNotFoundError as e:
         logger.warning(f"Resource not found in integrate_with_digital_twin: {e!s}")

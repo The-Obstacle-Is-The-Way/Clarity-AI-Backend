@@ -24,9 +24,7 @@ class SampleModel(TestBase):
 class TestDatabase:
     def __init__(self, connection_string="sqlite+aiosqlite:///:memory:"):
         self.connection_string = connection_string
-        self.engine = create_async_engine(
-            self.connection_string, echo=False, future=True
-        )
+        self.engine = create_async_engine(self.connection_string, echo=False, future=True)
         self.session_factory = async_sessionmaker(
             bind=self.engine, autocommit=False, autoflush=False, expire_on_commit=False
         )
@@ -79,9 +77,7 @@ class TestDatabaseOperations:
             await session.commit()
 
             # Query the record
-            result = await session.execute(
-                select(SampleModel).filter_by(name="test_create")
-            )
+            result = await session.execute(select(SampleModel).filter_by(name="test_create"))
             retrieved_record = result.scalar_one_or_none()
 
             # Verify it's there
@@ -99,9 +95,7 @@ class TestDatabaseOperations:
             await session.commit()
 
             # Query it back
-            result = await session.execute(
-                select(SampleModel).filter_by(name="test_session")
-            )
+            result = await session.execute(select(SampleModel).filter_by(name="test_session"))
             retrieved_record = result.scalar_one_or_none()
 
             # Verify it exists
@@ -120,9 +114,7 @@ class TestDatabaseOperations:
             await session.rollback()
 
             # Try to query it - should not exist
-            result = await session.execute(
-                select(SampleModel).filter_by(name="rollback_test")
-            )
+            result = await session.execute(select(SampleModel).filter_by(name="rollback_test"))
             retrieved_record = result.scalar_one_or_none()
 
             # Should be None since we rolled back

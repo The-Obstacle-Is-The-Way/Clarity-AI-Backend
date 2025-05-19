@@ -25,9 +25,7 @@ async def validate_analyze_actigraphy_request(
         return AnalyzeActigraphyRequest.model_validate(payload)
     except PydanticValidationError as exc:
         # Return validation errors in HTTPException detail
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.errors()
-        )
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.errors())
 
 
 async def validate_get_actigraphy_embeddings_request(
@@ -41,6 +39,4 @@ async def validate_get_actigraphy_embeddings_request(
         payload = await request.json()
         return GetActigraphyEmbeddingsRequest.model_validate(payload)
     except PydanticValidationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.errors()
-        )
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.errors())

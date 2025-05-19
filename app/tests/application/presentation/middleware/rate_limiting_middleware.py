@@ -188,11 +188,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         # Legacy invocation path: (app_callable, request)
         if len(args) == 2 and not isinstance(args[0], dict):
             app_callable, request = args
-            key = (
-                self._default_get_key(request)
-                if hasattr(request, "headers")
-                else "unknown"
-            )
+            key = self._default_get_key(request) if hasattr(request, "headers") else "unknown"
             allowed = await self.check_rate_limit(key)
             if not allowed:
                 return Response(content="Too Many Requests", status_code=429)
@@ -210,9 +206,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         # ASGI invocation path: (scope, receive, send)
         return await super().__call__(*args)
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """
         Process the request through the middleware.
 

@@ -265,9 +265,7 @@ class AppointmentService:
 
         # Set new end time if not provided
         if not new_end_time:
-            duration = (
-                appointment.end_time - appointment.start_time
-            ).total_seconds() / 60
+            duration = (appointment.end_time - appointment.start_time).total_seconds() / 60
             new_end_time = new_start_time + timedelta(minutes=duration)
 
         # Check for minimum notice period
@@ -578,17 +576,13 @@ class AppointmentService:
         )
 
         # Add buffer to start and end times
-        buffered_start = start_time - timedelta(
-            minutes=self.buffer_between_appointments
-        )
+        buffered_start = start_time - timedelta(minutes=self.buffer_between_appointments)
         buffered_end = end_time + timedelta(minutes=self.buffer_between_appointments)
 
         # Check for conflicts
         for appointment in appointments:
             # Skip the appointment being rescheduled
-            if exclude_appointment_id and str(appointment.id) == str(
-                exclude_appointment_id
-            ):
+            if exclude_appointment_id and str(appointment.id) == str(exclude_appointment_id):
                 continue
 
             # Skip cancelled appointments
@@ -611,9 +605,7 @@ class AppointmentService:
                     f"Appointment conflicts with existing appointment at {appointment.start_time}"
                 )
 
-    def _check_daily_appointment_limit(
-        self, provider_id: UUID | str, date: datetime
-    ) -> None:
+    def _check_daily_appointment_limit(self, provider_id: UUID | str, date: datetime) -> None:
         """
         Check if a provider has reached their daily appointment limit.
 

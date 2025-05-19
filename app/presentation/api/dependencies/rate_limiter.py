@@ -165,8 +165,7 @@ class RateLimitDependency:
     async def __call__(
         self,
         request: Request,
-        credentials: HTTPAuthorizationCredentials
-        | None = Depends(HTTPBearer(auto_error=False)),
+        credentials: HTTPAuthorizationCredentials | None = Depends(HTTPBearer(auto_error=False)),
     ) -> None:
         """
         Apply rate limiting to the request.
@@ -263,9 +262,7 @@ class RateLimitDependency:
 
 # Predefined rate limiters for common scenarios
 default_rate_limiter = RateLimitDependency(
-    RateLimitConfig(
-        rate=100, per=60, scope=RateLimitScope.IP
-    )  # 100 requests per minute per IP
+    RateLimitConfig(rate=100, per=60, scope=RateLimitScope.IP)  # 100 requests per minute per IP
 )
 
 strict_rate_limiter = RateLimitDependency(
@@ -273,9 +270,7 @@ strict_rate_limiter = RateLimitDependency(
 )
 
 auth_rate_limiter = RateLimitDependency(
-    RateLimitConfig(
-        rate=5, per=60, scope="ip"
-    )  # 5 requests per minute per IP for auth endpoints
+    RateLimitConfig(rate=5, per=60, scope="ip")  # 5 requests per minute per IP for auth endpoints
 )
 
 

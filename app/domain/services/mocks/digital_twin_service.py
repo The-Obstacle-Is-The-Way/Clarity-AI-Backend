@@ -41,9 +41,7 @@ class MockDigitalTwinService:
         # Add a medication_class attribute to the medication instance for compatibility
         if not hasattr(medication, "medication_class"):
             # If medication doesn't have a class attribute, use the first tag
-            medication.medication_class = (
-                next(iter(medication.tags)) if medication.tags else "SSRI"
-            )
+            medication.medication_class = next(iter(medication.tags)) if medication.tags else "SSRI"
 
         nt_model = NeurotransmitterTwinModel(digital_twin=digital_twin)
         med_model = MedicationResponseModel(neurotransmitter_model=nt_model)

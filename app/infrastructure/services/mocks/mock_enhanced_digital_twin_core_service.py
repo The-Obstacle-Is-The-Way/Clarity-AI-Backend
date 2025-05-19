@@ -104,9 +104,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         ] = {}  # patient_id -> neurotransmitter_mapping
 
         # Event system
-        self._event_subscriptions: dict[
-            UUID, dict
-        ] = {}  # subscription_id -> subscription_data
+        self._event_subscriptions: dict[UUID, dict] = {}  # subscription_id -> subscription_data
         self._event_history: dict[UUID, list[dict]] = {}  # patient_id -> events
 
     async def initialize_digital_twin(
@@ -115,9 +113,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         initial_data: dict | None = None,
         enable_knowledge_graph: bool = True,
         enable_belief_network: bool = True,
-    ) -> tuple[
-        DigitalTwinState, TemporalKnowledgeGraph | None, BayesianBeliefNetwork | None
-    ]:
+    ) -> tuple[DigitalTwinState, TemporalKnowledgeGraph | None, BayesianBeliefNetwork | None]:
         """
         Initialize a new Digital Twin state with knowledge graph and belief network.
 
@@ -132,9 +128,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             Knowledge graph and belief network may be None if disabled
         """
         # Create initial digital twin state
-        initial_state = self._create_initial_digital_twin_state(
-            patient_id, initial_data or {}
-        )
+        initial_state = self._create_initial_digital_twin_state(patient_id, initial_data or {})
 
         # Initialize patient storage if not exists
         if patient_id not in self._digital_twin_states:
@@ -163,9 +157,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         # Initialize belief network if enabled
         belief_network = None
         if enable_belief_network:
-            belief_network = self._initialize_belief_network(
-                patient_id, initial_data or {}
-            )
+            belief_network = self._initialize_belief_network(patient_id, initial_data or {})
             self._belief_networks[patient_id] = belief_network
 
         # Publish initialization event
@@ -217,9 +209,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         """
         # Ensure patient exists
         if patient_id not in self._digital_twin_states:
-            raise ValueError(
-                f"Patient {patient_id} not found. Initialize digital twin first."
-            )
+            raise ValueError(f"Patient {patient_id} not found. Initialize digital twin first.")
 
         # Get the latest state
         latest_state_id = max(self._digital_twin_states[patient_id].keys())
@@ -248,11 +238,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             if behavioral_data:
                 biometric_data.update(behavioral_data)
 
-            if (
-                behavioral_data
-                and "activity" in behavioral_data
-                and "sleep" in behavioral_data
-            ):
+            if behavioral_data and "activity" in behavioral_data and "sleep" in behavioral_data:
                 processing_tasks.append(
                     self.pat_service.fuse_multi_device_data(
                         patient_id=patient_id,
@@ -287,9 +273,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 insights.extend(result["insights"])
 
         # Update the Digital Twin state with new insights
-        new_state = await self._merge_insights(
-            patient_id, insights, "multimodal_processing"
-        )
+        new_state = await self._merge_insights(patient_id, insights, "multimodal_processing")
 
         # Update knowledge graph if it exists
         if patient_id in self._knowledge_graphs:
@@ -324,9 +308,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             patient_id=patient_id,
         )
 
-        return new_state, [
-            {"result": r} if not isinstance(r, dict) else r for r in valid_results
-        ]
+        return new_state, [{"result": r} if not isinstance(r, dict) else r for r in valid_results]
 
     async def update_knowledge_graph(
         self,
@@ -361,9 +343,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 # Handle both enum and string values for clinical_significance
                 significance = insight.clinical_significance
                 significance_value = (
-                    significance.value
-                    if hasattr(significance, "value")
-                    else str(significance)
+                    significance.value if hasattr(significance, "value") else str(significance)
                 )
 
                 insight_node = KnowledgeGraphNode.create(
@@ -383,9 +363,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 # Create nodes for associated brain regions and neurotransmitters
                 for region in insight.brain_regions:
                     # Handle both enum values and strings
-                    region_label = (
-                        region.value if hasattr(region, "value") else str(region)
-                    )
+                    region_label = region.value if hasattr(region, "value") else str(region)
                     region_node = KnowledgeGraphNode.create(
                         label=region_label,
                         node_type=NodeType.BRAIN_REGION,
@@ -581,8 +559,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 if isinstance(value, (int, float)):
                     weights = {"mentalllama": 0.3, "xgboost": 0.4, "pat": 0.3}
                     validated_value = sum(
-                        opinion * weights[source]
-                        for source, opinion in opinions.items()
+                        opinion * weights[source] for source, opinion in opinions.items()
                     )
                     confidence = 0.75 + random.random() * 0.2
                 else:
@@ -650,30 +627,20 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 "path": [
                     {
                         "event": start_event,
-                        "timestamp": (
-                            datetime.now() - timedelta(days=path_length)
-                        ).isoformat(),
+                        "timestamp": (datetime.now() - timedelta(days=path_length)).isoformat(),
                     }
                 ],
-                "confidence": round(
-                    min_confidence + random.random() * (1 - min_confidence), 2
-                ),
+                "confidence": round(min_confidence + random.random() * (1 - min_confidence), 2),
             }
 
             # Generate intermediate events
             for i in range(1, path_length):
                 intermediate_event = f"Intermediate Event {i}"
-                timestamp = (
-                    datetime.now() - timedelta(days=path_length - i)
-                ).isoformat()
-                path["path"].append(
-                    {"event": intermediate_event, "timestamp": timestamp}
-                )
+                timestamp = (datetime.now() - timedelta(days=path_length - i)).isoformat()
+                path["path"].append({"event": intermediate_event, "timestamp": timestamp})
 
             # Add end event
-            path["path"].append(
-                {"event": end_event, "timestamp": datetime.now().isoformat()}
-            )
+            path["path"].append({"event": end_event, "timestamp": datetime.now().isoformat()})
 
             paths.append(path)
 
@@ -765,9 +732,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             days = end_day - start_day
             num_points = min(30, max(10, days // 2))
 
-            time_points = [
-                start_day + (i * (days / (num_points - 1))) for i in range(num_points)
-            ]
+            time_points = [start_day + (i * (days / (num_points - 1))) for i in range(num_points)]
 
             # Generate response curve
             baseline = random.uniform(0.2, 0.5)
@@ -785,9 +750,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                     if progress > 1:
                         value = max_response + random.uniform(-0.05, 0.05)
                     else:
-                        value = baseline + (max_response - baseline) * (
-                            progress / (1 + progress)
-                        )
+                        value = baseline + (max_response - baseline) * (progress / (1 + progress))
                         value += random.uniform(-0.05, 0.05)
 
                 value = max(0, min(1, value))
@@ -966,13 +929,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
 
                         if day >= intervention_day:
                             days_since = day - intervention_day
-                            effect_curve = min(1, days_since / 14) * max(
-                                0, 1 - (days_since / 120)
-                            )
+                            effect_curve = min(1, days_since / 14) * max(0, 1 - (days_since / 120))
 
-                            if variable in intervention.get(
-                                "affected_variables", [variable]
-                            ):
+                            if variable in intervention.get("affected_variables", [variable]):
                                 effect_size = intervention.get(
                                     "effect_size", random.uniform(0.1, 0.3)
                                 )
@@ -993,9 +952,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 variable_trajectories[variable] = trajectory
 
             # Calculate metrics
-            final_values = {
-                var: traj[-1]["value"] for var, traj in variable_trajectories.items()
-            }
+            final_values = {var: traj[-1]["value"] for var, traj in variable_trajectories.items()}
             scenario_score = round(sum(final_values.values()) / len(final_values), 2)
 
             simulation_results.append(
@@ -1039,12 +996,8 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 {
                     "id": condition_id,
                     "name": condition.get("name", f"Warning Condition {i+1}"),
-                    "threshold": condition.get(
-                        "threshold", round(0.6 + random.random() * 0.2, 2)
-                    ),
-                    "look_back_days": condition.get(
-                        "look_back_days", random.randint(3, 10)
-                    ),
+                    "threshold": condition.get("threshold", round(0.6 + random.random() * 0.2, 2)),
+                    "look_back_days": condition.get("look_back_days", random.randint(3, 10)),
                 }
             )
 
@@ -1183,11 +1136,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 # but also include rich object data for visualization
                 for nt in Neurotransmitter:
                     # Higher level for primary neurotransmitter
-                    level = (
-                        0.8
-                        if primary_nt and nt == primary_nt
-                        else random.uniform(0.2, 0.5)
-                    )
+                    level = 0.8 if primary_nt and nt == primary_nt else random.uniform(0.2, 0.5)
                     neurotransmitters_data.append(
                         {
                             "id": nt.value,
@@ -1200,9 +1149,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 # Include both the rich object data and a simple list of neurotransmitter values
                 # This ensures backward compatibility with tests
                 result["neurotransmitters"] = neurotransmitters_data
-                result["neurotransmitter_values"] = [
-                    nt.value for nt in Neurotransmitter
-                ]
+                result["neurotransmitter_values"] = [nt.value for nt in Neurotransmitter]
 
             return result
         else:
@@ -1246,9 +1193,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         """Stub for updating the belief network."""
         return
 
-    async def query_belief_network(
-        self, patient_id: UUID, query_node: str, evidence: dict
-    ) -> dict:
+    async def query_belief_network(self, patient_id: UUID, query_node: str, evidence: dict) -> dict:
         """Stub for querying the belief network."""
         # Return a dummy probability between 0 and 1
         return {"probability": 0.5}
@@ -1325,9 +1270,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         """Stub for cascading neurotransmitter simulations."""
         # Ensure mapping exists for patient (args[0] is patient_id)
         patient_id = (
-            kwargs.get("patient_id")
-            if "patient_id" in kwargs
-            else (args[0] if args else None)
+            kwargs.get("patient_id") if "patient_id" in kwargs else (args[0] if args else None)
         )
         if patient_id is not None and patient_id not in self._neurotransmitter_mappings:
             await self.initialize_neurotransmitter_mapping(patient_id)
@@ -1414,9 +1357,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             await self.initialize_neurotransmitter_mapping(patient_id)
         self._neurotransmitter_mappings[patient_id].add_receptor_profile(profile)
 
-    async def get_neurotransmitter_mapping(
-        self, patient_id: UUID
-    ) -> NeurotransmitterMapping:
+    async def get_neurotransmitter_mapping(self, patient_id: UUID) -> NeurotransmitterMapping:
         """Stub for retrieving the neurotransmitter mapping for a patient."""
         # Ensure mapping exists
         if patient_id not in self._neurotransmitter_mappings:
@@ -1446,9 +1387,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             "created_at": datetime.now(),
         }
 
-        logger.info(
-            f"Created event subscription {subscription_id} for event types {event_types}"
-        )
+        logger.info(f"Created event subscription {subscription_id} for event types {event_types}")
 
         return subscription_id
 
@@ -1520,9 +1459,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                     else:
                         callback(event_type, event_data, source, patient_id)
                 except Exception:
-                    logger.exception(
-                        f"Error in event subscriber callback for {event_type}"
-                    )
+                    logger.exception(f"Error in event subscriber callback for {event_type}")
         return event_id
 
     async def _merge_insights(
@@ -1749,9 +1686,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         if (patient_id not in self._digital_twin_states) and (
             patient_id not in self._knowledge_graphs
         ):
-            raise ValueError(
-                f"Patient {patient_id} not found. Initialize digital twin first."
-            )
+            raise ValueError(f"Patient {patient_id} not found. Initialize digital twin first.")
 
         # Create the mapping object
         if custom_mapping:
@@ -1803,9 +1738,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         # Ensure patient exists and has a mapping; create an empty mapping if none exists
         if patient_id not in self._neurotransmitter_mappings:
             # Initialize mapping without defaults to start empty
-            await self.initialize_neurotransmitter_mapping(
-                patient_id, use_default_mapping=False
-            )
+            await self.initialize_neurotransmitter_mapping(patient_id, use_default_mapping=False)
 
         mapping = self._neurotransmitter_mappings[patient_id]
 
@@ -1819,9 +1752,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             event_data={
                 "patient_id": str(patient_id),
                 "profile_count": len(receptor_profiles),
-                "brain_regions": [
-                    profile.brain_region.value for profile in receptor_profiles
-                ],
+                "brain_regions": [profile.brain_region.value for profile in receptor_profiles],
                 "neurotransmitters": [
                     profile.neurotransmitter.value for profile in receptor_profiles
                 ],
@@ -1897,12 +1828,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             effects[region] = {
                 "net_effect": net_effect,
                 "confidence": confidence,
-                "receptor_types": {
-                    rt.value: count for rt, count in receptor_types.items()
-                },
+                "receptor_types": {rt.value: count for rt, count in receptor_types.items()},
                 "receptor_count": len(profiles),
-                "is_produced_here": region
-                in mapping.get_producing_regions(neurotransmitter),
+                "is_produced_here": region in mapping.get_producing_regions(neurotransmitter),
             }
 
         return effects
@@ -1945,9 +1873,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 continue
 
             # Calculate overall sensitivity
-            total_sensitivity = sum(
-                profile.sensitivity * profile.density for profile in profiles
-            )
+            total_sensitivity = sum(profile.sensitivity * profile.density for profile in profiles)
             avg_sensitivity = total_sensitivity / len(profiles) if profiles else 0
 
             # Determine dominant receptor type
@@ -1959,9 +1885,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
 
             # Find the dominant type
             dominant_type = (
-                max(receptor_types.items(), key=lambda x: x[1])[0]
-                if receptor_types
-                else None
+                max(receptor_types.items(), key=lambda x: x[1])[0] if receptor_types else None
             )
 
             # Determine clinical relevance (highest among profiles)
@@ -1978,12 +1902,8 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             sensitivities[nt] = {
                 "sensitivity": avg_sensitivity,
                 "receptor_count": len(profiles),
-                "receptor_types": {
-                    rt.value: count for rt, count in receptor_types.items()
-                },
-                "dominant_receptor_type": dominant_type.value
-                if dominant_type
-                else None,
+                "receptor_types": {rt.value: count for rt, count in receptor_types.items()},
+                "dominant_receptor_type": dominant_type.value if dominant_type else None,
                 "clinical_relevance": clinical_relevance.value,
                 "is_produced_here": brain_region in mapping.get_producing_regions(nt),
             }
@@ -2037,9 +1957,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         simulation_parameters = {
             "simulation_steps": simulation_steps,
             "min_effect_threshold": min_effect_threshold,
-            "initial_changes": {
-                nt.value: change for nt, change in initial_changes.items()
-            },
+            "initial_changes": {nt.value: change for nt, change in initial_changes.items()},
         }
         return {
             "timeline": timeline,
@@ -2069,9 +1987,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         for step in range(simulation_steps):
             step_changes = {
                 "step": step + 1,
-                "neurotransmitter_levels": {
-                    nt.value: level for nt, level in nt_levels.items()
-                },
+                "neurotransmitter_levels": {nt.value: level for nt, level in nt_levels.items()},
                 "region_effects": {},
             }
 
@@ -2098,9 +2014,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
 
                 # Store in step data
                 if abs(region_effect) >= min_effect_threshold:
-                    step_changes["region_effects"][region.value] = round(
-                        region_effect, 3
-                    )
+                    step_changes["region_effects"][region.value] = round(region_effect, 3)
 
             steps_data.append(step_changes)
 
@@ -2114,9 +2028,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                         if region in current_step_effects:
                             # Region activation affects neurotransmitter production
                             # Positive activation increases production, negative decreases
-                            production_change = (
-                                current_step_effects[region] * 0.2
-                            )  # Scale factor
+                            production_change = current_step_effects[region] * 0.2  # Scale factor
                             nt_production_changes[nt] += production_change
 
                 # Apply production changes
@@ -2219,9 +2131,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 {
                     "brain_region": BrainRegion.PREFRONTAL_CORTEX.value,
                     "neurotransmitter": (
-                        neurotransmitters[0]
-                        if neurotransmitters
-                        else Neurotransmitter.SEROTONIN
+                        neurotransmitters[0] if neurotransmitters else Neurotransmitter.SEROTONIN
                     ).value,
                     "effect": 0.0,
                     "confidence": 0.5,

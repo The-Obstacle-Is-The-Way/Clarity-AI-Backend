@@ -90,9 +90,7 @@ class DigitalTwinService:
         # Check if digital twin already exists
         existing_twin = await self._digital_twin_repo.get_by_patient_id(patient_id)
         if existing_twin:
-            raise ValidationError(
-                f"Digital twin already exists for patient with ID {patient_id}"
-            )
+            raise ValidationError(f"Digital twin already exists for patient with ID {patient_id}")
 
         # Prepare initial configuration and state
         config_data = initial_data.get("configuration", {}) if initial_data else {}
@@ -140,9 +138,7 @@ class DigitalTwinService:
         # Get digital twin
         digital_twin = await self._digital_twin_repo.get_by_patient_id(patient_id)
         if not digital_twin:
-            raise ValidationError(
-                f"Digital twin does not exist for patient with ID {patient_id}"
-            )
+            raise ValidationError(f"Digital twin does not exist for patient with ID {patient_id}")
 
         # TODO: Re-implement based on actual DigitalTwin entity structure
         # # Update time series model with new data points
@@ -185,9 +181,7 @@ class DigitalTwinService:
         # Get digital twin
         digital_twin = await self._digital_twin_repo.get_by_patient_id(patient_id)
         if not digital_twin:
-            raise ValidationError(
-                f"Digital twin does not exist for patient with ID {patient_id}"
-            )
+            raise ValidationError(f"Digital twin does not exist for patient with ID {patient_id}")
 
         # TODO: Re-implement based on actual DigitalTwin entity structure
         # # Create new twin model
@@ -283,9 +277,7 @@ class DigitalTwinService:
         # Get digital twin
         digital_twin = await self._digital_twin_repo.get_by_patient_id(patient_id)
         if not digital_twin:
-            raise ValidationError(
-                f"Digital twin does not exist for patient with ID {patient_id}"
-            )
+            raise ValidationError(f"Digital twin does not exist for patient with ID {patient_id}")
 
         # Set end date to now if not provided
         if end_date is None:
@@ -335,9 +327,7 @@ class DigitalTwinService:
         # Get digital twin
         digital_twin = await self._digital_twin_repo.get_by_patient_id(patient_id)
         if not digital_twin:
-            raise ValidationError(
-                f"Digital twin does not exist for patient with ID {patient_id}"
-            )
+            raise ValidationError(f"Digital twin does not exist for patient with ID {patient_id}")
 
         # In a real implementation, this would use the digital twin model to predict outcomes
         # For now, we'll return placeholder results
@@ -461,12 +451,10 @@ class DigitalTwinService:
 
         try:
             # Analyze correlations using the biometric correlation service
-            correlations = (
-                await self._biometric_correlation_service.analyze_correlations(
-                    patient_id=patient_id,
-                    biometric_data=biometric_data,
-                    mental_health_indicators=mental_health_indicators,
-                )
+            correlations = await self._biometric_correlation_service.analyze_correlations(
+                patient_id=patient_id,
+                biometric_data=biometric_data,
+                mental_health_indicators=mental_health_indicators,
             )
 
             # Add domain-specific processing here if needed
@@ -505,12 +493,10 @@ class DigitalTwinService:
 
         try:
             # Predict medication responses using the pharmacogenomics service
-            predictions = (
-                await self._pharmacogenomics_service.predict_medication_responses(
-                    patient_id=patient_id,
-                    patient_data=patient_data,
-                    medications=medications,
-                )
+            predictions = await self._pharmacogenomics_service.predict_medication_responses(
+                patient_id=patient_id,
+                patient_data=patient_data,
+                medications=medications,
             )
 
             # Add domain-specific processing here if needed
@@ -549,39 +535,30 @@ class DigitalTwinService:
             current_medications = patient_data.get("current_medications", [])
 
             # Get treatment recommendations from the pharmacogenomics service
-            treatment_plan = (
-                await self._pharmacogenomics_service.recommend_treatment_plan(
-                    patient_id=patient_id,
-                    patient_data=patient_data,
-                    diagnosis=diagnosis,
-                    current_medications=current_medications,
-                )
+            treatment_plan = await self._pharmacogenomics_service.recommend_treatment_plan(
+                patient_id=patient_id,
+                patient_data=patient_data,
+                diagnosis=diagnosis,
+                current_medications=current_medications,
             )
 
             # Get symptom forecast if symptom history is available
             symptom_forecast = None
             if "symptom_history" in patient_data:
-                symptom_forecast = (
-                    await self._symptom_forecasting_service.forecast_symptoms(
-                        patient_id=patient_id,
-                        symptom_history=patient_data["symptom_history"],
-                        forecast_days=90,  # Longer forecast for therapeutic planning
-                    )
+                symptom_forecast = await self._symptom_forecasting_service.forecast_symptoms(
+                    patient_id=patient_id,
+                    symptom_history=patient_data["symptom_history"],
+                    forecast_days=90,  # Longer forecast for therapeutic planning
                 )
 
             # Get biometric correlations if biometric data is available
             biometric_correlations = None
-            if (
-                "biometric_data" in patient_data
-                and "mental_health_indicators" in patient_data
-            ):
+            if "biometric_data" in patient_data and "mental_health_indicators" in patient_data:
                 biometric_correlations = (
                     await self._biometric_correlation_service.analyze_correlations(
                         patient_id=patient_id,
                         biometric_data=patient_data["biometric_data"],
-                        mental_health_indicators=patient_data[
-                            "mental_health_indicators"
-                        ],
+                        mental_health_indicators=patient_data["mental_health_indicators"],
                     )
                 )
 
@@ -600,9 +577,7 @@ class DigitalTwinService:
                         {
                             "type": "medication",
                             "name": recommendation.get("medication", ""),
-                            "description": recommendation.get(
-                                "recommendation_text", ""
-                            ),
+                            "description": recommendation.get("recommendation_text", ""),
                             "priority": (
                                 "high"
                                 if "first_line" in recommendation.get("line", "")
@@ -619,9 +594,7 @@ class DigitalTwinService:
                         goals.append(
                             {
                                 "description": f"Reduce {symptom} severity by 50% within 3 months",
-                                "target_date": (
-                                    datetime.now(UTC) + timedelta(days=90)
-                                ).isoformat(),
+                                "target_date": (datetime.now(UTC) + timedelta(days=90)).isoformat(),
                                 "priority": "high",
                             }
                         )
@@ -643,9 +616,7 @@ class DigitalTwinService:
                 goals.append(
                     {
                         "description": "Improve overall mental health and functioning",
-                        "target_date": (
-                            datetime.now(UTC) + timedelta(days=180)
-                        ).isoformat(),
+                        "target_date": (datetime.now(UTC) + timedelta(days=180)).isoformat(),
                         "priority": "high",
                     }
                 )
@@ -675,9 +646,7 @@ class DigitalTwinService:
 
         except Exception as e:
             logging.error(f"Error generating personalized therapeutic plan: {e!s}")
-            raise DomainError(
-                f"Failed to generate personalized therapeutic plan: {e!s}"
-            )
+            raise DomainError(f"Failed to generate personalized therapeutic plan: {e!s}")
 
     async def update_patient_digital_twin(
         self, patient_id: UUID, patient_data: dict[str, Any]
@@ -727,9 +696,7 @@ class DigitalTwinService:
 
         try:
             # Get the Digital Twin status
-            status = await self._digital_twin_service.get_digital_twin_status(
-                patient_id
-            )
+            status = await self._digital_twin_service.get_digital_twin_status(patient_id)
 
             # Add domain-specific processing here if needed
 

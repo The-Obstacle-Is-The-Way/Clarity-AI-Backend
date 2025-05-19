@@ -27,9 +27,7 @@ async def dummy_call_next(request: Request) -> Response:
 async def test_request_id_middleware_generates_id():
     """Test that middleware generates an ID if none is provided."""
     with patch("uuid.uuid4") as mock_uuid4:
-        fixed_test_uuid = (
-            "123e4567-e89b-12d3-a456-426614174000"  # A fixed, known UUID string
-        )
+        fixed_test_uuid = "123e4567-e89b-12d3-a456-426614174000"  # A fixed, known UUID string
         mock_uuid4.return_value = fixed_test_uuid
 
         middleware = RequestIdMiddleware(app=dummy_app)
@@ -62,7 +60,9 @@ async def test_request_id_middleware_uses_valid_incoming_id():
 async def test_request_id_middleware_generates_id_for_invalid_incoming_id():
     """Test that middleware generates an ID if the incoming one is invalid."""
     with patch("uuid.uuid4") as mock_uuid4_local:
-        fixed_test_uuid = "789e0123-e45b-67c8-d901-234567890123"  # A different fixed, known UUID string
+        fixed_test_uuid = (
+            "789e0123-e45b-67c8-d901-234567890123"  # A different fixed, known UUID string
+        )
         mock_uuid4_local.return_value = fixed_test_uuid
 
         invalid_incoming_id = "not-a-valid-uuid"

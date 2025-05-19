@@ -41,8 +41,7 @@ class TemporalNeurotransmitterService:
         sequence_repository: TemporalSequenceRepository,
         event_repository: EventRepository | None = None,
         nt_mapping: NeurotransmitterMapping | None = None,
-        visualization_preprocessor: NeurotransmitterVisualizationPreprocessor
-        | None = None,
+        visualization_preprocessor: NeurotransmitterVisualizationPreprocessor | None = None,
         xgboost_service=None,  # Intentionally untyped to avoid cyclic imports
         patient_id: UUID | None = None,
     ):
@@ -297,13 +296,9 @@ class TemporalNeurotransmitterService:
             # Extract baseline data if available
             baseline_data = {}
             if baseline_sequence and baseline_sequence.sequence_length > 0:
-                feature_idx = baseline_sequence.feature_names.index(
-                    target_neurotransmitter.value
-                )
+                feature_idx = baseline_sequence.feature_names.index(target_neurotransmitter.value)
                 baseline_value = baseline_sequence.values[0][feature_idx]
-                baseline_data[
-                    f"baseline_{target_neurotransmitter.value}"
-                ] = baseline_value
+                baseline_data[f"baseline_{target_neurotransmitter.value}"] = baseline_value
 
             # Get prediction from XGBoost service
             xgboost_prediction = self._xgboost_service.predict_treatment_response(
@@ -353,9 +348,7 @@ class TemporalNeurotransmitterService:
                     "treatment_effect_magnitude": treatment_effect,
                     "adjusted_effect_magnitude": adjusted_effect,
                     "brain_region": brain_region.value,
-                    "xgboost_prediction": xgboost_prediction
-                    if xgboost_prediction
-                    else None,
+                    "xgboost_prediction": xgboost_prediction if xgboost_prediction else None,
                 }
             )
 
@@ -397,10 +390,8 @@ class TemporalNeurotransmitterService:
             raise ValueError(f"Sequence with ID {sequence_id} not found")
 
         # Preprocess for visualization
-        viz_data = (
-            self.visualization_preprocessor.precompute_temporal_sequence_visualization(
-                sequence=sequence, focus_features=focus_features
-            )
+        viz_data = self.visualization_preprocessor.precompute_temporal_sequence_visualization(
+            sequence=sequence, focus_features=focus_features
         )
 
         # Ensure essential fields are returned in a consistent format
@@ -493,9 +484,7 @@ class TemporalNeurotransmitterService:
                         regions_with_activity.add(region)
 
                         # Get activity level from the cascade results
-                        activity_level = cascade_results.get(
-                            region, [0.0] * time_steps
-                        )[t]
+                        activity_level = cascade_results.get(region, [0.0] * time_steps)[t]
 
                         # Add node if not already added
                         if not any(n for n in nodes if n.get("id") == region.value):
@@ -505,9 +494,7 @@ class TemporalNeurotransmitterService:
                                     "brain_region": region.value,
                                     "position": position,
                                     "activity": [
-                                        cascade_results.get(region, [0.0] * time_steps)[
-                                            i
-                                        ]
+                                        cascade_results.get(region, [0.0] * time_steps)[i]
                                         for i in range(time_steps)
                                     ],
                                 }
@@ -578,9 +565,7 @@ class TemporalNeurotransmitterService:
 
         return viz_data
 
-    def _find_region_for_position(
-        self, position: tuple[float, float, float]
-    ) -> BrainRegion | None:
+    def _find_region_for_position(self, position: tuple[float, float, float]) -> BrainRegion | None:
         """
         Find the brain region closest to the given 3D position.
 

@@ -149,12 +149,8 @@ class ContactInfo:
 
         method_lower = method.lower()
         if method_lower not in ContactInfo.VALID_CONTACT_METHODS:
-            valid_methods = ", ".join(
-                f"'{m}'" for m in ContactInfo.VALID_CONTACT_METHODS
-            )
-            raise ValueError(
-                f"Preferred contact method must be one of: {valid_methods}"
-            )
+            valid_methods = ", ".join(f"'{m}'" for m in ContactInfo.VALID_CONTACT_METHODS)
+            raise ValueError(f"Preferred contact method must be one of: {valid_methods}")
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> "ContactInfo":
@@ -273,12 +269,8 @@ class ContactInfo:
             encryption_service = self._get_encryption_service()
 
             # Create new instance with decrypted fields
-            email_decrypted = (
-                encryption_service.decrypt(self.email) if self.email else None
-            )
-            phone_decrypted = (
-                encryption_service.decrypt(self.phone) if self.phone else None
-            )
+            email_decrypted = encryption_service.decrypt(self.email) if self.email else None
+            phone_decrypted = encryption_service.decrypt(self.phone) if self.phone else None
 
             # Create a new instance with the _is_encrypted flag explicitly set to False
             result = ContactInfo(
@@ -344,9 +336,7 @@ def create_secure_contact_info(
         ValueError: If input validation fails (without exposing PHI)
     """
     try:
-        return ContactInfo(
-            email=email, phone=phone, preferred_contact_method=preferred_method
-        )
+        return ContactInfo(email=email, phone=phone, preferred_contact_method=preferred_method)
     except ValueError as e:
         # Log error without exposing PHI
         logger.error(f"Error creating ContactInfo: {type(e).__name__}")

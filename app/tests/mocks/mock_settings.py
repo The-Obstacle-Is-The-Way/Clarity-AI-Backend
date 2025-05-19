@@ -23,9 +23,7 @@ class MockSettings(BaseModel):
     API_V1_STR: str = "/v1"
 
     # JWT settings
-    JWT_SECRET_KEY: str = (
-        "test_jwt_secret_key_that_is_sufficiently_long_for_testing_purposes_only"
-    )
+    JWT_SECRET_KEY: str = "test_jwt_secret_key_that_is_sufficiently_long_for_testing_purposes_only"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7

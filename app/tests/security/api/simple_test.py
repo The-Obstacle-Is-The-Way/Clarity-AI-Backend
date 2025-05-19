@@ -32,9 +32,7 @@ def create_test_app():
 
     # Add exception handlers explicitly to deal with errors
     @app.exception_handler(RuntimeError)
-    async def runtime_error_handler(
-        request: Request, exc: RuntimeError
-    ) -> JSONResponse:
+    async def runtime_error_handler(request: Request, exc: RuntimeError) -> JSONResponse:
         """Specific handler for RuntimeError to mask details."""
         logger.error(f"RuntimeError encountered: {exc!s}")
         return JSONResponse(
@@ -43,9 +41,7 @@ def create_test_app():
         )
 
     @app.exception_handler(Exception)
-    async def generic_exception_handler(
-        request: Request, exc: Exception
-    ) -> JSONResponse:
+    async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """Generic exception handler that masks all errors."""
         logger.error(f"Exception encountered: {type(exc).__name__}: {exc!s}")
         return JSONResponse(
@@ -70,9 +66,7 @@ async def test_error_masking_simple():
         # Verify the error was properly masked
         assert response.status_code == 500, f"Expected 500, got {response.status_code}"
         assert response.json() == {"detail": "An internal server error occurred."}
-        assert (
-            "This is sensitive information that should be masked" not in response.text
-        )
+        assert "This is sensitive information that should be masked" not in response.text
 
 
 if __name__ == "__main__":

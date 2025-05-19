@@ -118,16 +118,10 @@ async def predict_risk(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ServiceUnavailableError as e:
         logger.error(f"Service unavailable during risk prediction: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except XGBoostServiceError as e:
-        logger.error(
-            f"XGBoost service error during risk prediction: {e}", exc_info=True
-        )
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        logger.error(f"XGBoost service error during risk prediction: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception:
         logger.exception(
             f"Unexpected error during risk prediction for patient {request.patient_id}"
@@ -172,31 +166,23 @@ async def predict_treatment_response(
         content = jsonable_encoder(raw)
         return JSONResponse(content=content)
     except ValidationError as e:
-        logger.warning(
-            f"Validation error during treatment response prediction: {e}", exc_info=True
-        )
+        logger.warning(f"Validation error during treatment response prediction: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except ModelNotFoundError as e:
-        logger.error(
-            f"Model not found for treatment response prediction: {e}", exc_info=True
-        )
+        logger.error(f"Model not found for treatment response prediction: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ServiceUnavailableError as e:
         logger.error(
             f"Service unavailable during treatment response prediction: {e}",
             exc_info=True,
         )
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except XGBoostServiceError as e:
         logger.error(
             f"XGBoost service error during treatment response prediction: {e}",
             exc_info=True,
         )
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception:
         logger.exception(
             f"Unexpected error during treatment response prediction for patient {request.patient_id}"
@@ -233,9 +219,7 @@ async def predict_outcome(
             social_determinants=request.social_determinants
             if hasattr(request, "social_determinants")
             else None,
-            comorbidities=request.comorbidities
-            if hasattr(request, "comorbidities")
-            else None,
+            comorbidities=request.comorbidities if hasattr(request, "comorbidities") else None,
         )
 
         # Properly await if coroutine
@@ -249,32 +233,20 @@ async def predict_outcome(
         # Return consistent JSONResponse format
         return JSONResponse(content=jsonable_encoder(result))
     except ValidationError as e:
-        logger.warning(
-            f"Validation error during outcome prediction: {e}", exc_info=True
-        )
+        logger.warning(f"Validation error during outcome prediction: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except DataPrivacyError as e:
-        logger.warning(
-            f"Data privacy error during outcome prediction: {e}", exc_info=True
-        )
+        logger.warning(f"Data privacy error during outcome prediction: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except ModelNotFoundError as e:
         logger.error(f"Model not found for outcome prediction: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ServiceUnavailableError as e:
-        logger.error(
-            f"Service unavailable during outcome prediction: {e}", exc_info=True
-        )
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        logger.error(f"Service unavailable during outcome prediction: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except XGBoostServiceError as e:
-        logger.error(
-            f"XGBoost service error during outcome prediction: {e}", exc_info=True
-        )
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        logger.error(f"XGBoost service error during outcome prediction: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception:
         logger.exception(
             f"Unexpected error during outcome prediction for patient {request.patient_id}"
@@ -352,16 +324,10 @@ async def post_model_info(
         logger.warning(f"Model info not found for type '{request.model_type}': {e}")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ServiceUnavailableError as e:
-        logger.error(
-            f"Service unavailable during model info retrieval: {e}", exc_info=True
-        )
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        logger.error(f"Service unavailable during model info retrieval: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except XGBoostServiceError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -400,9 +366,7 @@ async def get_feature_importance(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ServiceUnavailableError as e:
         logger.error(f"Service unavailable: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception:
         logger.exception("Unexpected error during feature importance retrieval")
         raise HTTPException(
@@ -449,18 +413,12 @@ async def feature_importance_post(
         logger.error(f"Feature importance not found: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValidationError as e:
-        logger.warning(
-            f"Validation error during feature importance retrieval: {e}", exc_info=True
-        )
+        logger.warning(f"Validation error during feature importance retrieval: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except ServiceUnavailableError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except XGBoostServiceError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception:
         logger.exception(
             f"Unexpected error during feature importance retrieval for prediction {request.prediction_id}"
@@ -531,24 +489,14 @@ async def integrate_with_digital_twin(
         logger.error(f"Required resource not found: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValidationError as e:
-        logger.warning(
-            f"Validation error during digital twin integration: {e}", exc_info=True
-        )
+        logger.warning(f"Validation error during digital twin integration: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except ServiceUnavailableError as e:
-        logger.error(
-            f"Service unavailable during digital twin integration: {e}", exc_info=True
-        )
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        logger.error(f"Service unavailable during digital twin integration: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except XGBoostServiceError as e:
-        logger.error(
-            f"XGBoost service error during digital twin integration: {e}", exc_info=True
-        )
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        logger.error(f"XGBoost service error during digital twin integration: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception:
         logger.exception(
             f"Unexpected error during digital twin integration for patient {request.patient_id}"

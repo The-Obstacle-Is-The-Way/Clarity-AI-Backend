@@ -36,9 +36,7 @@ class TemporalSequenceModel(Base):
 
     # Audit fields
     created_at = sa.Column(sa.DateTime, default=now_utc, nullable=False)
-    updated_at = sa.Column(
-        sa.DateTime, default=now_utc, onupdate=now_utc, nullable=False
-    )
+    updated_at = sa.Column(sa.DateTime, default=now_utc, onupdate=now_utc, nullable=False)
     created_by = sa.Column(UUID, nullable=True)
 
     # HIPAA compliance - audit logging
@@ -66,9 +64,7 @@ class TemporalDataPointModel(Base):
     __tablename__ = "temporal_data_points"
 
     # Composite primary key
-    sequence_id = sa.Column(
-        UUID, sa.ForeignKey("temporal_sequences.sequence_id"), primary_key=True
-    )
+    sequence_id = sa.Column(UUID, sa.ForeignKey("temporal_sequences.sequence_id"), primary_key=True)
     position = sa.Column(sa.Integer, primary_key=True)
 
     # Time point data
@@ -76,9 +72,7 @@ class TemporalDataPointModel(Base):
     values = sa.Column(FloatListDecorator, nullable=False)
 
     # Allow indexing by timestamp for time-based queries
-    __table_args__ = (
-        sa.Index("idx_temporal_data_points_timestamp", "sequence_id", "timestamp"),
-    )
+    __table_args__ = (sa.Index("idx_temporal_data_points_timestamp", "sequence_id", "timestamp"),)
 
 
 class EventModel(Base):
@@ -94,9 +88,7 @@ class EventModel(Base):
     # Primary key and relations
     id = sa.Column(UUID, primary_key=True)
     correlation_id = sa.Column(UUID, nullable=False, index=True)
-    parent_event_id = sa.Column(
-        UUID, sa.ForeignKey("temporal_events.id"), nullable=True
-    )
+    parent_event_id = sa.Column(UUID, sa.ForeignKey("temporal_events.id"), nullable=True)
 
     # Patient relation for HIPAA compliance
     patient_id = sa.Column(UUID, nullable=True, index=True)

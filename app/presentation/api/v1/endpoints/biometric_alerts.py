@@ -32,25 +32,14 @@ router = APIRouter(
 
 @router.get("", response_model=list[AlertResponse])
 async def get_alerts(
-    status_param: AlertStatus | None = Query(
-        None, alias="status", description="Filter by alert status"
-    ),
-    priority: AlertPriority | None = Query(
-        None, description="Filter by alert priority"
-    ),
+    status_param: AlertStatus
+    | None = Query(None, alias="status", description="Filter by alert status"),
+    priority: AlertPriority | None = Query(None, description="Filter by alert priority"),
     alert_type: AlertType | None = Query(None, description="Filter by alert type"),
-    start_date: str | None = Query(
-        None, description="Filter by start date (ISO format)"
-    ),
-    end_date: str | None = Query(
-        None, description="Filter by end date (ISO format)"
-    ),
-    patient_id: str | None = Query(
-        None, description="Patient ID if accessing as provider"
-    ),
-    limit: int = Query(
-        100, ge=1, le=1000, description="Maximum number of records to return"
-    ),
+    start_date: str | None = Query(None, description="Filter by start date (ISO format)"),
+    end_date: str | None = Query(None, description="Filter by end date (ISO format)"),
+    patient_id: str | None = Query(None, description="Patient ID if accessing as provider"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     offset: int = Query(0, ge=0, description="Number of records to skip"),
     alert_service: AlertServiceInterface = Depends(get_alert_service),
     current_user: User = Depends(get_current_active_user),
@@ -167,9 +156,7 @@ async def get_alerts(
                             # Skip this item but continue processing
                             continue
                 else:
-                    logger.warning(
-                        f"Alert service returned unexpected type: {type(alerts)}"
-                    )
+                    logger.warning(f"Alert service returned unexpected type: {type(alerts)}")
             except (AttributeError, TypeError) as e:
                 logger.warning(f"Error processing alerts: {e!s}")
                 # Return empty list on error
@@ -224,9 +211,7 @@ async def get_alert(
             )
 
         if not alert:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
 
         # Convert to response model
         return AlertResponse(
@@ -298,9 +283,7 @@ async def update_alert_status(
         if not success:
             # If the error message indicates the alert wasn't found, return 404
             if error_msg and "not found" in error_msg.lower():
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND, detail=error_msg
-                )
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
             else:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -331,9 +314,7 @@ async def update_alert_status(
 @router.get("/patients/{patient_id}/summary", response_model=dict[str, Any])
 async def get_patient_alert_summary(
     patient_id: UUID = Path(..., description="Patient ID"),
-    start_date: str = Query(
-        None, description="Start date for summary period (ISO format)"
-    ),
+    start_date: str = Query(None, description="Start date for summary period (ISO format)"),
     end_date: str = Query(None, description="End date for summary period (ISO format)"),
     alert_service: AlertServiceInterface = Depends(get_alert_service),
     current_user: User = Depends(get_current_active_user),
@@ -365,9 +346,7 @@ async def get_patient_alert_summary(
         if str(patient_id) != str(current_user.id):
             try:
                 # This will raise an exception if not authorized
-                await alert_service.validate_access(
-                    str(current_user.id), str(patient_id)
-                )
+                await alert_service.validate_access(str(current_user.id), str(patient_id))
             except Exception as e:
                 logger.warning(f"Access validation failed: {e!s}")
                 raise HTTPException(
@@ -436,18 +415,12 @@ async def get_patient_alert_summary(
 class ManualAlertRequest(BaseModel):
     """Request schema for manually triggering an alert."""
 
-    message: str = Field(
-        ..., min_length=1, max_length=500, description="Alert message content"
-    )
+    message: str = Field(..., min_length=1, max_length=500, description="Alert message content")
     priority: AlertPriority = Field(
         default=AlertPriority.MEDIUM, description="Alert priority level"
     )
-    alert_type: AlertType = Field(
-        default=AlertType.BIOMETRIC_ANOMALY, description="Type of alert"
-    )
-    data: dict[str, Any] = Field(
-        default_factory=dict, description="Additional alert data"
-    )
+    alert_type: AlertType = Field(default=AlertType.BIOMETRIC_ANOMALY, description="Type of alert")
+    data: dict[str, Any] = Field(default_factory=dict, description="Additional alert data")
 
 
 @router.post("/patients/{patient_id}/trigger", response_model=dict[str, Any])
@@ -483,9 +456,7 @@ async def trigger_alert_manually(
         if str(patient_id) != str(current_user.id):
             try:
                 # This will raise an exception if not authorized
-                await alert_service.validate_access(
-                    str(current_user.id), str(patient_id)
-                )
+                await alert_service.validate_access(str(current_user.id), str(patient_id))
             except Exception as e:
                 logger.warning(f"Access validation failed: {e!s}")
                 raise HTTPException(

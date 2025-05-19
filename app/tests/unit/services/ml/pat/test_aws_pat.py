@@ -35,9 +35,7 @@ def mock_boto3(mocker, request):
 
     # --- Mock boto3.client to return specific mocks per service ---
     mock_s3_instance = MagicMock()
-    mock_s3_instance.list_buckets.return_value = {
-        "Buckets": [{"Name": "test-pat-bucket"}]
-    }
+    mock_s3_instance.list_buckets.return_value = {"Buckets": [{"Name": "test-pat-bucket"}]}
     # Add other S3 mocks as needed...
 
     mock_sagemaker_instance = MagicMock()

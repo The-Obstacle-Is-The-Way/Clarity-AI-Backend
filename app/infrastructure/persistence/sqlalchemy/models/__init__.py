@@ -30,12 +30,12 @@ from .user import User, UserRole
 try:  # MODIFIED: Comment out try
     from .biometric_alert_model import BiometricAlertModel
     from .biometric_rule import BiometricRuleModel
-    from .biometric_twin_model import (
+    from .biometric_twin_model import (  # Contains BiometricDataPointModel as well
         BiometricTwinModel,
-    )  # Contains BiometricDataPointModel as well
-    from .digital_twin import (
+    )
+    from .digital_twin import (  # Contains its own BiometricDataPointModel and BiometricTimeseriesModel
         DigitalTwinModel,
-    )  # Contains its own BiometricDataPointModel and BiometricTimeseriesModel
+    )
 except ImportError as e:  # MODIFIED: Comment out except
     logging.warning(f"Some biometric or digital twin models could not be imported: {e}")
     BiometricAlertModel = None

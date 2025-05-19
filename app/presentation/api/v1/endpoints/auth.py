@@ -351,9 +351,7 @@ async def refresh_token(
                 )
 
             # Use refresh_access_token method which is expected by tests
-            tokens = await auth_service.refresh_access_token(
-                refresh_token_str=token_to_use
-            )
+            tokens = await auth_service.refresh_access_token(refresh_token_str=token_to_use)
 
         # Set cookies with new tokens
         response.set_cookie(

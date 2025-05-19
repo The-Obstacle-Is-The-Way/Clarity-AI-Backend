@@ -58,9 +58,7 @@ class MentalLlamaSettings(BaseSettings):
     custom_api_key: SecretStr | None = Field(
         default=None, json_schema_extra={"env": "CUSTOM_API_KEY"}
     )
-    request_timeout: int = Field(
-        default=60, json_schema_extra={"env": "REQUEST_TIMEOUT"}
-    )
+    request_timeout: int = Field(default=60, json_schema_extra={"env": "REQUEST_TIMEOUT"})
     # Example: {"mentallama-clinical": "gpt-4", "mentallama-psychiatry": "azure-deployment-name"}
     model_mappings: dict[str, str] = Field(
         default_factory=dict, json_schema_extra={"env": "MODEL_MAPPINGS"}
@@ -92,9 +90,7 @@ class PATSettings(BaseSettings):
 
 
 class XGBoostSettings(BaseSettings):
-    model_config = ConfigDict(
-        env_prefix="XGBOOST_", protected_namespaces=("settings_",)
-    )
+    model_config = ConfigDict(env_prefix="XGBOOST_", protected_namespaces=("settings_",))
 
     # Example: Define paths for different XGBoost models
     treatment_response_model_path: str = Field(
@@ -114,17 +110,13 @@ class XGBoostSettings(BaseSettings):
     sagemaker_endpoint_name: str | None = Field(
         default=None, json_schema_extra={"env": "SAGEMAKER_ENDPOINT_NAME"}
     )
-    aws_region_name: str = Field(
-        default="us-east-1", json_schema_extra={"env": "AWS_REGION_NAME"}
-    )
+    aws_region_name: str = Field(default="us-east-1", json_schema_extra={"env": "AWS_REGION_NAME"})
 
     # Model behavior settings
     prediction_threshold: float = Field(
         default=0.7, json_schema_extra={"env": "PREDICTION_THRESHOLD"}
     )
-    privacy_level: str = Field(
-        default="standard", json_schema_extra={"env": "PRIVACY_LEVEL"}
-    )
+    privacy_level: str = Field(default="standard", json_schema_extra={"env": "PRIVACY_LEVEL"})
 
 
 class LSTMSettings(BaseSettings):
@@ -158,15 +150,9 @@ class MLSettings(BaseSettings):
     """Container for all ML model settings."""
 
     # General ML paths (can be overridden by specific model settings if needed)
-    models_path: str = Field(
-        default="/models", json_schema_extra={"env": "ML_MODELS_PATH"}
-    )
-    cache_path: str = Field(
-        default="/cache", json_schema_extra={"env": "ML_CACHE_PATH"}
-    )
-    storage_path: str = Field(
-        default="/storage", json_schema_extra={"env": "ML_STORAGE_PATH"}
-    )
+    models_path: str = Field(default="/models", json_schema_extra={"env": "ML_MODELS_PATH"})
+    cache_path: str = Field(default="/cache", json_schema_extra={"env": "ML_CACHE_PATH"})
+    storage_path: str = Field(default="/storage", json_schema_extra={"env": "ML_STORAGE_PATH"})
 
     # Specific model settings
     mentallama: MentalLlamaSettings = Field(default_factory=MentalLlamaSettings)
@@ -189,9 +175,7 @@ class Settings(BaseSettings):
     )  # Placeholder for future API version
 
     # Server Configuration
-    SERVER_HOST: str = Field(
-        default="127.0.0.1", json_schema_extra={"env": "SERVER_HOST"}
-    )
+    SERVER_HOST: str = Field(default="127.0.0.1", json_schema_extra={"env": "SERVER_HOST"})
     SERVER_PORT: int = Field(default=8000, json_schema_extra={"env": "SERVER_PORT"})
     UVICORN_WORKERS: int = Field(
         default=4, json_schema_extra={"env": "UVICORN_WORKERS"}
@@ -209,9 +193,7 @@ class Settings(BaseSettings):
         default="Novamind Digital Twin", json_schema_extra={"env": "PROJECT_NAME"}
     )
     # Environment
-    ENVIRONMENT: str = Field(
-        default="development", json_schema_extra={"env": "ENVIRONMENT"}
-    )
+    ENVIRONMENT: str = Field(default="development", json_schema_extra={"env": "ENVIRONMENT"})
     APP_DESCRIPTION: str = Field(
         default="NovaMind Digital Twin API - Powering the future of psychiatric digital twins.",
         json_schema_extra={"env": "APP_DESCRIPTION"},
@@ -224,18 +206,14 @@ class Settings(BaseSettings):
     )  # Enable test mode to skip authentication in middleware
 
     # Optional Feature Flags
-    ENABLE_ANALYTICS: bool = Field(
-        default=False, json_schema_extra={"env": "ENABLE_ANALYTICS"}
-    )
+    ENABLE_ANALYTICS: bool = Field(default=False, json_schema_extra={"env": "ENABLE_ANALYTICS"})
     # PHI Auditing Legacy Flag
     ENABLE_PHI_AUDITING: bool = Field(
         default=True, json_schema_extra={"env": "ENABLE_PHI_AUDITING"}
     )
 
     # Optional Static File Serving
-    STATIC_DIR: str | None = Field(
-        default=None, json_schema_extra={"env": "STATIC_DIR"}
-    )
+    STATIC_DIR: str | None = Field(default=None, json_schema_extra={"env": "STATIC_DIR"})
 
     # Security settings
     SECRET_KEY: SecretStr = Field(
@@ -276,11 +254,7 @@ class Settings(BaseSettings):
                     return json.loads(v)
                 except json.JSONDecodeError:
                     # Fallback to comma-separated if JSON fails
-                    return [
-                        origin.strip()
-                        for origin in v.strip("[]").split(",")
-                        if origin.strip()
-                    ]
+                    return [origin.strip() for origin in v.strip("[]").split(",") if origin.strip()]
             else:
                 # Assume comma-separated without brackets
                 return [origin.strip() for origin in v.split(",") if origin.strip()]
@@ -296,9 +270,7 @@ class Settings(BaseSettings):
     PHI_WHITELIST_PATTERNS: dict[str, list[str]] | None = Field(
         default=None, json_schema_extra={"env": "PHI_WHITELIST_PATTERNS"}
     )
-    PHI_AUDIT_MODE: bool = Field(
-        default=False, json_schema_extra={"env": "PHI_AUDIT_MODE"}
-    )
+    PHI_AUDIT_MODE: bool = Field(default=False, json_schema_extra={"env": "PHI_AUDIT_MODE"})
 
     @field_validator("PHI_WHITELIST_PATTERNS", mode="before")
     @classmethod
@@ -318,11 +290,7 @@ class Settings(BaseSettings):
                 try:
                     return json.loads(v)
                 except json.JSONDecodeError:
-                    return [
-                        path.strip()
-                        for path in v.strip("[]").split(",")
-                        if path.strip()
-                    ]
+                    return [path.strip() for path in v.strip("[]").split(",") if path.strip()]
             else:
                 return [path.strip() for path in v.split(",") if path.strip()]
         elif isinstance(v, list):
@@ -335,16 +303,10 @@ class Settings(BaseSettings):
         default="sqlite+aiosqlite:///:memory:",
         json_schema_extra={"env": "DATABASE_URL"},
     )
-    POSTGRES_SERVER: str = Field(
-        default="localhost", json_schema_extra={"env": "POSTGRES_SERVER"}
-    )
-    POSTGRES_USER: str = Field(
-        default="postgres", json_schema_extra={"env": "POSTGRES_USER"}
-    )
+    POSTGRES_SERVER: str = Field(default="localhost", json_schema_extra={"env": "POSTGRES_SERVER"})
+    POSTGRES_USER: str = Field(default="postgres", json_schema_extra={"env": "POSTGRES_USER"})
     # Database connection pool settings
-    DATABASE_POOL_SIZE: int = Field(
-        default=5, json_schema_extra={"env": "DATABASE_POOL_SIZE"}
-    )
+    DATABASE_POOL_SIZE: int = Field(default=5, json_schema_extra={"env": "DATABASE_POOL_SIZE"})
     DATABASE_MAX_OVERFLOW: int = Field(
         default=10, json_schema_extra={"env": "DATABASE_MAX_OVERFLOW"}
     )
@@ -352,9 +314,7 @@ class Settings(BaseSettings):
         default=30, json_schema_extra={"env": "DATABASE_POOL_TIMEOUT"}
     )
     # Database logging settings
-    DATABASE_ECHO: bool = Field(
-        default=False, json_schema_extra={"env": "DATABASE_ECHO"}
-    )
+    DATABASE_ECHO: bool = Field(default=False, json_schema_extra={"env": "DATABASE_ECHO"})
     # Database SSL settings
     DATABASE_SSL_ENABLED: bool = Field(
         default=False, json_schema_extra={"env": "DATABASE_SSL_ENABLED"}
@@ -362,32 +322,24 @@ class Settings(BaseSettings):
     DATABASE_SSL_MODE: str = Field(
         default="require", json_schema_extra={"env": "DATABASE_SSL_MODE"}
     )
-    DATABASE_SSL_CA: str | None = Field(
-        default=None, json_schema_extra={"env": "DATABASE_SSL_CA"}
-    )
+    DATABASE_SSL_CA: str | None = Field(default=None, json_schema_extra={"env": "DATABASE_SSL_CA"})
     DATABASE_SSL_VERIFY: bool = Field(
         default=True, json_schema_extra={"env": "DATABASE_SSL_VERIFY"}
     )
     POSTGRES_PASSWORD: SecretStr = Field(
         default="postgres", json_schema_extra={"env": "POSTGRES_PASSWORD"}
     )  # Use SecretStr
-    POSTGRES_DB: str = Field(
-        default="novamind", json_schema_extra={"env": "POSTGRES_DB"}
-    )
+    POSTGRES_DB: str = Field(default="novamind", json_schema_extra={"env": "POSTGRES_DB"})
     POSTGRES_PORT: int = Field(default=5432, json_schema_extra={"env": "POSTGRES_PORT"})
     DB_POOL_SIZE: int = Field(default=5, json_schema_extra={"env": "DB_POOL_SIZE"})
-    DB_MAX_OVERFLOW: int = Field(
-        default=10, json_schema_extra={"env": "DB_MAX_OVERFLOW"}
-    )
+    DB_MAX_OVERFLOW: int = Field(default=10, json_schema_extra={"env": "DB_MAX_OVERFLOW"})
     DATABASE_ECHO: bool = Field(
         default=False, json_schema_extra={"env": "DATABASE_ECHO"}
     )  # Added DB Echo
     DATABASE_SSL_MODE: str | None = Field(
         default=None, json_schema_extra={"env": "DATABASE_SSL_MODE"}
     )  # Added SSL
-    DATABASE_SSL_CA: str | None = Field(
-        default=None, json_schema_extra={"env": "DATABASE_SSL_CA"}
-    )
+    DATABASE_SSL_CA: str | None = Field(default=None, json_schema_extra={"env": "DATABASE_SSL_CA"})
 
     @model_validator(mode="after")
     def _set_debug_env(cls, values):  # type: ignore
@@ -409,11 +361,7 @@ class Settings(BaseSettings):
                 if cors_env.startswith("[") and cors_env.endswith("]"):
                     parsed = json.loads(cors_env)
                 else:
-                    parsed = [
-                        origin.strip()
-                        for origin in cors_env.split(",")
-                        if origin.strip()
-                    ]
+                    parsed = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
                 values.BACKEND_CORS_ORIGINS = parsed
             except Exception:
                 # leave default if parse fails
@@ -477,7 +425,9 @@ class Settings(BaseSettings):
         """Overrides DATABASE_URL for the test environment."""
         if self.ENVIRONMENT == "test":
             # Force SQLite absolute path for testing that aligns with clean architecture
-            abs_test_db_path = "sqlite+aiosqlite:///./app/infrastructure/persistence/data/test_db.sqlite3"
+            abs_test_db_path = (
+                "sqlite+aiosqlite:///./app/infrastructure/persistence/data/test_db.sqlite3"
+            )
             self.DATABASE_URL = abs_test_db_path
             # Add print for verification during test runs
             print(
@@ -500,20 +450,12 @@ class Settings(BaseSettings):
     DEBUG: bool = Field(
         default=False, json_schema_extra={"env": "DEBUG"}
     )  # General debug flag moved here
-    TESTING: bool = Field(
-        default=False, json_schema_extra={"env": "TESTING"}
-    )  # Add TESTING flag
+    TESTING: bool = Field(default=False, json_schema_extra={"env": "TESTING"})  # Add TESTING flag
 
     # Audit Log Settings
-    AUDIT_LOG_LEVEL: str = Field(
-        default="INFO", json_schema_extra={"env": "AUDIT_LOG_LEVEL"}
-    )
-    AUDIT_LOG_TO_FILE: bool = Field(
-        default=False, json_schema_extra={"env": "AUDIT_LOG_TO_FILE"}
-    )
-    AUDIT_LOG_FILE: str = Field(
-        default="audit.log", json_schema_extra={"env": "AUDIT_LOG_FILE"}
-    )
+    AUDIT_LOG_LEVEL: str = Field(default="INFO", json_schema_extra={"env": "AUDIT_LOG_LEVEL"})
+    AUDIT_LOG_TO_FILE: bool = Field(default=False, json_schema_extra={"env": "AUDIT_LOG_TO_FILE"})
+    AUDIT_LOG_FILE: str = Field(default="audit.log", json_schema_extra={"env": "AUDIT_LOG_FILE"})
     EXTERNAL_AUDIT_ENABLED: bool = Field(
         default=False, json_schema_extra={"env": "EXTERNAL_AUDIT_ENABLED"}
     )
@@ -530,9 +472,7 @@ class Settings(BaseSettings):
             try:
                 password = values.get("POSTGRES_PASSWORD")
                 password_str = (
-                    password.get_secret_value()
-                    if isinstance(password, SecretStr)
-                    else None
+                    password.get_secret_value() if isinstance(password, SecretStr) else None
                 )
 
                 # Construct the postgresql+asyncpg URL
@@ -551,16 +491,12 @@ class Settings(BaseSettings):
                     url_parts.append(f"sslmode={ssl_mode}")
                     # Add handling for other SSL params like sslrootcert if needed
 
-                values["DATABASE_URL"] = (
-                    "?".join(url_parts) if len(url_parts) > 1 else url_parts[0]
-                )
+                values["DATABASE_URL"] = "?".join(url_parts) if len(url_parts) > 1 else url_parts[0]
                 print(
                     f"Constructed DATABASE_URL from components: {values['DATABASE_URL']}"
                 )  # Debugging
             except Exception as e:
-                print(
-                    f"Error assembling DATABASE_URL from components: {e}"
-                )  # Debugging
+                print(f"Error assembling DATABASE_URL from components: {e}")  # Debugging
                 pass  # Allow None if assembly fails
 
         # Remove the old URI field if it exists, ensuring clean output

@@ -39,9 +39,7 @@ class TreatmentOutcomeSchema(BaseModel):
     """Schema for Treatment Outcome."""
 
     id: str | None = Field(None, description="Unique ID for outcome record")
-    digital_twin_id: str | None = Field(
-        None, description="ID of associated digital twin"
-    )
+    digital_twin_id: str | None = Field(None, description="ID of associated digital twin")
     treatment: str = Field(..., description="Treatment administered")
     outcome: str = Field(..., description="Observed outcome")
     effectiveness: str = Field(..., description="Treatment effectiveness")
@@ -69,9 +67,7 @@ class TreatmentPredictionSchema(BaseModel):
     """Schema for Treatment Prediction."""
 
     id: str | None = Field(None, description="Unique ID for prediction")
-    digital_twin_id: str | None = Field(
-        None, description="ID of associated digital twin"
-    )
+    digital_twin_id: str | None = Field(None, description="ID of associated digital twin")
     treatment: str = Field(..., description="Treatment being predicted")
     condition: str | None = Field(None, description="Condition being treated")
     likelihood: str = Field(..., description="Likelihood of positive response")
@@ -82,9 +78,7 @@ class TreatmentPredictionSchema(BaseModel):
     influencing_factors: list[str] = Field(
         default_factory=list, description="Factors influencing treatment response"
     )
-    confidence: float = Field(
-        ..., ge=0.0, le=1.0, description="Confidence score for prediction"
-    )
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score for prediction")
     timestamp: datetime = Field(
         default_factory=now_utc, description="Timestamp when prediction was made"
     )
@@ -181,13 +175,9 @@ class ClinicalTextAnalysisRequest(BaseModel):
     """Request schema for analyzing clinical text."""
 
     text: str = Field(..., description="Clinical text to analyze")
-    digital_twin_id: str | None = Field(
-        None, description="ID of associated digital twin"
-    )
+    digital_twin_id: str | None = Field(None, description="ID of associated digital twin")
     patient_id: str | None = Field(None, description="ID of associated patient")
-    analysis_type: str = Field(
-        "diagnostic_impression", description="Type of analysis to perform"
-    )
+    analysis_type: str = Field("diagnostic_impression", description="Type of analysis to perform")
     detect_phi: bool = Field(True, description="Whether to detect and remove PHI")
 
     @field_validator("text")
@@ -217,9 +207,7 @@ class PersonalizedInsightRequest(BaseModel):
 
     query: str = Field(..., description="Query for insight")
     insight_type: str = Field("clinical", description="Type of insight to generate")
-    include_historical: bool = Field(
-        True, description="Whether to include historical data"
-    )
+    include_historical: bool = Field(True, description="Whether to include historical data")
 
     @field_validator("query")
     def query_not_empty(cls, v):
@@ -241,12 +229,8 @@ class ClinicalRecommendationRequest(BaseModel):
     """Request schema for getting clinical recommendation."""
 
     query: str = Field(..., description="Query for recommendation")
-    recommendation_type: str = Field(
-        "treatment", description="Type of recommendation to generate"
-    )
-    include_historical: bool = Field(
-        True, description="Whether to include historical data"
-    )
+    recommendation_type: str = Field("treatment", description="Type of recommendation to generate")
+    include_historical: bool = Field(True, description="Whether to include historical data")
 
     @field_validator("query")
     def query_not_empty(cls, v):
@@ -260,9 +244,7 @@ class ClinicalRecommendationRequest(BaseModel):
         """Validate recommendation type."""
         valid_types = ["treatment", "medication", "therapy", "lifestyle"]
         if v not in valid_types:
-            raise ValueError(
-                f"Recommendation type must be one of: {', '.join(valid_types)}"
-            )
+            raise ValueError(f"Recommendation type must be one of: {', '.join(valid_types)}")
         return v
 
 
@@ -285,9 +267,7 @@ class TreatmentPredictionRequest(BaseModel):
         """Validate time horizon."""
         valid_horizons = ["short_term", "medium_term", "long_term"]
         if v not in valid_horizons:
-            raise ValueError(
-                f"Time horizon must be one of: {', '.join(valid_horizons)}"
-            )
+            raise ValueError(f"Time horizon must be one of: {', '.join(valid_horizons)}")
         return v
 
 
@@ -321,9 +301,7 @@ class ClinicalTextAnalysisResponse(BaseModel):
     """
 
     analysis_id: str | None = Field(None, description="Unique ID for analysis")
-    digital_twin_id: str | None = Field(
-        None, description="ID of associated digital twin"
-    )
+    digital_twin_id: str | None = Field(None, description="ID of associated digital twin")
     analysis_type: str = Field(..., description="Type of analysis performed")
 
     result: dict[str, Any] | str = Field(..., description="Analysis result")
@@ -331,12 +309,8 @@ class ClinicalTextAnalysisResponse(BaseModel):
     confidence: float | None = Field(
         None, ge=0.0, le=1.0, description="Confidence score for analysis"
     )
-    timestamp: datetime | None = Field(
-        None, description="Timestamp when analysis was performed"
-    )
-    phi_detected: bool | None = Field(
-        None, description="Whether PHI was detected in the text"
-    )
+    timestamp: datetime | None = Field(None, description="Timestamp when analysis was performed")
+    phi_detected: bool | None = Field(None, description="Whether PHI was detected in the text")
 
 
 # Ensure the model is fully defined, especially for Union types
@@ -352,9 +326,7 @@ class PersonalizedInsightResponse(BaseModel):
     insight_type: str = Field(..., description="Type of insight generated")
     insight: str = Field(..., description="Generated insight")
     key_points: list[str] = Field(..., description="Key points from the insight")
-    confidence: float = Field(
-        ..., ge=0.0, le=1.0, description="Confidence score for insight"
-    )
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score for insight")
     timestamp: datetime = Field(..., description="Timestamp when insight was generated")
 
 
@@ -364,23 +336,15 @@ class ClinicalRecommendationResponse(BaseModel):
     recommendation_id: str = Field(..., description="Unique ID for recommendation")
     digital_twin_id: str = Field(..., description="ID of associated digital twin")
     query: str = Field(..., description="Query used for recommendation")
-    recommendation_type: str = Field(
-        ..., description="Type of recommendation generated"
-    )
-    primary_recommendations: list[str] = Field(
-        ..., description="Primary recommendations"
-    )
-    alternative_recommendations: list[str] = Field(
-        ..., description="Alternative recommendations"
-    )
+    recommendation_type: str = Field(..., description="Type of recommendation generated")
+    primary_recommendations: list[str] = Field(..., description="Primary recommendations")
+    alternative_recommendations: list[str] = Field(..., description="Alternative recommendations")
     implementation: list[str] = Field(..., description="Implementation guidelines")
     monitoring: list[str] = Field(..., description="Monitoring guidelines")
     confidence: float = Field(
         ..., ge=0.0, le=1.0, description="Confidence score for recommendation"
     )
-    timestamp: datetime = Field(
-        ..., description="Timestamp when recommendation was generated"
-    )
+    timestamp: datetime = Field(..., description="Timestamp when recommendation was generated")
 
 
 class TreatmentOutcomeResponse(BaseModel):
@@ -411,9 +375,7 @@ class BiometricCorrelationResponse(BaseModel):
     confidence_interval: list[float] = Field(
         ..., description="Confidence interval for correlations"
     )
-    timestamp: datetime = Field(
-        ..., description="Timestamp when analysis was performed"
-    )
+    timestamp: datetime = Field(..., description="Timestamp when analysis was performed")
 
 
 class MedicationResponsePredictionResponse(BaseModel):
@@ -426,15 +388,9 @@ class MedicationResponsePredictionResponse(BaseModel):
         ..., ge=0.0, le=1.0, description="Likelihood of positive response"
     )
     potential_side_effects: list[str] = Field(..., description="Potential side effects")
-    confidence: float = Field(
-        ..., ge=0.0, le=1.0, description="Confidence score for prediction"
-    )
-    similar_cases: int = Field(
-        ..., ge=0, description="Number of similar cases used for prediction"
-    )
-    timestamp: datetime = Field(
-        ..., description="Timestamp when prediction was generated"
-    )
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score for prediction")
+    similar_cases: int = Field(..., ge=0, description="Number of similar cases used for prediction")
+    timestamp: datetime = Field(..., description="Timestamp when prediction was generated")
 
 
 class TreatmentPlanResponse(BaseModel):
@@ -444,16 +400,10 @@ class TreatmentPlanResponse(BaseModel):
     digital_twin_id: str = Field(..., description="ID of associated digital twin")
     treatment_goals: list[str] = Field(..., description="Goals of the treatment plan")
     recommended_treatments: list[str] = Field(..., description="Recommended treatments")
-    timeline: dict[str, Any] = Field(
-        ..., description="Timeline for treatment implementation"
-    )
+    timeline: dict[str, Any] = Field(..., description="Timeline for treatment implementation")
     monitoring_plan: list[str] = Field(
         ..., description="Plan for monitoring treatment effectiveness"
     )
-    adjustments: list[str] = Field(
-        ..., description="Potential adjustments based on response"
-    )
-    confidence: float = Field(
-        ..., ge=0.0, le=1.0, description="Confidence score for plan"
-    )
+    adjustments: list[str] = Field(..., description="Potential adjustments based on response")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score for plan")
     timestamp: datetime = Field(..., description="Timestamp when plan was generated")

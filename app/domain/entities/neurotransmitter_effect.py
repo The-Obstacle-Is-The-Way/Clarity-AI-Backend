@@ -240,8 +240,7 @@ class NeurotransmitterEffect:
         # Add time series data if available
         if self.time_series_data:
             result["time_series_data"] = [
-                {"timestamp": ts.isoformat(), "value": value}
-                for ts, value in self.time_series_data
+                {"timestamp": ts.isoformat(), "value": value} for ts, value in self.time_series_data
             ]
 
         # Add comparison periods if available

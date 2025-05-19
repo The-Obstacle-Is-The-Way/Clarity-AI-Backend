@@ -203,9 +203,7 @@ class Medication:
 
         self.refill_status = RefillStatus.DENIED
         if reason:
-            self.instructions = (
-                f"{self.instructions or ''}\nREFILL DENIED: {reason}".strip()
-            )
+            self.instructions = f"{self.instructions or ''}\nREFILL DENIED: {reason}".strip()
         self.updated_at = datetime.now(UTC)
 
     def use_refill(self) -> None:

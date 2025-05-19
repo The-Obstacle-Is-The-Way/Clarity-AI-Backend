@@ -42,9 +42,7 @@ def model():
 def sample_biometric_data():
     """Create sample biometric data for testing."""
     # Create DataFrames for different biometric types
-    hrv_dates = pd.date_range(
-        start=datetime.now() - timedelta(days=30), periods=30, freq="D"
-    )
+    hrv_dates = pd.date_range(start=datetime.now() - timedelta(days=30), periods=30, freq="D")
     hrv_data = pd.DataFrame(
         {
             "timestamp": hrv_dates,
@@ -52,9 +50,7 @@ def sample_biometric_data():
         }
     )
 
-    sleep_dates = pd.date_range(
-        start=datetime.now() - timedelta(days=30), periods=30, freq="D"
-    )
+    sleep_dates = pd.date_range(start=datetime.now() - timedelta(days=30), periods=30, freq="D")
     sleep_data = pd.DataFrame(
         {
             "timestamp": sleep_dates,
@@ -62,9 +58,7 @@ def sample_biometric_data():
         }
     )
 
-    activity_dates = pd.date_range(
-        start=datetime.now() - timedelta(days=30), periods=30, freq="D"
-    )
+    activity_dates = pd.date_range(start=datetime.now() - timedelta(days=30), periods=30, freq="D")
     activity_data = pd.DataFrame(
         {
             "timestamp": activity_dates,
@@ -84,9 +78,7 @@ def sample_biometric_data():
 def sample_symptom_data():
     """Create sample symptom data for testing."""
     # Create DataFrames for different symptom types
-    anxiety_dates = pd.date_range(
-        start=datetime.now() - timedelta(days=30), periods=30, freq="D"
-    )
+    anxiety_dates = pd.date_range(start=datetime.now() - timedelta(days=30), periods=30, freq="D")
     anxiety_data = pd.DataFrame(
         {
             "date": anxiety_dates,
@@ -94,9 +86,7 @@ def sample_symptom_data():
         }
     )
 
-    mood_dates = pd.date_range(
-        start=datetime.now() - timedelta(days=30), periods=30, freq="D"
-    )
+    mood_dates = pd.date_range(start=datetime.now() - timedelta(days=30), periods=30, freq="D")
     mood_data = pd.DataFrame(
         {
             "date": mood_dates,
@@ -181,18 +171,14 @@ class TestBiometricLSTMModel:
     async def test_analyze_correlations_returns_structure(self, model):  # Added self
         """Test that analyze_correlations returns the expected structure (mocked)."""
         # Mock the internal prediction logic if necessary, or rely on fixture mock
-        model.model.predict = MagicMock(
-            return_value=np.random.rand(1, 5)
-        )  # Example output shape
+        model.model.predict = MagicMock(return_value=np.random.rand(1, 5))  # Example output shape
 
         # Execute
         # Assuming analyze_correlations needs some form of input data based on its logic
         # For this unit test, we might mock the internal processing steps
         # or provide dummy data if the method signature requires it.
         # Let's assume it needs dummy data for now:
-        dummy_input = np.random.rand(
-            1, model.sequence_length, model.input_dim
-        )  # Example input
+        dummy_input = np.random.rand(1, model.sequence_length, model.input_dim)  # Example input
         # Assuming analyze_correlations is async
         result = await model.analyze_correlations(dummy_input)  # Pass dummy data
 
@@ -202,9 +188,7 @@ class TestBiometricLSTMModel:
         assert isinstance(result["correlations"], list)
         # Add more specific checks based on expected mocked output if possible
         # Example check based on fixture mock (adjust if mock changes)
-        assert (
-            len(result["correlations"]) >= 0
-        )  # Check if list exists, content depends on mock
+        assert len(result["correlations"]) >= 0  # Check if list exists, content depends on mock
 
     @pytest.mark.asyncio
     async def test_analyze_correlations_handles_empty_data(self, model):  # Added self

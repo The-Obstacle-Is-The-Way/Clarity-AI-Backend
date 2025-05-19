@@ -188,9 +188,7 @@ class Alert:
             if isinstance(self.alert_type, AlertType)
             else self.alert_type,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
-            "status": self.status.value
-            if isinstance(self.status, AlertStatus)
-            else self.status,
+            "status": self.status.value if isinstance(self.status, AlertStatus) else self.status,
             "priority": self.priority.value
             if isinstance(self.priority, AlertPriority)
             else self.priority,
@@ -218,11 +216,7 @@ class Alert:
             if isinstance(data["alert_type"], str)
             else data["alert_type"]
         )
-        status = (
-            AlertStatus(data["status"])
-            if isinstance(data["status"], str)
-            else data["status"]
-        )
+        status = AlertStatus(data["status"]) if isinstance(data["status"], str) else data["status"]
         priority = (
             AlertPriority(data["priority"])
             if isinstance(data["priority"], str)

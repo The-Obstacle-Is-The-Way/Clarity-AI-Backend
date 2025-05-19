@@ -65,9 +65,7 @@ class TestMFAService:
         mock_qrcode_instance.make_image.return_value = mock_img
         mock_qrcode.return_value = mock_qrcode_instance
 
-        with patch.object(
-            mfa_service, "generate_secret_key", return_value="JBSWY3DPEHPK3PXP"
-        ):
+        with patch.object(mfa_service, "generate_secret_key", return_value="JBSWY3DPEHPK3PXP"):
             result = mfa_service.setup_totp("user123", "test@example.com")
 
             assert result["secret_key"] == "JBSWY3DPEHPK3PXP"
@@ -108,9 +106,7 @@ class TestMFAService:
         mock_totp_instance.verify.assert_called_once_with("654321")
 
     @patch("random.choice")
-    def test_generate_verification_code(
-        self, mock_choice: MagicMock, mfa_service: MFAService
-    ):
+    def test_generate_verification_code(self, mock_choice: MagicMock, mfa_service: MFAService):
         """Test generating a verification code."""
         mock_choice.return_value = "1"
         code = mfa_service.generate_verification_code(6)
@@ -128,10 +124,7 @@ class TestMFAService:
             result = mfa_service.setup_sms_mfa("user123", "+1234567890")
             assert result["phone_number"] == "+1234567890"
             assert result["verification_code"] == "123456"
-            assert (
-                result["expires_at"]
-                == current_time + mfa_service.verification_timeout_seconds
-            )
+            assert result["expires_at"] == current_time + mfa_service.verification_timeout_seconds
             assert result["mfa_type"] == MFAType.SMS.value
             mock_generate.assert_called_once_with(mfa_service.sms_code_length)
 
@@ -146,10 +139,7 @@ class TestMFAService:
             result = mfa_service.setup_email_mfa("user123", "test@example.com")
             assert result["email"] == "test@example.com"
             assert result["verification_code"] == "12345678"
-            assert (
-                result["expires_at"]
-                == current_time + mfa_service.verification_timeout_seconds
-            )
+            assert result["expires_at"] == current_time + mfa_service.verification_timeout_seconds
             assert result["mfa_type"] == MFAType.EMAIL.value
             mock_generate.assert_called_once_with(mfa_service.email_code_length)
 
@@ -296,18 +286,14 @@ class TestSMSStrategy:
     def test_setup_missing_phone_number(self, mfa_service: MFAService):
         """Test setting up SMS MFA without a phone number."""
         strategy = SMSStrategy(mfa_service)
-        with pytest.raises(
-            MFASetupException, match="Phone number is required for SMS setup"
-        ):
+        with pytest.raises(MFASetupException, match="Phone number is required for SMS setup"):
             strategy.setup(user_id="user123")
 
     def test_verify(self, mfa_service: MFAService):
         """Test verifying SMS code."""
         strategy = SMSStrategy(mfa_service)
         with patch.object(mfa_service, "verify_code", return_value=True) as mock_verify:
-            result = strategy.verify(
-                code="123456", expected_code="123456", expires_at=1300.0
-            )
+            result = strategy.verify(code="123456", expected_code="123456", expires_at=1300.0)
             assert result is True
             mock_verify.assert_called_once_with("123456", "123456", 1300.0)
 
@@ -337,18 +323,14 @@ class TestEmailStrategy:
     def test_setup_missing_email(self, mfa_service: MFAService):
         """Test setting up email MFA without an email."""
         strategy = EmailStrategy(mfa_service)
-        with pytest.raises(
-            MFASetupException, match="Email is required for Email setup"
-        ):
+        with pytest.raises(MFASetupException, match="Email is required for Email setup"):
             strategy.setup(user_id="user123")
 
     def test_verify(self, mfa_service: MFAService):
         """Test verifying email code."""
         strategy = EmailStrategy(mfa_service)
         with patch.object(mfa_service, "verify_code", return_value=True) as mock_verify:
-            result = strategy.verify(
-                code="12345678", expected_code="12345678", expires_at=1300.0
-            )
+            result = strategy.verify(code="12345678", expected_code="12345678", expires_at=1300.0)
             assert result is True
             mock_verify.assert_called_once_with("12345678", "12345678", 1300.0)
 

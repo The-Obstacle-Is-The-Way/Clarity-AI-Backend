@@ -44,9 +44,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         }
 
         # If custom headers are provided, use those instead
-        self.headers = (
-            security_headers if security_headers is not None else self.default_headers
-        )
+        self.headers = security_headers if security_headers is not None else self.default_headers
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """

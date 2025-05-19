@@ -121,9 +121,7 @@ class TestSecureMessagingService:
         assert public_key.startswith(b"-----BEGIN PUBLIC KEY-----")
         assert public_key.endswith(b"-----END PUBLIC KEY-----\n")
 
-    def test_encrypt_decrypt_symmetric_key(
-        self, secure_messaging_service, key_pair
-    ):  # Added colon
+    def test_encrypt_decrypt_symmetric_key(self, secure_messaging_service, key_pair):  # Added colon
         """Test encrypting and decrypting a symmetric key."""
         private_key_bytes, public_key_bytes = key_pair
 
@@ -131,17 +129,13 @@ class TestSecureMessagingService:
         symmetric_key = Fernet.generate_key()
 
         # Encrypt the symmetric key
-        encrypted_key = (
-            secure_messaging_service._encrypt_symmetric_key(  # Corrected call
-                symmetric_key=symmetric_key, recipient_public_key=public_key_bytes
-            )
+        encrypted_key = secure_messaging_service._encrypt_symmetric_key(  # Corrected call
+            symmetric_key=symmetric_key, recipient_public_key=public_key_bytes
         )
 
         # Decrypt the symmetric key
-        decrypted_key = (
-            secure_messaging_service._decrypt_symmetric_key(  # Corrected call
-                encrypted_key=encrypted_key, private_key=private_key_bytes
-            )
+        decrypted_key = secure_messaging_service._decrypt_symmetric_key(  # Corrected call
+            encrypted_key=encrypted_key, private_key=private_key_bytes
         )
 
         # Check that the decrypted key matches the original
@@ -153,9 +147,7 @@ class TestSecureMessagingService:
         symmetric_key = Fernet.generate_key()
 
         # Original message
-        original_message = (
-            "This is a test message with PHI: Patient John Doe has anxiety."
-        )
+        original_message = "This is a test message with PHI: Patient John Doe has anxiety."
 
         # Encrypt the message
         encrypted_message = secure_messaging_service._encrypt_message(  # Corrected call
@@ -170,22 +162,16 @@ class TestSecureMessagingService:
         # Check that the decrypted message matches the original
         assert decrypted_message == original_message
 
-    def test_encrypt_message_for_recipient(
-        self, secure_messaging_service, key_pair
-    ):  # Added colon
+    def test_encrypt_message_for_recipient(self, secure_messaging_service, key_pair):  # Added colon
         """Test encrypting a message for a recipient."""
         _, public_key_bytes = key_pair
 
         # Original message
-        original_message = (
-            "This is a test message with PHI: Patient John Doe has anxiety."
-        )
+        original_message = "This is a test message with PHI: Patient John Doe has anxiety."
 
         # Encrypt the message for the recipient
-        message_package = (
-            secure_messaging_service.encrypt_message_for_recipient(  # Corrected call
-                message=original_message, recipient_public_key=public_key_bytes
-            )
+        message_package = secure_messaging_service.encrypt_message_for_recipient(  # Corrected call
+            message=original_message, recipient_public_key=public_key_bytes
         )
 
         # Check the message package structure
@@ -205,15 +191,11 @@ class TestSecureMessagingService:
         private_key_bytes, public_key_bytes = key_pair
 
         # Original message
-        original_message = (
-            "This is a test message with PHI: Patient John Doe has anxiety."
-        )
+        original_message = "This is a test message with PHI: Patient John Doe has anxiety."
 
         # Encrypt the message for the recipient
-        message_package = (
-            secure_messaging_service.encrypt_message_for_recipient(  # Corrected call
-                message=original_message, recipient_public_key=public_key_bytes
-            )
+        message_package = secure_messaging_service.encrypt_message_for_recipient(  # Corrected call
+            message=original_message, recipient_public_key=public_key_bytes
         )
 
         # Decrypt the message
@@ -224,22 +206,16 @@ class TestSecureMessagingService:
         # Check that the decrypted message matches the original
         assert decrypted_message == original_message
 
-    def test_decrypt_expired_message(
-        self, secure_messaging_service, key_pair
-    ):  # Added colon
+    def test_decrypt_expired_message(self, secure_messaging_service, key_pair):  # Added colon
         """Test decrypting an expired message."""
         private_key_bytes, public_key_bytes = key_pair
 
         # Original message
-        original_message = (
-            "This is a test message with PHI: Patient John Doe has anxiety."
-        )
+        original_message = "This is a test message with PHI: Patient John Doe has anxiety."
 
         # Encrypt the message for the recipient
-        message_package = (
-            secure_messaging_service.encrypt_message_for_recipient(  # Corrected call
-                message=original_message, recipient_public_key=public_key_bytes
-            )
+        message_package = secure_messaging_service.encrypt_message_for_recipient(  # Corrected call
+            message=original_message, recipient_public_key=public_key_bytes
         )
 
         # Set the expiration to the past
@@ -377,10 +353,8 @@ class TestSecureMessagingService:
         message_repository.get_by_id.return_value = message
 
         # Mark the message as delivered
-        delivered_message = (
-            await secure_messaging_service.mark_as_delivered(  # Corrected call
-                message_id=message_id, message_repository=message_repository
-            )
+        delivered_message = await secure_messaging_service.mark_as_delivered(  # Corrected call
+            message_id=message_id, message_repository=message_repository
         )
 
         # Check that the message status was updated
@@ -407,9 +381,7 @@ class TestSecureMessagingService:
             )
 
     @pytest.mark.asyncio
-    async def test_mark_as_read(
-        self, secure_messaging_service, message_repository
-    ):  # Added colon
+    async def test_mark_as_read(self, secure_messaging_service, message_repository):  # Added colon
         """Test marking a message as read."""
         # Create a mock message
         message_id = str(uuid.uuid4())  # Removed extra comma
@@ -470,12 +442,10 @@ class TestSecureMessagingService:
         message_repository.get_by_id.return_value = message
 
         # Delete the message
-        deleted_message = (
-            await secure_messaging_service.delete_message(  # Corrected call
-                message_id=message_id,
-                user_id=sender_id,
-                message_repository=message_repository,
-            )
+        deleted_message = await secure_messaging_service.delete_message(  # Corrected call
+            message_id=message_id,
+            user_id=sender_id,
+            message_repository=message_repository,
         )
 
         # Check that the message status was updated

@@ -48,9 +48,7 @@ class DigitalTwinIntegrationService:
         self._digital_twins = {}  # Cache for digital twins
         logger.info("Digital Twin Integration Service initialized")
 
-    async def create_digital_twin(
-        self, patient_id: str, init_data: dict = None
-    ) -> DigitalTwin:
+    async def create_digital_twin(self, patient_id: str, init_data: dict = None) -> DigitalTwin:
         """
         Create a new digital twin for a patient.
 
@@ -88,9 +86,7 @@ class DigitalTwinIntegrationService:
         logger.warning(f"Digital twin not found: {digital_twin_id}")
         return None
 
-    async def get_digital_twin_by_patient(
-        self, patient_id: str
-    ) -> DigitalTwin | None:
+    async def get_digital_twin_by_patient(self, patient_id: str) -> DigitalTwin | None:
         """
         Retrieve a digital twin by patient ID.
 
@@ -106,9 +102,7 @@ class DigitalTwinIntegrationService:
         logger.info(f"No digital twin found for patient {patient_id}")
         return None
 
-    async def update_digital_twin(
-        self, digital_twin_id: str, updates: dict
-    ) -> DigitalTwin | None:
+    async def update_digital_twin(self, digital_twin_id: str, updates: dict) -> DigitalTwin | None:
         """
         Update a digital twin with new data.
 
@@ -120,9 +114,7 @@ class DigitalTwinIntegrationService:
             Updated DigitalTwin instance if found, None otherwise
         """
         if digital_twin_id not in self._digital_twins:
-            logger.warning(
-                f"Cannot update non-existent digital twin: {digital_twin_id}"
-            )
+            logger.warning(f"Cannot update non-existent digital twin: {digital_twin_id}")
             return None
 
         digital_twin = self._digital_twins[digital_twin_id]
@@ -135,9 +127,7 @@ class DigitalTwinIntegrationService:
         logger.info(f"Updated digital twin {digital_twin_id}")
         return digital_twin
 
-    async def simulate_intervention(
-        self, digital_twin_id: str, intervention: dict
-    ) -> dict:
+    async def simulate_intervention(self, digital_twin_id: str, intervention: dict) -> dict:
         """
         Simulate the effect of an intervention on a digital twin.
 
@@ -149,9 +139,7 @@ class DigitalTwinIntegrationService:
             Dictionary containing simulation results
         """
         if digital_twin_id not in self._digital_twins:
-            logger.warning(
-                f"Cannot simulate on non-existent digital twin: {digital_twin_id}"
-            )
+            logger.warning(f"Cannot simulate on non-existent digital twin: {digital_twin_id}")
             return {"error": "Digital twin not found"}
 
         digital_twin = self._digital_twins[digital_twin_id]
@@ -175,20 +163,16 @@ class DigitalTwinIntegrationService:
                 med_dose = intervention_params.get("dose")
 
                 if med_name and med_dose:
-                    response = (
-                        await self.pharmacogenomics_service.analyze_medication_response(
-                            patient_id=digital_twin.patient_id,
-                            medication_name=med_name,
-                            dose=med_dose,
-                        )
+                    response = await self.pharmacogenomics_service.analyze_medication_response(
+                        patient_id=digital_twin.patient_id,
+                        medication_name=med_name,
+                        dose=med_dose,
                     )
 
                     result["projected_outcomes"] = {
                         "efficacy": response.get("efficacy", {"score": 0.0}),
                         "side_effects": response.get("side_effects", []),
-                        "projected_symptom_changes": response.get(
-                            "symptom_changes", {}
-                        ),
+                        "projected_symptom_changes": response.get("symptom_changes", {}),
                     }
             except Exception as e:
                 logger.error(f"Error simulating medication effect: {e}")
@@ -202,9 +186,7 @@ class DigitalTwinIntegrationService:
                 "projected_symptom_changes": {"anxiety": -0.3, "depression": -0.25},
             }
 
-        logger.info(
-            f"Simulated {intervention_type} intervention on digital twin {digital_twin_id}"
-        )
+        logger.info(f"Simulated {intervention_type} intervention on digital twin {digital_twin_id}")
         return result
 
     async def generate_comprehensive_patient_insights(
@@ -234,9 +216,7 @@ class DigitalTwinIntegrationService:
             forecast_result = await self.symptom_forecasting_service.forecast_symptoms(
                 patient_id=str(patient_id),
                 symptom_history=sanitized_data.get("symptom_history", {}),
-                mental_health_indicators=sanitized_data.get(
-                    "mental_health_indicators", {}
-                ),
+                mental_health_indicators=sanitized_data.get("mental_health_indicators", {}),
             )
             # Only add to result if successful
             result["symptom_forecasting"] = forecast_result
@@ -247,12 +227,10 @@ class DigitalTwinIntegrationService:
 
         # Try to get biometric correlation insights
         try:
-            correlation_result = (
-                await self.biometric_correlation_service.analyze_correlations(
-                    patient_id=str(patient_id),
-                    biometric_data=sanitized_data.get("biometric_data", {}),
-                    symptom_history=sanitized_data.get("symptom_history", {}),
-                )
+            correlation_result = await self.biometric_correlation_service.analyze_correlations(
+                patient_id=str(patient_id),
+                biometric_data=sanitized_data.get("biometric_data", {}),
+                symptom_history=sanitized_data.get("symptom_history", {}),
             )
             # Only add to result if successful
             result["biometric_correlation"] = correlation_result
@@ -262,12 +240,10 @@ class DigitalTwinIntegrationService:
 
         # Try to get pharmacogenomics insights
         try:
-            pharma_result = (
-                await self.pharmacogenomics_service.analyze_medication_response(
-                    patient_id=str(patient_id),
-                    genetic_markers=sanitized_data.get("genetic_markers", {}),
-                    medications=sanitized_data.get("medications", []),
-                )
+            pharma_result = await self.pharmacogenomics_service.analyze_medication_response(
+                patient_id=str(patient_id),
+                genetic_markers=sanitized_data.get("genetic_markers", {}),
+                medications=sanitized_data.get("medications", []),
             )
             # Only add to result if successful
             result["pharmacogenomics"] = pharma_result
@@ -278,10 +254,8 @@ class DigitalTwinIntegrationService:
         # Generate integrated recommendations if we have enough data
         if len(result) > 0:
             try:
-                recommendations = (
-                    await self.recommendation_engine.generate_recommendations(
-                        patient_id=str(patient_id), insights=result
-                    )
+                recommendations = await self.recommendation_engine.generate_recommendations(
+                    patient_id=str(patient_id), insights=result
                 )
                 result["integrated_recommendations"] = recommendations
             except Exception as e:
@@ -336,9 +310,7 @@ class DigitalTwinIntegrationService:
 
         return sanitized
 
-    async def generate_comprehensive_insights(
-        self, patient_id: str, options: dict
-    ) -> dict:
+    async def generate_comprehensive_insights(self, patient_id: str, options: dict) -> dict:
         """
         Generate comprehensive insights for a patient by integrating outputs from all services.
 
@@ -375,10 +347,8 @@ class DigitalTwinIntegrationService:
         if options.get("include_biometric_correlations", True):
             try:
                 lookback_days = options.get("biometric_lookback_days", 30)
-                correlations = (
-                    await self.biometric_correlation_service.analyze_correlations(
-                        patient_id=patient_id, lookback_days=lookback_days
-                    )
+                correlations = await self.biometric_correlation_service.analyze_correlations(
+                    patient_id=patient_id, lookback_days=lookback_days
                 )
                 result["biometric_correlations"] = correlations
             except Exception as e:
@@ -401,9 +371,9 @@ class DigitalTwinIntegrationService:
         # Add integrated recommendations
         if "symptom_forecast" in result or "biometric_correlations" in result:
             # Pass the entire result dictionary as insights
-            result[
-                "integrated_recommendations"
-            ] = await self._generate_integrated_recommendations(result)
+            result["integrated_recommendations"] = await self._generate_integrated_recommendations(
+                result
+            )
 
         # Include errors if any
         if errors:
@@ -483,17 +453,9 @@ class DigitalTwinIntegrationService:
                         )
 
         # Process medication predictions
-        if (
-            medication_predictions
-            and "medication_predictions" in medication_predictions
-        ):
-            for med_name, med_data in medication_predictions[
-                "medication_predictions"
-            ].items():
-                if (
-                    "efficacy" in med_data
-                    and med_data["efficacy"].get("score", 0) > 0.7
-                ):
+        if medication_predictions and "medication_predictions" in medication_predictions:
+            for med_name, med_data in medication_predictions["medication_predictions"].items():
+                if "efficacy" in med_data and med_data["efficacy"].get("score", 0) > 0.7:
                     efficacy_score = med_data["efficacy"].get("score", 0)
                     confidence = med_data["efficacy"].get("confidence", 0.8)
 
@@ -529,9 +491,7 @@ class DigitalTwinIntegrationService:
 
         # Sort recommendations by priority
         priority_order = {"high": 0, "medium": 1, "low": 2}
-        recommendations.sort(
-            key=lambda x: priority_order.get(x.get("priority", "low"), 99)
-        )
+        recommendations.sort(key=lambda x: priority_order.get(x.get("priority", "low"), 99))
 
         return recommendations
 

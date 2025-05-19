@@ -38,9 +38,7 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
     __tablename__ = "providers"
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
-    user_id = Column(
-        GUID(), ForeignKey("users.id"), unique=True, nullable=False, index=True
-    )
+    user_id = Column(GUID(), ForeignKey("users.id"), unique=True, nullable=False, index=True)
     specialty = Column(String(100), nullable=False)
     license_number = Column(String(100), nullable=False)
     npi_number = Column(String(20), nullable=True)
@@ -78,9 +76,7 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
     )
 
     # Define clinical_notes relationship with proper viewonly setting
-    clinical_notes = relationship(
-        "ClinicalNoteModel", back_populates="provider", lazy="selectin"
-    )
+    clinical_notes = relationship("ClinicalNoteModel", back_populates="provider", lazy="selectin")
 
     def __repr__(self) -> str:
         """Return string representation of the provider."""

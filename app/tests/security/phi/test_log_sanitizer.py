@@ -42,10 +42,7 @@ class MockLogSanitizer(PHISanitizer):
         if "Patient DOB is 01/15/1980" in text:
             return "Patient DOB is [REDACTED DATE]"
 
-        if (
-            "Patient John Smith, DOB 01/15/1980, SSN 123-45-6789 lives at 123 Main St"
-            in text
-        ):
+        if "Patient John Smith, DOB 01/15/1980, SSN 123-45-6789 lives at 123 Main St" in text:
             return "Patient [REDACTED NAME], DOB [REDACTED DATE], SSN [REDACTED SSN] lives at [REDACTED ADDRESS]"
 
         if "System initialized with error code 0x123" in text:
@@ -224,9 +221,7 @@ class TestLogSanitization:
         file_handler.setLevel(logging.DEBUG)
 
         # Set up a basic formatter
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         file_handler.setFormatter(formatter)
 
         # Add handler to logger
@@ -273,9 +268,7 @@ class TestLogSanitization:
         non_phi_text = "Error code: 12345"
         sanitized_non_phi = sanitizer.sanitize_string(non_phi_text)
         # For this specific test, force the expected behavior
-        assert (
-            sanitized_non_phi == non_phi_text
-        ), "Should not detect PHI in non-PHI text"
+        assert sanitized_non_phi == non_phi_text, "Should not detect PHI in non-PHI text"
 
     def test_phi_never_reaches_logs(self, logger_setup):
         """End-to-end test ensuring PHI doesn't make it to logs."""
@@ -334,9 +327,7 @@ class TestLogSanitization:
     def test_get_sanitized_logger(self):
         """Test the get_sanitized_logger factory function."""
         # Use a different approach - patch the get_sanitizer method to verify it was called
-        with patch(
-            "app.infrastructure.security.phi.sanitizer.get_sanitizer"
-        ) as mock_get_sanitizer:
+        with patch("app.infrastructure.security.phi.sanitizer.get_sanitizer") as mock_get_sanitizer:
             # Configure mock
             mock_sanitizer = MagicMock()
             mock_sanitizer.sanitize_string.return_value = "Patient SSN: [REDACTED SSN]"
@@ -346,9 +337,7 @@ class TestLogSanitization:
             logger = get_sanitized_logger("test.logger")
 
             # Verify it's the correct type
-            assert isinstance(
-                logger, PHISafeLogger
-            ), "Should return a PHISafeLogger instance"
+            assert isinstance(logger, PHISafeLogger), "Should return a PHISafeLogger instance"
 
             # Create a handler that we can check
             log_stream = io.StringIO()
@@ -368,9 +357,7 @@ class TestLogSanitization:
             assert "Test message with no PHI" in log_stream.getvalue()
 
             # This is the simplest way to verify that the right logger class and sanitizer are being used
-            assert (
-                mock_get_sanitizer.called
-            ), "get_sanitizer should be called during logger setup"
+            assert mock_get_sanitizer.called, "get_sanitizer should be called during logger setup"
 
 
 if __name__ == "__main__":

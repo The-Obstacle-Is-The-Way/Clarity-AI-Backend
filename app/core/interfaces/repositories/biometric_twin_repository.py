@@ -46,9 +46,7 @@ class IBiometricTwinRepository(ABC):
         pass
 
     @abstractmethod
-    async def list_all(
-        self, skip: int = 0, limit: int = 100
-    ) -> list[BiometricTwinState]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[BiometricTwinState]:
         """List all biometric twins with pagination."""
         pass
 

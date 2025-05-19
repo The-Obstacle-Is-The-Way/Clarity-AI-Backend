@@ -320,9 +320,7 @@ class RetrieveAggregatedAnalyticsUseCase:
 
         return ":".join(key_parts)
 
-    def _get_cache_ttl(
-        self, aggregate_type: str, start_time: datetime, end_time: datetime
-    ) -> int:
+    def _get_cache_ttl(self, aggregate_type: str, start_time: datetime, end_time: datetime) -> int:
         """
         Determine appropriate cache TTL based on query parameters.
 

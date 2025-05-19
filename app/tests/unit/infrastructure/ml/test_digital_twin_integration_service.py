@@ -378,9 +378,7 @@ class TestDigitalTwinIntegrationService:
                 "medication_predictions": {  # Added nested level based on fixture
                     "fluoxetine": {
                         "efficacy": {"score": 0.72, "confidence": 0.85},
-                        "side_effects": [
-                            {"name": "nausea", "risk": 0.35, "severity": "mild"}
-                        ],
+                        "side_effects": [{"name": "nausea", "risk": 0.35, "severity": "mild"}],
                         "recommendation": {
                             "action": "standard_dosing",
                             "rationale": "Standard protocol indicated based on available data.",
@@ -391,9 +389,7 @@ class TestDigitalTwinIntegrationService:
         }
 
         # Execute
-        recommendations = (
-            await integration_service._generate_integrated_recommendations(insights)
-        )
+        recommendations = await integration_service._generate_integrated_recommendations(insights)
 
         # Verify
         assert isinstance(recommendations, list)

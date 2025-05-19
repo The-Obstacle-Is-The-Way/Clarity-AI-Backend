@@ -73,9 +73,7 @@ def get_alert_rule_template_service(
         return container.get(AlertRuleTemplateServiceInterface)
     except KeyError:
         # Get repositories using the provided session
-        template_repo = get_repository_instance(
-            BiometricAlertTemplateRepository, session
-        )
+        template_repo = get_repository_instance(BiometricAlertTemplateRepository, session)
         rule_repo = get_repository_instance(BiometricAlertRuleRepository, session)
 
         # Create and return the service with proper repositories
@@ -104,16 +102,12 @@ def get_biometric_alert_template_repository(
 
 
 # Type aliases for cleaner dependency annotations
-BiometricServiceDep = Annotated[
-    BiometricServiceInterface, Depends(get_biometric_service)
-]
+BiometricServiceDep = Annotated[BiometricServiceInterface, Depends(get_biometric_service)]
 AlertServiceDep = Annotated[AlertServiceInterface, Depends(get_alert_service)]
 AlertRuleTemplateServiceDep = Annotated[
     AlertRuleTemplateServiceInterface, Depends(get_alert_rule_template_service)
 ]
-BiometricRuleRepoDep = Annotated[
-    BiometricRuleRepository, Depends(get_biometric_rule_repository)
-]
+BiometricRuleRepoDep = Annotated[BiometricRuleRepository, Depends(get_biometric_rule_repository)]
 BiometricAlertTemplateRepoDep = Annotated[
     BiometricAlertTemplateRepository, Depends(get_biometric_alert_template_repository)
 ]

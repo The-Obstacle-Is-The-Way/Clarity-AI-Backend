@@ -56,9 +56,7 @@ class PATServiceFactory:
         _SERVICE_REGISTRY["bedrock"] = BedrockPAT
 
     @classmethod
-    def create_pat_service(
-        cls, config: dict[str, Any] | str | None = None
-    ) -> PATInterface:
+    def create_pat_service(cls, config: dict[str, Any] | str | None = None) -> PATInterface:
         """Create and initialize a PAT service instance.
 
         Args:
@@ -88,9 +86,7 @@ class PATServiceFactory:
 
             provider = pat_config.get("provider")
             if not provider:
-                raise InvalidConfigurationError(
-                    "Missing 'provider' in PAT configuration"
-                )
+                raise InvalidConfigurationError("Missing 'provider' in PAT configuration")
 
             # Extract config excluding provider
             service_config = {k: v for k, v in pat_config.items() if k != "provider"}
@@ -122,9 +118,7 @@ class PATServiceFactory:
             )
 
         # Generate a cache key based on provider and sorted config items
-        cache_key = f"{provider}-" + "-".join(
-            f"{k}:{v}" for k, v in sorted(service_config.items())
-        )
+        cache_key = f"{provider}-" + "-".join(f"{k}:{v}" for k, v in sorted(service_config.items()))
 
         # Check if we already have a service instance with this configuration
         if cache_key in cls._instance_cache:
@@ -182,6 +176,5 @@ class PATServiceFactory:
         else:
             available_types = list(self._SERVICE_REGISTRY.keys())
             raise InitializationError(
-                f"Invalid PAT service type: {service_type}. "
-                f"Available types: {available_types}"
+                f"Invalid PAT service type: {service_type}. " f"Available types: {available_types}"
             )

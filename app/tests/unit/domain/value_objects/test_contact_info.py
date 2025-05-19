@@ -329,9 +329,7 @@ class TestContactInfoEncryption:
     def test_detect_encryption_state(self, mock_decrypt, mock_encrypt):
         """Test automatic detection of encryption state."""
         # Arrange - with encrypted values
-        contact_info = ContactInfo(
-            email="v1:encrypted_test@example.com", phone="555-123-4567"
-        )
+        contact_info = ContactInfo(email="v1:encrypted_test@example.com", phone="555-123-4567")
 
         # Assert
         assert contact_info._is_encrypted is True
@@ -364,9 +362,7 @@ class TestContactInfoEncryption:
             # Test caching
             service2 = ContactInfo._get_encryption_service()
             assert service2 is mock_service
-            assert (
-                mock_get_service.call_count == 1
-            )  # Still only called once due to caching
+            assert mock_get_service.call_count == 1  # Still only called once due to caching
 
 
 class TestContactInfoEndToEnd:

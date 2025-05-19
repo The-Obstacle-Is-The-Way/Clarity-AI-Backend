@@ -64,9 +64,7 @@ class MockPAT(PATInterface):
         if not self.initialized:
             raise RuntimeError("MockPAT service not initialized")
 
-    def _generate_mock_sleep_data(
-        self, start_date: str, end_date: str
-    ) -> list[dict[str, Any]]:
+    def _generate_mock_sleep_data(self, start_date: str, end_date: str) -> list[dict[str, Any]]:
         """
         Generate mock sleep data for testing.
 
@@ -103,13 +101,9 @@ class MockPAT(PATInterface):
                 "sleep_onset": sleep_onset,
                 "wake_time": wake_time,
                 "total_sleep_minutes": total_sleep_minutes,
-                "deep_sleep_minutes": round(
-                    total_sleep_minutes * deep_sleep_percentage
-                ),
+                "deep_sleep_minutes": round(total_sleep_minutes * deep_sleep_percentage),
                 "rem_sleep_minutes": round(total_sleep_minutes * rem_sleep_percentage),
-                "light_sleep_minutes": round(
-                    total_sleep_minutes * light_sleep_percentage
-                ),
+                "light_sleep_minutes": round(total_sleep_minutes * light_sleep_percentage),
                 "awakenings": awakenings,
                 "sleep_efficiency": sleep_efficiency,
                 "sleep_score": round(sleep_efficiency * 100),
@@ -119,9 +113,7 @@ class MockPAT(PATInterface):
 
         return sleep_data
 
-    def _generate_mock_activity_data(
-        self, start_date: str, end_date: str
-    ) -> list[dict[str, Any]]:
+    def _generate_mock_activity_data(self, start_date: str, end_date: str) -> list[dict[str, Any]]:
         """
         Generate mock activity data for testing.
 
@@ -274,9 +266,7 @@ class MockPAT(PATInterface):
                             "severity": random.uniform(0.3, 0.9),
                             "description": f"Anomaly in {random.choice(['morning', 'afternoon', 'evening'])} pattern",
                             "timestamp": (
-                                datetime.fromisoformat(
-                                    start_time.replace("Z", "+00:00")
-                                )
+                                datetime.fromisoformat(start_time.replace("Z", "+00:00"))
                                 + timedelta(hours=random.randint(1, 24))
                             ).isoformat()
                             + "Z",
@@ -315,13 +305,9 @@ class MockPAT(PATInterface):
             "end_date": end_date,
             "metrics": sleep_data,
             "summary": {
-                "average_sleep_duration": sum(
-                    entry["total_sleep_minutes"] for entry in sleep_data
-                )
+                "average_sleep_duration": sum(entry["total_sleep_minutes"] for entry in sleep_data)
                 / len(sleep_data),
-                "average_sleep_efficiency": sum(
-                    entry["sleep_efficiency"] for entry in sleep_data
-                )
+                "average_sleep_efficiency": sum(entry["sleep_efficiency"] for entry in sleep_data)
                 / len(sleep_data),
                 "average_sleep_score": sum(entry["sleep_score"] for entry in sleep_data)
                 / len(sleep_data),
@@ -358,13 +344,9 @@ class MockPAT(PATInterface):
             "summary": {
                 "average_steps": sum(entry["steps"] for entry in activity_data)
                 / len(activity_data),
-                "average_active_minutes": sum(
-                    entry["active_minutes"] for entry in activity_data
-                )
+                "average_active_minutes": sum(entry["active_minutes"] for entry in activity_data)
                 / len(activity_data),
-                "average_activity_score": sum(
-                    entry["activity_score"] for entry in activity_data
-                )
+                "average_activity_score": sum(entry["activity_score"] for entry in activity_data)
                 / len(activity_data),
                 "activity_trend": random.choice(["improving", "stable", "declining"]),
             },
@@ -454,8 +436,7 @@ class MockPAT(PATInterface):
             "anomalies": anomalies,
             "summary": {
                 "total_anomalies": len(anomalies),
-                "average_severity": sum(a["severity"] for a in anomalies)
-                / len(anomalies)
+                "average_severity": sum(a["severity"] for a in anomalies) / len(anomalies)
                 if anomalies
                 else 0,
                 "most_common_type": max(
@@ -503,9 +484,7 @@ class MockPAT(PATInterface):
         else:
             # Generate random dates if no readings provided
             base_date = datetime.now()
-            dates = [
-                (base_date - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)
-            ]
+            dates = [(base_date - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
 
         predictions = []
         for date in dates:
@@ -544,9 +523,7 @@ class MockPAT(PATInterface):
             "environmental_factors",
         ]
 
-        for factor in random.sample(
-            possible_factors, random.randint(2, len(possible_factors))
-        ):
+        for factor in random.sample(possible_factors, random.randint(2, len(possible_factors))):
             factors.append(
                 {
                     "factor": factor,

@@ -43,9 +43,7 @@ def app_with_rate_limited_routes(mock_limiter):
     app = FastAPI()
 
     # Create rate limit dependencies with the mock limiter
-    basic_rate_limit = RateLimitDependency(
-        requests=10, window_seconds=60, limiter=mock_limiter
-    )
+    basic_rate_limit = RateLimitDependency(requests=10, window_seconds=60, limiter=mock_limiter)
 
     sensitive_limit = RateLimitDependency(
         requests=5,
@@ -74,9 +72,7 @@ def app_with_rate_limited_routes(mock_limiter):
 
     # Test route with factory function
     @app.get("/api/factory")
-    async def factory_endpoint(
-        rate_check=Depends(rate_limit(requests=15, window_seconds=30))
-    ):
+    async def factory_endpoint(rate_check=Depends(rate_limit(requests=15, window_seconds=30))):
         return {"message": "factory"}
 
     return app  # Return the FastAPI app directly instead of a TestClient
@@ -294,9 +290,7 @@ class TestRateLimitDependencyIntegration:
 @pytest.fixture
 def mock_dependency_class():
     """Create a mock for the dependency class."""
-    with patch(
-        "app.presentation.api.dependencies.rate_limiter_deps.RateLimitDependency"
-    ) as mock:
+    with patch("app.presentation.api.dependencies.rate_limiter_deps.RateLimitDependency") as mock:
         yield mock
 
 

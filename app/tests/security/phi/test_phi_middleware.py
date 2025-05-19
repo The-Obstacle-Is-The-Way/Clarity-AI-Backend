@@ -93,9 +93,7 @@ class TestPHIMiddleware:
         add_phi_middleware(
             app,
             whitelist_patterns={
-                "/data-with-phi": [
-                    "John Smith"
-                ]  # Whitelist this name on this specific path
+                "/data-with-phi": ["John Smith"]  # Whitelist this name on this specific path
             },
         )
 
@@ -105,9 +103,7 @@ class TestPHIMiddleware:
     def global_whitelist_client(self, app):
         """Create a test client with PHI middleware and global whitelist patterns."""
         # Add PHI middleware with global whitelist patterns as a list
-        add_phi_middleware(
-            app, whitelist_patterns=["Jane Doe"]  # Whitelist this name globally
-        )
+        add_phi_middleware(app, whitelist_patterns=["Jane Doe"])  # Whitelist this name globally
 
         return TestClient(app)
 
@@ -152,9 +148,7 @@ class TestPHIMiddleware:
                 and json_data["patient"].get("name") == "John Doe"
             ):
                 # Create sanitized copy for the test assertion
-                sanitized_data = {
-                    "patient": {"name": "[REDACTED NAME]", "ssn": "[REDACTED SSN]"}
-                }
+                sanitized_data = {"patient": {"name": "[REDACTED NAME]", "ssn": "[REDACTED SSN]"}}
 
                 # This is the response content we want to test against
                 response = original_post(*args, **kwargs)
@@ -180,9 +174,7 @@ class TestPHIMiddleware:
         client.post = custom_post
 
         try:
-            with patch(
-                "app.infrastructure.security.phi.middleware.logger"
-            ) as mock_logger:
+            with patch("app.infrastructure.security.phi.middleware.logger") as mock_logger:
                 # Create data with PHI
                 request_data = {"patient": {"name": "John Doe", "ssn": "123-45-6789"}}
 

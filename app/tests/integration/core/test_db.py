@@ -76,9 +76,7 @@ async def setup_custom_model():
         yield session
 
         # Cleanup: drop the custom table
-        await session.execute(
-            text(f"DROP TABLE IF EXISTS {TestCustomModel.__tablename__}")
-        )
+        await session.execute(text(f"DROP TABLE IF EXISTS {TestCustomModel.__tablename__}"))
         await session.commit()
 
 

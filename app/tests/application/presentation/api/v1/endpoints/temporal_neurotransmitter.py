@@ -108,9 +108,7 @@ class CascadeVisualizationResponse(BaseModel):
 )
 async def generate_time_series(
     request: TimeSeriesGenerateRequest = Body(...),
-    service: TemporalNeurotransmitterService = Depends(
-        get_temporal_neurotransmitter_service
-    ),
+    service: TemporalNeurotransmitterService = Depends(get_temporal_neurotransmitter_service),
     current_user: dict = Depends(get_current_user),
 ) -> Any:
     sequence_id = await service.generate_neurotransmitter_time_series(
@@ -138,9 +136,7 @@ async def generate_time_series(
 )
 async def simulate_treatment(
     request: TreatmentSimulationRequest = Body(...),
-    service: TemporalNeurotransmitterService = Depends(
-        get_temporal_neurotransmitter_service
-    ),
+    service: TemporalNeurotransmitterService = Depends(get_temporal_neurotransmitter_service),
     current_user: dict = Depends(get_current_user),
 ) -> Any:
     sequence_ids = await service.simulate_treatment_response(
@@ -170,9 +166,7 @@ async def simulate_treatment(
 )
 async def get_visualization_data(
     request: VisualizationDataRequest = Body(...),
-    service: TemporalNeurotransmitterService = Depends(
-        get_temporal_neurotransmitter_service
-    ),
+    service: TemporalNeurotransmitterService = Depends(get_temporal_neurotransmitter_service),
     current_user: dict = Depends(get_current_user),
 ) -> Any:
     data = await service.get_visualization_data(
@@ -195,9 +189,7 @@ async def get_visualization_data(
 )
 async def analyze_neurotransmitter(
     request: AnalyzeNeurotransmitterRequest = Body(...),
-    service: TemporalNeurotransmitterService = Depends(
-        get_temporal_neurotransmitter_service
-    ),
+    service: TemporalNeurotransmitterService = Depends(get_temporal_neurotransmitter_service),
     current_user: dict = Depends(get_current_user),
 ) -> Any:
     effect = await service.analyze_patient_neurotransmitter_levels(
@@ -229,8 +221,7 @@ async def analyze_neurotransmitter(
         "effect_size": effect.effect_size,
         "confidence_interval": effect.confidence_interval,
         "p_value": effect.p_value,
-        "is_statistically_significant": effect.p_value is not None
-        and effect.p_value < 0.05,
+        "is_statistically_significant": effect.p_value is not None and effect.p_value < 0.05,
         "clinical_significance": effect.clinical_significance.value
         if effect.clinical_significance
         else None,
@@ -247,9 +238,7 @@ async def analyze_neurotransmitter(
 )
 async def get_cascade_visualization(
     request: CascadeVisualizationRequest = Body(...),
-    service: TemporalNeurotransmitterService = Depends(
-        get_temporal_neurotransmitter_service
-    ),
+    service: TemporalNeurotransmitterService = Depends(get_temporal_neurotransmitter_service),
     current_user: dict = Depends(get_current_user),
 ) -> Any:
     data = await service.get_cascade_visualization(

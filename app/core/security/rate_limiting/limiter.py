@@ -29,9 +29,7 @@ class RateLimiter:
         """
         self.requests_per_minute = requests_per_minute
         self.client_requests = {}  # Dict to track client requests
-        logger.info(
-            f"Initialized RateLimiter with {requests_per_minute} requests per minute"
-        )
+        logger.info(f"Initialized RateLimiter with {requests_per_minute} requests per minute")
 
     async def is_allowed(self, client_id: str) -> bool:
         """

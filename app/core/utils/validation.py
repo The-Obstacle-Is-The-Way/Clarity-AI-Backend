@@ -23,9 +23,7 @@ def validate_us_phone(phone_number: str) -> bool:
     digits_only = re.sub(r"\D", "", phone_number)
 
     # US phone numbers should have 10 digits (or 11 with country code 1)
-    return len(digits_only) == 10 or (
-        len(digits_only) == 11 and digits_only.startswith("1")
-    )
+    return len(digits_only) == 10 or (len(digits_only) == 11 and digits_only.startswith("1"))
 
 
 def validate_ssn(ssn: str) -> bool:
@@ -71,9 +69,7 @@ def validate_date_of_birth(dob: str) -> bool:
         True if the format matches common date patterns, False otherwise
     """
     # Regex for common date formats (MM/DD/YYYY, YYYY-MM-DD, MM-DD-YYYY, YYYY/MM/DD)
-    date_pattern = re.compile(
-        r"^(\d{1,2}[/.-]\d{1,2}[/.-]\d{4}|\d{4}[/.-]\d{1,2}[/.-]\d{1,2})$"
-    )
+    date_pattern = re.compile(r"^(\d{1,2}[/.-]\d{1,2}[/.-]\d{4}|\d{4}[/.-]\d{1,2}[/.-]\d{1,2})$")
     return bool(date_pattern.match(dob))
 
 

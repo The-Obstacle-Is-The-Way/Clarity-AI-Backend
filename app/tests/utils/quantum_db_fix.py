@@ -124,9 +124,7 @@ async def table_exists(session: AsyncSession, table_name: str) -> bool:
     Uses parameterized query to prevent SQL injection.
     """
     try:
-        query = text(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name=:table_name"
-        )
+        query = text("SELECT name FROM sqlite_master WHERE type='table' AND name=:table_name")
         result = await session.execute(query, {"table_name": table_name})
         exists = result.scalar() is not None
         logger.debug(f"Table '{table_name}' exists check result: {exists}")
@@ -241,9 +239,7 @@ async def create_test_users(session: AsyncSession) -> None:
 
     # Verify users were created
     query = text("SELECT id FROM users WHERE id = ANY(:user_ids)")
-    result = await session.execute(
-        query, {"user_ids": [TEST_USER_ID, TEST_CLINICIAN_ID]}
-    )
+    result = await session.execute(query, {"user_ids": [TEST_USER_ID, TEST_CLINICIAN_ID]})
     users = result.fetchall()
     if len(users) != 2:
         logger.error(f"Failed to verify test users. Found {len(users)}.")
@@ -257,9 +253,7 @@ async def initialize_database() -> None:
     logger.info("QUANTUM DATABASE INITIALIZER: Starting database initialization")
 
     engine = create_async_engine(settings.SQLALCHEMY_TEST_DATABASE_URI, echo=False)
-    async_session_local = async_sessionmaker(
-        engine, expire_on_commit=False, class_=AsyncSession
-    )
+    async_session_local = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
     async with engine.begin() as conn:
         logger.info("Dropping all tables if they exist...")

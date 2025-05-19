@@ -87,9 +87,7 @@ class TestBiometricIntegrationService:
 
     def test_add_biometric_data_with_error(self, service, mock_repository):
         patient_id = uuid4()
-        service.get_or_create_biometric_twin = MagicMock(
-            side_effect=Exception("Repository error")
-        )
+        service.get_or_create_biometric_twin = MagicMock(side_effect=Exception("Repository error"))
         with pytest.raises(DomainError) as exc_info:
             service.add_biometric_data(
                 patient_id=patient_id,
@@ -133,9 +131,7 @@ class TestBiometricIntegrationService:
         mock_twin.timeseries_data = {}
         mock_twin.get_biometric_data = MagicMock(return_value=None)
         mock_repository.get_by_patient_id.return_value = mock_twin
-        result = service.get_biometric_data(
-            patient_id=patient_id, data_type="heart_rate"
-        )
+        result = service.get_biometric_data(patient_id=patient_id, data_type="heart_rate")
         assert isinstance(result, list)
         mock_twin.get_biometric_data.assert_called_with(
             service._to_biometric_type("heart_rate")
@@ -229,7 +225,5 @@ class TestBiometricIntegrationService:
     async def test_disconnect_device_no_twin(self, service, mock_repository):
         patient_id = uuid4()
         mock_repository.get_by_patient_id.return_value = None
-        result = await service.disconnect_device(
-            patient_id=patient_id, device_id="wearable-123"
-        )
+        result = await service.disconnect_device(patient_id=patient_id, device_id="wearable-123")
         assert result is False

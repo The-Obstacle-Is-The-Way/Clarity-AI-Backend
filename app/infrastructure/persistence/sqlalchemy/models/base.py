@@ -60,9 +60,7 @@ class TimestampMixin:
     """Mixin for timestamp fields using Column syntax."""
 
     # Use @declared_attr if these need class-level context, otherwise define directly
-    created_at = Column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),

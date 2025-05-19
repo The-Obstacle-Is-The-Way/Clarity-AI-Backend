@@ -116,9 +116,7 @@ class PatientService:
         if preferred_provider_id:
             provider = await self.provider_repository.get_by_id(preferred_provider_id)
             if not provider:
-                raise ValidationError(
-                    f"Provider with ID {preferred_provider_id} does not exist"
-                )
+                raise ValidationError(f"Provider with ID {preferred_provider_id} does not exist")
 
             # Check if provider is accepting patients
             if not provider.accepts_new_patients or not provider.is_active:
@@ -150,9 +148,7 @@ class PatientService:
         # Save to repository
         return await self.patient_repository.create(patient)
 
-    async def update_patient_info(
-        self, patient_id: UUID, updated_fields: dict
-    ) -> Patient:
+    async def update_patient_info(self, patient_id: UUID, updated_fields: dict) -> Patient:
         """
         Update patient information
 
@@ -205,10 +201,8 @@ class PatientService:
         )
 
         # Get upcoming appointments
-        upcoming_appointments = (
-            await self.appointment_repository.list_upcoming_by_patient(
-                patient_id=patient_id, limit=5
-            )
+        upcoming_appointments = await self.appointment_repository.list_upcoming_by_patient(
+            patient_id=patient_id, limit=5
         )
 
         # Get recent clinical notes
@@ -245,9 +239,7 @@ class PatientService:
                     "id": str(appt.id),
                     "date": appt.appointment_date.isoformat(),
                     "type": (
-                        appt.appointment_type.name
-                        if hasattr(appt, "appointment_type")
-                        else None
+                        appt.appointment_type.name if hasattr(appt, "appointment_type") else None
                     ),
                     "status": appt.status.name if hasattr(appt, "status") else None,
                 }
@@ -258,9 +250,7 @@ class PatientService:
                     "id": str(appt.id),
                     "date": appt.appointment_date.isoformat(),
                     "type": (
-                        appt.appointment_type.name
-                        if hasattr(appt, "appointment_type")
-                        else None
+                        appt.appointment_type.name if hasattr(appt, "appointment_type") else None
                     ),
                     "status": appt.status.name if hasattr(appt, "status") else None,
                 }
@@ -279,9 +269,7 @@ class PatientService:
 
         return care_summary
 
-    async def assign_preferred_provider(
-        self, patient_id: UUID, provider_id: UUID
-    ) -> Patient:
+    async def assign_preferred_provider(self, patient_id: UUID, provider_id: UUID) -> Patient:
         """
         Assign a preferred provider to a patient
 
@@ -398,9 +386,7 @@ class PatientService:
 
         return diagnosis_history
 
-    async def search_patients(
-        self, query: str, limit: int = 20, offset: int = 0
-    ) -> list[Patient]:
+    async def search_patients(self, query: str, limit: int = 20, offset: int = 0) -> list[Patient]:
         """
         Search for patients by name or other fields
 
@@ -414,9 +400,7 @@ class PatientService:
         """
         return await self.patient_repository.search(query, limit, offset)
 
-    async def get_patients_with_upcoming_appointments(
-        self, days_ahead: int = 7
-    ) -> list[dict]:
+    async def get_patients_with_upcoming_appointments(self, days_ahead: int = 7) -> list[dict]:
         """
         Get patients with upcoming appointments within a specified number of days
 
@@ -431,9 +415,7 @@ class PatientService:
         end_date = start_date + timedelta(days=days_ahead)
 
         # Get appointments in date range
-        appointments = await self.appointment_repository.list_by_date_range(
-            start_date, end_date
-        )
+        appointments = await self.appointment_repository.list_by_date_range(start_date, end_date)
 
         # Group appointments by patient
         patient_appointments = {}
@@ -447,9 +429,7 @@ class PatientService:
                     "id": str(appt.id),
                     "date": appt.appointment_date.isoformat(),
                     "type": (
-                        appt.appointment_type.name
-                        if hasattr(appt, "appointment_type")
-                        else None
+                        appt.appointment_type.name if hasattr(appt, "appointment_type") else None
                     ),
                     "status": appt.status.name if hasattr(appt, "status") else None,
                 }

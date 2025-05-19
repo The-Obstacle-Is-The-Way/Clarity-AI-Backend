@@ -6,6 +6,7 @@ mapping the domain entity to the database schema.
 """
 
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     JSON,
@@ -14,8 +15,6 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-)
-from sqlalchemy import (
     UUID as SQLAlchemyUUID,
 )
 from sqlalchemy.ext.mutable import MutableDict
@@ -26,6 +25,9 @@ from app.infrastructure.persistence.sqlalchemy.models.base import (
     Base,
     TimestampMixin,
 )
+
+if TYPE_CHECKING:
+    from app.domain.entities.clinical_note import ClinicalNote
 
 
 class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
@@ -70,16 +72,14 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
         "ProviderModel", foreign_keys=[provider_id], back_populates="clinical_notes"
     )
     appointment = relationship("AppointmentModel", back_populates="clinical_notes")
-    parent_note = relationship(
-        "ClinicalNoteModel", remote_side=[id], backref="revisions"
-    )
+    parent_note = relationship("ClinicalNoteModel", remote_side=[id], backref="revisions")
 
     def __repr__(self) -> str:
         """Return string representation of the clinical note."""
         return f"<ClinicalNote(id={self.id}, patient_id={self.patient_id}, note_type={self.note_type})>"
 
     @classmethod
-    def from_domain(cls, clinical_note) -> "ClinicalNoteModel":
+    def from_domain(cls, clinical_note: "ClinicalNote") -> "ClinicalNoteModel":
         """
         Create a SQLAlchemy model instance from a domain entity.
 
@@ -94,9 +94,7 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
             patient_id=clinical_note.patient_id,
             provider_id=clinical_note.provider_id,
             appointment_id=clinical_note.appointment_id,
-            note_type=clinical_note.note_type.value
-            if clinical_note.note_type
-            else None,
+            note_type=clinical_note.note_type.value if clinical_note.note_type else None,
             content=clinical_note.content,
             redacted_content=clinical_note.redacted_content,
             title=clinical_note.title,
@@ -105,7 +103,7 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
             parent_note_id=clinical_note.parent_note_id,
         )
 
-    def to_domain(self):
+    def to_domain(self) -> "ClinicalNote":
         """
         Convert SQLAlchemy model instance to domain entity.
 

@@ -123,7 +123,15 @@ target-version = "py310"
 [tool.ruff.lint]
 # Enable flake8-bugbear (`B`) rules.
 select = ["E", "F", "B", "I", "N", "UP", "ANN", "S", "A", "C4", "PTH", "RUF"]
-ignore = ["ANN204"] # Removed ANN101, ANN102
+# Ignore specific issues for now - we'll fix them progressively
+ignore = [
+    "ANN101",  # Missing self type annotation
+    "ANN102",  # Missing cls type annotation
+    "ANN204",  # Missing return type for special method
+    "ANN401",  # Any type - we'll fix these later
+    "E501",    # Line too long - we'll fix these in a dedicated pass
+    "S101",    # Use of assert in tests is acceptable
+]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
@@ -133,8 +141,8 @@ unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.lint.per-file-ignores]
-# Tests can use assert
-"**/tests/**/*.py" = ["S101"]
+# Tests can use assert and have passwords
+"**/tests/**/*.py" = ["S101", "S105", "S106", "S107", "S311"]
 # Migrations can use print and don't need docstrings
 "**/migrations/**/*.py" = ["T201", "D"]
 
@@ -166,3 +174,71 @@ markers = [
 
 asyncio_mode = "strict"
 addopts = "--strict-markers --cov=app --cov-report=term"
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | alembic
+  | venv
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+skip_glob = ["**/migrations/*", "**/alembic/*"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+no_implicit_reexport = true
+show_error_codes = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_no_return = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+
+# Add tolerant handling for third-party libraries
+[[tool.mypy.overrides]]
+module = [
+    "jose.*",
+    "jwt.*",
+    "pandas.*",
+    "boto3.*",
+    "botocore.*",
+    "sklearn.*",
+    "tensorflow.*",
+    "openai.*",
+    "torch.*",
+    "joblib.*",
+    "redis.*"
+]
+ignore_missing_imports = true

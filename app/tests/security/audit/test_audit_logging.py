@@ -89,9 +89,7 @@ def app(audit_service):
 
     # Add test routes
     @app.get("/patients/{patient_id}")
-    async def get_patient(
-        patient_id: str, audit_logger: IAuditLogger = Depends(get_audit_logger)
-    ):
+    async def get_patient(patient_id: str, audit_logger: IAuditLogger = Depends(get_audit_logger)):
         # This route should trigger PHI access logging
         await audit_logger.log_phi_access(
             actor_id="test_user",
@@ -140,10 +138,7 @@ class TestAuditLoggingIntegration:
         phi_access_log = None
         for call in mock_repository._create.call_args_list:
             log = call[0][0]
-            if (
-                log.event_type == AuditEventType.PHI_ACCESSED
-                and log.resource_id == TEST_PATIENT_ID
-            ):
+            if log.event_type == AuditEventType.PHI_ACCESSED and log.resource_id == TEST_PATIENT_ID:
                 phi_access_log = log
                 break
 
@@ -255,9 +250,7 @@ class TestAuditLogExport:
             assert mock_file().write.call_count >= 1
 
             # Check content includes headers and data
-            content = "".join(
-                [call.args[0] for call in mock_file().write.mock_calls if call.args]
-            )
+            content = "".join([call.args[0] for call in mock_file().write.mock_calls if call.args])
             assert "timestamp" in content.lower()
             assert "event_type" in content.lower()
             assert "actor_id" in content.lower()
@@ -293,10 +286,7 @@ class TestAuditAnomalyDetection:
         security_event_logged = False
         for call in mock_repository._create.call_args_list:
             log = call[0][0]
-            if (
-                log.event_type == AuditEventType.SECURITY_EVENT
-                and log.action == "anomaly_detected"
-            ):
+            if log.event_type == AuditEventType.SECURITY_EVENT and log.action == "anomaly_detected":
                 security_event_logged = True
                 break
 
@@ -322,9 +312,7 @@ class TestAuditAnomalyDetection:
             action="view",
             status="success",
             ip_address="203.0.113.1",  # Example public IP
-            details={
-                "context": {"location": {"is_private": False, "country": "Unknown"}}
-            },
+            details={"context": {"location": {"is_private": False, "country": "Unknown"}}},
         )
 
         # Trigger anomaly detection directly

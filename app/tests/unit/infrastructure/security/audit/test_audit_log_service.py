@@ -194,9 +194,7 @@ class TestAuditLogService:
 
         # Create a test request with the special IP that triggers anomaly detection
         test_request = MagicMock()
-        test_request.client.host = (
-            "not_an_ip"  # Special value that triggers anomaly detection
-        )
+        test_request.client.host = "not_an_ip"  # Special value that triggers anomaly detection
         test_request.headers = {}
 
         # Create a spy to see if _check_for_anomalies is called
@@ -227,9 +225,7 @@ class TestAuditLogService:
             if call.kwargs.get("event_type") == AuditEventType.SECURITY_EVENT
         ]
 
-        assert (
-            security_event_calls
-        ), "No security event was logged when an anomaly was detected"
+        assert security_event_calls, "No security event was logged when an anomaly was detected"
 
         # Restore original methods
         audit_service.log_event = original_log_event
@@ -294,9 +290,7 @@ class TestAuditLogMiddleware:
         request.app.state.settings = MagicMock()
         request.app.state.settings.ENVIRONMENT = env
         request.app.state.testing = testing_flag
-        request.app.state.disable_audit_middleware = (
-            disable_audit_flag  # For app-level disabling
-        )
+        request.app.state.disable_audit_middleware = disable_audit_flag  # For app-level disabling
 
         # Mock request.state and current_user for user extraction
         # AuditLogMiddleware._extract_user_id expects request.state.user
@@ -313,9 +307,7 @@ class TestAuditLogMiddleware:
             request.state.user = None  # Correctly set to None if no user_id provided
 
         # For request-level disabling, if used by _is_audit_disabled
-        request.state.disable_audit_middleware = (
-            False  # Default to not disabled at request level
-        )
+        request.state.disable_audit_middleware = False  # Default to not disabled at request level
 
         return request
 
@@ -327,17 +319,11 @@ class TestAuditLogMiddleware:
         mock_audit_logger: MagicMock,
     ):
         """Test that PHI access is logged for PHI paths when audit is enabled."""
-        mock_is_disabled_method.return_value = (
-            False  # Ensure audit is NOT disabled by the mock
-        )
+        mock_is_disabled_method.return_value = False  # Ensure audit is NOT disabled by the mock
 
-        request = self._prepare_request_mock(
-            path="/api/v1/patients/123/phi", method="GET"
-        )
+        request = self._prepare_request_mock(path="/api/v1/patients/123/phi", method="GET")
         # Ensure the specific request mock doesn't accidentally disable audit via its own app.state properties
-        request.app.state.settings.ENVIRONMENT = (
-            "production"  # Explicitly non-test for this test
-        )
+        request.app.state.settings.ENVIRONMENT = "production"  # Explicitly non-test for this test
         request.app.state.testing = False
         request.app.state.disable_audit_middleware = False
 
@@ -365,9 +351,7 @@ class TestAuditLogMiddleware:
         assert kwargs["actor_id"] == TEST_USER_ID
         assert kwargs["resource_type"] == "patients"
         assert kwargs["resource_id"] == "123"
-        assert (
-            kwargs["patient_id"] == "123"
-        )  # Assuming patient_id is derived from resource_id here
+        assert kwargs["patient_id"] == "123"  # Assuming patient_id is derived from resource_id here
         assert kwargs["action"] == "view"  # GET maps to view
         assert kwargs["status"] == "success"  # Based on 200 OK from call_next
         assert kwargs["metadata"]["path"] == "/api/v1/patients/123/phi"
@@ -383,13 +367,9 @@ class TestAuditLogMiddleware:
         mock_audit_logger: MagicMock,
     ):
         """Test that if audit is disabled (by mock), PHI path processing skips logging."""
-        mock_is_disabled_method.return_value = (
-            True  # Simulate _is_audit_disabled returning True
-        )
+        mock_is_disabled_method.return_value = True  # Simulate _is_audit_disabled returning True
 
-        request = self._prepare_request_mock(
-            path="/api/v1/patients/789/phi", method="POST"
-        )
+        request = self._prepare_request_mock(path="/api/v1/patients/789/phi", method="POST")
         call_next_response = Response(status_code=201, content="Created PHI entity")
         call_next = AsyncMock(return_value=call_next_response)
 
@@ -398,9 +378,7 @@ class TestAuditLogMiddleware:
         assert response == call_next_response
         call_next.assert_called_once_with(request)
         mock_audit_logger.log_phi_access.assert_not_called()
-        mock_is_disabled_method.assert_called_once_with(
-            request
-        )  # Ensure our mock was the reason
+        mock_is_disabled_method.assert_called_once_with(request)  # Ensure our mock was the reason
 
     @patch.object(AuditLogMiddleware, "_is_audit_disabled", new_callable=AsyncMock)
     async def test_non_phi_path_skipped_even_if_audit_enabled(
@@ -410,9 +388,7 @@ class TestAuditLogMiddleware:
         mock_audit_logger: MagicMock,
     ):
         """Test non-PHI paths are skipped, even if _is_audit_disabled would allow logging."""
-        mock_is_disabled_method.return_value = (
-            False  # Audit is notionally enabled by this mock
-        )
+        mock_is_disabled_method.return_value = False  # Audit is notionally enabled by this mock
 
         request = self._prepare_request_mock(path="/api/v1/health-check", method="GET")
         # Ensure the specific request mock doesn't accidentally disable audit via its own app.state properties
@@ -444,9 +420,7 @@ class TestAuditLogMiddleware:
         # mock_is_disabled_method is present due to decorator, but should not be called.
         # We don't set its return_value as it's irrelevant if code path is correct.
 
-        request = self._prepare_request_mock(
-            path="/skip_this_path/some/subresource", method="GET"
-        )
+        request = self._prepare_request_mock(path="/skip_this_path/some/subresource", method="GET")
         call_next_response = Response(status_code=200, content="Skipped via skip_paths")
         call_next = AsyncMock(return_value=call_next_response)
 
@@ -491,22 +465,16 @@ class TestAuditLogMiddleware:
         call_next.assert_called_once_with(request)
         mock_audit_logger.log_phi_access.assert_called_once()  # Logger was attempted
 
-    async def test_extract_user_id_from_valid_request_state(
-        self, middleware: AuditLogMiddleware
-    ):
+    async def test_extract_user_id_from_valid_request_state(self, middleware: AuditLogMiddleware):
         """Test _extract_user_id successfully gets user ID from request.state.user.id."""
         user_id_val = str(uuid.uuid4())
         # _prepare_request_mock now correctly sets request.state.user with an object having an 'id' attribute
-        request = self._prepare_request_mock(
-            path="/any", method="GET", user_id=user_id_val
-        )
+        request = self._prepare_request_mock(path="/any", method="GET", user_id=user_id_val)
 
         extracted_user_id = await middleware._extract_user_id(request)
         assert extracted_user_id == user_id_val
 
-    async def test_extract_user_id_when_no_current_user(
-        self, middleware: AuditLogMiddleware
-    ):
+    async def test_extract_user_id_when_no_current_user(self, middleware: AuditLogMiddleware):
         """Test _extract_user_id returns None if request.state.user is None."""
         request = self._prepare_request_mock(
             path="/any", method="GET", user_id=None
@@ -526,9 +494,7 @@ class TestAuditLogMiddleware:
         user_without_id_mock = MagicMock()
         # del user_without_id_mock.id # Ensure 'id' is not present or getattr will create a new mock for it.
         # Instead, use spec to limit attributes
-        user_without_id_mock = MagicMock(
-            spec=[]
-        )  # An object with no attributes defined by spec
+        user_without_id_mock = MagicMock(spec=[])  # An object with no attributes defined by spec
         request.state.user = user_without_id_mock
 
         extracted_user_id = await middleware._extract_user_id(request)

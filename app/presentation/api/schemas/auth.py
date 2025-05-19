@@ -24,9 +24,7 @@ class TokenResponseSchema(BaseModel):
     user_id: uuid.UUID | None = Field(
         None, description="User ID of the authenticated user"
     )  # Added Optional
-    roles: list[str] | None = Field(
-        None, description="Roles of the authenticated user"
-    )
+    roles: list[str] | None = Field(None, description="Roles of the authenticated user")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -36,9 +34,7 @@ class LoginRequestSchema(BaseModel):
 
     username: EmailStr = Field(..., description="User's email address")
     password: str = Field(..., description="User's password")
-    remember_me: bool = Field(
-        False, description="Whether to issue a long-lived refresh token"
-    )
+    remember_me: bool = Field(False, description="Whether to issue a long-lived refresh token")
 
 
 class RefreshTokenRequestSchema(BaseModel):
@@ -50,20 +46,14 @@ class RefreshTokenRequestSchema(BaseModel):
 class SessionInfoResponseSchema(BaseModel):
     """Response schema for the session information endpoint."""
 
-    authenticated: bool = Field(
-        ..., description="Whether the user is currently authenticated"
-    )
+    authenticated: bool = Field(..., description="Whether the user is currently authenticated")
     session_active: bool = Field(
         ..., description="Whether there is an active session (e.g., valid token)"
     )
     user_id: uuid.UUID | None = Field(None, description="User ID if authenticated")
     roles: list[str] | None = Field(None, description="User roles if authenticated")
-    permissions: list[str] | None = Field(
-        None, description="User permissions if authenticated"
-    )
-    exp: int | None = Field(
-        None, description="Access token expiry timestamp (seconds since epoch)"
-    )
+    permissions: list[str] | None = Field(None, description="User permissions if authenticated")
+    exp: int | None = Field(None, description="Access token expiry timestamp (seconds since epoch)")
     # Add other relevant session details like CSRF token if used
 
     model_config = ConfigDict(from_attributes=True)
@@ -76,9 +66,7 @@ class UserRegistrationRequestSchema(BaseModel):
     password: str = Field(
         ..., min_length=8, description="User's chosen password (min 8 characters)"
     )
-    full_name: str | None = Field(
-        None, max_length=100, description="User's full name"
-    )
+    full_name: str | None = Field(None, max_length=100, description="User's full name")
     # Add other fields like terms_accepted, etc.
 
 
@@ -102,9 +90,7 @@ class UserRegistrationResponseSchema(BaseModel):
 class LogoutResponseSchema(BaseModel):
     """Response schema for logout (though often logout is 204 No Content)."""
 
-    message: str = Field(
-        "Successfully logged out", description="Logout confirmation message"
-    )
+    message: str = Field("Successfully logged out", description="Logout confirmation message")
 
 
 # You might also want a schema for password change, password reset requests, etc.

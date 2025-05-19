@@ -25,9 +25,7 @@ logger = logging.getLogger(__name__)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-def create_access_token(
-    data: dict[str, Any], expires_delta: timedelta | None = None
-) -> str:
+def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     """
     Create a new JWT access token.
 
@@ -59,9 +57,7 @@ def create_access_token(
         raise ValueError(f"Token generation failed: {e}")
 
 
-def create_refresh_token(
-    data: dict[str, Any], expires_delta: timedelta | None = None
-) -> str:
+def create_refresh_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     """
     Create a new JWT refresh token with longer expiration.
 
@@ -111,9 +107,7 @@ def decode_token(token: str) -> dict[str, Any]:
     settings = get_settings()
 
     try:
-        payload = jwt.decode(
-            token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
-        )
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         return payload
     except JWTError as e:
         logger.warning(f"JWT token validation failed: {e}")
@@ -135,9 +129,7 @@ def get_token_data(token: str) -> dict[str, Any]:
     """
     try:
         # Decode without verification for inspection purposes only
-        payload = jwt.decode(
-            token, options={"verify_signature": False, "verify_exp": False}
-        )
+        payload = jwt.decode(token, options={"verify_signature": False, "verify_exp": False})
         return payload
     except Exception as e:
         logger.error(f"Token data extraction failed: {e}")

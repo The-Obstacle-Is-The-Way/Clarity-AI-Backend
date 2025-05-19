@@ -90,12 +90,8 @@ class AuthenticationService:
                 )
                 return None
 
-            if not self.password_handler.verify_password(
-                password, user.hashed_password
-            ):
-                logger.warning(
-                    f"Authentication failed: Invalid password for user '{username}'."
-                )
+            if not self.password_handler.verify_password(password, user.hashed_password):
+                logger.warning(f"Authentication failed: Invalid password for user '{username}'.")
                 return None
 
             if not user.is_active:
@@ -136,9 +132,7 @@ class AuthenticationService:
                 try:
                     user_uuid = uuid.UUID(user_id)
                 except ValueError:
-                    logger.warning(
-                        f"Invalid UUID format for user_id: {user_id}, using raw string"
-                    )
+                    logger.warning(f"Invalid UUID format for user_id: {user_id}, using raw string")
                     user_uuid = user_id
 
             # Get user from repository
@@ -215,9 +209,7 @@ class AuthenticationService:
             # Prepare token data
             token_data = {
                 "sub": str(user.id),
-                "roles": [str(role) for role in user.roles]
-                if hasattr(user, "roles")
-                else [],
+                "roles": [str(role) for role in user.roles] if hasattr(user, "roles") else [],
             }
 
             # Include user information (without PHI)
@@ -250,9 +242,7 @@ class AuthenticationService:
             }
 
             # Create token using JWT service
-            token = await self.jwt_service.create_refresh_token(
-                subject=token_data["sub"]
-            )
+            token = await self.jwt_service.create_refresh_token(subject=token_data["sub"])
             return token
         except Exception as e:
             logger.error(f"Error creating refresh token: {e}", exc_info=True)
@@ -344,10 +334,7 @@ class AuthenticationService:
             payload = await self.jwt_service.decode_token(refresh_token)
 
             # Check if it's a refresh token
-            if (
-                not getattr(payload, "refresh", False)
-                and payload.scope != "refresh_token"
-            ):
+            if not getattr(payload, "refresh", False) and payload.scope != "refresh_token":
                 raise InvalidTokenException("Not a refresh token")
 
             # Get the user associated with the token
@@ -471,9 +458,7 @@ class AuthenticationService:
                 "VALID_ADMIN_TOKEN",
             ]:
                 logger.warning(f"Test token reached database lookup: {token}")
-                raise AuthenticationError(
-                    f"Test token should have been handled earlier: {token}"
-                )
+                raise AuthenticationError(f"Test token should have been handled earlier: {token}")
             raise
         except Exception as e:
             logger.error(f"Error validating token: {e}", exc_info=True)
@@ -535,9 +520,7 @@ class AuthenticationService:
                     if success:
                         logger.info(f"User {user_id} logged out, token {jti} revoked")
                     else:
-                        logger.warning(
-                            f"Failed to revoke token {jti} for user {user_id}"
-                        )
+                        logger.warning(f"Failed to revoke token {jti} for user {user_id}")
                 except Exception as e:
                     # Log error but continue with other tokens
                     logger.error(f"Error processing token during logout: {e!s}")

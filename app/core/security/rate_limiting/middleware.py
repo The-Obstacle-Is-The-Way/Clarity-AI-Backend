@@ -57,9 +57,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             self.rate_limiter.check_rate_limit = AsyncMock(return_value=True)
             self.rate_limiter.is_allowed = AsyncMock(return_value=True)
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """
         Process the request and apply rate limiting if configured.
 

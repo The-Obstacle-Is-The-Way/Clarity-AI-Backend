@@ -76,9 +76,7 @@ class MockMentaLLaMA:
             self._mock_responses = mock_responses or {}
             self._initialized = True
         except Exception as e:
-            raise InvalidConfigurationError(
-                f"Failed to initialize MentaLLaMA mock: {e!s}"
-            )
+            raise InvalidConfigurationError(f"Failed to initialize MentaLLaMA mock: {e!s}")
 
     def is_healthy(self) -> bool:
         """Check if the mock service is initialized and healthy."""
@@ -142,10 +140,7 @@ class MockMentaLLaMA:
                 "text": "Mock insight from text: " + text[:30] + "...",
                 "category": "DIAGNOSTIC",  # String format as expected by tests
                 "severity": "MODERATE"
-                if any(
-                    word in text.lower()
-                    for word in ["sad", "down", "depressed", "hopeless"]
-                )
+                if any(word in text.lower() for word in ["sad", "down", "depressed", "hopeless"])
                 else "LOW",
                 "confidence": 0.85,
                 "evidence": "Evidence from text",
@@ -173,9 +168,7 @@ class MockMentaLLaMA:
 
     # No need for insight conversion since we directly generate the dict format
 
-    def detect_depression(
-        self, text: str, options: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def detect_depression(self, text: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Mock depression detection.
 
@@ -273,8 +266,7 @@ class MockMentaLLaMA:
         self._validate_text(text)
 
         has_risk_keywords = any(
-            word in text.lower()
-            for word in ["hurt", "suicide", "die", "kill", "end", "life"]
+            word in text.lower() for word in ["hurt", "suicide", "die", "kill", "end", "life"]
         )
 
         risk_type = risk_type or "general"
@@ -309,9 +301,7 @@ class MockMentaLLaMA:
             },
         }
 
-    def analyze_sentiment(
-        self, text: str, options: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def analyze_sentiment(self, text: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Mock sentiment analysis.
 
@@ -434,9 +424,7 @@ class MockMentaLLaMA:
             "emotions": {
                 "primary_emotions": emotions_list,
                 "secondary_emotions": [],
-                "intensity": round(
-                    abs(score - 0.5) * 2, 2
-                ),  # Convert to 0-1 intensity scale
+                "intensity": round(abs(score - 0.5) * 2, 2),  # Convert to 0-1 intensity scale
             },
             "analysis": {
                 "emotional_themes": emotional_themes,
@@ -493,9 +481,7 @@ class MockMentaLLaMA:
 
         # Filter dimensions if specified
         if dimensions:
-            dimension_keywords = {
-                k: v for k, v in dimension_keywords.items() if k in dimensions
-            }
+            dimension_keywords = {k: v for k, v in dimension_keywords.items() if k in dimensions}
 
         text_lower = text.lower()
         results = {}
@@ -529,12 +515,8 @@ class MockMentaLLaMA:
         ]
 
         # Generate overall insights based on dimension scores
-        poor_dimensions = [
-            d["dimension"] for d in dimension_results if d["score"] < 0.4
-        ]
-        good_dimensions = [
-            d["dimension"] for d in dimension_results if d["score"] > 0.7
-        ]
+        poor_dimensions = [d["dimension"] for d in dimension_results if d["score"] < 0.4]
+        good_dimensions = [d["dimension"] for d in dimension_results if d["score"] > 0.7]
 
         insights = []
         if poor_dimensions:
@@ -819,9 +801,7 @@ class MockMentaLLaMA:
         twin = MockMentaLLaMA._digital_twins[session["twin_id"]]
 
         # Select response based on keywords in message
-        response_content = self._generate_twin_response(
-            message, twin, session["session_type"]
-        )
+        response_content = self._generate_twin_response(message, twin, session["session_type"])
 
         # Create assistant message
         assistant_message = {
@@ -840,50 +820,37 @@ class MockMentaLLaMA:
         # Add to insights if relevant keywords are found
         message_lower = message.lower()
         for keyword in ["anxiety", "stress", "depression", "sleep", "medication"]:
-            if (
-                keyword in message_lower
-                and keyword not in session["insights"]["themes"]
-            ):
+            if keyword in message_lower and keyword not in session["insights"]["themes"]:
                 session["insights"]["themes"].append(keyword)
 
         # Return messages and response
         return {
             "response": response_content,
             "messages": [
-                {"role": msg["role"], "content": msg["content"]}
-                for msg in session["messages"]
+                {"role": msg["role"], "content": msg["content"]} for msg in session["messages"]
             ],
         }
 
-    def _generate_twin_response(
-        self, message: str, twin: dict, session_type: str
-    ) -> str:
+    def _generate_twin_response(self, message: str, twin: dict, session_type: str) -> str:
         """Generate a response from the digital twin based on the message."""
         message_lower = message.lower()
 
         # Check for anxiety-related keywords
-        if any(
-            word in message_lower for word in ["anxiety", "anxious", "worry", "nervous"]
-        ):
+        if any(word in message_lower for word in ["anxiety", "anxious", "worry", "nervous"]):
             if "anxiety" in str(twin.get("medical_history", {}).get("conditions", [])):
                 return "Based on your history of anxiety, I recommend practicing deep breathing exercises when you feel anxious. Have you tried any relaxation techniques recently?"
             else:
                 return "Anxiety can be challenging to manage. Some general strategies include regular exercise, mindfulness meditation, and ensuring adequate sleep. Would you like to explore any of these approaches?"
 
         # Check for sleep-related keywords
-        if any(
-            word in message_lower for word in ["sleep", "insomnia", "tired", "rest"]
-        ):
+        if any(word in message_lower for word in ["sleep", "insomnia", "tired", "rest"]):
             if "insomnia" in str(twin.get("medical_history", {}).get("conditions", [])):
                 return "I see you have a history of insomnia. Consistent sleep schedules and creating a relaxing bedtime routine can help. Have you been following a regular sleep schedule?"
             else:
                 return "Improving sleep quality is important for overall well-being. Reducing screen time before bed and creating a comfortable sleep environment can help. What's your current sleep routine like?"
 
         # Check for medication-related keywords
-        if any(
-            word in message_lower
-            for word in ["medication", "medicine", "pills", "drug"]
-        ):
+        if any(word in message_lower for word in ["medication", "medicine", "pills", "drug"]):
             medications = twin.get("treatment_history", {}).get("medications", [])
             if medications:
                 return f"I see you have experience with {', '.join(medications)}. It's important to follow your prescriber's instructions carefully. How have these medications been working for you?"

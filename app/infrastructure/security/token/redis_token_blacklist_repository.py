@@ -98,9 +98,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             }
             await self._redis.set(jti_key, jti_data, ttl=ttl)
 
-            logger.info(
-                f"Token {jti} blacklisted until {expires_at.isoformat()}, reason: {reason}"
-            )
+            logger.info(f"Token {jti} blacklisted until {expires_at.isoformat()}, reason: {reason}")
         except Exception as e:
             logger.error(f"Failed to blacklist token: {e!s}")
             raise RepositoryException(f"Failed to blacklist token: {e!s}") from e
@@ -200,9 +198,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             logger.info(f"Blacklisted all tokens for session {session_id}")
         except Exception as e:
             logger.error(f"Failed to blacklist session tokens: {e!s}")
-            raise RepositoryException(
-                f"Failed to blacklist session tokens: {e!s}"
-            ) from e
+            raise RepositoryException(f"Failed to blacklist session tokens: {e!s}") from e
 
     async def remove_expired_entries(self) -> int:
         """
@@ -214,7 +210,5 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         Returns:
             Number of entries removed (always 0 for this implementation).
         """
-        logger.debug(
-            "Redis handles TTL automatically; remove_expired_entries is a no-op."
-        )
+        logger.debug("Redis handles TTL automatically; remove_expired_entries is a no-op.")
         return 0

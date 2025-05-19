@@ -79,9 +79,7 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
 
         try:
             # Step 1: Generate symptom forecast
-            symptom_forecast = await self._generate_symptom_forecast(
-                patient_id, clinical_data
-            )
+            symptom_forecast = await self._generate_symptom_forecast(patient_id, clinical_data)
 
             # Step 2: Analyze biometric correlations if data available
             biometric_analysis = None
@@ -93,10 +91,8 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
             # Step 3: Generate pharmacogenomic insights if data available
             pharmacogenomic_insights = None
             if genetic_data and "medications" in clinical_data:
-                pharmacogenomic_insights = (
-                    await self._generate_pharmacogenomic_insights(
-                        patient_id, genetic_data, clinical_data
-                    )
+                pharmacogenomic_insights = await self._generate_pharmacogenomic_insights(
+                    patient_id, genetic_data, clinical_data
                 )
 
             # Step 4: Integrate all insights into a Digital Twin
@@ -111,9 +107,7 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
             return digital_twin
 
         except Exception as e:
-            logger.error(
-                f"Error generating Digital Twin for patient {patient_id}: {e!s}"
-            )
+            logger.error(f"Error generating Digital Twin for patient {patient_id}: {e!s}")
             raise RuntimeError(f"Failed to generate Digital Twin: {e!s}")
 
     async def update_digital_twin(
@@ -157,10 +151,8 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
                 updates["biometric_analysis"] = biometric_analysis
 
             if genetic_data and "medications" in clinical_data:
-                pharmacogenomic_insights = (
-                    await self._generate_pharmacogenomic_insights(
-                        UUID(patient_id), genetic_data, clinical_data
-                    )
+                pharmacogenomic_insights = await self._generate_pharmacogenomic_insights(
+                    UUID(patient_id), genetic_data, clinical_data
                 )
                 updates["pharmacogenomic_insights"] = pharmacogenomic_insights
 
@@ -271,10 +263,8 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
         )
 
         # Generate monitoring plan
-        monitoring_plan = (
-            await self.biometric_correlation_service.generate_monitoring_plan(
-                patient_id, biometric_data, mental_health_data
-            )
+        monitoring_plan = await self.biometric_correlation_service.generate_monitoring_plan(
+            patient_id, biometric_data, mental_health_data
         )
 
         # Combine results
@@ -298,10 +288,8 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
 
         # Analyze gene-medication interactions
         if medications:
-            interactions = (
-                await self.pharmacogenomics_service.analyze_gene_interactions(
-                    patient_id, genetic_data, medications
-                )
+            interactions = await self.pharmacogenomics_service.analyze_gene_interactions(
+                patient_id, genetic_data, medications
             )
         else:
             interactions = {"medications_analyzed": [], "gene_interactions": {}}

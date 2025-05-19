@@ -147,9 +147,7 @@ class TestEmergencyContact:
         assert contact_dict["phone"] == valid_contact_data["phone"]
         assert contact_dict["email"] == valid_contact_data["email"]
         assert isinstance(contact_dict["address"], dict)
-        assert (
-            contact_dict["address"]["street"] == valid_contact_data["address"]["street"]
-        )
+        assert contact_dict["address"]["street"] == valid_contact_data["address"]["street"]
 
 
 class TestPsychiatricAssessment:
@@ -256,18 +254,14 @@ class TestPsychiatricAssessment:
         )
         assert assessment_dict["diagnosis"] == valid_assessment_data["diagnosis"]
         assert assessment_dict["severity"] == valid_assessment_data["severity"]
-        assert (
-            assessment_dict["treatment_plan"] == valid_assessment_data["treatment_plan"]
-        )
+        assert assessment_dict["treatment_plan"] == valid_assessment_data["treatment_plan"]
         assert assessment_dict["notes"] == valid_assessment_data["notes"]
 
     def test_psychiatric_assessment_from_dict(self, valid_assessment_data):
         """Test creation of psychiatric assessment from dictionary."""
         # Convert date to string as it would come from JSON
         dict_data = valid_assessment_data.copy()
-        dict_data["assessment_date"] = valid_assessment_data[
-            "assessment_date"
-        ].isoformat()
+        dict_data["assessment_date"] = valid_assessment_data["assessment_date"].isoformat()
 
         assessment = PsychiatricAssessment.from_dict(dict_data)
 

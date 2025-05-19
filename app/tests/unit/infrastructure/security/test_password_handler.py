@@ -110,10 +110,7 @@ class TestPasswordStrengthValidation:
         is_valid, message = password_handler.validate_password_strength(password)
         assert is_valid is False
         assert message is not None
-        assert (
-            "must include uppercase, lowercase, digits, and special characters"
-            in message
-        )
+        assert "must include uppercase, lowercase, digits, and special characters" in message
 
     def test_common_password(self, password_handler: PasswordHandler):
         """Test that common passwords are rejected."""
@@ -155,9 +152,7 @@ class TestRandomPasswordGeneration:
     def test_random_password_uniqueness(self, password_handler: PasswordHandler):
         """Test that generated passwords are unique."""
         num_passwords = 100
-        passwords = [
-            password_handler.generate_secure_password(16) for _ in range(num_passwords)
-        ]
+        passwords = [password_handler.generate_secure_password(16) for _ in range(num_passwords)]
         assert len(set(passwords)) == num_passwords
 
     @patch("app.infrastructure.security.password.password_handler.secrets.choice")

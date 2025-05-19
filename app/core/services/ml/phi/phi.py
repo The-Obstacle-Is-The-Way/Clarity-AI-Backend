@@ -63,10 +63,7 @@ class MockPHIDetection(PHIDetectionInterface):
                         for category, pattern_list in patterns.items():
                             if isinstance(pattern_list, list):
                                 # Add to existing patterns
-                                if (
-                                    level in self._patterns
-                                    and category in self._patterns[level]
-                                ):
+                                if level in self._patterns and category in self._patterns[level]:
                                     self._patterns[level][category].extend(pattern_list)
                                 # Create new category
                                 elif level in self._patterns:
@@ -198,9 +195,7 @@ class MockPHIDetection(PHIDetectionInterface):
         self._config = None
         logger.info("Mock PHI detection service shut down")
 
-    def detect_phi(
-        self, text: str, detection_level: str | None = None
-    ) -> dict[str, Any]:
+    def detect_phi(self, text: str, detection_level: str | None = None) -> dict[str, Any]:
         """
         Detect PHI in text.
 
@@ -216,9 +211,7 @@ class MockPHIDetection(PHIDetectionInterface):
             InvalidRequestError: If text is empty or invalid
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "Mock PHI detection service is not initialized"
-            )
+            raise ServiceUnavailableError("Mock PHI detection service is not initialized")
 
         if not text or not isinstance(text, str):
             raise InvalidRequestError("Text must be a non-empty string")
@@ -291,9 +284,7 @@ class MockPHIDetection(PHIDetectionInterface):
             InvalidRequestError: If text is empty or invalid
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "Mock PHI detection service is not initialized"
-            )
+            raise ServiceUnavailableError("Mock PHI detection service is not initialized")
 
         if not text or not isinstance(text, str):
             raise InvalidRequestError("Text must be a non-empty string")
@@ -356,9 +347,7 @@ class OpenAIPHIDetection(PHIDetectionInterface):
             self._openai_available = True
         except ImportError:
             self._openai_available = False
-            logger.warning(
-                "OpenAI package not installed. Install with: pip install openai>=1.0.0"
-            )
+            logger.warning("OpenAI package not installed. Install with: pip install openai>=1.0.0")
 
     def initialize(self, config: dict[str, Any]) -> None:
         """
@@ -372,9 +361,7 @@ class OpenAIPHIDetection(PHIDetectionInterface):
         """
         try:
             if not self._openai_available:
-                logger.warning(
-                    "OpenAI not available, falling back to mock PHI detection"
-                )
+                logger.warning("OpenAI not available, falling back to mock PHI detection")
                 self._fallback_service.initialize(config)
                 self._initialized = True
                 return
@@ -493,9 +480,7 @@ class OpenAIPHIDetection(PHIDetectionInterface):
 
         logger.info("OpenAI PHI detection service shut down")
 
-    def detect_phi(
-        self, text: str, detection_level: str | None = None
-    ) -> dict[str, Any]:
+    def detect_phi(self, text: str, detection_level: str | None = None) -> dict[str, Any]:
         """
         Detect PHI in text.
 
@@ -511,9 +496,7 @@ class OpenAIPHIDetection(PHIDetectionInterface):
             InvalidRequestError: If text is empty or invalid
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "OpenAI PHI detection service is not initialized"
-            )
+            raise ServiceUnavailableError("OpenAI PHI detection service is not initialized")
 
         if not text or not isinstance(text, str):
             raise InvalidRequestError("Text must be a non-empty string")
@@ -556,9 +539,7 @@ class OpenAIPHIDetection(PHIDetectionInterface):
 
                 # Ensure result has required fields
                 if not isinstance(result.get("phi_detected"), list):
-                    raise ValueError(
-                        "Invalid response format: missing 'phi_detected' array"
-                    )
+                    raise ValueError("Invalid response format: missing 'phi_detected' array")
 
                 # Create response
                 response = {
@@ -598,9 +579,7 @@ class OpenAIPHIDetection(PHIDetectionInterface):
             "relaxed": "You should detect only the most obvious PHI such as full names, complete dates, contact information, and explicit identifiers. Ignore partial information or common terms that are unlikely to identify an individual.",
         }
 
-        sensitivity = sensitivity_descriptions.get(
-            level, sensitivity_descriptions["moderate"]
-        )
+        sensitivity = sensitivity_descriptions.get(level, sensitivity_descriptions["moderate"])
 
         return f"""You are a HIPAA compliance expert specialized in detecting Protected Health Information (PHI) in medical texts. Your task is to identify ALL instances of PHI in the provided text and return them in a structured JSON format.
 
@@ -653,9 +632,7 @@ Do not include any explanations or notes outside of the JSON structure."""
             InvalidRequestError: If text is empty or invalid
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "OpenAI PHI detection service is not initialized"
-            )
+            raise ServiceUnavailableError("OpenAI PHI detection service is not initialized")
 
         if not text or not isinstance(text, str):
             raise InvalidRequestError("Text must be a non-empty string")
@@ -677,9 +654,7 @@ Do not include any explanations or notes outside of the JSON structure."""
                 end = phi["end"] + offset
 
                 # Replace PHI with replacement text
-                redacted_text = (
-                    redacted_text[:start] + replacement + redacted_text[end:]
-                )
+                redacted_text = redacted_text[:start] + replacement + redacted_text[end:]
 
                 # Update offset (replacement text length might differ from original)
                 offset += len(replacement) - (end - start)

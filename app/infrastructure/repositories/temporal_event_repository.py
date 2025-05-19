@@ -63,9 +63,7 @@ class SqlAlchemyEventRepository(EventRepository):
         Returns:
             CorrelatedEvent if found, None otherwise
         """
-        result = await self.session.execute(
-            sa.select(EventModel).where(EventModel.id == event_id)
-        )
+        result = await self.session.execute(sa.select(EventModel).where(EventModel.id == event_id))
         event_model = result.scalars().first()
 
         if not event_model:
@@ -73,9 +71,7 @@ class SqlAlchemyEventRepository(EventRepository):
 
         return self._model_to_entity(event_model)
 
-    async def get_events_by_correlation_id(
-        self, correlation_id: UUID
-    ) -> list[CorrelatedEvent]:
+    async def get_events_by_correlation_id(self, correlation_id: UUID) -> list[CorrelatedEvent]:
         """
         Get all events with the specified correlation ID.
 
@@ -151,9 +147,7 @@ class SqlAlchemyEventRepository(EventRepository):
         query = query.order_by(sa.desc(EventModel.timestamp)).limit(limit)
 
         # Execute query; include event_type and limit info for debug/testing
-        result = await self.session.execute(
-            query, event_type=event_type, limit=f"limit({limit})"
-        )
+        result = await self.session.execute(query, event_type=event_type, limit=f"limit({limit})")
         event_models = result.scalars().all()
 
         return [self._model_to_entity(model) for model in event_models]

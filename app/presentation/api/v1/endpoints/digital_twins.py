@@ -34,17 +34,13 @@ router = APIRouter(
 async def get_twin_status(
     patient_id: UUID,
     current_user: User = Depends(get_current_user),  # Add auth dependency
-    digital_twin_service: IDigitalTwinIntegrationService = Depends(
-        get_digital_twin_service
-    ),
+    digital_twin_service: IDigitalTwinIntegrationService = Depends(get_digital_twin_service),
 ) -> DigitalTwinStatusResponse:
     # TODO: Implement authorization logic (e.g., check if user can access patient_id)
     try:
         twin_status = await digital_twin_service.get_digital_twin_status(patient_id)
         if twin_status is None:  # Or however the service indicates not found
-            raise ResourceNotFoundError(
-                f"Digital twin status not found for patient {patient_id}"
-            )
+            raise ResourceNotFoundError(f"Digital twin status not found for patient {patient_id}")
         # Assuming service returns an object compatible with DigitalTwinStatusResponse
         return twin_status
     except ResourceNotFoundError as e:
@@ -67,17 +63,13 @@ async def get_twin_status(
 async def get_comprehensive_insights(
     patient_id: UUID,
     current_user: User = Depends(get_current_user),
-    digital_twin_service: IDigitalTwinIntegrationService = Depends(
-        get_digital_twin_service
-    ),
+    digital_twin_service: IDigitalTwinIntegrationService = Depends(get_digital_twin_service),
 ) -> PersonalizedInsightResponse:
     # TODO: Implement authorization logic
     try:
         # The test uses a single PersonalizedInsightResponse fixture, so let's assume the service returns one for now.
         # This might need adjustment based on actual service design (e.g., return List, handle filters).
-        insights = await digital_twin_service.generate_comprehensive_patient_insights(
-            patient_id
-        )
+        insights = await digital_twin_service.generate_comprehensive_patient_insights(patient_id)
         if insights is None:
             raise ResourceNotFoundError(f"Insights not found for patient {patient_id}")
         return insights
@@ -108,9 +100,7 @@ async def analyze_clinical_text(
     patient_id: UUID,
     request: ClinicalTextAnalysisRequest,
     current_user: User = Depends(get_current_user),
-    digital_twin_service: IDigitalTwinIntegrationService = Depends(
-        get_digital_twin_service
-    ),
+    digital_twin_service: IDigitalTwinIntegrationService = Depends(get_digital_twin_service),
 ) -> ClinicalTextAnalysisResponse:
     # TODO: Implement authorization logic
     try:

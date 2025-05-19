@@ -101,9 +101,7 @@ async def get_model_info(
     try:
         # Try to get model info from service
         if request.model_id:
-            model_info = await xgboost_service.get_model_info(
-                model_type=request.model_id
-            )
+            model_info = await xgboost_service.get_model_info(model_type=request.model_id)
             return ModelInfoResponse(
                 model_id=request.model_id,
                 model_type=model_info.get("model_type", "classifier"),
@@ -218,9 +216,7 @@ async def get_model_info_by_type(
             detail=f"Model of type {model_type} not found",
         )
     except ServiceUnavailableError:
-        logger.error(
-            f"XGBoost service unavailable when getting model info for {model_type}"
-        )
+        logger.error(f"XGBoost service unavailable when getting model info for {model_type}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="ML service temporarily unavailable. Please try again later.",
@@ -295,9 +291,7 @@ def _has_phi(request_data):
 @router.post("/risk-prediction", response_model=RiskPredictionResponse)
 async def predict_risk(
     request: Request,  # Get the raw request object
-    request_data: dict | None = Body(
-        default=None
-    ),  # Make Body optional with default None
+    request_data: dict | None = Body(default=None),  # Make Body optional with default None
     xgboost_service: XGBoostDep = None,
     user: UserDep = None,
 ) -> RiskPredictionResponse:
@@ -338,9 +332,7 @@ async def predict_risk(
         risk_type = risk_data.get("risk_type", "suicide_attempt")
 
         # Extract clinical data with fallbacks
-        clinical_data = risk_data.get("clinical_data") or risk_data.get(
-            "patient_data", {}
-        )
+        clinical_data = risk_data.get("clinical_data") or risk_data.get("patient_data", {})
         if not clinical_data:
             clinical_data = {"age": 40, "prior_episodes": 2, "severity_score": 7}
 
@@ -369,17 +361,13 @@ async def predict_risk(
         logger.info(f"DIAGNOSTIC - Raw prediction result: {prediction_result}")
         logger.info(f"DIAGNOSTIC - Result type: {type(prediction_result)}")
         if isinstance(prediction_result, dict):
-            logger.info(
-                f"DIAGNOSTIC - Keys in prediction_result: {prediction_result.keys()}"
-            )
+            logger.info(f"DIAGNOSTIC - Keys in prediction_result: {prediction_result.keys()}")
             if "feature_importance" in prediction_result:
                 logger.info(
                     f"DIAGNOSTIC - Direct feature_importance: {prediction_result['feature_importance']}"
                 )
             if "explainability" in prediction_result:
-                logger.info(
-                    f"DIAGNOSTIC - Explainability: {prediction_result['explainability']}"
-                )
+                logger.info(f"DIAGNOSTIC - Explainability: {prediction_result['explainability']}")
                 if (
                     isinstance(prediction_result["explainability"], dict)
                     and "feature_importance" in prediction_result["explainability"]
@@ -390,9 +378,7 @@ async def predict_risk(
 
         # Ensure the prediction result has all expected fields
         if not isinstance(prediction_result, dict):
-            logger.error(
-                f"XGBoost service returned non-dict result: {prediction_result}"
-            )
+            logger.error(f"XGBoost service returned non-dict result: {prediction_result}")
             prediction_result = {}
 
         # Extract feature importance data if available - always include if present in response
@@ -401,9 +387,7 @@ async def predict_risk(
         # First try to get feature_importance directly from result, regardless of include_explainability flag
         if "feature_importance" in prediction_result:
             feature_importance = prediction_result.get("feature_importance")
-            logger.info(
-                f"DIAGNOSTIC - Extracted direct feature_importance: {feature_importance}"
-            )
+            logger.info(f"DIAGNOSTIC - Extracted direct feature_importance: {feature_importance}")
 
         # If not found directly, try to get it from explainability dictionary
         elif "explainability" in prediction_result:
@@ -444,9 +428,7 @@ async def predict_risk(
         )
 
         # DIAGNOSTIC: Log response object
-        logger.info(
-            f"DIAGNOSTIC - Response feature_importance: {response.feature_importance}"
-        )
+        logger.info(f"DIAGNOSTIC - Response feature_importance: {response.feature_importance}")
         logger.info(f"DIAGNOSTIC - Full response: {response.model_dump()}")
 
         # Return formatted response
@@ -481,9 +463,7 @@ async def predict_risk(
 @router.post("/outcome-prediction", response_model=OutcomePredictionResponse)
 async def predict_outcome(
     request: Request,  # Get the raw request object
-    request_data: dict | None = Body(
-        default=None
-    ),  # Make Body optional with default None
+    request_data: dict | None = Body(default=None),  # Make Body optional with default None
     xgboost_service: XGBoostDep = None,
     user: UserDep = None,
 ) -> OutcomePredictionResponse:
@@ -561,9 +541,7 @@ async def predict_outcome(
 
         # Ensure the prediction result has all expected fields
         if not isinstance(prediction_result, dict):
-            logger.error(
-                f"XGBoost service returned non-dict result: {prediction_result}"
-            )
+            logger.error(f"XGBoost service returned non-dict result: {prediction_result}")
             prediction_result = {}
 
         # Use expected_outcomes from prediction_result if available
@@ -584,8 +562,7 @@ async def predict_outcome(
                     "outcome_type": "functional_improvement",  # Valid enum value
                     "predicted_value": prediction_result.get("probability", 0.7)
                     * 0.9,  # Slightly lower
-                    "probability": prediction_result.get("confidence", 0.8)
-                    * 0.9,  # Slightly lower
+                    "probability": prediction_result.get("confidence", 0.8) * 0.9,  # Slightly lower
                 },
             ]
 
@@ -635,19 +612,13 @@ async def predict_outcome(
         )
 
 
-@router.get(
-    "/explain/risk_prediction/{prediction_id}", response_model=FeatureImportanceResponse
-)
+@router.get("/explain/risk_prediction/{prediction_id}", response_model=FeatureImportanceResponse)
 async def get_feature_importance(
     prediction_id: str,
     xgboost_service: XGBoostDep,
     user: UserDep,
-    patient_id: str = Query(
-        ..., description="The patient ID associated with the prediction"
-    ),
-    model_type: str = Query(
-        "risk", description="The type of model used for prediction"
-    ),
+    patient_id: str = Query(..., description="The patient ID associated with the prediction"),
+    model_type: str = Query("risk", description="The type of model used for prediction"),
 ) -> FeatureImportanceResponse:
     """
     Get feature importance for a prediction.
@@ -689,9 +660,7 @@ async def get_feature_importance(
     except UnauthorizedError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
     except ServiceUnavailableError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     except Exception as e:
         logger.error(
             f"Error getting feature importance for prediction {prediction_id}: {e}",

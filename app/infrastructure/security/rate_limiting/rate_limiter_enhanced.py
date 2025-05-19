@@ -69,9 +69,7 @@ class RateLimiter(ABC):
     """
 
     @abstractmethod
-    def check_rate_limit(
-        self, key: str, config: Any = None, user_id: str | None = None
-    ) -> Any:
+    def check_rate_limit(self, key: str, config: Any = None, user_id: str | None = None) -> Any:
         """
         Check if a request should be rate limited.
 
@@ -219,9 +217,7 @@ class RedisRateLimiter(RateLimiter):
         """
         return f"ratelimit:blocked:{key}"
 
-    def check_rate_limit(
-        self, key: str, config: Any = None, user_id: str | None = None
-    ) -> Any:
+    def check_rate_limit(self, key: str, config: Any = None, user_id: str | None = None) -> Any:
         """
         Check if a request should be rate limited.
 

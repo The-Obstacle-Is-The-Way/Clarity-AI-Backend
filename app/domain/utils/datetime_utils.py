@@ -101,9 +101,7 @@ def timestamp_ms() -> int:
     return int(now().timestamp() * 1000)
 
 
-def days_between(
-    start: datetime.datetime | str, end: datetime.datetime | str
-) -> int:
+def days_between(start: datetime.datetime | str, end: datetime.datetime | str) -> int:
     """
     Calculate the number of days between two datetimes.
 

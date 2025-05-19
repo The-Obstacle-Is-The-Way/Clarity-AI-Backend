@@ -28,9 +28,7 @@ class AWSServiceFactoryProvider:
         return cls._instance
 
     @classmethod
-    def initialize(
-        cls, use_in_memory: bool | None = None, region_name: str | None = None
-    ) -> None:
+    def initialize(cls, use_in_memory: bool | None = None, region_name: str | None = None) -> None:
         """
         Initialize the provider with configuration.
 
@@ -52,9 +50,7 @@ class AWSServiceFactoryProvider:
         if use_in_memory:
             provider._aws_service_factory = InMemoryAWSServiceFactory()
         else:
-            provider._aws_service_factory = RealAWSServiceFactory(
-                region_name=region_name
-            )
+            provider._aws_service_factory = RealAWSServiceFactory(region_name=region_name)
 
     def get_service_factory(self) -> AWSServiceFactory:
         """
@@ -71,9 +67,7 @@ class AWSServiceFactoryProvider:
             AWSServiceFactoryProvider.initialize()
 
         if self._aws_service_factory is None:
-            raise RuntimeError(
-                "AWS Service Factory Provider has not been properly initialized"
-            )
+            raise RuntimeError("AWS Service Factory Provider has not been properly initialized")
 
         return self._aws_service_factory
 

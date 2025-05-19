@@ -133,9 +133,7 @@ class TestPatientContactInfo(unittest.TestCase):
         self.assertEqual(patient.contact_info.email, "new@example.com")
 
         # Test modifying through contact_info assignment (uses descriptor's __set__)
-        patient.contact_info = ContactInfo(
-            email="newest@example.com", phone="555-111-2222"
-        )
+        patient.contact_info = ContactInfo(email="newest@example.com", phone="555-111-2222")
         self.assertEqual(patient.email, "newest@example.com")
         self.assertEqual(patient.phone, "555-111-2222")
         self.assertIsInstance(patient.contact_info, ContactInfo)

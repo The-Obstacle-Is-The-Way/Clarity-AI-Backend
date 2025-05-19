@@ -144,9 +144,7 @@ class BiometricDataPoint:
         )
 
         source = (
-            BiometricSource(data["source"])
-            if isinstance(data["source"], str)
-            else data["source"]
+            BiometricSource(data["source"]) if isinstance(data["source"], str) else data["source"]
         )
 
         return cls(
@@ -201,9 +199,8 @@ class BiometricTimeseriesData:
         self.data_points = sorted(data_points)  # Sort by timestamp
 
         # Use provided range or get default for this type
-        self.physiological_range = (
-            physiological_range
-            or PhysiologicalRange.get_default_range(biometric_type.value)
+        self.physiological_range = physiological_range or PhysiologicalRange.get_default_range(
+            biometric_type.value
         )
 
         # If no range exists, create a default one based on data
@@ -318,9 +315,7 @@ class BiometricTimeseriesData:
             else data["biometric_type"]
         )
 
-        data_points = [
-            BiometricDataPoint.from_dict(dp_data) for dp_data in data["data_points"]
-        ]
+        data_points = [BiometricDataPoint.from_dict(dp_data) for dp_data in data["data_points"]]
 
         physiological_range = (
             PhysiologicalRange.from_dict(data["physiological_range"])
@@ -448,9 +443,7 @@ class BiometricTwin:
 
         self.updated_at = datetime.now()
 
-    def get_biometric_data(
-        self, biometric_type: BiometricType
-    ) -> BiometricTimeseriesData | None:
+    def get_biometric_data(self, biometric_type: BiometricType) -> BiometricTimeseriesData | None:
         """
         Get timeseries data for a specific biometric type.
 

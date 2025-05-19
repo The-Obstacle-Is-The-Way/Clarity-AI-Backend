@@ -17,9 +17,7 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    status = Column(
-        Enum(UserStatus), nullable=False, default=UserStatus.PENDING_VERIFICATION
-    )
+    status = Column(Enum(UserStatus), nullable=False, default=UserStatus.PENDING_VERIFICATION)
 
     # Optional: Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

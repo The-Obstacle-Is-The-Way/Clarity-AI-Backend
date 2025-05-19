@@ -73,9 +73,7 @@ class BiometricCorrelationServiceImpl(BiometricCorrelationService):
 
         try:
             # Preprocess the input data
-            processed_data = preprocess_biometric_data(
-                biometric_data, mental_health_data
-            )
+            processed_data = preprocess_biometric_data(biometric_data, mental_health_data)
 
             # Analyze correlations using the LSTM model
             correlations = self.lstm_model.analyze_correlations(processed_data)
@@ -85,21 +83,15 @@ class BiometricCorrelationServiceImpl(BiometricCorrelationService):
                 "patient_id": str(patient_id),
                 "analysis_generated_at": datetime.now().isoformat(),
                 "correlations": correlations,
-                "significant_correlations": [
-                    c for c in correlations if c["strength"] > 0.5
-                ],
+                "significant_correlations": [c for c in correlations if c["strength"] > 0.5],
                 "summary": self._generate_correlation_summary(correlations),
             }
 
-            logger.info(
-                f"Biometric correlation analysis completed for patient {patient_id}"
-            )
+            logger.info(f"Biometric correlation analysis completed for patient {patient_id}")
             return result
 
         except Exception as e:
-            logger.error(
-                f"Error analyzing biometric correlations for patient {patient_id}: {e!s}"
-            )
+            logger.error(f"Error analyzing biometric correlations for patient {patient_id}: {e!s}")
             raise RuntimeError(f"Failed to analyze biometric correlations: {e!s}")
 
     async def detect_anomalies(
@@ -125,9 +117,7 @@ class BiometricCorrelationServiceImpl(BiometricCorrelationService):
             processed_data = preprocess_biometric_data(biometric_data)
 
             # Detect anomalies using the LSTM model
-            anomalies = self.lstm_model.detect_anomalies(
-                processed_data, threshold=sensitivity
-            )
+            anomalies = self.lstm_model.detect_anomalies(processed_data, threshold=sensitivity)
 
             # Format the results
             result = {
@@ -139,15 +129,11 @@ class BiometricCorrelationServiceImpl(BiometricCorrelationService):
                 "recommendation": self._generate_anomaly_recommendations(anomalies),
             }
 
-            logger.info(
-                f"Biometric anomaly detection completed for patient {patient_id}"
-            )
+            logger.info(f"Biometric anomaly detection completed for patient {patient_id}")
             return result
 
         except Exception as e:
-            logger.error(
-                f"Error detecting biometric anomalies for patient {patient_id}: {e!s}"
-            )
+            logger.error(f"Error detecting biometric anomalies for patient {patient_id}: {e!s}")
             raise RuntimeError(f"Failed to detect biometric anomalies: {e!s}")
 
     async def generate_monitoring_plan(
@@ -171,17 +157,13 @@ class BiometricCorrelationServiceImpl(BiometricCorrelationService):
 
         try:
             # Preprocess the input data
-            processed_data = preprocess_biometric_data(
-                biometric_data, mental_health_data
-            )
+            processed_data = preprocess_biometric_data(biometric_data, mental_health_data)
 
             # Analyze correlations
             correlations = self.lstm_model.analyze_correlations(processed_data)
 
             # Generate monitoring plan based on correlations
-            monitoring_plan = self.lstm_model.generate_monitoring_plan(
-                processed_data, correlations
-            )
+            monitoring_plan = self.lstm_model.generate_monitoring_plan(processed_data, correlations)
 
             # Format the results
             result = {
@@ -197,9 +179,7 @@ class BiometricCorrelationServiceImpl(BiometricCorrelationService):
             return result
 
         except Exception as e:
-            logger.error(
-                f"Error generating monitoring plan for patient {patient_id}: {e!s}"
-            )
+            logger.error(f"Error generating monitoring plan for patient {patient_id}: {e!s}")
             raise RuntimeError(f"Failed to generate monitoring plan: {e!s}")
 
     def _generate_correlation_summary(self, correlations: list[dict[str, Any]]) -> str:

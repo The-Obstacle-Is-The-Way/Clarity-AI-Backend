@@ -128,9 +128,7 @@ class User(Base, TimestampMixin, AuditMixin):
         default=uuid.uuid4,
         comment="Unique user identifier - HIPAA compliance: Not PHI, used only for internal references",
     )
-    username = Column(
-        String(64), unique=True, nullable=False, comment="Username for login"
-    )
+    username = Column(String(64), unique=True, nullable=False, comment="Username for login")
     email = Column(
         String(255),
         unique=True,
@@ -151,12 +149,8 @@ class User(Base, TimestampMixin, AuditMixin):
             comment="User's phone number",
         )
 
-    password_hash = Column(
-        String(255), nullable=False, comment="Securely hashed password"
-    )
-    is_active = Column(
-        Boolean, default=True, nullable=False, comment="Whether account is active"
-    )
+    password_hash = Column(String(255), nullable=False, comment="Securely hashed password")
+    is_active = Column(Boolean, default=True, nullable=False, comment="Whether account is active")
     is_verified = Column(
         Boolean, default=False, nullable=False, comment="Whether account is verified"
     )
@@ -176,9 +170,7 @@ class User(Base, TimestampMixin, AuditMixin):
         default=UserRole.PATIENT,
         comment="Primary user role",
     )
-    roles = Column(
-        JSONEncodedDict, default=list, nullable=False, comment="List of all user roles"
-    )
+    roles = Column(JSONEncodedDict, default=list, nullable=False, comment="List of all user roles")
     last_login = Column(DateTime, nullable=True, comment="When user last logged in")
     failed_login_attempts = Column(
         Integer,
@@ -186,16 +178,10 @@ class User(Base, TimestampMixin, AuditMixin):
         nullable=False,
         comment="Number of consecutive failed login attempts",
     )
-    account_locked_until = Column(
-        DateTime, nullable=True, comment="When account lockout expires"
-    )
+    account_locked_until = Column(DateTime, nullable=True, comment="When account lockout expires")
     reset_token = Column(String(255), nullable=True, comment="Password reset token")
-    reset_token_expires_at = Column(
-        DateTime, nullable=True, comment="When reset token expires"
-    )
-    verification_token = Column(
-        String(255), nullable=True, comment="Account verification token"
-    )
+    reset_token_expires_at = Column(DateTime, nullable=True, comment="When reset token expires")
+    verification_token = Column(String(255), nullable=True, comment="Account verification token")
     bio = Column(Text, nullable=True, comment="Short bio for clinical staff")
     preferences = Column(JSON, nullable=True, comment="User UI and system preferences")
     password_changed_at = Column(
@@ -213,9 +199,7 @@ class User(Base, TimestampMixin, AuditMixin):
         cascade="all, delete-orphan",
     )
 
-    patients = relationship(
-        "Patient", back_populates="user", cascade="all, delete-orphan"
-    )
+    patients = relationship("Patient", back_populates="user", cascade="all, delete-orphan")
 
     # Relationship to AnalyticsEventModel
     # Temporarily comment out this relationship to fix mapper errors

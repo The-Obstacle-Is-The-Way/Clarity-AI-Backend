@@ -27,9 +27,7 @@ class AuthenticationService(AuthServiceInterface):
     for healthcare application security.
     """
 
-    def __init__(
-        self, password_handler: PasswordHandler, user_repository: IUserRepository
-    ):
+    def __init__(self, password_handler: PasswordHandler, user_repository: IUserRepository):
         """
         Initialize the auth service with required dependencies.
 
@@ -40,9 +38,7 @@ class AuthenticationService(AuthServiceInterface):
         self._password_handler = password_handler
         self._user_repository = user_repository
 
-    async def authenticate_user(
-        self, username_or_email: str, password: str
-    ) -> User | None:
+    async def authenticate_user(self, username_or_email: str, password: str) -> User | None:
         """
         Authenticate a user with username/email and password.
 

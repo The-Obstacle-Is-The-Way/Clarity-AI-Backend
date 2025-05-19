@@ -51,8 +51,6 @@ class IBiometricRuleRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_active_rules(
-        self, patient_id: UUID | None = None
-    ) -> list[BiometricRule]:
+    async def get_active_rules(self, patient_id: UUID | None = None) -> list[BiometricRule]:
         """Retrieve active (enabled) rules, optionally filtered by patient."""
         pass

@@ -46,9 +46,7 @@ class TestMLServiceFactory:
         """Test factory initialization with valid configuration."""
         factory = MLServiceFactory()
         test_config = {
-            "mentalllama": {
-                "model_ids": {"depression_detection": "anthropic.claude-v2:1"}
-            }
+            "mentalllama": {"model_ids": {"depression_detection": "anthropic.claude-v2:1"}}
         }
         factory.initialize(test_config)
         assert factory._config is not None
@@ -77,9 +75,7 @@ class TestMLServiceFactory:
     def test_create_phi_detection_service_mock(self, factory):
         """Test creating mock PHI detection service."""
         # Corrected patch path
-        with patch(
-            "app.infrastructure.ml.phi.mock.MockPHIDetection.initialize"
-        ) as mock_initialize:
+        with patch("app.infrastructure.ml.phi.mock.MockPHIDetection.initialize") as mock_initialize:
             service = factory.create_phi_detection_service("mock")
             assert isinstance(service, MockPHIDetection)
             mock_initialize.assert_called_once()
@@ -183,9 +179,7 @@ class TestMLServiceFactory:
     def test_shutdown(self, factory):
         """Test factory shutdown."""
         # Corrected patch paths
-        with patch(
-            "app.infrastructure.ml.mentallama.service.MentaLLaMA.initialize"
-        ), patch(
+        with patch("app.infrastructure.ml.mentallama.service.MentaLLaMA.initialize"), patch(
             "app.infrastructure.ml.mentallama.service.MentaLLaMA.shutdown"
         ) as mock_mentalllama_shutdown, patch(
             "app.infrastructure.ml.phi.aws_comprehend_medical.AWSComprehendMedicalPHIDetection.initialize"

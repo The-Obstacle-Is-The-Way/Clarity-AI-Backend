@@ -33,9 +33,7 @@ class ClinicalRuleEngine:
             raise ValueError("Template must have an ID")
         self.rule_templates[template["id"]] = template
 
-    def register_custom_condition(
-        self, condition_id: str, condition_func: Callable
-    ) -> None:
+    def register_custom_condition(self, condition_id: str, condition_func: Callable) -> None:
         """Register a custom condition function."""
         self.custom_conditions[condition_id] = condition_func
 
@@ -63,11 +61,7 @@ class ClinicalRuleEngine:
         # Process condition threshold parameters
         condition = template["condition"].copy()
         for key, value in condition.items():
-            if (
-                isinstance(value, str)
-                and value.startswith("${")
-                and value.endswith("}")
-            ):
+            if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
                 param_name = value[2:-1]
                 if param_name in parameters:
                     condition[key] = parameters[param_name]

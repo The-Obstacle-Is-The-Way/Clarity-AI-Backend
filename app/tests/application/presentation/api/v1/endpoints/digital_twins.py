@@ -145,9 +145,7 @@ import importlib as _importlib
 
 # Attempt to import (or retrieve) the test module and patch its ``UTC``
 try:
-    _test_mod = _sys.modules.get(_test_mod_name) or _importlib.import_module(
-        _test_mod_name
-    )
+    _test_mod = _sys.modules.get(_test_mod_name) or _importlib.import_module(_test_mod_name)
     if getattr(_test_mod, "UTC", None) is not None:
         from datetime import timezone as _dt_timezone
 
@@ -214,9 +212,7 @@ for _m in list(_sys.modules.values()):
                     if isinstance(tz, _dt_timedelta):
                         tz = _dt_timezone(tz)
                     return (
-                        _orig_dt_cls.now(tz)
-                        if hasattr(_orig_dt_cls, "now")
-                        else _orig_dt_cls(tz)
+                        _orig_dt_cls.now(tz) if hasattr(_orig_dt_cls, "now") else _orig_dt_cls(tz)
                     )
 
                 def __getattr__(self, item):
@@ -332,9 +328,7 @@ async def generate_symptom_forecast_endpoint(
     try:
         return await service.generate_symptom_forecasting(patient_id)
     except ResourceNotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ModelExecutionError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
@@ -354,9 +348,7 @@ async def correlate_biometrics_endpoint(
     try:
         return await service.correlate_biometrics(patient_id)
     except ResourceNotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ModelExecutionError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
@@ -376,9 +368,7 @@ async def predict_medication_response_endpoint(
     try:
         return await service.predict_medication_response(patient_id)
     except ResourceNotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ModelExecutionError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
@@ -398,9 +388,7 @@ async def generate_treatment_plan_endpoint(
     try:
         return await service.generate_treatment_plan(patient_id)
     except ResourceNotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ModelExecutionError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)

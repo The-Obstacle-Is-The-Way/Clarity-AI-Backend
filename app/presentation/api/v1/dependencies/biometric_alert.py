@@ -93,9 +93,7 @@ async def get_biometric_alert_template_repository() -> BiometricAlertTemplateRep
 
 
 async def get_biometric_alert_rule_service(
-    rule_repository: BiometricAlertRuleRepository = Depends(
-        get_biometric_alert_rule_repository
-    ),
+    rule_repository: BiometricAlertRuleRepository = Depends(get_biometric_alert_rule_repository),
     template_repository: BiometricAlertTemplateRepository = Depends(
         get_biometric_alert_template_repository
     ),

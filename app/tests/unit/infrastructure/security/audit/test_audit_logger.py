@@ -21,9 +21,7 @@ class TestAuditLogger:
     @pytest.fixture
     def mock_settings(self):
         """Fixture to create mock settings for testing."""
-        with patch(
-            "app.infrastructure.security.audit.audit.get_settings"
-        ) as mock_get_settings:
+        with patch("app.infrastructure.security.audit.audit.get_settings") as mock_get_settings:
             settings = MagicMock()
             settings.LOG_LEVEL = "INFO"
             settings.AUDIT_LOG_FILE = "logs/test_audit.log"
@@ -34,9 +32,7 @@ class TestAuditLogger:
     @pytest.fixture
     def mock_logger(self):
         """Fixture to create a mock logger for testing."""
-        with patch(
-            "app.infrastructure.security.audit.audit.logging.getLogger"
-        ) as mock_get_logger:
+        with patch("app.infrastructure.security.audit.audit.logging.getLogger") as mock_get_logger:
             logger = MagicMock()
             mock_get_logger.return_value = logger
             yield logger
@@ -158,9 +154,7 @@ class TestAuditLogger:
         assert log_data["user_id"] == user_id
         assert log_data["details"] == details
 
-    @patch(
-        "app.infrastructure.security.audit.audit.AuditLogger._send_to_external_audit_service"
-    )
+    @patch("app.infrastructure.security.audit.audit.AuditLogger._send_to_external_audit_service")
     def test_external_audit_service_called(self, mock_send, mock_settings, mock_logger):
         """Test that external audit service is called when enabled."""
         # Setup

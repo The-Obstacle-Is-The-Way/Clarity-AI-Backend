@@ -40,9 +40,7 @@ class PATServiceError(Exception):
 class ValidationError(PATServiceError):
     """Exception raised when validation of input data fails."""
 
-    def __init__(
-        self, message: str, field: str | None = None, value: Any = None, **kwargs
-    ):
+    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs):
         """
         Initialize a validation error.
 
@@ -140,9 +138,7 @@ class ResourceNotFoundError(PATServiceError):
             resource_id: ID of the resource that was not found
             **kwargs: Additional error context
         """
-        super().__init__(
-            message, resource_type=resource_type, resource_id=resource_id, **kwargs
-        )
+        super().__init__(message, resource_type=resource_type, resource_id=resource_id, **kwargs)
 
 
 class AnalysisNotFoundError(ResourceNotFoundError):
@@ -198,9 +194,7 @@ class ServiceConnectionError(PATServiceError):
 class ConfigurationError(PATServiceError):
     """Exception raised when there is a configuration error."""
 
-    def __init__(
-        self, message: str, field: str | None = None, value: Any = None, **kwargs
-    ):
+    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs):
         """
         Initialize a configuration error.
 
@@ -220,9 +214,7 @@ class InvalidConfigurationError(ConfigurationError):
     are present but invalid or incompatible with the operation being performed.
     """
 
-    def __init__(
-        self, message: str, field: str | None = None, value: Any = None, **kwargs
-    ):
+    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs):
         """
         Initialize an invalid configuration error.
 
@@ -278,9 +270,7 @@ class AuthorizationError(PATServiceError):
             action: Type of action that was attempted
             **kwargs: Additional error context
         """
-        super().__init__(
-            message, user_id=user_id, resource_id=resource_id, action=action, **kwargs
-        )
+        super().__init__(message, user_id=user_id, resource_id=resource_id, action=action, **kwargs)
 
 
 class EmbeddingError(PATServiceError):
@@ -304,6 +294,4 @@ class EmbeddingError(PATServiceError):
             cause: Cause of the failure
             **kwargs: Additional error context
         """
-        super().__init__(
-            message, model_id=model_id, data_type=data_type, cause=cause, **kwargs
-        )
+        super().__init__(message, model_id=model_id, data_type=data_type, cause=cause, **kwargs)

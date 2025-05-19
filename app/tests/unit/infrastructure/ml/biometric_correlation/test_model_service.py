@@ -176,9 +176,7 @@ class TestBiometricCorrelationService:
             assert "action" in insight
 
     @pytest.mark.asyncio
-    async def test_analyze_correlations_empty_data(  # Added async
-        self, service, sample_patient_id
-    ):
+    async def test_analyze_correlations_empty_data(self, service, sample_patient_id):  # Added async
         """Test that analyze_correlations handles empty biometric data gracefully."""
         # Setup
         empty_data = {}
@@ -222,9 +220,7 @@ class TestBiometricCorrelationService:
         assert "patient_id" in result
         assert result["patient_id"] == sample_patient_id
         assert "reliability" in result
-        assert (
-            result["reliability"] == "low"
-        )  # Or appropriate value for insufficient data
+        assert result["reliability"] == "low"  # Or appropriate value for insufficient data
         assert "correlations" in result
         assert len(result["correlations"]) == 0
         assert "insights" in result
@@ -275,17 +271,13 @@ class TestBiometricCorrelationService:
 
         # Setup
         lookback_days = 30
-        cutoff_date = datetime(2025, 1, 1, tzinfo=timezone.utc) - timedelta(
-            days=lookback_days
-        )
+        cutoff_date = datetime(2025, 1, 1, tzinfo=timezone.utc) - timedelta(days=lookback_days)
 
         # Debug service's biometric_features list
         print(f"\nService biometric_features: {service.biometric_features}")
 
         # Execute - use _preprocess_biometric_data directly for unit testing
-        processed_data = service._preprocess_biometric_data(
-            sample_biometric_data, lookback_days
-        )
+        processed_data = service._preprocess_biometric_data(sample_biometric_data, lookback_days)
 
         # Debug processed output
         print("\n==== PROCESSED DATA =====\n")
@@ -304,9 +296,7 @@ class TestBiometricCorrelationService:
         if any(isinstance(data, MagicMock) for _, data in processed_data.items()):
             # If we're dealing with MagicMock DataFrames, just verify we have the right keys
             # and skip further assertions that would fail on mock objects
-            print(
-                "\nTest using MagicMock objects - skipping detailed DataFrame assertions"
-            )
+            print("\nTest using MagicMock objects - skipping detailed DataFrame assertions")
             assert set(processed_data.keys()) == {
                 "heart_rate_variability",
                 "sleep_duration",
@@ -346,9 +336,7 @@ class TestBiometricCorrelationService:
         }
 
         # Verify validation works
-        assert (
-            service._validate_biometric_data(valid_data) is True
-        )  # Expect True on success
+        assert service._validate_biometric_data(valid_data) is True  # Expect True on success
 
         # Verify validation fails on invalid data
         with pytest.raises(ValueError):

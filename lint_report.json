@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-05-19T15:59:29.968239",
+  "ruff": {
+    "returncode": 1,
+    "stats": {}
+  },
+  "black": {
+    "returncode": 1,
+    "would_change": 531
+  },
+  "isort": {
+    "returncode": 1,
+    "would_change": 67
+  }
+}

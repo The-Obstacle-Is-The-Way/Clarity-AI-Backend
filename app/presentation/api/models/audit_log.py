@@ -112,9 +112,7 @@ class AuditSearchRequest(BaseModel):
                         valid_event_types.append(AuditEventType(item))
                     except ValueError:
                         if any(char in item for char in "';\"\\"):
-                            raise ValueError(
-                                f"Invalid event_type value in list: {item}"
-                            )
+                            raise ValueError(f"Invalid event_type value in list: {item}")
                         valid_event_types.append(item)
                 v["event_type"] = valid_event_types
 

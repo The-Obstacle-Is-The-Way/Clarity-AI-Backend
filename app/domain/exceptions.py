@@ -44,18 +44,14 @@ class AuthorizationError(DomainException):
 class TokenExpiredError(AuthenticationError):
     """Exception raised when an authentication token has expired."""
 
-    def __init__(
-        self, message: str = "Token has expired", details: dict[str, Any] | None = None
-    ):
+    def __init__(self, message: str = "Token has expired", details: dict[str, Any] | None = None):
         super().__init__(message, details)
 
 
 class InvalidTokenError(AuthenticationError):
     """Exception raised when an authentication token is invalid."""
 
-    def __init__(
-        self, message: str = "Invalid token", details: dict[str, Any] | None = None
-    ):
+    def __init__(self, message: str = "Invalid token", details: dict[str, Any] | None = None):
         super().__init__(message, details)
 
 

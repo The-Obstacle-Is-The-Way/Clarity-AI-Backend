@@ -59,9 +59,7 @@ from app.presentation.api.dependencies.auth import get_current_user
 
 async def get_patient_id(
     patient_id: UUID = Path(..., description="ID of the patient"),
-    current_user: User = Depends(
-        get_current_user
-    ),  # Depend on the standard user object
+    current_user: User = Depends(get_current_user),  # Depend on the standard user object
 ) -> UUID:
     """
     Get and validate the patient ID from the path.
@@ -132,9 +130,7 @@ async def get_patient_id(
 #         )
 
 
-async def require_role(
-    required_role: str, current_user: User = Depends(get_current_user)
-) -> None:
+async def require_role(required_role: str, current_user: User = Depends(get_current_user)) -> None:
     """Generic dependency to check if the user has a specific role."""
     if not current_user:
         raise HTTPException(

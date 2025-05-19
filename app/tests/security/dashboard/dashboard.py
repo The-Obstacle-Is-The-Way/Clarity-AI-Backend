@@ -80,9 +80,7 @@ class DashboardSecurityTest(unittest.TestCase):
         self.app.config["DATABASE"] = self.db
 
         # Initialize test users and roles
-        self.admin_user = MockUser(
-            id=1, username="admin", password="adminpass", role="admin"
-        )
+        self.admin_user = MockUser(id=1, username="admin", password="adminpass", role="admin")
         self.provider_user = MockUser(
             id=2, username="provider", password="providerpass", role="provider"
         )
@@ -539,9 +537,7 @@ if __name__ == "__main__":
         exit(1)
 
     # Sort by modification time (most recent first)
-    results_files.sort(
-        key=lambda f: os.path.getmtime(os.path.join(results_dir, f)), reverse=True
-    )
+    results_files.sort(key=lambda f: os.path.getmtime(os.path.join(results_dir, f)), reverse=True)
     latest_file = os.path.join(results_dir, results_files[0])
 
     # Generate dashboard

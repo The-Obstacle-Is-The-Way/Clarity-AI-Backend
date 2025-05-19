@@ -66,9 +66,7 @@ class TextGenerationService(TextGenerationInterface):
         except Exception as e:
             self._initialized = False
             logger.error("Failed to initialize text generation service: %s", str(e))
-            raise ServiceUnavailableError(
-                "Text generation service initialization failed"
-            ) from e
+            raise ServiceUnavailableError("Text generation service initialization failed") from e
 
     def _setup_model_configs(self) -> None:
         """
@@ -196,12 +194,8 @@ class TextGenerationService(TextGenerationInterface):
             model=model_config.get("mentalllama_model", "clinical-medium"),
             task=model_config.get("mentalllama_task", "generate"),
             context=llama_context,
-            max_tokens=kwargs.get(
-                "max_tokens", model_config.get("max_tokens", max_tokens)
-            ),
-            temperature=kwargs.get(
-                "temperature", model_config.get("temperature", temperature)
-            ),
+            max_tokens=kwargs.get("max_tokens", model_config.get("max_tokens", max_tokens)),
+            temperature=kwargs.get("temperature", model_config.get("temperature", temperature)),
             **kwargs,
         )
 

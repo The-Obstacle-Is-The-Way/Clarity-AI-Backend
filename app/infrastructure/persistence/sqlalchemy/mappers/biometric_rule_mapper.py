@@ -85,9 +85,7 @@ def map_rule_model_to_entity(model: BiometricRuleModel) -> BiometricRule:
     for condition_dict in model.conditions:
         # Convert operator string to enum
         operator_str = condition_dict.get("operator")
-        operator = (
-            RuleOperator(operator_str) if operator_str else RuleOperator.GREATER_THAN
-        )
+        operator = RuleOperator(operator_str) if operator_str else RuleOperator.GREATER_THAN
 
         # Create RuleCondition object
         condition = RuleCondition(

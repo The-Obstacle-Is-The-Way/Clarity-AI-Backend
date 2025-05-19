@@ -150,10 +150,8 @@ class AnalyticsService:
 
         # Get appointments in date range
         if provider_id:
-            appointments = (
-                await self.appointment_repository.list_by_provider_date_range(
-                    provider_id=provider_id, start_date=start_date, end_date=end_date
-                )
+            appointments = await self.appointment_repository.list_by_provider_date_range(
+                provider_id=provider_id, start_date=start_date, end_date=end_date
             )
         else:
             appointments = await self.appointment_repository.list_by_date_range(
@@ -171,11 +169,7 @@ class AnalyticsService:
             "appointment_metrics": {
                 "total_appointments": len(appointments),
                 "completed_appointments": len(
-                    [
-                        a
-                        for a in appointments
-                        if getattr(a, "status", None) == "COMPLETED"
-                    ]
+                    [a for a in appointments if getattr(a, "status", None) == "COMPLETED"]
                 ),
                 "no_show_rate": 0.08,
                 "cancellation_rate": 0.12,
@@ -357,8 +351,7 @@ class AnalyticsService:
             treatment_data.append(
                 {
                     "treatment_name": treatment,
-                    "patient_count": 25
-                    + hash(treatment) % 20,  # Pseudo-random for demo
+                    "patient_count": 25 + hash(treatment) % 20,  # Pseudo-random for demo
                     "effectiveness_score": 0.5
                     + (hash(treatment) % 40) / 100,  # Pseudo-random between 0.5-0.9
                     "average_time_to_improvement": 14
@@ -377,18 +370,18 @@ class AnalyticsService:
                 "end": end_date.isoformat(),
             },
             "treatments": treatment_data,
-            "most_effective_treatment": max(
-                treatment_data, key=lambda x: x["effectiveness_score"]
-            )["treatment_name"],
+            "most_effective_treatment": max(treatment_data, key=lambda x: x["effectiveness_score"])[
+                "treatment_name"
+            ],
             "fastest_improvement": min(
                 treatment_data, key=lambda x: x["average_time_to_improvement"]
             )["treatment_name"],
             "best_adherence": max(treatment_data, key=lambda x: x["adherence_rate"])[
                 "treatment_name"
             ],
-            "least_side_effects": min(
-                treatment_data, key=lambda x: x["side_effect_rate"]
-            )["treatment_name"],
+            "least_side_effects": min(treatment_data, key=lambda x: x["side_effect_rate"])[
+                "treatment_name"
+            ],
         }
 
     async def get_patient_risk_stratification(self) -> list[dict[str, Any]]:

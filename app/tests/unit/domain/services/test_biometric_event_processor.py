@@ -108,9 +108,7 @@ class TestBiometricEventProcessor:
     def test_unregister_observer(self, mock_observer):
         """Test that unregister_observer unregisters an observer from all priorities."""
         processor = BiometricEventProcessor()
-        processor.register_observer(
-            mock_observer, [AlertPriority.WARNING, AlertPriority.URGENT]
-        )
+        processor.register_observer(mock_observer, [AlertPriority.WARNING, AlertPriority.URGENT])
         processor.unregister_observer(mock_observer)
 
         assert mock_observer not in processor.observers[AlertPriority.WARNING]
@@ -152,9 +150,7 @@ class TestBiometricEventProcessor:
 
         assert len(alerts) == 0
 
-    def test_process_data_point_matching_rule(
-        self, sample_data_point, sample_rule, mock_observer
-    ):
+    def test_process_data_point_matching_rule(self, sample_data_point, sample_rule, mock_observer):
         """Test that process_data_point returns alerts for matching rules and notifies observers."""
         processor = BiometricEventProcessor()
         processor.add_rule(sample_rule)
@@ -237,10 +233,7 @@ class TestBiometricEventProcessor:
         context = processor.patient_context[sample_data_point.patient_id]
         assert "latest_values" in context
         assert sample_data_point.data_type in context["latest_values"]
-        assert (
-            context["latest_values"][sample_data_point.data_type]
-            == sample_data_point.value
-        )
+        assert context["latest_values"][sample_data_point.data_type] == sample_data_point.value
 
 
 class TestAlertRule:
@@ -451,9 +444,7 @@ class TestAlertObservers:
         )
 
         # Patch the _get_recipient_for_patient method
-        with patch.object(
-            observer, "_get_recipient_for_patient", return_value="+1234567890"
-        ):
+        with patch.object(observer, "_get_recipient_for_patient", return_value="+1234567890"):
             # Notify the observer
             observer.notify(alert)
 

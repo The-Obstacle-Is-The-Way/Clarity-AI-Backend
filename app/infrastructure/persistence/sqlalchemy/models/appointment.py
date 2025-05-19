@@ -7,20 +7,17 @@ mapping the domain entity to the database schema.
 
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
-from sqlalchemy import (
-    UUID as SQLAlchemyUUID,
-)
 from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    Enum as SQLAlchemyEnum,
     ForeignKey,
     String,
     Text,
-)
-from sqlalchemy import (
-    Enum as SQLAlchemyEnum,
+    UUID as SQLAlchemyUUID,
 )
 from sqlalchemy.orm import relationship
 
@@ -30,6 +27,9 @@ from app.infrastructure.persistence.sqlalchemy.models.base import (
     Base,
     TimestampMixin,
 )
+
+if TYPE_CHECKING:
+    from app.domain.entities.appointment import Appointment
 
 
 class AppointmentModel(Base, TimestampMixin, AuditMixin):
@@ -82,7 +82,7 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
         return f"<Appointment(id={self.id}, patient_id={self.patient_id}, start_time={self.start_time})>"
 
     @classmethod
-    def from_domain(cls, appointment) -> "AppointmentModel":
+    def from_domain(cls, appointment: "Appointment") -> "AppointmentModel":
         """
         Create a SQLAlchemy model instance from a domain entity.
 
@@ -105,7 +105,7 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
             location=appointment.location,
         )
 
-    def to_domain(self):
+    def to_domain(self) -> "Appointment":
         """
         Convert SQLAlchemy model instance to domain entity.
 

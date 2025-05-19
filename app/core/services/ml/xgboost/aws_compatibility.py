@@ -55,14 +55,10 @@ class AWSXGBoostService(XGBoostInterface):
             Dictionary with prediction results
         """
         # Delegate to the canonical implementation
-        return await get_service_instance().predict(
-            patient_id, features, model_type, **kwargs
-        )
+        return await get_service_instance().predict(patient_id, features, model_type, **kwargs)
         self._impl = get_service_instance()
         self._initialized = self._impl.is_initialized
-        logger.info(
-            "AWS XGBoost compatibility layer initialized, using definitive implementation"
-        )
+        logger.info("AWS XGBoost compatibility layer initialized, using definitive implementation")
 
     @property
     def is_initialized(self) -> bool:
@@ -237,9 +233,7 @@ class AWSXGBoostService(XGBoostInterface):
             patient_id=patient_id, profile_id=profile_id, prediction_id=prediction_id
         )
 
-    async def register_observer(
-        self, event_type: EventType | str, observer: Observer
-    ) -> None:
+    async def register_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Register an observer for a specific event type.
 
@@ -249,9 +243,7 @@ class AWSXGBoostService(XGBoostInterface):
         """
         await self._canonical.register_observer(event_type, observer)
 
-    async def unregister_observer(
-        self, event_type: EventType | str, observer: Observer
-    ) -> None:
+    async def unregister_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Unregister an observer for a specific event type.
 

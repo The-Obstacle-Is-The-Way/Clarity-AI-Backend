@@ -18,8 +18,6 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-)
-from sqlalchemy import (
     UUID as SQLAlchemyUUID,
 )
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -93,16 +91,12 @@ class BiometricTimeseriesModel(Base):
     __tablename__ = "biometric_timeseries"
 
     id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    twin_id = Column(
-        SQLAlchemyUUID(as_uuid=True), ForeignKey("digital_twins.id"), nullable=False
-    )
+    twin_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("digital_twins.id"), nullable=False)
     biometric_type = Column(String(50), nullable=False)
     unit = Column(String(20), nullable=False)
     physiological_range_json = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
-    updated_at = Column(
-        DateTime, default=datetime.now, onupdate=datetime.now, nullable=False
-    )
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
 
     # Relationships
     twin = relationship("DigitalTwinModel", back_populates="timeseries")
@@ -146,9 +140,7 @@ class DigitalTwinModel(Base, TimestampMixin, AuditMixin):
         index=True,
     )
     created_at = Column(DateTime, default=datetime.now, nullable=False)
-    updated_at = Column(
-        DateTime, default=datetime.now, onupdate=datetime.now, nullable=False
-    )
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
     version = Column(Integer, default=1, nullable=False)
     configuration_json = Column(JSON, nullable=True)
     state_json = Column(JSON, nullable=True)

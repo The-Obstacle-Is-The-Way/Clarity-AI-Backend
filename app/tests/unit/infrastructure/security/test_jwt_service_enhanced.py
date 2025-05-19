@@ -70,9 +70,7 @@ def test_settings() -> Settings:
     # Assign other settings directly
     settings.JWT_ALGORITHM = TEST_ALGORITHM
     settings.ACCESS_TOKEN_EXPIRE_MINUTES = TEST_ACCESS_EXPIRE_MINUTES
-    settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS = (
-        TEST_REFRESH_EXPIRE_DAYS  # Corrected attribute
-    )
+    settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS = TEST_REFRESH_EXPIRE_DAYS  # Corrected attribute
     settings.JWT_ISSUER = TEST_ISSUER
     settings.JWT_AUDIENCE = TEST_AUDIENCE
 
@@ -102,8 +100,7 @@ class TestJWTService:
         assert jwt_service.algorithm == TEST_ALGORITHM
         assert jwt_service.access_token_expire_minutes == TEST_ACCESS_EXPIRE_MINUTES
         assert (
-            jwt_service.refresh_token_expire_days
-            == test_settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS
+            jwt_service.refresh_token_expire_days == test_settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS
         )  # Verify against settings
         assert jwt_service.issuer == TEST_ISSUER
         assert jwt_service.audience == TEST_AUDIENCE
@@ -229,9 +226,7 @@ class TestJWTService:
             )
             print(f"Original token data: {original_data}")
             assert "role" in original_data, "Role field missing from token data"
-            assert (
-                original_data["role"] == "patient"
-            ), "Role field doesn't match expected value"
+            assert original_data["role"] == "patient", "Role field doesn't match expected value"
         else:
             assert "patient" in payload.roles, f"Expected 'patient' in {payload.roles}"
 
@@ -264,9 +259,7 @@ class TestJWTService:
         # Use jose.jwt directly since we need a token with specific expired timestamp
         from jose import jwt
 
-        expired_token = jwt.encode(
-            data, jwt_service.secret_key, algorithm=jwt_service.algorithm
-        )
+        expired_token = jwt.encode(data, jwt_service.secret_key, algorithm=jwt_service.algorithm)
 
         # Test that expired token verification throws the expected exception
         with pytest.raises(TokenExpiredException, match=r"Token has expired:"):
@@ -292,9 +285,7 @@ class TestJWTService:
         if len(parts) == 3:  # header.payload.signature
             # Create a totally new token with the same payload using a different key
             payload = jwt.decode(token, options={"verify_signature": False})
-            tampered_token = jwt.encode(
-                payload, different_secret, algorithm=jwt_service.algorithm
-            )
+            tampered_token = jwt.encode(payload, different_secret, algorithm=jwt_service.algorithm)
 
             # Verify the tampered token fails validation with our service
             with pytest.raises((InvalidTokenException, jwt.InvalidSignatureError)):
@@ -367,9 +358,7 @@ class TestJWTService:
         malformed_token = "invalid.token.format"
 
         # Verify the malformed token fails validation
-        with pytest.raises(
-            InvalidTokenException
-        ):  # decode_token raises InvalidTokenException
+        with pytest.raises(InvalidTokenException):  # decode_token raises InvalidTokenException
             jwt_service.decode_token(malformed_token)
 
     # @pytest.mark.asyncio # Test no longer needs to be async

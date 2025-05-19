@@ -53,10 +53,7 @@ class TemporalNeurotransmitterSequence(TemporalSequence):
         num_points = max(1, int(total_hours / resolution_hours)) + 1
 
         # Generate timestamps
-        timestamps = [
-            start_time + timedelta(hours=i * resolution_hours)
-            for i in range(num_points)
-        ]
+        timestamps = [start_time + timedelta(hours=i * resolution_hours) for i in range(num_points)]
 
         # Determine temporal resolution enum value
         if resolution_hours <= 1:
@@ -73,9 +70,7 @@ class TemporalNeurotransmitterSequence(TemporalSequence):
                 feature_names.append(f"{nt.value}_{region.value}")
 
         # Initialize with empty values (all zeros)
-        values = [
-            [0.0 for _ in range(len(feature_names))] for _ in range(len(timestamps))
-        ]
+        values = [[0.0 for _ in range(len(feature_names))] for _ in range(len(timestamps))]
 
         # Generate sequence ID if not provided
         if sequence_id is None:
@@ -109,9 +104,7 @@ class TemporalNeurotransmitterSequence(TemporalSequence):
         self.resolution_hours = resolution_hours
 
         # Cache for feature indices
-        self._feature_indices = {
-            feature: idx for idx, feature in enumerate(feature_names)
-        }
+        self._feature_indices = {feature: idx for idx, feature in enumerate(feature_names)}
 
     def add_data_point(
         self,
@@ -196,9 +189,9 @@ class TemporalNeurotransmitterSequence(TemporalSequence):
                 return []
 
             for idx, ts in enumerate(self.timestamps):
-                avg_value = sum(
-                    self._values[idx][f_idx] for f_idx in region_feature_idxs
-                ) / len(region_feature_idxs)
+                avg_value = sum(self._values[idx][f_idx] for f_idx in region_feature_idxs) / len(
+                    region_feature_idxs
+                )
                 result.append((ts, avg_value))
 
         return result
@@ -240,9 +233,9 @@ class TemporalNeurotransmitterSequence(TemporalSequence):
                 return []
 
             for idx, ts in enumerate(self.timestamps):
-                avg_value = sum(
-                    self._values[idx][f_idx] for f_idx in nt_feature_idxs
-                ) / len(nt_feature_idxs)
+                avg_value = sum(self._values[idx][f_idx] for f_idx in nt_feature_idxs) / len(
+                    nt_feature_idxs
+                )
                 result.append((ts, avg_value))
 
         return result
@@ -312,9 +305,7 @@ class TemporalNeurotransmitterSequence(TemporalSequence):
             if other_feature == feature_name:
                 continue
 
-            other_values = [
-                self._values[idx][other_idx] for idx in range(len(self.timestamps))
-            ]
+            other_values = [self._values[idx][other_idx] for idx in range(len(self.timestamps))]
 
             # Calculate Pearson correlation
             corr = self._calculate_correlation(values, other_values)

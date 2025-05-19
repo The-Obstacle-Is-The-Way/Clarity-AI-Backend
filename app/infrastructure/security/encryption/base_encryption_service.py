@@ -146,9 +146,7 @@ class BaseEncryptionService:
                     secret_key = get_encryption_key()
                 except ValueError:
                     # Immediate failure for missing key - clear error for tests
-                    logger.error(
-                        "No encryption key available - critical security failure"
-                    )
+                    logger.error("No encryption key available - critical security failure")
                     raise ValueError("Primary encryption key is unavailable")
                 except Exception as e:
                     # Other errors during key retrieval
@@ -198,9 +196,7 @@ class BaseEncryptionService:
                         salt=salt,  # Use same salt as primary key
                         iterations=KDF_ITERATIONS,
                     )
-                    prev_derived_key = base64.urlsafe_b64encode(
-                        prev_kdf.derive(prev_key_bytes)
-                    )
+                    prev_derived_key = base64.urlsafe_b64encode(prev_kdf.derive(prev_key_bytes))
 
                     # Create cipher for previous key
                     self._previous_cipher = Fernet(prev_derived_key)
@@ -350,9 +346,7 @@ class BaseEncryptionService:
             logger.error(f"Decryption failed: {e!s}")
             raise ValueError(f"Decryption failed: {e!s}")
 
-    def encrypt_string(
-        self, value: str | Any, is_phi: bool = True
-    ) -> str | None:
+    def encrypt_string(self, value: str | Any, is_phi: bool = True) -> str | None:
         """
         Encrypt a string value with proper handling for all input types.
 
@@ -379,9 +373,7 @@ class BaseEncryptionService:
                     if hasattr(value, "model_dump"):
                         # Use model_dump for Pydantic v2 models
                         str_value = json.dumps(
-                            value.model_dump()
-                            if hasattr(value, "model_dump")
-                            else value.dict()
+                            value.model_dump() if hasattr(value, "model_dump") else value.dict()
                         )
                     elif hasattr(value, "dict"):
                         # Fallback for Pydantic v1 models or custom objects
@@ -440,9 +432,7 @@ class BaseEncryptionService:
             logger.error(f"String decryption failed: {e!s}")
             raise ValueError(f"Decryption failed: {e!s}")
 
-    def encrypt_dict(
-        self, data: dict, legacy_mode: bool = False
-    ) -> dict[str, Any] | str | None:
+    def encrypt_dict(self, data: dict, legacy_mode: bool = False) -> dict[str, Any] | str | None:
         """
         Encrypt a dictionary by selectively encrypting each field or as a whole.
 
@@ -463,9 +453,7 @@ class BaseEncryptionService:
             return None
 
         if not isinstance(data, dict):
-            raise TypeError(
-                f"encrypt_dict requires a dictionary, got {type(data).__name__}"
-            )
+            raise TypeError(f"encrypt_dict requires a dictionary, got {type(data).__name__}")
 
         try:
             # Support legacy mode for backward compatibility with existing tests
@@ -588,9 +576,7 @@ class BaseEncryptionService:
             logger.error(f"Dictionary encryption failed: {e!s}")
             raise ValueError(f"Dictionary encryption failed: {e!s}")
 
-    def decrypt_dict(
-        self, encrypted_data: dict[str, Any] | str | None
-    ) -> dict | None:
+    def decrypt_dict(self, encrypted_data: dict[str, Any] | str | None) -> dict | None:
         """
         Decrypt a dictionary from either an encrypted JSON string or a dictionary with encrypted fields.
 
@@ -635,15 +621,12 @@ class BaseEncryptionService:
                             self.decrypt_dict(item)
                             if isinstance(item, dict)
                             else self.decrypt_string(item)
-                            if isinstance(item, str)
-                            and item.startswith(self.VERSION_PREFIX)
+                            if isinstance(item, str) and item.startswith(self.VERSION_PREFIX)
                             else item
                             for item in value
                         ]
                     # Handle encrypted strings
-                    elif isinstance(value, str) and value.startswith(
-                        self.VERSION_PREFIX
-                    ):
+                    elif isinstance(value, str) and value.startswith(self.VERSION_PREFIX):
                         result[key] = self.decrypt_string(value)
                     # Pass through non-encrypted values unchanged
                     else:
@@ -717,12 +700,8 @@ class BaseEncryptionService:
                 try:
                     os.remove(output_path)
                 except OSError:  # pragma: no cover
-                    logger.warning(
-                        f"Could not remove partially decrypted file: {output_path}"
-                    )
-            raise ValueError(
-                f"Decryption failed for file {input_path} due to invalid token."
-            )
+                    logger.warning(f"Could not remove partially decrypted file: {output_path}")
+            raise ValueError(f"Decryption failed for file {input_path} due to invalid token.")
         except Exception as e:
             logger.error(f"An unexpected error occurred during file decryption: {e}")
             # Optionally, clean up partially written output file
@@ -730,9 +709,7 @@ class BaseEncryptionService:
                 try:
                     os.remove(output_path)
                 except OSError:  # pragma: no cover
-                    logger.warning(
-                        f"Could not remove partially decrypted file: {output_path}"
-                    )
+                    logger.warning(f"Could not remove partially decrypted file: {output_path}")
             raise
 
     def generate_hash(self, data: str) -> tuple[str, str]:
@@ -796,9 +773,7 @@ class BaseEncryptionService:
             iterations = getattr(settings, "HASH_ITERATIONS", 390000)
 
             # Create key derivation function with the same parameters
-            kdf = PBKDF2HMAC(
-                algorithm=hashes.SHA256(), length=32, salt=salt, iterations=iterations
-            )
+            kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=iterations)
 
             # Generate key from data
             derived_key = kdf.derive(data.encode())
@@ -856,9 +831,7 @@ def get_encryption_service() -> "BaseEncryptionService":
     from app.core.config.settings import get_settings
 
     settings = get_settings()
-    key = getattr(settings, "PHI_ENCRYPTION_KEY", None) or getattr(
-        settings, "ENCRYPTION_KEY", None
-    )
+    key = getattr(settings, "PHI_ENCRYPTION_KEY", None) or getattr(settings, "ENCRYPTION_KEY", None)
     salt = getattr(settings, "ENCRYPTION_SALT", None)
 
     if not key:

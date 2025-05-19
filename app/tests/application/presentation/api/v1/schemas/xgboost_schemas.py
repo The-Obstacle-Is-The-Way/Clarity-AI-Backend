@@ -15,12 +15,8 @@ class RiskPredictionRequest(BaseModel):
     patient_data: dict[str, Any] = Field(
         ..., description="Patient-provided data (e.g., demographics)"
     )
-    clinical_data: dict[str, Any] = Field(
-        ..., description="Clinical data for prediction"
-    )
-    time_frame_days: int = Field(
-        ..., description="Time frame in days for risk prediction"
-    )
+    clinical_data: dict[str, Any] = Field(..., description="Clinical data for prediction")
+    time_frame_days: int = Field(..., description="Time frame in days for risk prediction")
 
 
 class RiskPredictionResponse(BaseModel):
@@ -54,9 +50,7 @@ class ModelInfoRequest(BaseModel):
     """Request model for getting model information."""
 
     model_config = {"protected_namespaces": ()}
-    model_type: str = Field(
-        ..., description="Type of model to retrieve information for"
-    )
+    model_type: str = Field(..., description="Type of model to retrieve information for")
 
 
 # Schema for feature importance requests
@@ -107,7 +101,5 @@ class ModelInfoResponse(BaseModel):
     performance_metrics: PerformanceMetricsSchema = Field(
         ..., description="Model performance metrics"
     )
-    features: list[FeatureSchema] = Field(
-        ..., description="Model features and their importance"
-    )
+    features: list[FeatureSchema] = Field(..., description="Model features and their importance")
     description: str = Field(..., description="Model description")

@@ -165,16 +165,12 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 logger.debug("Using default infrastructure getter for auth service.")
                 auth_service_result = auth_service_source()
                 # Await if necessary (for the real service getter)
-                if asyncio.iscoroutine(
-                    auth_service_result
-                ) or asyncio.iscoroutinefunction(auth_service_source):
-                    self._auth_service_instance: IAuthenticationService = (
-                        await auth_service_result
-                    )
+                if asyncio.iscoroutine(auth_service_result) or asyncio.iscoroutinefunction(
+                    auth_service_source
+                ):
+                    self._auth_service_instance: IAuthenticationService = await auth_service_result
                 else:
-                    self._auth_service_instance: IAuthenticationService = (
-                        auth_service_result
-                    )
+                    self._auth_service_instance: IAuthenticationService = auth_service_result
                 logger.debug(
                     f"Auth service instance set via fallback: {type(self._auth_service_instance)}"
                 )
@@ -183,9 +179,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         if self._jwt_service_instance is None:
             # If a service was injected via __init__, use it directly
             if self._jwt_service:
-                self._jwt_service_instance = (
-                    self._jwt_service
-                )  # Assign the mock instance directly
+                self._jwt_service_instance = self._jwt_service  # Assign the mock instance directly
                 logger.debug(
                     f"Using injected jwt service instance: {type(self._jwt_service_instance)}"
                 )
@@ -195,9 +189,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 logger.debug("Using default infrastructure getter for jwt service.")
                 jwt_service_result = jwt_service_source()
                 # Await if necessary (for the real service getter)
-                if asyncio.iscoroutine(
-                    jwt_service_result
-                ) or asyncio.iscoroutinefunction(jwt_service_source):
+                if asyncio.iscoroutine(jwt_service_result) or asyncio.iscoroutinefunction(
+                    jwt_service_source
+                ):
                     self._jwt_service_instance: IJwtService = await jwt_service_result
                 else:
                     self._jwt_service_instance: IJwtService = jwt_service_result
@@ -256,9 +250,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
             if not user:
                 logger.warning(f"User not found for ID: {token_payload.sub}")
-                raise UserNotFoundException(
-                    f"User with ID {token_payload.sub} not found."
-                )
+                raise UserNotFoundException(f"User with ID {token_payload.sub} not found.")
 
             if not user.is_active:
                 logger.warning(f"Attempt to authenticate inactive user: {user.id}")
@@ -306,9 +298,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             logger.info(f"Authentication token missing for path: {request_path}")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={
-                    "detail": "Authentication required. No token provided."
-                },  # HIPAA: No PHI
+                content={"detail": "Authentication required. No token provided."},  # HIPAA: No PHI
             )
 
         try:
@@ -320,36 +310,26 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             # Ensure roles/scopes are available on the user object
             scopes = getattr(user, "roles", []) or getattr(user, "scopes", [])
             request.state.auth = AuthCredentials(scopes=scopes)
-            logger.debug(
-                f"User {user.id} authenticated successfully for path {request_path}"
-            )
+            logger.debug(f"User {user.id} authenticated successfully for path {request_path}")
             return await call_next(request)
 
         except InvalidTokenException:
             logger.info(f"Invalid token received for path: {request_path}")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={
-                    "detail": "Invalid or malformed authentication token."
-                },  # HIPAA: No PHI
+                content={"detail": "Invalid or malformed authentication token."},  # HIPAA: No PHI
             )
         except TokenExpiredException:
             logger.info(f"Expired token received for path: {request_path}")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={
-                    "detail": "Authentication token has expired."
-                },  # HIPAA: No PHI
+                content={"detail": "Authentication token has expired."},  # HIPAA: No PHI
             )
         except UserNotFoundException:
-            logger.warning(
-                f"User not found during authentication attempt for path: {request_path}"
-            )
+            logger.warning(f"User not found during authentication attempt for path: {request_path}")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={
-                    "detail": "User associated with token not found."
-                },  # HIPAA: No PHI
+                content={"detail": "User associated with token not found."},  # HIPAA: No PHI
             )
         except AuthenticationError as e:
             # Log the specific authentication error

@@ -59,9 +59,7 @@ class PHILogger:
             self.logger.handlers.clear()
 
         # Create a basic formatter - PHISafeLogger handles PHI sanitization internally
-        formatter = logging.Formatter(
-            fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
+        formatter = logging.Formatter(fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
         # Add console handler
         console_handler = logging.StreamHandler()
@@ -231,9 +229,7 @@ class PHILogger:
             self.warning(message)
 
 
-def get_phi_logger(
-    name: str = "novamind.phi", log_path: str | None = None
-) -> PHILogger:
+def get_phi_logger(name: str = "novamind.phi", log_path: str | None = None) -> PHILogger:
     """
     Factory function to get a PHI logger instance.
 

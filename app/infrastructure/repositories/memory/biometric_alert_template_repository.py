@@ -170,9 +170,7 @@ class InMemoryBiometricAlertTemplateRepository(ITemplateRepository):
         """
         return list(self._templates.values())
 
-    async def get_template_by_id(
-        self, template_id: UUID
-    ) -> BiometricAlertRule | None:
+    async def get_template_by_id(self, template_id: UUID) -> BiometricAlertRule | None:
         """
         Get a template by its ID.
 
@@ -184,9 +182,7 @@ class InMemoryBiometricAlertTemplateRepository(ITemplateRepository):
         """
         return self._templates.get(template_id)
 
-    async def create_template(
-        self, template_data: dict[str, Any]
-    ) -> BiometricAlertRule:
+    async def create_template(self, template_data: dict[str, Any]) -> BiometricAlertRule:
         """
         Create a new template.
 
@@ -247,9 +243,7 @@ class InMemoryBiometricAlertTemplateRepository(ITemplateRepository):
 
         # Update fields
         for key, value in template_data.items():
-            if key != "id" and hasattr(
-                existing_template, key
-            ):  # Don't allow changing ID
+            if key != "id" and hasattr(existing_template, key):  # Don't allow changing ID
                 updated_data[key] = value
 
         # Update timestamp

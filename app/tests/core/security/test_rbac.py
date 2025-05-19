@@ -70,42 +70,23 @@ class TestRoleBasedAccessControl:
     def test_check_permission_admin(self):
         """Test permission check for admin role."""
         # Admin should have all permissions
+        assert self.rbac_service.check_permission(self.admin_user.roles, "read:all_data") is True
+        assert self.rbac_service.check_permission(self.admin_user.roles, "update:all_data") is True
+        assert self.rbac_service.check_permission(self.admin_user.roles, "delete:all_data") is True
         assert (
-            self.rbac_service.check_permission(self.admin_user.roles, "read:all_data")
-            is True
+            self.rbac_service.check_permission(self.admin_user.roles, "read:patient_data") is True
         )
-        assert (
-            self.rbac_service.check_permission(self.admin_user.roles, "update:all_data")
-            is True
-        )
-        assert (
-            self.rbac_service.check_permission(self.admin_user.roles, "delete:all_data")
-            is True
-        )
-        assert (
-            self.rbac_service.check_permission(
-                self.admin_user.roles, "read:patient_data"
-            )
-            is True
-        )
-        assert (
-            self.rbac_service.check_permission(self.admin_user.roles, "manage:users")
-            is True
-        )
+        assert self.rbac_service.check_permission(self.admin_user.roles, "manage:users") is True
 
     def test_check_permission_clinician(self):
         """Test permission check for clinician role."""
         # Clinician should have patient data access but not all admin permissions
         assert (
-            self.rbac_service.check_permission(
-                self.clinician_user.roles, "read:patient_data"
-            )
+            self.rbac_service.check_permission(self.clinician_user.roles, "read:patient_data")
             is True
         )
         assert (
-            self.rbac_service.check_permission(
-                self.clinician_user.roles, "update:patient_data"
-            )
+            self.rbac_service.check_permission(self.clinician_user.roles, "update:patient_data")
             is True
         )
         # Assuming clinicians can also read their own data if applicable permission exists
@@ -113,57 +94,34 @@ class TestRoleBasedAccessControl:
 
         # Clinician should not have admin-level permissions
         assert (
-            self.rbac_service.check_permission(
-                self.clinician_user.roles, "delete:all_data"
-            )
+            self.rbac_service.check_permission(self.clinician_user.roles, "delete:all_data")
             is False
         )
         assert (
-            self.rbac_service.check_permission(
-                self.clinician_user.roles, "manage:users"
-            )
-            is False
+            self.rbac_service.check_permission(self.clinician_user.roles, "manage:users") is False
         )
 
     def test_check_permission_patient(self):
         """Test permission check for patient role (using Role.USER)."""
         # User (patient) should only have access to own data
+        assert self.rbac_service.check_permission(self.patient_user.roles, "read:own_data") is True
         assert (
-            self.rbac_service.check_permission(self.patient_user.roles, "read:own_data")
-            is True
-        )
-        assert (
-            self.rbac_service.check_permission(
-                self.patient_user.roles, "update:own_data"
-            )
-            is True
+            self.rbac_service.check_permission(self.patient_user.roles, "update:own_data") is True
         )  # Assuming update:own_data exists
         assert (
-            self.rbac_service.check_permission(
-                self.patient_user.roles, "access_own_reports"
-            )
+            self.rbac_service.check_permission(self.patient_user.roles, "access_own_reports")
             is True
         )  # Check defined USER permissions
 
         # User (patient) should not have access to other data/roles
+        assert self.rbac_service.check_permission(self.patient_user.roles, "read:all_data") is False
         assert (
-            self.rbac_service.check_permission(self.patient_user.roles, "read:all_data")
+            self.rbac_service.check_permission(self.patient_user.roles, "read:patient_data")
             is False
         )
+        assert self.rbac_service.check_permission(self.patient_user.roles, "manage:users") is False
         assert (
-            self.rbac_service.check_permission(
-                self.patient_user.roles, "read:patient_data"
-            )
-            is False
-        )
-        assert (
-            self.rbac_service.check_permission(self.patient_user.roles, "manage:users")
-            is False
-        )
-        assert (
-            self.rbac_service.check_permission(
-                self.patient_user.roles, "access_anonymized_data"
-            )
+            self.rbac_service.check_permission(self.patient_user.roles, "access_anonymized_data")
             is False
         )
 
@@ -171,9 +129,7 @@ class TestRoleBasedAccessControl:
         """Test permission check for researcher role."""
         # Researcher should have read access to anonymized data
         assert (
-            self.rbac_service.check_permission(
-                self.researcher_user.roles, "read:anonymized_data"
-            )
+            self.rbac_service.check_permission(self.researcher_user.roles, "read:anonymized_data")
             is True
         )
         # Assuming researchers can also read their own data if applicable permission exists
@@ -181,49 +137,34 @@ class TestRoleBasedAccessControl:
 
         # Researcher should not have access to identifiable patient data or admin functions
         assert (
-            self.rbac_service.check_permission(
-                self.researcher_user.roles, "read:patient_data"
-            )
+            self.rbac_service.check_permission(self.researcher_user.roles, "read:patient_data")
             is False
         )
         assert (
-            self.rbac_service.check_permission(
-                self.researcher_user.roles, "update:patient_data"
-            )
+            self.rbac_service.check_permission(self.researcher_user.roles, "update:patient_data")
             is False
         )
         assert (
-            self.rbac_service.check_permission(
-                self.researcher_user.roles, "manage:users"
-            )
-            is False
+            self.rbac_service.check_permission(self.researcher_user.roles, "manage:users") is False
         )
 
     def test_check_permission_nonexistent_permission(self):
         """Test checking for a non-existent permission."""
         # No role should have a non-existent permission
         assert (
-            self.rbac_service.check_permission(
-                self.admin_user.roles, "nonexistent:permission"
-            )
+            self.rbac_service.check_permission(self.admin_user.roles, "nonexistent:permission")
             is False
         )
         assert (
-            self.rbac_service.check_permission(
-                self.clinician_user.roles, "nonexistent:permission"
-            )
+            self.rbac_service.check_permission(self.clinician_user.roles, "nonexistent:permission")
             is False
         )
         assert (
-            self.rbac_service.check_permission(
-                self.patient_user.roles, "nonexistent:permission"
-            )
+            self.rbac_service.check_permission(self.patient_user.roles, "nonexistent:permission")
             is False
         )
         assert (
-            self.rbac_service.check_permission(
-                self.researcher_user.roles, "nonexistent:permission"
-            )
+            self.rbac_service.check_permission(self.researcher_user.roles, "nonexistent:permission")
             is False
         )
 
@@ -256,28 +197,20 @@ class TestRoleBasedAccessControl:
             }
             # Admin should have the custom permission
             assert (
-                self.rbac_service.check_permission(
-                    self.admin_user.roles, "custom:permission"
-                )
+                self.rbac_service.check_permission(self.admin_user.roles, "custom:permission")
                 is True
             )
             # Other roles should not have the custom permission
             assert (
-                self.rbac_service.check_permission(
-                    self.clinician_user.roles, "custom:permission"
-                )
+                self.rbac_service.check_permission(self.clinician_user.roles, "custom:permission")
                 is False
             )
             assert (
-                self.rbac_service.check_permission(
-                    self.patient_user.roles, "custom:permission"
-                )
+                self.rbac_service.check_permission(self.patient_user.roles, "custom:permission")
                 is False
             )
             assert (
-                self.rbac_service.check_permission(
-                    self.researcher_user.roles, "custom:permission"
-                )
+                self.rbac_service.check_permission(self.researcher_user.roles, "custom:permission")
                 is False
             )
         finally:

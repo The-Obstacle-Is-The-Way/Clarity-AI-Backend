@@ -268,9 +268,7 @@ async def test_login_success(
 
     # Assert
     assert response.status_code == status.HTTP_200_OK
-    mock_auth_service.authenticate_user.assert_called_once_with(
-        "testuser", "testpassword"
-    )
+    mock_auth_service.authenticate_user.assert_called_once_with("testuser", "testpassword")
 
     # Check token creation was called - don't compare User objects directly due to datetime differences
     mock_auth_service.create_token_pair.assert_called_once()
@@ -320,9 +318,7 @@ async def test_login_invalid_credentials(
 
     # Assert
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    mock_auth_service.authenticate_user.assert_called_once_with(
-        "wronguser", "wrongpass"
-    )
+    mock_auth_service.authenticate_user.assert_called_once_with("wronguser", "wrongpass")
     assert "detail" in response.json()
     assert response.json()["detail"] == "Invalid credentials"
 
@@ -347,9 +343,7 @@ async def test_login_inactive_account(
 
     # Assert
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    mock_auth_service.authenticate_user.assert_called_once_with(
-        "inactive", "testpassword"
-    )
+    mock_auth_service.authenticate_user.assert_called_once_with("inactive", "testpassword")
     assert "detail" in response.json()
     assert response.json()["detail"] == "Account is inactive"
 
@@ -401,9 +395,7 @@ async def test_refresh_token_invalid(
     refresh_data = {"refresh_token": "invalid_refresh_token"}
 
     # Configure the refresh_access_token method to raise an exception
-    mock_auth_service.refresh_access_token.side_effect = InvalidTokenError(
-        "Invalid refresh token"
-    )
+    mock_auth_service.refresh_access_token.side_effect = InvalidTokenError("Invalid refresh token")
 
     # Act
     response = client.post("/api/v1/auth/refresh", json=refresh_data)
@@ -418,9 +410,7 @@ async def test_refresh_token_invalid(
 
 
 @pytest.mark.asyncio
-async def test_session_info(
-    client: TestClient, mock_dependencies: None, setup_database
-) -> None:
+async def test_session_info(client: TestClient, mock_dependencies: None, setup_database) -> None:
     """Test getting session info for an authenticated user."""
     # Act
     response = client.get("/api/v1/auth/session-info")

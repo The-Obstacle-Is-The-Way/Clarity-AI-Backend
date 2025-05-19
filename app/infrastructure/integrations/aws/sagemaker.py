@@ -53,13 +53,9 @@ class SageMakerEndpoint:
         self.endpoint_name = endpoint_name
         self.content_type = content_type
         self.accept_type = accept_type
-        self._client = client or boto3.client(
-            "sagemaker-runtime", region_name=region_name
-        )
+        self._client = client or boto3.client("sagemaker-runtime", region_name=region_name)
 
-    def invoke(
-        self, input_data: dict[str, Any] | list[Any] | str | bytes
-    ) -> dict[str, Any]:
+    def invoke(self, input_data: dict[str, Any] | list[Any] | str | bytes) -> dict[str, Any]:
         """
         Invoke the SageMaker endpoint with input data.
 
@@ -131,9 +127,7 @@ class SageMakerEndpoint:
                 cause=str(e),
             )
 
-    def _serialize_input(
-        self, input_data: dict[str, Any] | list[Any] | str | bytes
-    ) -> bytes:
+    def _serialize_input(self, input_data: dict[str, Any] | list[Any] | str | bytes) -> bytes:
         """
         Serialize input data to the appropriate format.
 

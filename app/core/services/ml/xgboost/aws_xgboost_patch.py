@@ -99,9 +99,7 @@ async def predict_risk(
     # Check for PHI in clinical data
     has_phi, phi_fields = self._check_phi_in_data(clinical_data)
     if has_phi:
-        raise DataPrivacyError(
-            "Potential PHI detected in input data", phi_fields=phi_fields
-        )
+        raise DataPrivacyError("Potential PHI detected in input data", phi_fields=phi_fields)
 
     # Map risk type to model endpoint
     model_type = f"risk-{risk_type}"
@@ -169,9 +167,7 @@ def _check_phi_in_data(self, data: dict[str, Any]) -> tuple[bool, list[str]]:
     return bool(phi_fields), phi_fields
 
 
-async def _invoke_endpoint(
-    self, endpoint_name: str, payload: dict[str, Any]
-) -> dict[str, Any]:
+async def _invoke_endpoint(self, endpoint_name: str, payload: dict[str, Any]) -> dict[str, Any]:
     """
     Invoke a SageMaker endpoint with the provided payload.
 
@@ -229,9 +225,7 @@ async def healthcheck(self) -> dict[str, Any]:
         # Check S3 bucket
         try:
             bucket_exists = self._s3.check_bucket_exists(self._bucket_name)
-            health_status["components"]["s3"]["status"] = (
-                "healthy" if bucket_exists else "degraded"
-            )
+            health_status["components"]["s3"]["status"] = "healthy" if bucket_exists else "degraded"
             if not bucket_exists:
                 health_status["status"] = "degraded"
                 health_status["message"] = f"S3 bucket {self._bucket_name} not found"

@@ -136,9 +136,7 @@ class ClinicalDocumentationService:
 
         # Use template content if none provided
         if content is None:
-            content = self._note_templates.get(
-                note_type, "# CLINICAL NOTE\n\n## CONTENT\n\n"
-            )
+            content = self._note_templates.get(note_type, "# CLINICAL NOTE\n\n## CONTENT\n\n")
 
         # Create clinical note
         note = ClinicalNote(
@@ -361,9 +359,7 @@ class ClinicalDocumentationService:
         # Save to repository
         return await self._note_repo.update(note)
 
-    async def create_new_version(
-        self, note_id: UUID, provider_id: UUID
-    ) -> ClinicalNote:
+    async def create_new_version(self, note_id: UUID, provider_id: UUID) -> ClinicalNote:
         """
         Create a new version of a clinical note
 
@@ -385,9 +381,7 @@ class ClinicalDocumentationService:
 
         # Check authorization
         if note.provider_id != provider_id:
-            raise UnauthorizedAccessError(
-                "Only the note's provider can create a new version"
-            )
+            raise UnauthorizedAccessError("Only the note's provider can create a new version")
 
         # Create new version
         new_note = note.create_new_version()

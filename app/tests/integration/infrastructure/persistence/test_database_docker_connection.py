@@ -128,9 +128,7 @@ class DatabaseConnectionValidator:
             # Create table in a transaction
             async with self._engine.begin() as conn:
                 await conn.run_sync(
-                    lambda sync_conn: metadata.create_all(
-                        sync_conn, tables=[test_table]
-                    )
+                    lambda sync_conn: metadata.create_all(sync_conn, tables=[test_table])
                 )
 
                 # Insert test data

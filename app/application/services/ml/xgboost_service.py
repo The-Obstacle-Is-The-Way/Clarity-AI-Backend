@@ -25,9 +25,7 @@ class XGBoostService(XGBoostInterface):
         """Initialize the XGBoost service with necessary dependencies."""
         super().__init__()
 
-    async def predict_risk(
-        self, patient_id: UUID, features: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def predict_risk(self, patient_id: UUID, features: dict[str, Any]) -> dict[str, Any]:
         """
         Predict risk factors for a patient using XGBoost models.
 
