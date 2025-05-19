@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from app.core.exceptions import ApplicationError, ErrorCode
+from app.core.interfaces.services.alert_rule_service_interface import AlertRuleServiceInterface
 from app.domain.entities.biometric_alert_rule import (
     AlertPriority,
     BiometricAlertRule,
@@ -27,7 +28,7 @@ from app.domain.repositories.biometric_alert_template_repository import (
 logger = logging.getLogger(__name__)
 
 
-class BiometricAlertRuleService:
+class BiometricAlertRuleService(AlertRuleServiceInterface):
     """
     Service for managing biometric alert rules.
     
@@ -54,8 +55,8 @@ class BiometricAlertRuleService:
         self, 
         template_id: UUID, 
         patient_id: UUID, 
-        custom_overrides: dict[str, Any]
-    ) -> BiometricAlertRule:
+        custom_overrides: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Create a new alert rule based on a template with custom overrides.
         
@@ -123,7 +124,7 @@ class BiometricAlertRuleService:
             # Save to repository
             created_rule = await self.rule_repository.save(rule)
             logger.info(f"Created rule {created_rule.id} from template {template_id}")
-            return created_rule
+            return self._to_dict(created_rule)
             
         except Exception as e:
             logger.error(f"Failed to create rule from template: {str(e)}")
@@ -132,7 +133,7 @@ class BiometricAlertRuleService:
                 message=f"Failed to create rule from template: {str(e)}"
             )
 
-    async def create_rule(self, rule_data: dict[str, Any]) -> BiometricAlertRule:
+    async def create_rule(self, rule_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Create a new alert rule from raw data.
         
@@ -234,7 +235,7 @@ class BiometricAlertRuleService:
             # Save to repository
             created_rule = await self.rule_repository.save(rule)
             logger.info(f"Created rule {created_rule.id}")
-            return created_rule
+            return self._to_dict(created_rule)
             
         except ApplicationError:
             # Re-raise application errors
@@ -246,7 +247,7 @@ class BiometricAlertRuleService:
                 message=f"Failed to create rule: {str(e)}"
             )
 
-    async def get_rule_by_id(self, rule_id: UUID) -> BiometricAlertRule | None:
+    async def get_rule_by_id(self, rule_id: UUID) -> Optional[Dict[str, Any]]:
         """
         Get a rule by its ID.
         
@@ -262,7 +263,10 @@ class BiometricAlertRuleService:
         logger.info(f"Getting rule {rule_id}")
         
         try:
-            return await self.rule_repository.get_by_id(rule_id)
+            rule = await self.rule_repository.get_by_id(rule_id)
+            if rule:
+                return self._to_dict(rule)
+            return None
         except Exception as e:
             logger.error(f"Failed to get rule {rule_id}: {str(e)}")
             raise ApplicationError(
@@ -272,11 +276,11 @@ class BiometricAlertRuleService:
 
     async def get_rules(
         self, 
-        patient_id: UUID | None = None, 
-        is_active: bool | None = None, 
+        patient_id: Optional[UUID] = None, 
+        is_active: Optional[bool] = None, 
         skip: int = 0, 
         limit: int = 100
-    ) -> list[BiometricAlertRule]:
+    ) -> List[Dict[str, Any]]:
         """
         Get rules with optional filtering.
         
@@ -296,10 +300,11 @@ class BiometricAlertRuleService:
         
         try:
             # Use the repository's get_rules method with filters
-            return await self.rule_repository.get_rules(
+            rules = await self.rule_repository.get_rules(
                 patient_id=patient_id,
                 is_active=is_active
             )
+            return [self._to_dict(rule) for rule in rules]
         except Exception as e:
             logger.error(f"Failed to get rules: {str(e)}")
             raise ApplicationError(
@@ -310,8 +315,8 @@ class BiometricAlertRuleService:
     async def update_rule(
         self, 
         rule_id: UUID, 
-        update_data: dict[str, Any]
-    ) -> BiometricAlertRule | None:
+        update_data: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         """
         Update an existing rule.
         
@@ -403,7 +408,7 @@ class BiometricAlertRuleService:
             # Save updated rule
             updated_rule = await self.rule_repository.save(existing_rule)
             logger.info(f"Updated rule {rule_id}")
-            return updated_rule
+            return self._to_dict(updated_rule)
             
         except ValueError as e:
             logger.error(f"Validation error updating rule: {str(e)}")
@@ -467,7 +472,7 @@ class BiometricAlertRuleService:
                 message=f"Failed to update rule active status: {str(e)}"
             )
             
-    async def count_patient_rules(self, patient_id: UUID, is_active: bool | None = None) -> int:
+    async def count_patient_rules(self, patient_id: UUID, is_active: Optional[bool] = None) -> int:
         """
         Count rules for a patient, optionally filtering by active status.
         
@@ -501,3 +506,26 @@ class BiometricAlertRuleService:
                 code=ErrorCode.INTERNAL_ERROR,
                 message=f"Failed to count rules: {str(e)}"
             )
+            
+    def _to_dict(self, entity: Any) -> Dict[str, Any]:
+        """
+        Convert an entity to a dictionary.
+        
+        Args:
+            entity: Entity to convert
+            
+        Returns:
+            Dictionary representation of the entity
+        """
+        if hasattr(entity, "model_dump"):
+            # For pydantic v2 models (preferred)
+            return entity.model_dump()
+        elif hasattr(entity, "dict"):
+            # For older pydantic v1 models (backward compatibility)
+            return entity.dict()
+        elif hasattr(entity, "__dict__"):
+            # For regular classes
+            return {k: v for k, v in entity.__dict__.items() if not k.startswith("_")}
+        else:
+            # For dictionary-like objects
+            return dict(entity)

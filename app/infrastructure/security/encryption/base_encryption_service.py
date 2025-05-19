@@ -356,7 +356,7 @@ class BaseEncryptionService:
                     # Try to convert to JSON if possible (e.g., for Pydantic models)
                     if hasattr(value, 'model_dump'):
                         # Use model_dump for Pydantic v2 models
-                        str_value = json.dumps(value.model_dump())
+                        str_value = json.dumps(value.model_dump() if hasattr(value, "model_dump") else value.dict())
                     elif hasattr(value, 'dict'):
                         # Fallback for Pydantic v1 models or custom objects
                         str_value = json.dumps(value.dict())

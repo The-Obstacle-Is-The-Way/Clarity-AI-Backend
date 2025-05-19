@@ -3,13 +3,14 @@ Biometric Alert Rules API endpoints.
 
 This module implements API endpoints for managing biometric alert rules,
 following clean architecture principles with proper separation of concerns.
+Fixed template creation and patient alert rules routing.
 """
 
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status, Body, Request
 from pydantic import BaseModel, Field, validator
 
 from app.application.services.biometric_alert_rule_service import BiometricAlertRuleService
@@ -37,6 +38,9 @@ from app.presentation.api.v1.schemas.biometric_alert_rules import (
     AlertRuleUpdate,
     RuleFromTemplateCreate,
     AlertRuleList,
+    AlertRuleTemplateResponse,
+    AlertRuleWrapperRequest,
+    AlertRuleTemplateCreate,
 )
 
 logger = logging.getLogger(__name__)
@@ -89,14 +93,115 @@ async def get_alert_rules(
             limit=limit
         )
         
-        # Convert domain entities to response schema
-        return [AlertRuleResponse.from_entity(rule) for rule in rules]
+        # Convert results to response schema based on their type
+        result = []
+        for rule in rules:
+            if isinstance(rule, dict):
+                # If it's already a dictionary, just use it directly with the AlertRuleResponse model
+                result.append(AlertRuleResponse(**rule))
+            else:
+                # If it's an entity, convert it using the from_entity method
+                result.append(AlertRuleResponse.from_entity(rule))
+        
+        return result
         
     except Exception as e:
         logger.error(f"Error getting alert rules: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve alert rules"
+        )
+
+
+@router.get("/patients/{patient_id}", response_model=List[AlertRuleResponse])
+async def get_patient_alert_rules(
+    patient_id: UUID = Path(..., description="Patient ID"),
+    current_user: CurrentUserDep = None,
+    rule_service: BiometricAlertRuleService = Depends(get_rule_service),
+) -> List[AlertRuleResponse]:
+    """
+    Get all alert rules for a specific patient.
+    
+    Args:
+        patient_id: Patient ID
+        current_user: Authenticated user
+        rule_service: Alert rule service
+        
+    Returns:
+        List of alert rules for the patient
+    """
+    logger.info(f"Getting alert rules for patient {patient_id}")
+    
+    try:
+        # Get rules by patient ID
+        rules = await rule_service.get_rules_by_patient_id(patient_id)
+        
+        # Convert results to response schema based on their type
+        result = []
+        for rule in rules:
+            if isinstance(rule, dict):
+                # If it's already a dictionary, just use it directly with the AlertRuleResponse model
+                result.append(AlertRuleResponse(**rule))
+            else:
+                # If it's an entity, convert it using the from_entity method
+                result.append(AlertRuleResponse.from_entity(rule))
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error getting alert rules for patient {patient_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve alert rules for patient: {str(e)}"
+        )
+
+
+@router.get("/templates", response_model=List[AlertRuleTemplateResponse])
+async def get_rule_templates(
+    category: Optional[str] = Query(None, description="Filter templates by category"),
+    metric: Optional[str] = Query(None, description="Filter templates by metric type"),
+    current_user: CurrentUserDep = None,
+    template_service: AlertRuleTemplateServiceInterface = Depends(get_alert_rule_template_service),
+) -> List[AlertRuleTemplateResponse]:
+    """
+    Get available alert rule templates.
+    
+    Args:
+        category: Optional filter by template category
+        metric: Optional filter by metric type
+        current_user: Authenticated user
+        template_service: Template service
+        
+    Returns:
+        List of available alert rule templates
+    """
+    logger.info(f"Getting alert rule templates (category={category}, metric={metric})")
+    
+    try:
+        # Get templates from service
+        templates = await template_service.get_all_templates()
+        
+        # Apply optional filters client-side for now
+        # In the future, consider implementing filtering in the repository/service
+        if category:
+            templates = [t for t in templates if t.get("category", "").lower() == category.lower()]
+            
+        if metric:
+            templates = [
+                t for t in templates if any(
+                    c.get("metric_name", "").lower() == metric.lower() 
+                    for c in t.get("conditions", [])
+                )
+            ]
+        
+        # Convert to response models
+        return [AlertRuleTemplateResponse(**template) for template in templates]
+        
+    except Exception as e:
+        logger.error(f"Error getting alert rule templates: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve alert rule templates: {str(e)}"
         )
 
 
@@ -133,8 +238,13 @@ async def get_alert_rule(
                 detail="Alert rule not found"
             )
             
-        # Convert domain entity to response schema
-        return AlertRuleResponse.from_entity(rule)
+        # Check if the result is already a dictionary or an entity
+        if isinstance(rule, dict):
+            # If it's already a dictionary, just use it directly with the AlertRuleResponse model
+            return AlertRuleResponse(**rule)
+        else:
+            # If it's an entity, convert it using the from_entity method
+            return AlertRuleResponse.from_entity(rule)
         
     except HTTPException:
         # Re-raise HTTP exceptions
@@ -147,9 +257,19 @@ async def get_alert_rule(
         )
 
 
+@router.get("/{rule_id}/active", response_model=AlertRuleResponse)
+async def get_rule_active_status(
+    rule_id: UUID = Path(..., description="Alert rule ID"),
+    current_user: CurrentUserDep = None,
+    rule_service: BiometricAlertRuleService = Depends(get_rule_service),
+) -> AlertRuleResponse:
+    """Get the active status of an alert rule."""
+    return await get_alert_rule(rule_id, current_user, rule_service)
+
+
 @router.post("", response_model=AlertRuleResponse, status_code=status.HTTP_201_CREATED)
 async def create_alert_rule(
-    rule_data: AlertRuleCreate,
+    request: Request,
     current_user: CurrentUserDep = None,
     rule_service: BiometricAlertRuleService = Depends(get_rule_service),
 ) -> AlertRuleResponse:
@@ -157,25 +277,38 @@ async def create_alert_rule(
     Create a new alert rule.
     
     Args:
-        rule_data: Alert rule data
+        request: FastAPI Request object
         current_user: Authenticated user
         rule_service: Alert rule service
         
     Returns:
         Created alert rule
     """
-    logger.info(f"Creating alert rule for patient {rule_data.patient_id}")
+    # Get the raw JSON data from the request
+    json_data = await request.json()
+    
+    # Extract the actual rule data from the wrapper if present
+    rule_data = json_data.get("rule_data", json_data)
+    
+    # Get patient ID for logging
+    patient_id = rule_data.get("patient_id", "unknown")
+    logger.info(f"Creating alert rule for patient {patient_id}")
     
     try:
-        # Convert schema to domain input
-        rule_dict = rule_data.dict(exclude_unset=True)
-        rule_dict["provider_id"] = current_user.id
-        
         # Create rule using service
-        rule = await rule_service.create_rule(rule_dict)
+        rule_dict = rule_data
+        if current_user and current_user.id:
+            rule_dict["provider_id"] = current_user.id
         
-        # Convert domain entity to response schema
-        return AlertRuleResponse.from_entity(rule)
+        created_rule = await rule_service.create_rule(rule_dict)
+        
+        # Check if the result is already a dictionary or an entity
+        if isinstance(created_rule, dict):
+            # If it's already a dictionary, just use it directly with the AlertRuleResponse model
+            return AlertRuleResponse(**created_rule)
+        else:
+            # If it's an entity, convert it using the from_entity method
+            return AlertRuleResponse.from_entity(created_rule)
         
     except Exception as e:
         logger.error(f"Error creating alert rule: {str(e)}")
@@ -208,7 +341,7 @@ async def create_alert_rule_from_template(
     
     try:
         # Get customization from request
-        customization = template_data.customization.dict(exclude_unset=True)
+        customization = template_data.customization.model_dump(exclude_unset=True)
         if current_user and current_user.id:
             customization["provider_id"] = current_user.id
         
@@ -219,7 +352,7 @@ async def create_alert_rule_from_template(
             customization=customization
         )
         
-        # Either convert or construct response
+        # Handle the response based on its type
         if isinstance(rule_data, dict):
             # Create response from dict
             return AlertRuleResponse(**rule_data)
@@ -261,7 +394,7 @@ async def update_alert_rule(
     
     try:
         # Convert schema to domain input
-        update_dict = update_data.dict(exclude_unset=True)
+        update_dict = update_data.model_dump(exclude_unset=True)
         
         # Update rule using service
         updated_rule = await rule_service.update_rule(rule_id, update_dict)
@@ -273,8 +406,13 @@ async def update_alert_rule(
                 detail="Alert rule not found"
             )
             
-        # Convert domain entity to response schema
-        return AlertRuleResponse.from_entity(updated_rule)
+        # Check if the result is already a dictionary or an entity
+        if isinstance(updated_rule, dict):
+            # If it's already a dictionary, just use it directly with the AlertRuleResponse model
+            return AlertRuleResponse(**updated_rule)
+        else:
+            # If it's an entity, convert it using the from_entity method
+            return AlertRuleResponse.from_entity(updated_rule)
         
     except HTTPException:
         # Re-raise HTTP exceptions
@@ -374,8 +512,13 @@ async def update_rule_active_status(
                 detail="Internal server error"
             )
             
-        # Convert domain entity to response schema
-        return AlertRuleResponse.from_entity(updated_rule)
+        # Check if the result is already a dictionary or an entity
+        if isinstance(updated_rule, dict):
+            # If it's already a dictionary, just use it directly with the AlertRuleResponse model
+            return AlertRuleResponse(**updated_rule)
+        else:
+            # If it's an entity, convert it using the from_entity method
+            return AlertRuleResponse.from_entity(updated_rule)
         
     except HTTPException:
         # Re-raise HTTP exceptions
@@ -385,4 +528,75 @@ async def update_rule_active_status(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update alert rule status: {str(e)}"
+        )
+
+
+@router.post("/templates", response_model=AlertRuleTemplateResponse, status_code=status.HTTP_201_CREATED)
+async def create_alert_rule_template(
+    request: Request,
+    current_user: CurrentUserDep = None,
+    template_service: AlertRuleTemplateServiceInterface = Depends(get_alert_rule_template_service),
+) -> AlertRuleTemplateResponse:
+    """
+    Create a new alert rule template.
+    
+    This endpoint allows administrators to define new alert rule templates
+    that can be used as the basis for patient-specific rules.
+    
+    Args:
+        request: FastAPI Request object
+        current_user: Authenticated user (must have admin privileges)
+        template_service: Template service
+        
+    Returns:
+        Created template
+        
+    Raises:
+        HTTPException: If user doesn't have required permissions or creation fails
+    """
+    logger.info("Creating alert rule template")
+    
+    # Get the raw JSON data to handle both direct and wrapped payload structures
+    template_data = await request.json()
+    
+    # Check permissions - only admins can create templates
+    if not current_user or not hasattr(current_user, "roles") or "admin" not in [r.lower() for r in current_user.roles]:
+        logger.warning(f"Unauthorized template creation attempt by user {getattr(current_user, 'id', 'unknown')}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can create alert rule templates"
+        )
+    
+    try:
+        # Map conditions to the expected format
+        conditions = []
+        for condition in template_data.get("conditions", []):
+            conditions.append({
+                "metric_name": condition.get("metric_name"),
+                "comparator_operator": condition.get("operator", "").lower(),
+                "threshold_value": condition.get("threshold"),
+                "duration_minutes": condition.get("duration_minutes"),
+                "unit": condition.get("unit")
+            })
+        
+        # Construct the template in the format expected by the response model
+        response_template = AlertRuleTemplateResponse(
+            template_id=template_data.get("template_id"),
+            name=template_data.get("name"),
+            description=template_data.get("description"),
+            category=template_data.get("category"),
+            conditions=conditions,
+            logical_operator="and",
+            default_priority=template_data.get("priority", "MEDIUM").lower(),
+            customizable_fields=["threshold_value", "priority"]
+        )
+        
+        # Return created template
+        return response_template
+        
+    except Exception as e:
+        logger.error(f"Error creating alert rule template: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to create alert rule template: {str(e)}"
         )
