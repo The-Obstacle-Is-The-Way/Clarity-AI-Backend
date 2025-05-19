@@ -228,24 +228,45 @@ import pytest
 from unittest.mock import MagicMock, AsyncMock
 from datetime import datetime
 import asyncio
+import pytest_asyncio
+from typing import AsyncGenerator, Generator
 
+# Export these at module level for test modules to import directly
+from app.core.config.settings import get_settings, Settings
+from app.infrastructure.logging.logger import get_logger
 
 # ---------------------------------------------------------------------------
 # "event_loop" - global fixture for asyncio tests to prevent redefinition warnings
 # ---------------------------------------------------------------------------
 
-@pytest.fixture(scope="function")
-def event_loop():
+@pytest.fixture(scope="session")
+def event_loop_policy() -> asyncio.AbstractEventLoopPolicy:
     """
-    Yield a fresh event loop for each test case.
+    Fixture to create a custom event loop policy.
     
-    This is a global fixture to prevent multiple redefinitions that cause
-    deprecation warnings from pytest-asyncio.
+    This is the recommended approach in pytest-asyncio docs to handle the
+    event_loop fixture deprecation warnings.
+    
+    Returns:
+        asyncio.AbstractEventLoopPolicy: The custom event loop policy.
     """
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    yield loop
-    loop.close()
+    # For most platforms, we want to use the default policy
+    # But this approach allows for platform-specific customization if needed
+    return asyncio.get_event_loop_policy()
+
+@pytest_asyncio.fixture
+async def async_client_session() -> AsyncGenerator:
+    """
+    Create a test async client session for API tests.
+    
+    Returns:
+        AsyncGenerator yielding the test session
+    """
+    from httpx import AsyncClient
+    from app.main import app
+    
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        yield client
 
 
 # ---------------------------------------------------------------------------
