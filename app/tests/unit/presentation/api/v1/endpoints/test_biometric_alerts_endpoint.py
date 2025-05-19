@@ -59,6 +59,8 @@ from app.presentation.api.dependencies.biometric_alert import (
 from app.presentation.api.dependencies.auth import get_current_user, get_current_active_user, get_jwt_service as get_jwt_service_dependency, get_auth_service as get_auth_service_dependency
 from app.presentation.api.v1.dependencies.biometric import get_alert_service as get_alert_service_dependency, get_biometric_rule_repository
 from app.infrastructure.di.container import get_container, reset_container, DIContainer
+from app.core.interfaces.services.alert_rule_template_service_interface import AlertRuleTemplateServiceInterface
+from app.application.services.alert_rule_template_service_mock import MockAlertRuleTemplateService
 
 # Attempt to import infrastructure implementations for more realistic mocking specs
 # Fallback to basic AsyncMock if infrastructure layer is not available
@@ -906,7 +908,8 @@ class TestBiometricAlertsEndpoints:
     async def test_get_rule_templates(
         self,
         client: AsyncClient,
-        get_valid_provider_auth_headers: dict[str, str]
+        get_valid_provider_auth_headers: dict[str, str],
+        app_with_mock_template_service
     ) -> None:
         # Remove skip decorator
         # pytest.skip("Skipping test until AlertRuleTemplateService is implemented") # MOVED TO TOP
@@ -915,6 +918,11 @@ class TestBiometricAlertsEndpoints:
             "/api/v1/biometric-alert-rules/templates",
             headers=headers
         )
+        # Print response details for debugging
+        print(f"Response status: {response.status_code}")
+        print(f"Response headers: {response.headers}")
+        print(f"Response text: {response.text}")
+        
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
@@ -1351,7 +1359,8 @@ class TestBiometricAlertsEndpoints:
     async def test_create_alert_rule_template(
         self,
         client: AsyncClient,
-        get_valid_provider_auth_headers: dict[str, str]
+        get_valid_provider_auth_headers: dict[str, str],
+        app_with_mock_template_service
     ) -> None:
         # Remove skip decorator
         # pytest.skip("Skipping test until AlertRuleTemplateService is implemented") # MOVED TO TOP
@@ -1364,22 +1373,20 @@ class TestBiometricAlertsEndpoints:
             "conditions": [
                 {
                     "metric_name": "heart_rate",
-                    "comparator_operator": "greater_than",
-                    "threshold_value": 100.0,
-                    "duration_minutes": 5
+                    "operator": "GREATER_THAN",
+                    "threshold": 100,
+                    "unit": "bpm"
                 }
             ],
-            "logical_operator": "and",
-            "default_priority": "warning",
-            "customizable_fields": ["threshold_value", "priority"]
+            "priority": "MEDIUM"
         }
+        
         response = await client.post(
             "/api/v1/biometric-alert-rules/templates",
             headers=headers,
             json=payload
         )
         assert response.status_code == 201
-        # pytest.skip("Skipping test until AlertRuleTemplateService is implemented") # Original position
 
     @pytest.mark.asyncio
     async def test_update_alert_status_unauthorized(
@@ -1606,3 +1613,28 @@ class TestBiometricAlertsEndpoints:
             source_data={"anxiety_level": 8, "reported_by": "provider"},
             metadata={"manually_triggered_by": ANY}
         )
+
+@pytest_asyncio.fixture
+async def app_with_mock_template_service(test_app: Tuple[FastAPI, AsyncClient]) -> AsyncGenerator[None, None]:
+    """Setup a mock template service for testing."""
+    
+    # Unpack the test_app tuple
+    app, _ = test_app
+    
+    # Create mock service
+    mock_template_service = MockAlertRuleTemplateService()
+    
+    # Override the dependency
+    from app.presentation.api.v1.dependencies.biometric import get_alert_rule_template_service
+    
+    # Store original
+    original_get_template_service = get_alert_rule_template_service
+    
+    # Replace with mock
+    app.dependency_overrides[get_alert_rule_template_service] = lambda: mock_template_service
+    
+    yield
+    
+    # Restore original
+    if get_alert_rule_template_service in app.dependency_overrides:
+        del app.dependency_overrides[get_alert_rule_template_service]

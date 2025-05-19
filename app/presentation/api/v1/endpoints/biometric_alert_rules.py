@@ -111,6 +111,98 @@ async def get_alert_rules(
         )
 
 
+@router.get("/patients/{patient_id}", response_model=List[AlertRuleResponse])
+async def get_patient_alert_rules(
+    patient_id: UUID = Path(..., description="Patient ID"),
+    current_user: CurrentUserDep = None,
+    rule_service: BiometricAlertRuleService = Depends(get_rule_service),
+) -> List[AlertRuleResponse]:
+    """
+    Get all alert rules for a specific patient.
+    
+    Args:
+        patient_id: Patient ID
+        current_user: Authenticated user
+        rule_service: Alert rule service
+        
+    Returns:
+        List of alert rules for the patient
+    """
+    logger.info(f"Getting alert rules for patient {patient_id}")
+    
+    try:
+        # Get rules by patient ID
+        rules = await rule_service.get_rules_by_patient_id(patient_id)
+        
+        # Convert results to response schema based on their type
+        result = []
+        for rule in rules:
+            if isinstance(rule, dict):
+                # If it's already a dictionary, just use it directly with the AlertRuleResponse model
+                result.append(AlertRuleResponse(**rule))
+            else:
+                # If it's an entity, convert it using the from_entity method
+                result.append(AlertRuleResponse.from_entity(rule))
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error getting alert rules for patient {patient_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve alert rules for patient: {str(e)}"
+        )
+
+
+@router.get("/templates", response_model=List[AlertRuleTemplateResponse])
+async def get_rule_templates(
+    category: Optional[str] = Query(None, description="Filter templates by category"),
+    metric: Optional[str] = Query(None, description="Filter templates by metric type"),
+    current_user: CurrentUserDep = None,
+    template_service: AlertRuleTemplateServiceInterface = Depends(get_alert_rule_template_service),
+) -> List[AlertRuleTemplateResponse]:
+    """
+    Get available alert rule templates.
+    
+    Args:
+        category: Optional filter by template category
+        metric: Optional filter by metric type
+        current_user: Authenticated user
+        template_service: Template service
+        
+    Returns:
+        List of available alert rule templates
+    """
+    logger.info(f"Getting alert rule templates (category={category}, metric={metric})")
+    
+    try:
+        # Get templates from service
+        templates = await template_service.get_all_templates()
+        
+        # Apply optional filters client-side for now
+        # In the future, consider implementing filtering in the repository/service
+        if category:
+            templates = [t for t in templates if t.get("category", "").lower() == category.lower()]
+            
+        if metric:
+            templates = [
+                t for t in templates if any(
+                    c.get("metric_name", "").lower() == metric.lower() 
+                    for c in t.get("conditions", [])
+                )
+            ]
+        
+        # Convert to response models
+        return [AlertRuleTemplateResponse(**template) for template in templates]
+        
+    except Exception as e:
+        logger.error(f"Error getting alert rule templates: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve alert rule templates: {str(e)}"
+        )
+
+
 @router.get("/{rule_id}", response_model=AlertRuleResponse)
 async def get_alert_rule(
     rule_id: UUID = Path(..., description="Alert rule ID"),
@@ -171,49 +263,6 @@ async def get_rule_active_status(
 ) -> AlertRuleResponse:
     """Get the active status of an alert rule."""
     return await get_alert_rule(rule_id, current_user, rule_service)
-
-
-@router.get("/patients/{patient_id}", response_model=List[AlertRuleResponse])
-async def get_patient_alert_rules(
-    patient_id: UUID = Path(..., description="Patient ID"),
-    current_user: CurrentUserDep = None,
-    rule_service: BiometricAlertRuleService = Depends(get_rule_service),
-) -> List[AlertRuleResponse]:
-    """
-    Get all alert rules for a specific patient.
-    
-    Args:
-        patient_id: Patient ID
-        current_user: Authenticated user
-        rule_service: Alert rule service
-        
-    Returns:
-        List of alert rules for the patient
-    """
-    logger.info(f"Getting alert rules for patient {patient_id}")
-    
-    try:
-        # Get rules by patient ID
-        rules = await rule_service.get_rules_by_patient_id(patient_id)
-        
-        # Convert results to response schema based on their type
-        result = []
-        for rule in rules:
-            if isinstance(rule, dict):
-                # If it's already a dictionary, just use it directly with the AlertRuleResponse model
-                result.append(AlertRuleResponse(**rule))
-            else:
-                # If it's an entity, convert it using the from_entity method
-                result.append(AlertRuleResponse.from_entity(rule))
-        
-        return result
-        
-    except Exception as e:
-        logger.error(f"Error getting alert rules for patient {patient_id}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve alert rules for patient: {str(e)}"
-        )
 
 
 @router.post("", response_model=AlertRuleResponse, status_code=status.HTTP_201_CREATED)
@@ -477,55 +526,6 @@ async def update_rule_active_status(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update alert rule status: {str(e)}"
-        )
-
-
-@router.get("/templates", response_model=List[AlertRuleTemplateResponse])
-async def get_rule_templates(
-    category: Optional[str] = Query(None, description="Filter templates by category"),
-    metric: Optional[str] = Query(None, description="Filter templates by metric type"),
-    current_user: CurrentUserDep = None,
-    template_service: AlertRuleTemplateServiceInterface = Depends(get_alert_rule_template_service),
-) -> List[AlertRuleTemplateResponse]:
-    """
-    Get available alert rule templates.
-    
-    Args:
-        category: Optional filter by template category
-        metric: Optional filter by metric type
-        current_user: Authenticated user
-        template_service: Template service
-        
-    Returns:
-        List of available alert rule templates
-    """
-    logger.info(f"Getting alert rule templates (category={category}, metric={metric})")
-    
-    try:
-        # Get templates from service
-        templates = await template_service.get_all_templates()
-        
-        # Apply optional filters client-side for now
-        # In the future, consider implementing filtering in the repository/service
-        if category:
-            templates = [t for t in templates if t.get("category", "").lower() == category.lower()]
-            
-        if metric:
-            templates = [
-                t for t in templates if any(
-                    c.get("metric_name", "").lower() == metric.lower() 
-                    for c in t.get("conditions", [])
-                )
-            ]
-        
-        # Convert to response models
-        return [AlertRuleTemplateResponse(**template) for template in templates]
-        
-    except Exception as e:
-        logger.error(f"Error getting alert rule templates: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve alert rule templates: {str(e)}"
         )
 
 
