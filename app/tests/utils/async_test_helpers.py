@@ -6,7 +6,11 @@ in pytest tests, preventing "coroutine was never awaited" warnings.
 """
 
 from unittest.mock import AsyncMock as _AsyncMock
+import inspect
+from typing import Any, Awaitable, Callable, Generic, Optional, TypeVar, Union, cast
 
+# Define a type variable for return types
+T = TypeVar("T")
 
 class SafeAsyncMock(_AsyncMock):
     """
@@ -17,7 +21,7 @@ class SafeAsyncMock(_AsyncMock):
     using standard assertion methods directly on AsyncMock objects.
     """
 
-    async def assert_called_with(self, *args, **kwargs):
+    async def assert_called_with(self, *args: Any, **kwargs: Any) -> None:
         """
         Awaitable version of assert_called_with.
 
@@ -27,7 +31,7 @@ class SafeAsyncMock(_AsyncMock):
         """
         super().assert_called_with(*args, **kwargs)
 
-    async def assert_called_once_with(self, *args, **kwargs):
+    async def assert_called_once_with(self, *args: Any, **kwargs: Any) -> None:
         """
         Awaitable version of assert_called_once_with.
 
@@ -37,37 +41,37 @@ class SafeAsyncMock(_AsyncMock):
         """
         super().assert_called_once_with(*args, **kwargs)
 
-    async def assert_called(self):
+    async def assert_called(self) -> None:
         """
         Awaitable version of assert_called.
         """
         super().assert_called()
 
-    async def assert_called_once(self):
+    async def assert_called_once(self) -> None:
         """
         Awaitable version of assert_called_once.
         """
         super().assert_called_once()
 
-    async def assert_not_called(self):
+    async def assert_not_called(self) -> None:
         """
         Awaitable version of assert_not_called.
         """
         super().assert_not_called()
 
-    async def assert_awaited(self):
+    async def assert_awaited(self) -> None:
         """
         Awaitable version of assert_awaited.
         """
         super().assert_awaited()
 
-    async def assert_awaited_once(self):
+    async def assert_awaited_once(self) -> None:
         """
         Awaitable version of assert_awaited_once.
         """
         super().assert_awaited_once()
 
-    async def assert_awaited_with(self, *args, **kwargs):
+    async def assert_awaited_with(self, *args: Any, **kwargs: Any) -> None:
         """
         Awaitable version of assert_awaited_with.
 
@@ -77,7 +81,7 @@ class SafeAsyncMock(_AsyncMock):
         """
         super().assert_awaited_with(*args, **kwargs)
 
-    async def assert_awaited_once_with(self, *args, **kwargs):
+    async def assert_awaited_once_with(self, *args: Any, **kwargs: Any) -> None:
         """
         Awaitable version of assert_awaited_once_with.
 
@@ -87,7 +91,7 @@ class SafeAsyncMock(_AsyncMock):
         """
         super().assert_awaited_once_with(*args, **kwargs)
 
-    async def assert_any_call(self, *args, **kwargs):
+    async def assert_any_call(self, *args: Any, **kwargs: Any) -> None:
         """
         Awaitable version of assert_any_call.
 
@@ -98,7 +102,7 @@ class SafeAsyncMock(_AsyncMock):
         super().assert_any_call(*args, **kwargs)
 
 
-def create_async_mock(*args, **kwargs):
+def create_async_mock(*args: Any, **kwargs: Any) -> SafeAsyncMock:
     """
     Create a SafeAsyncMock instance that supports awaitable assertions.
 
@@ -109,4 +113,12 @@ def create_async_mock(*args, **kwargs):
     Returns:
         SafeAsyncMock: An enhanced AsyncMock with awaitable assertion methods
     """
-    return SafeAsyncMock(*args, **kwargs)
+    from unittest.mock import AsyncMock
+
+    # Create an AsyncMock with the provided args and kwargs
+    mock = AsyncMock(*args, **kwargs)
+
+    # Make it a SafeAsyncMock
+    mock.__class__ = SafeAsyncMock
+
+    return mock
