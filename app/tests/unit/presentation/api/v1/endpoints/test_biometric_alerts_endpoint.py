@@ -811,6 +811,10 @@ class TestBiometricAlertsEndpoints:
             json=update_payload
         )
         
+        # Print response details for debugging
+        print(f"Response status: {response.status_code}")
+        print(f"Response body: {response.json()}")
+        
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert "not found" in response.json()["detail"].lower()
         # Verify the mock was called with the correct parameters
