@@ -116,3 +116,13 @@ class User(BaseModel):
         """Populate full_name from first_name and last_name if not provided."""
         if self.full_name is None and self.first_name and self.last_name:
             self.full_name = f"{self.first_name} {self.last_name}"
+            
+    def activate(self) -> None:
+        """Activate the user account by setting status to ACTIVE."""
+        self.status = UserStatus.ACTIVE
+        self.is_active = True
+        
+    def deactivate(self) -> None:
+        """Deactivate the user account by setting status to INACTIVE."""
+        self.status = UserStatus.INACTIVE
+        self.is_active = False
