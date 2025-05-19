@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field, validator
 
 from app.application.services.biometric_alert_rule_service import BiometricAlertRuleService
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
+from app.core.interfaces.services.alert_rule_template_service_interface import AlertRuleTemplateServiceInterface
 from app.domain.entities.biometric_alert_rule import (
     AlertPriority,
     BiometricAlertRule,
@@ -26,6 +27,7 @@ from app.presentation.api.dependencies.auth import CurrentUserDep
 from app.presentation.api.dependencies.database import get_db_session
 from app.presentation.api.v1.dependencies.biometric import (
     BiometricRuleRepoDep,
+    get_alert_rule_template_service,
 )
 from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
 from app.infrastructure.di.provider import get_repository_instance
@@ -189,6 +191,7 @@ async def create_alert_rule_from_template(
     template_data: RuleFromTemplateCreate,
     current_user: CurrentUserDep = None,
     rule_service: BiometricAlertRuleService = Depends(get_rule_service),
+    template_service: AlertRuleTemplateServiceInterface = Depends(get_alert_rule_template_service),
 ) -> AlertRuleResponse:
     """
     Create a new alert rule from a template.
@@ -197,6 +200,7 @@ async def create_alert_rule_from_template(
         template_data: Template reference and customization data
         current_user: Authenticated user
         rule_service: Alert rule service
+        template_service: Alert rule template service
         
     Returns:
         Created alert rule
@@ -204,19 +208,25 @@ async def create_alert_rule_from_template(
     logger.info(f"Creating alert rule from template {template_data.template_id}")
     
     try:
-        # Add current user as provider
-        custom_overrides = template_data.customization.dict(exclude_unset=True)
-        custom_overrides["provider_id"] = current_user.id
+        # Get customization from request
+        customization = template_data.customization.dict(exclude_unset=True)
+        if current_user and current_user.id:
+            customization["provider_id"] = current_user.id
         
-        # Create rule from template using service
-        rule = await rule_service.create_rule_from_template(
-            template_id=template_data.template_id,
+        # Use the template service to apply the template
+        rule_data = await template_service.apply_template(
+            template_id=str(template_data.template_id),
             patient_id=template_data.patient_id,
-            custom_overrides=custom_overrides
+            customization=customization
         )
         
-        # Convert domain entity to response schema
-        return AlertRuleResponse.from_entity(rule)
+        # Either convert or construct response
+        if isinstance(rule_data, dict):
+            # Create response from dict
+            return AlertRuleResponse(**rule_data)
+        else:
+            # Create response from entity
+            return AlertRuleResponse.from_entity(rule_data)
         
     except Exception as e:
         logger.error(f"Error creating rule from template: {str(e)}")

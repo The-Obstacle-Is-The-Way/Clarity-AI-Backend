@@ -8,7 +8,7 @@ ensuring HIPAA compliance and correct data handling.
 import json
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from typing import Any, AsyncGenerator, Dict, List, Tuple, TypeVar, Union
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone
@@ -463,10 +463,45 @@ class TestBiometricAlertsEndpoints:
     async def test_create_alert_rule_from_template(
         self,
         client: AsyncClient,
+        test_app: tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID,
     ) -> None:
-        pytest.skip("Skipping test until AlertRuleService is implemented") # MOVED TO TOP
+        # Setup mock for AlertRuleTemplateService
+        from app.core.interfaces.services.alert_rule_template_service_interface import AlertRuleTemplateServiceInterface
+        from app.application.services.alert_rule_template_service import AlertRuleTemplateService
+        from app.presentation.api.v1.dependencies.biometric import get_alert_rule_template_service
+        
+        # Create mock service
+        alert_template_service_mock = AsyncMock(spec=AlertRuleTemplateServiceInterface)
+        
+        # Create a sample rule result
+        rule_result = {
+            "id": str(uuid.uuid4()),
+            "template_id": "high_heart_rate",
+            "name": "High Heart Rate Alert",
+            "description": "Detects abnormally high heart rate",
+            "patient_id": str(sample_patient_id),
+            "conditions": [
+                {
+                    "metric_name": "heart_rate",
+                    "comparator_operator": "greater_than",
+                    "threshold_value": 110.0
+                }
+            ],
+            "priority": "high",
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Setup mock response
+        alert_template_service_mock.apply_template = AsyncMock(return_value=rule_result)
+        
+        # Apply mock to app
+        app, _ = test_app
+        app.dependency_overrides[get_alert_rule_template_service] = lambda: alert_template_service_mock
+        
+        # Prepare request
         headers = get_valid_provider_auth_headers
         payload = {
             "template_id": "high_heart_rate",
@@ -476,10 +511,25 @@ class TestBiometricAlertsEndpoints:
                 "priority": "high"
             }
         }
+        
+        # Make request
         response = await client.post(
-            "/api/v1/biometric-alerts/rules/from-template",
+            "/api/v1/biometric-alert-rules/from-template",
             headers=headers,
             json=payload
+        )
+        
+        # Assert response
+        assert response.status_code == 201
+        response_data = response.json()
+        assert response_data["patient_id"] == str(sample_patient_id)
+        assert response_data["priority"] == "high"
+        
+        # Verify service was called with correct arguments
+        alert_template_service_mock.apply_template.assert_called_once_with(
+            template_id="high_heart_rate",
+            patient_id=sample_patient_id,
+            customization=payload["customization"]
         )
         # pytest.skip("Skipping test until AlertRuleService is implemented") # Original position
 
