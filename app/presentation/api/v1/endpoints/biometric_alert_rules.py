@@ -91,8 +91,17 @@ async def get_alert_rules(
             limit=limit
         )
         
-        # Convert domain entities to response schema
-        return [AlertRuleResponse.from_entity(rule) for rule in rules]
+        # Convert results to response schema based on their type
+        result = []
+        for rule in rules:
+            if isinstance(rule, dict):
+                # If it's already a dictionary, just use it directly with the AlertRuleResponse model
+                result.append(AlertRuleResponse(**rule))
+            else:
+                # If it's an entity, convert it using the from_entity method
+                result.append(AlertRuleResponse.from_entity(rule))
+        
+        return result
         
     except Exception as e:
         logger.error(f"Error getting alert rules: {str(e)}")
@@ -135,8 +144,13 @@ async def get_alert_rule(
                 detail="Alert rule not found"
             )
             
-        # Convert domain entity to response schema
-        return AlertRuleResponse.from_entity(rule)
+        # Check if the result is already a dictionary or an entity
+        if isinstance(rule, dict):
+            # If it's already a dictionary, just use it directly with the AlertRuleResponse model
+            return AlertRuleResponse(**rule)
+        else:
+            # If it's an entity, convert it using the from_entity method
+            return AlertRuleResponse.from_entity(rule)
         
     except HTTPException:
         # Re-raise HTTP exceptions
