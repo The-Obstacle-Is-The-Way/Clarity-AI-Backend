@@ -138,27 +138,105 @@ async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 - Fix test event loop fixture redefinitions
 - Update async test decorators
 
-## 3. Testing Infrastructure Improvements (Lower Priority)
+## 3. ML Component Implementation (Medium Priority)
 
-### ML Testing Environment
+### PyTorch-based Model Infrastructure
 
-**Status**: Not started  
-**Affected Files**: 11 skipped ML-related tests
-
-**Implementation Tasks**:
-- Create containerized ML testing environment with PyTorch
-- Configure CI pipeline for ML-specific tests
-- Document ML test setup requirements
-
-### Integration Testing Infrastructure
-
-**Status**: Not started  
-**Affected Files**: 7 skipped integration tests
+**Status**: Partially implemented  
+**Affected Files**: Multiple ML test files  
+**Tests Blocked**: 8 PyTorch-dependent test files
 
 **Implementation Tasks**:
-- Create Docker Compose environment for database tests
-- Set up mock AWS services for integration testing
-- Configure Temporal workflow testing environment
+
+1. **Symptom Forecasting Service**
+   - Implement ensemble architecture combining Transformer and XGBoost models
+   - Add time series preprocessing for biometric data
+   - Implement HIPAA-compliant data sanitization filters
+   - Create visualization preprocessor for clinical dashboards
+   - File: `app/infrastructure/ml/symptom_forecasting/model_service.py`
+
+2. **Pharmacogenomics Models**
+   - Complete gene-medication interaction prediction models
+   - Implement treatment response forecasting
+   - Add model versioning and performance tracking
+   - Files: 
+     - `app/infrastructure/ml/pharmacogenomics/gene_medication_model.py`
+     - `app/infrastructure/ml/pharmacogenomics/treatment_model.py`
+
+3. **MentaLLaMA Integration**
+   - Update mock implementation to match new interface
+   - Add prompt template management system
+   - Implement HIPAA-compliant redaction for LLM inputs/outputs
+   - File: `app/core/services/ml/mentallama/mentallama_service.py`
+
+### AWS XGBoost Service
+
+**Status**: Incomplete  
+**Affected Files**: AWS XGBoost service tests  
+**Tests Blocked**: 1 test file with multiple test cases
+
+**Implementation Tasks**:
+1. **AWS Client Integration**
+   - Implement SageMaker client for model inference
+   - Add S3 integration for model artifacts
+   - Configure DynamoDB for prediction storage
+   - File: `app/core/services/ml/xgboost/aws.py`
+
+2. **Error Handling**
+   - Implement comprehensive error handling for AWS service errors
+   - Add retry logic for transient failures
+   - Create detailed logging for HIPAA compliance
+   - File: `app/core/services/ml/xgboost/exceptions.py`
+
+3. **Risk Prediction Models**
+   - Implement risk prediction interfaces
+   - Add validation and verification workflows
+   - Create model performance monitoring
+   - File: `app/core/services/ml/xgboost/aws.py`
+
+## 4. Integration Testing Infrastructure (Medium Priority)
+
+### Temporal Neurotransmitter Testing
+
+**Status**: Partially implemented  
+**Affected Files**: Temporal integration tests  
+**Tests Blocked**: 4 temporal neurotransmitter integration tests
+
+**Implementation Tasks**:
+1. **Mapping Service Updates**
+   - Update mapping signature for brain region visualization
+   - Implement complete neurotransmitter coverage
+   - Add treatment simulation capabilities
+   - File: `app/application/services/temporal_neurotransmitter_service.py`
+
+2. **API Integration**
+   - Complete endpoint implementation for neurotransmitter data
+   - Add authentication integration
+   - Implement query parameter validation
+   - File: `app/presentation/api/v1/endpoints/neurotransmitter.py`
+
+### Docker Database Environment
+
+**Status**: Not started  
+**Affected Files**: Database integration tests  
+**Tests Blocked**: 2 database connection tests
+
+**Implementation Tasks**:
+- Create Docker Compose configuration for PostgreSQL
+- Configure test database initialization scripts
+- Add environment variable management for tests
+- File: `docker-compose-test.yml`
+
+### Mock Service Framework
+
+**Status**: Partially implemented  
+**Affected Files**: Various test files
+
+**Implementation Tasks**:
+- Implement consistent mocking framework for external services
+- Add dynamic ID handling for test assertions
+- Create flexible matching for test assertions
+- File: `app/tests/utils/mock_helpers.py`
 
 ## 4. Code Quality Improvements (Continuous)
 
