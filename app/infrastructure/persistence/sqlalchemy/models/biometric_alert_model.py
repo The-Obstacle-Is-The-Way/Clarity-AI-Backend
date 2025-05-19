@@ -7,6 +7,7 @@ of concerning patterns in patient biometric data.
 """
 
 import uuid
+from typing import Any, Dict, Optional, List
 
 from sqlalchemy import (
     JSON,
@@ -53,14 +54,14 @@ class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
     )
     alert_type = Column(String, index=True, nullable=False)
     description = Column(String, nullable=False)
-    priority = Column(SQLAlchemyEnum(AlertPriorityEnum), nullable=False)
+    priority: Column = Column(SQLAlchemyEnum(AlertPriorityEnum), nullable=False)
     rule_id = Column(
         SQLAlchemyUUID(as_uuid=True),
         ForeignKey("biometric_rules.id"),
         nullable=False,
         index=True,
     )
-    status = Column(
+    status: Column = Column(
         SQLAlchemyEnum(AlertStatusEnum),
         default=AlertStatusEnum.NEW,
         nullable=False,
@@ -88,7 +89,7 @@ class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
     )  # Serialized list of data points that triggered the alert
     alert_metadata = Column(JSON, nullable=True)  # Renamed from metadata
 
-    triggering_event_details = Column(MutableDict.as_mutable(JSON), nullable=True)
+    triggering_event_details: Column = Column(MutableDict.as_mutable(JSON), nullable=True)
     notes = Column(Text, nullable=True)
 
     patient = relationship("Patient")  # Add backref in Patient model if needed
