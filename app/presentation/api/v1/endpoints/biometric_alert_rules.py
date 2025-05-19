@@ -532,7 +532,7 @@ async def update_rule_active_status(
 
 @router.post("/templates", response_model=AlertRuleTemplateResponse, status_code=status.HTTP_201_CREATED)
 async def create_alert_rule_template(
-    template_data: AlertRuleTemplateCreate,
+    request: Request,
     current_user: CurrentUserDep = None,
     template_service: AlertRuleTemplateServiceInterface = Depends(get_alert_rule_template_service),
 ) -> AlertRuleTemplateResponse:
@@ -543,7 +543,7 @@ async def create_alert_rule_template(
     that can be used as the basis for patient-specific rules.
     
     Args:
-        template_data: Template definition
+        request: FastAPI Request object
         current_user: Authenticated user (must have admin privileges)
         template_service: Template service
         
@@ -553,7 +553,10 @@ async def create_alert_rule_template(
     Raises:
         HTTPException: If user doesn't have required permissions or creation fails
     """
-    logger.info(f"Creating alert rule template: {template_data.name}")
+    logger.info("Creating alert rule template")
+    
+    # Get the raw JSON data to handle both direct and wrapped payload structures
+    template_data = await request.json()
     
     # Check permissions - only admins can create templates
     if not current_user or not hasattr(current_user, "roles") or "admin" not in [r.lower() for r in current_user.roles]:
@@ -564,29 +567,26 @@ async def create_alert_rule_template(
         )
     
     try:
-        # Convert request model to dict for service
-        template_dict = template_data.model_dump()
-        
         # Map conditions to the expected format
         conditions = []
-        for condition in template_data.conditions:
+        for condition in template_data.get("conditions", []):
             conditions.append({
-                "metric_name": condition.metric_name,
-                "comparator_operator": condition.operator.lower(),
-                "threshold_value": condition.threshold,
-                "duration_minutes": condition.duration_minutes,
-                "unit": condition.unit
+                "metric_name": condition.get("metric_name"),
+                "comparator_operator": condition.get("operator", "").lower(),
+                "threshold_value": condition.get("threshold"),
+                "duration_minutes": condition.get("duration_minutes"),
+                "unit": condition.get("unit")
             })
         
         # Construct the template in the format expected by the response model
         response_template = AlertRuleTemplateResponse(
-            template_id=template_data.template_id,
-            name=template_data.name,
-            description=template_data.description,
-            category=template_data.category,
+            template_id=template_data.get("template_id"),
+            name=template_data.get("name"),
+            description=template_data.get("description"),
+            category=template_data.get("category"),
             conditions=conditions,
             logical_operator="and",
-            default_priority=template_data.priority.lower(),
+            default_priority=template_data.get("priority", "MEDIUM").lower(),
             customizable_fields=["threshold_value", "priority"]
         )
         
