@@ -775,9 +775,12 @@ class TestBiometricAlertsEndpoints:
         test_app: tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        # Mock alert service to return False to indicate an alert wasn't found
-        alert_service_mock = MagicMock(spec=AlertServiceInterface)
-        # Return (False, "Alert not found") without status code as the endpoint handles HTTP status
+        """
+        Test updating the status of a non-existent alert returns 404.
+        """
+        # Create a fresh mock for this test
+        alert_service_mock = AsyncMock(spec=AlertServiceInterface)
+        # Setup the mock to return a "not found" response
         alert_service_mock.update_alert_status = AsyncMock(return_value=(False, "Alert not found"))
         alert_service_mock.validate_access = AsyncMock(return_value=True)
         
@@ -795,10 +798,10 @@ class TestBiometricAlertsEndpoints:
         headers = get_valid_provider_auth_headers
         non_existent_alert_id = str(uuid.uuid4())
         
-        # The API uses Pydantic validation for the request payload
+        # Make sure we provide a valid status value according to the AlertStatus enum
         update_payload = {
-            "status": "acknowledged",  # Valid enum value
-            "resolution_notes": None   # Matches the field definition in AlertUpdateRequest
+            "status": AlertStatus.ACKNOWLEDGED.value,  # Use enum value to ensure correctness
+            "resolution_notes": None  
         }
         
         response = await client.patch(
@@ -807,9 +810,15 @@ class TestBiometricAlertsEndpoints:
             json=update_payload
         )
         
-        # The endpoint is returning a validation error (422) because of the request payload format
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        # Verify the error message contains relevant text about the alert rule not being found
+        assert "not found" in response.json()["detail"].lower()
+        # Verify the mock was called with the correct parameters
+        alert_service_mock.update_alert_status.assert_called_once_with(
+            alert_id=non_existent_alert_id,
+            status=AlertStatus.ACKNOWLEDGED.value,
+            resolution_notes=None,
+            resolved_by=ANY  # Use ANY matcher for the user ID as it's not important for this test
+        )
 
     @pytest.mark.asyncio
     async def test_get_patient_alert_summary(
@@ -818,6 +827,17 @@ class TestBiometricAlertsEndpoints:
         test_app: Tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID,
+    ) -> None:
+        # Create summary response data
+        summary_data = {
+            "patient_id": str(sample_patient_id),
+            "start_date": "2023-01-01T00:00:00+00:00",
+            "end_date": "2023-02-01T00:00:00+00:00",
+            "alert_count": 5,
+            "by_status": {"open": 2, "acknowledged": 1, "resolved": 2},
+            "by_priority": {"low": 1, "medium": 2, "high": 2},
+            "by_type": {"biometric_anomaly": 3, "medication_reminder": 2}
+        }
     ) -> None:
         # Create summary response data
         summary_data = {
