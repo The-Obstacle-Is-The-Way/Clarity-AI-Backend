@@ -49,6 +49,7 @@ from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import (
 
 # Import the encryption service instance directly for use in TypeDecorators
 # This allows tests to patch it directly in this module
+from app.infrastructure.security.encryption import encryption_service_instance
 
 # Break circular import by using string reference to User model
 # This follows SQLAlchemy best practices for circular relationship references
