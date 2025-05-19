@@ -968,7 +968,7 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient, 
         sample_patient_id: uuid.UUID,
         get_valid_provider_auth_headers: dict[str, str],
-        mock_alert_service: MockAlertService
+        mock_alert_service: MagicMock
     ) -> None:
         # Set up the mock to return a created alert
         mock_alert = Alert(
