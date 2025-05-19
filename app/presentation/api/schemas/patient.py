@@ -1,13 +1,13 @@
 import uuid  # Add import for uuid
 from datetime import date, datetime  # Add import for date and datetime
 
-from pydantic import (
+from pydantic import (  # Add EmailStr and computed_field
     BaseModel,
     ConfigDict,
     EmailStr,
     Field,
     computed_field,
-)  # Add EmailStr and computed_field
+)
 
 
 class PatientBase(BaseModel):

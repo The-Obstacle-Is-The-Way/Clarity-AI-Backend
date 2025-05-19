@@ -13,12 +13,12 @@ from typing import Any  # For dict fields initially
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.core.domain.enums import Gender
-from app.domain.value_objects.address import (
+from app.domain.value_objects.address import (  # Assuming this is the canonical Pydantic/dataclass VO
     Address,
-)  # Assuming this is the canonical Pydantic/dataclass VO
-from app.domain.value_objects.emergency_contact import (
+)
+from app.domain.value_objects.emergency_contact import (  # Assuming this is the canonical Pydantic/dataclass VO
     EmergencyContact,
-)  # Assuming this is the canonical Pydantic/dataclass VO
+)
 
 
 class ContactInfo(BaseModel):

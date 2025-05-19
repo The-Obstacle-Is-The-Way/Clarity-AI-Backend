@@ -19,11 +19,13 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+)
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import (
     ForeignKey,
     String,
     inspect,
 )
-from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
 # from app.infrastructure.security.encryption.encryption_service import EncryptionService # Old import removed

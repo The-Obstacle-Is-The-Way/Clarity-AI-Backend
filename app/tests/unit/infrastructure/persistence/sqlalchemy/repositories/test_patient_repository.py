@@ -19,9 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.domain.enums import Gender
 from app.domain.entities.patient import Patient as PatientEntity
 from app.domain.value_objects.address import Address
-from app.infrastructure.persistence.sqlalchemy.models.patient import (
-    Patient as PatientModel,
-)
+from app.infrastructure.persistence.sqlalchemy.models.patient import Patient as PatientModel
 from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
     PatientRepository,
 )

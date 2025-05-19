@@ -16,10 +16,10 @@ from app.domain.utils.datetime_utils import now_utc
 # from app.infrastructure.persistence.sqlalchemy.config.base import Base # Old Base
 # from app.infrastructure.database.base_class import TimestampMixin # Old TimestampMixin
 # Use the canonical Base and TimestampMixin from the models package
-from app.infrastructure.persistence.sqlalchemy.models.base import (
+from app.infrastructure.persistence.sqlalchemy.models.base import (  # Canonical TimestampMixin
     Base,
     TimestampMixin,
-)  # Canonical TimestampMixin
+)
 
 # from app.infrastructure.persistence.sqlalchemy.types import GUID # MODIFIED: Comment out GUID
 

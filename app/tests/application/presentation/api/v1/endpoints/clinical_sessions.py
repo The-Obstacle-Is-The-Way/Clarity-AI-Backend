@@ -9,9 +9,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.domain.entities.clinical_session import (
+from app.domain.entities.clinical_session import (  # For query param validation
     SessionType,
-)  # For query param validation
+)
 
 # Assuming User type from auth dependency matches this import or is compatible (e.g., dict)
 from app.domain.entities.user import User
@@ -83,9 +83,9 @@ async def record_clinical_session(
     #        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Provider can only record sessions for themselves.")
 
     try:
-        from app.domain.entities.clinical_session import (
+        from app.domain.entities.clinical_session import (  # Import entity
             ClinicalSession,
-        )  # Import entity
+        )
 
         new_session_entity = ClinicalSession(**session_data.model_dump())
 

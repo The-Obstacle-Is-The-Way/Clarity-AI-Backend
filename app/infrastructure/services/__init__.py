@@ -8,9 +8,11 @@ in accordance with clean architecture principles.
 # Import from security package
 # Import mock services for testing
 from app.infrastructure.services.mocks import (
+    MockMentalLLaMAService,  # Note the capitalization: Mental not Menta
+)
+from app.infrastructure.services.mocks import (
     MockDigitalTwinCoreService,
     MockEnhancedDigitalTwinCoreService,
-    MockMentalLLaMAService,  # Note the capitalization: Mental not Menta
     MockPATService,
     MockXGBoostService,
 )

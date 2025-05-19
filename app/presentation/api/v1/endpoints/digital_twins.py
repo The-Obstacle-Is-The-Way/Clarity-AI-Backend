@@ -13,10 +13,12 @@ from app.domain.entities.user import User
 from app.presentation.api.dependencies.auth import get_current_user
 from app.presentation.api.dependencies.services import get_digital_twin_service
 from app.presentation.api.schemas.digital_twin_schemas import (
+    PersonalizedInsightResponse,  # Assuming single insight for now based on test fixture
+)
+from app.presentation.api.schemas.digital_twin_schemas import (
     ClinicalTextAnalysisRequest,
     ClinicalTextAnalysisResponse,
     DigitalTwinStatusResponse,
-    PersonalizedInsightResponse,  # Assuming single insight for now based on test fixture
 )
 
 router = APIRouter(

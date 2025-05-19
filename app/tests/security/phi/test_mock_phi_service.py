@@ -14,9 +14,9 @@ from app.core.exceptions import (
     InvalidRequestError,
 )
 from app.infrastructure.ml.phi.mock import MockPHIDetection  # ML-specific mock detector
-from app.infrastructure.security.phi import (
+from app.infrastructure.security.phi import (  # Import the consolidated sanitizer
     PHISanitizer,
-)  # Import the consolidated sanitizer
+)
 from app.tests.security.utils.base_security_test import BaseSecurityTest
 
 

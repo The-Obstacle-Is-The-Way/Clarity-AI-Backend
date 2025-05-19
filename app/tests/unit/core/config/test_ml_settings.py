@@ -3,13 +3,8 @@
 import pytest
 
 # Corrected import path
-from app.config.settings import (
+from app.config.settings import (  # Assuming these might also be in settings.py - to be verified; MLModelType, # TODO: Verify location; MLFramework, # TODO: Verify location; get_ml_settings, # TODO: Verify location; load_model_config, # TODO: Verify location
     MLSettings,
-    # Assuming these might also be in settings.py - to be verified
-    # MLModelType, # TODO: Verify location
-    # MLFramework, # TODO: Verify location
-    # get_ml_settings, # TODO: Verify location
-    # load_model_config, # TODO: Verify location
 )
 
 # TODO: Find and import MLModelType, MLFramework if not in settings.py

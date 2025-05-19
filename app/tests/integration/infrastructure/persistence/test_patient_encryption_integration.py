@@ -16,25 +16,25 @@ import pytest_asyncio
 import sqlalchemy
 
 # from cryptography.fernet import Fernet # Fernet from fixture is BaseEncryptionService
-from sqlalchemy import (
+from sqlalchemy import (  # , event # Event listener removed for now, direct PRAGMA in fixture
     text,
-)  # , event # Event listener removed for now, direct PRAGMA in fixture
+)
 
 # from sqlalchemy.engine import Engine # Not used directly
-from sqlalchemy.ext.asyncio import (
+from sqlalchemy.ext.asyncio import (  # , async_sessionmaker, create_async_engine
     AsyncSession,
-)  # , async_sessionmaker, create_async_engine
+)
 
 # from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import EncryptedString, EncryptedText, EncryptedJSON # Not directly used in test logic
 from app.core.config import settings
-from app.core.domain.entities.patient import (
-    ContactInfo,
-)
 
 # Import domain entities with clear namespace
 from app.core.domain.entities.patient import (
-    Patient as DomainPatient,
-)  # Gender, Address, EmergencyContact will be added to DomainPatient
+    ContactInfo,
+)
+from app.core.domain.entities.patient import (
+    Patient as DomainPatient,  # Gender, Address, EmergencyContact will be added to DomainPatient
+)
 from app.core.domain.entities.user import UserRole
 from app.core.domain.enums import Gender  # Corrected Gender import
 
@@ -45,12 +45,12 @@ from app.core.domain.enums import Gender  # Corrected Gender import
 # However, ensuring the global instance is correctly configured for tests IS crucial.
 # import app.infrastructure.persistence.sqlalchemy.models.patient as patient_module_for_esi # Keep for now if other parts rely on it, but aim to remove dependency on this patching.
 from app.core.exceptions.base_exceptions import PersistenceError  # Corrected import
-from app.domain.value_objects.address import (
+from app.domain.value_objects.address import (  # Assuming this is the canonical Pydantic/dataclass VO
     Address,
-)  # Assuming this is the canonical Pydantic/dataclass VO
-from app.domain.value_objects.emergency_contact import (
+)
+from app.domain.value_objects.emergency_contact import (  # Assuming this is the canonical Pydantic/dataclass VO
     EmergencyContact,
-)  # Assuming this is the canonical Pydantic/dataclass VO
+)
 from app.infrastructure.persistence.sqlalchemy.config.database import get_db_instance
 from app.infrastructure.persistence.sqlalchemy.models.audit_log import AuditLog
 

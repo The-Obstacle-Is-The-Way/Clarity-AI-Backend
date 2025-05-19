@@ -10,9 +10,7 @@ from app.core.utils.logging import get_logger
 from app.domain.entities.biometric_alert import (
     AlertPriority,
 )
-from app.domain.entities.biometric_alert import (
-    AlertStatusEnum as DomainAlertStatusEnum,
-)
+from app.domain.entities.biometric_alert import AlertStatusEnum as DomainAlertStatusEnum
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 
 # Import general dependencies

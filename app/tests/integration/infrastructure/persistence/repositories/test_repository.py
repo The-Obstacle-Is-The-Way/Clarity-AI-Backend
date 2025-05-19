@@ -24,9 +24,7 @@ from app.domain.value_objects.emergency_contact import EmergencyContact
 from app.domain.value_objects.name import Name as NameVO
 
 # Use the actual Patient model and Repository
-from app.infrastructure.persistence.sqlalchemy.models.patient import (
-    Patient as PatientModel,
-)
+from app.infrastructure.persistence.sqlalchemy.models.patient import Patient as PatientModel
 from app.infrastructure.security.encryption.base_encryption_service import (
     BaseEncryptionService,
 )

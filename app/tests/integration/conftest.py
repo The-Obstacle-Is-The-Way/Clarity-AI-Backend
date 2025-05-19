@@ -40,9 +40,7 @@ from app.infrastructure.aws.service_factory_provider import get_aws_service_fact
 
 # End of added imports
 # Import SQLAlchemy models and utils
-from app.infrastructure.security.jwt.jwt_service import (
-    get_jwt_service as get_jwt_service_provider,
-)
+from app.infrastructure.security.jwt.jwt_service import get_jwt_service as get_jwt_service_provider
 from app.presentation.api.dependencies.repository import get_encryption_service
 
 # Import the predefined test user UUIDs
@@ -253,9 +251,9 @@ async def test_app(
         "Creating FastAPI app instance for integration tests via integration/conftest.py (test_app fixture)."
     )
 
-    from app.app_factory import (
+    from app.app_factory import (  # Moved import here to be self-contained
         create_application,
-    )  # Moved import here to be self-contained
+    )
 
     app = create_application(settings_override=test_settings)
 
@@ -751,11 +749,11 @@ def mock_auth_dependency():
     # raise RuntimeError("DEBUG: app/tests/integration/conftest.py mock_auth_dependency was called!") # DEBUGGING LINE - REVERTED
 
     # Import here to avoid circular imports
-    from app.core.domain.entities.user import (
+    from app.core.domain.entities.user import (  # Added UserStatus
         User,
         UserRole,
         UserStatus,
-    )  # Added UserStatus
+    )
 
     # Create mock users for different roles
     # Ensure these match the User dataclass in app.core.domain.entities.user
@@ -875,9 +873,9 @@ def create_test_token(
 def test_app() -> FastAPI:
     """Create a test FastAPI application with appropriate configuration for testing."""
     # Create a new app with test settings
-    from app.app_factory import (
+    from app.app_factory import (  # Import the create_application function
         create_application,
-    )  # Import the create_application function
+    )
 
     app = create_application()
 

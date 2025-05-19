@@ -8,9 +8,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.domain.entities.appointment import (
+from app.domain.entities.appointment import (  # For query param validation
     AppointmentStatus,
-)  # For query param validation
+)
 
 # Assuming User type from auth dependency matches this import or is compatible (e.g., dict)
 from app.domain.entities.user import User

@@ -9,18 +9,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings  # Added for JWT settings
 from app.domain.entities.user import User as DomainUser
-from app.domain.exceptions import (
+from app.domain.exceptions import (  # Add other relevant exceptions from this module if needed
     AuthenticationError,
     InvalidTokenError,
-    # Add other relevant exceptions from this module if needed
     TokenExpiredError,
 )
-from app.domain.repositories.user_repository import (
-    UserRepository as UserRepositoryInterface,
-)
-from app.infrastructure.database.session import (
+from app.domain.repositories.user_repository import UserRepository as UserRepositoryInterface
+from app.infrastructure.database.session import (  # Assuming get_db provides AsyncSession
     get_db,
-)  # Assuming get_db provides AsyncSession
+)
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
     UserRepository as SqlAlchemyUserRepositoryImpl,
 )

@@ -11,9 +11,7 @@ from uuid import UUID
 from app.core.domain.entities.user import User as DomainUser
 from app.core.domain.entities.user import UserRole as DomainUserRole
 from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel
-from app.infrastructure.persistence.sqlalchemy.models.user import (
-    UserRole as PersistenceUserRole,
-)
+from app.infrastructure.persistence.sqlalchemy.models.user import UserRole as PersistenceUserRole
 
 
 class UserMapper:

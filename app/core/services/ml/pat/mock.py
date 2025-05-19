@@ -18,9 +18,7 @@ from typing import Any
 
 import numpy as np
 
-from app.core.exceptions.base_exceptions import (
-    AuthorizationError as BaseAuthorizationError,
-)
+from app.core.exceptions.base_exceptions import AuthorizationError as BaseAuthorizationError
 from app.core.exceptions.base_exceptions import (
     InitializationError,
     ResourceNotFoundError,

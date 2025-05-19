@@ -51,8 +51,7 @@ from app.domain.exceptions.security_exceptions import (
     SessionExpiredError,
     TooManyAttemptsError,
 )
-from app.domain.exceptions.token_exceptions import (
-    # Aliases
+from app.domain.exceptions.token_exceptions import (  # Aliases
     InvalidTokenError,
     InvalidTokenException,
     MissingTokenError,

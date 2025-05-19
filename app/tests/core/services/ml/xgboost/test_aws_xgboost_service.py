@@ -19,26 +19,29 @@ import pytest
 from botocore.exceptions import ClientError
 
 # ModelType and PrivacyLevel might be defined elsewhere or need clarification
-from app.core.services.ml.xgboost import (
+from app.core.services.ml.xgboost import (  # Assuming ModelType and PrivacyLevel are correctly here for now
     ModelType,
     PrivacyLevel,
-)  # Assuming ModelType and PrivacyLevel are correctly here for now
+)
 from app.core.services.ml.xgboost.aws import AWSXGBoostService
 
 # Import Exceptions from the service exception module
 from app.core.services.ml.xgboost.exceptions import (
-    ModelNotFoundError,
     ResourceNotFoundError,  # Added for resource not found errors
-    # InvalidFeatureError,   # Does not exist in exceptions module
+)
+from app.core.services.ml.xgboost.exceptions import (
+    ValidationError,  # Added for input validation errors
+)
+from app.core.services.ml.xgboost.exceptions import (  # InvalidFeatureError,   # Does not exist in exceptions module
+    ModelNotFoundError,
     ServiceConfigurationError,
     ServiceConnectionError,
-    ValidationError,  # Added for input validation errors
 )
 
 # Import Enums from the correct schema location
-from app.presentation.api.schemas.xgboost import (
+from app.presentation.api.schemas.xgboost import (  # Renamed TreatmentCategory to TreatmentType, removed ValidationStatus
     RiskLevel,
-)  # Renamed TreatmentCategory to TreatmentType, removed ValidationStatus
+)
 
 # from app.domain.services.xgboost_service import IXGBoostService # Corrected import -> Interface likely removed
 # TODO: Verify if this test is still relevant after IXGBoostService removal/refactor.

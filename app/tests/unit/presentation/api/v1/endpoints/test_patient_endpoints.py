@@ -17,9 +17,9 @@ from contextlib import asynccontextmanager
 
 from app.application.services.patient_service import PatientService
 from app.core.config.settings import Settings as AppSettings  # Use alias
-from app.core.domain.entities.patient import (
+from app.core.domain.entities.patient import (  # Import Patient entity for mocking
     Patient,
-)  # Import Patient entity for mocking
+)
 
 # CORRECTED DomainUser and related imports to align with auth.py
 from app.core.domain.entities.user import User as DomainUser
@@ -29,18 +29,18 @@ from app.core.domain.entities.user import User as DomainUser
 from app.factory import create_application
 
 # FIXED JWT imports
-from app.presentation.api.dependencies.auth import (
+from app.presentation.api.dependencies.auth import (  # FIXED: Import get_jwt_service from auth.py
     get_current_user,
     get_jwt_service,
-)  # FIXED: Import get_jwt_service from auth.py
+)
 
 # Import the dependency to override for read tests
 from app.presentation.api.dependencies.patient import get_patient_id  # CORRECTED NAME
-from app.presentation.api.schemas.patient import (
+from app.presentation.api.schemas.patient import (  # Import schemas
     PatientCreateRequest,
     PatientCreateResponse,
     PatientRead,
-)  # Import schemas
+)
 
 
 # Helper context manager for lifespan

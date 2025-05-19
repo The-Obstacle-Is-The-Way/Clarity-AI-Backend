@@ -11,10 +11,10 @@ from app.core.errors.security_exceptions import (
     RateLimitExceededError,
     SecurityException,
     SessionExpiredError,
-    TokenValidationError,
 )
+from app.core.errors.security_exceptions import TokenExpiredError as SecurityTokenExpiredError
 from app.core.errors.security_exceptions import (
-    TokenExpiredError as SecurityTokenExpiredError,
+    TokenValidationError,
 )
 
 # Application specific errors and codes
@@ -55,11 +55,8 @@ from app.core.exceptions.base_exceptions import (
 )
 
 # Data privacy exceptions
-from app.core.exceptions.data_privacy import (
+from app.core.exceptions.data_privacy import (  # PHIExposureRiskException,; EncryptionError,; DecryptionError,
     DataPrivacyError,
-    # PHIExposureRiskException,
-    # EncryptionError,
-    # DecryptionError,
 )
 
 # JWT exceptions

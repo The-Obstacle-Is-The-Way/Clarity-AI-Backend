@@ -18,12 +18,8 @@ try:
         ExpiredSignatureError,
         JWTError,
     )
-    from app.infrastructure.security.jwt.jose_adapter import (
-        decode as jwt_decode,
-    )
-    from app.infrastructure.security.jwt.jose_adapter import (
-        encode as jwt_encode,
-    )
+    from app.infrastructure.security.jwt.jose_adapter import decode as jwt_decode
+    from app.infrastructure.security.jwt.jose_adapter import encode as jwt_encode
 except ImportError:
     # Fallback to direct imports if adapter is not available
     from jose import jwt as jose_jwt
@@ -95,12 +91,14 @@ except ImportError:
 try:
     from app.domain.exceptions.token_exceptions import (
         InvalidTokenException,
-        TokenException,
-        TokenExpiredException,
-        TokenGenerationException,
     )
     from app.domain.exceptions.token_exceptions import (
         TokenBlacklistedException as RevokedTokenException,
+    )
+    from app.domain.exceptions.token_exceptions import (
+        TokenException,
+        TokenExpiredException,
+        TokenGenerationException,
     )
 except ImportError:
     # Define fallbacks

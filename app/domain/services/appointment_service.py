@@ -14,9 +14,9 @@ from app.domain.entities.appointment import (
     AppointmentStatus,
     AppointmentType,
 )
+from app.domain.exceptions import EntityNotFoundError  # Use generic not found error
 from app.domain.exceptions import (
     AppointmentConflictError,
-    EntityNotFoundError,  # Use generic not found error
     InvalidAppointmentStateError,
     InvalidAppointmentTimeError,
 )

@@ -18,8 +18,7 @@ import pytest
 # Defer import of Appointment entity
 # from app.domain.entities.appointment import Appointment
 # Import only Enums needed at module level
-from app.domain.entities.appointment import (
-    # AppointmentPriority, # This Enum likely doesn't exist in appointment.py
+from app.domain.entities.appointment import (  # AppointmentPriority, # This Enum likely doesn't exist in appointment.py
     AppointmentStatus,
     AppointmentType,
 )

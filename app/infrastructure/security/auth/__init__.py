@@ -5,9 +5,7 @@ This module provides authentication services, middleware, and handlers
 for user authentication, MFA, and session management.
 """
 
-from app.infrastructure.security.auth.auth_service import (
-    AuthenticationService as AuthService,
-)
+from app.infrastructure.security.auth.auth_service import AuthenticationService as AuthService
 from app.infrastructure.security.auth.auth_service import (
     get_auth_service,
 )

@@ -7,9 +7,7 @@ mapping the domain entity to the database schema.
 
 import uuid
 
-from sqlalchemy import (
-    UUID as SQLAlchemyUUID,
-)
+from sqlalchemy import UUID as SQLAlchemyUUID
 from sqlalchemy import (
     Boolean,
     Column,

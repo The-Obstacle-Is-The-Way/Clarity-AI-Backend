@@ -16,8 +16,7 @@ from app.domain.entities.appointment import (
 
 # Import exceptions if needed for specific tests
 from app.domain.exceptions import (
-    # InvalidAppointmentStateError, # May not be used anymore
-    InvalidAppointmentTimeError,  # May not be used anymore
+    InvalidAppointmentTimeError,  # InvalidAppointmentStateError, # May not be used anymore; May not be used anymore
 )
 
 

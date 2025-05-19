@@ -197,7 +197,6 @@ class DIContainer:
         )
 
         # Create and register generic mocks for all repository types
-
         # Event repository
         mock_event_repo = MagicMock(spec=BaseRepositoryInterface)
         self.register(BaseRepositoryInterface, mock_event_repo)

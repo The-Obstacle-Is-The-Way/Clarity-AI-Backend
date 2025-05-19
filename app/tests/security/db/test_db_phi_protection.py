@@ -6,11 +6,11 @@ This validates that database interactions properly protect PHI per HIPAA require
 
 # import datetime # Ensure this line is removed
 import uuid
-from datetime import (
+from datetime import (  # This line should correctly define 'datetime' as the class
     date,
     datetime,
     timezone,
-)  # This line should correctly define 'datetime' as the class
+)
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -38,9 +38,9 @@ from app.core.interfaces.repositories.patient_repository import IPatientReposito
 
 # Import repository interfaces
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
-from app.infrastructure.persistence.sqlalchemy.config.database import (
+from app.infrastructure.persistence.sqlalchemy.config.database import (  # For spec in MagicMock
     Database,
-)  # For spec in MagicMock
+)
 
 # Import the canonical Base for table creation
 from app.infrastructure.persistence.sqlalchemy.models.base import Base

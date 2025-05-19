@@ -15,10 +15,9 @@ from app.presentation.api.dependencies.database import get_db
 from app.presentation.api.dependencies.patient import (
     get_patient_id as get_validated_patient_id_for_read,
 )
-from app.presentation.api.schemas.patient import (
+from app.presentation.api.schemas.patient import (  # PatientUpdateRequest, # COMMENTED OUT TEMPORARILY
     PatientCreateRequest,
     PatientCreateResponse,
-    # PatientUpdateRequest, # COMMENTED OUT TEMPORARILY
     PatientRead,
 )
 from app.presentation.api.v1.endpoints.biometric_alert_rules import (

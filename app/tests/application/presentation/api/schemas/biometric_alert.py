@@ -15,9 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 # Import domain enums to ensure type consistency
 from app.domain.entities.biometric_alert import AlertStatusEnum as DomainAlertStatusEnum
-from app.domain.entities.biometric_alert_rule import (
-    AlertPriority as DomainAlertPriority,
-)
+from app.domain.entities.biometric_alert_rule import AlertPriority as DomainAlertPriority
 
 
 class MetricTypeEnum(str, Enum):

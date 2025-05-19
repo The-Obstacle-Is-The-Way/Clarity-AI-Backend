@@ -16,9 +16,7 @@ from sqlalchemy.future import select
 
 # Domain imports
 from app.domain.entities.user import User as DomainUser
-from app.domain.repositories.user_repository import (
-    UserRepository as UserRepositoryInterface,
-)
+from app.domain.repositories.user_repository import UserRepository as UserRepositoryInterface
 from app.domain.utils.datetime_utils import now_utc
 from app.infrastructure.persistence.sqlalchemy.mappers.user_mapper import UserMapper
 

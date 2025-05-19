@@ -12,12 +12,10 @@ from unittest.mock import MagicMock, patch  # Added AsyncMock
 import pytest
 
 from app.core.domain.entities.patient import (
-    Patient as DomainPatient,
-)  # For from_domain/to_domain tests
-from app.core.domain.enums import Gender  # Corrected import for Gender
-from app.infrastructure.persistence.sqlalchemy.models.patient import (
-    Patient as PatientModel,
+    Patient as DomainPatient,  # For from_domain/to_domain tests
 )
+from app.core.domain.enums import Gender  # Corrected import for Gender
+from app.infrastructure.persistence.sqlalchemy.models.patient import Patient as PatientModel
 from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import (
     EncryptedJSON,
     EncryptedString,

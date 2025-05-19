@@ -76,9 +76,9 @@ except ModuleNotFoundError:  # pragma: no cover – executed only in test env
 from redis import asyncio as aioredis
 
 # from app.core.interfaces.cache_service import CacheService # Incorrect import
-from app.application.interfaces.services.cache_service import (
+from app.application.interfaces.services.cache_service import (  # Corrected import
     CacheService,
-)  # Corrected import
+)
 
 # from app.config.settings import get_settings # Legacy import
 from app.core.config.settings import get_settings  # Corrected import

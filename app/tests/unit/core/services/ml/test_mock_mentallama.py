@@ -17,9 +17,9 @@ from app.core.exceptions import (
     ServiceUnavailableError,
 )
 from app.domain.utils.datetime_utils import UTC
-from app.infrastructure.ml.mentallama.mock import (
+from app.infrastructure.ml.mentallama.mock import (  # Corrected import path
     MockMentaLLaMA,
-)  # Corrected import path
+)
 
 
 @pytest.fixture(scope="function")

@@ -7,9 +7,7 @@ Aggregates all endpoint routers for this version.
 
 from fastapi import APIRouter
 
-from app.presentation.api.v1.endpoints.analytics_endpoints import (
-    router as analytics_event_router,
-)
+from app.presentation.api.v1.endpoints.analytics_endpoints import router as analytics_event_router
 
 # Import our new biometric alert rules endpoint
 from app.presentation.api.v1.endpoints.biometric_alert_rules import (
@@ -26,9 +24,7 @@ from app.presentation.api.v1.routes.actigraphy import router as actigraphy_route
 from app.presentation.api.v1.routes.analytics import router as analytics_query_router
 from app.presentation.api.v1.routes.auth import router as auth_router
 from app.presentation.api.v1.routes.biometric import router as biometric_router
-from app.presentation.api.v1.routes.digital_twin import (
-    router as digital_twin_router,
-)
+from app.presentation.api.v1.routes.digital_twin import router as digital_twin_router
 from app.presentation.api.v1.routes.mentallama import router as mentallama_router
 from app.presentation.api.v1.routes.ml import router as ml_router
 from app.presentation.api.v1.routes.patient import router as patient_router

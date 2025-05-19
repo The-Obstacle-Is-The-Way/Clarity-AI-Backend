@@ -11,7 +11,8 @@ from collections.abc import AsyncGenerator
 from datetime import UTC, datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, TypeVar
-from unittest.mock import ANY, AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock
+from unittest.mock import MagicMock
 from unittest.mock import MagicMock as Mock
 
 import pytest
@@ -43,23 +44,18 @@ from app.domain.repositories.biometric_alert_rule_repository import (
 from app.domain.repositories.biometric_alert_template_repository import (
     BiometricAlertTemplateRepository,
 )
-from app.domain.services.biometric_event_processor import (
+from app.domain.services.biometric_event_processor import (  # ClinicalRuleEngine, # Already imported below
     BiometricEventProcessor,
-    # ClinicalRuleEngine, # Already imported below
 )
 from app.domain.services.clinical_rule_engine import ClinicalRuleEngine  # type: ignore
 from app.factory import create_application
 from app.infrastructure.di.container import reset_container
-from app.presentation.api.dependencies.auth import (
-    get_auth_service as get_auth_service_dependency,
-)
+from app.presentation.api.dependencies.auth import get_auth_service as get_auth_service_dependency
 from app.presentation.api.dependencies.auth import (
     get_current_active_user,
     get_current_user,
 )
-from app.presentation.api.dependencies.auth import (
-    get_jwt_service as get_jwt_service_dependency,
-)
+from app.presentation.api.dependencies.auth import get_jwt_service as get_jwt_service_dependency
 from app.presentation.api.dependencies.biometric_alert import (
     get_alert_repository,
     get_event_processor,

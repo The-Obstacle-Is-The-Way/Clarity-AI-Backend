@@ -16,9 +16,9 @@ from app.core.exceptions import (
     InvalidRequestError,
     ServiceUnavailableError,
 )
-from app.core.services.ml.interface import (
+from app.core.services.ml.interface import (  # Corrected interface name
     DigitalTwinInterface,
-)  # Corrected interface name
+)
 from app.core.utils.logging import get_logger
 from app.domain.utils.datetime_utils import UTC
 

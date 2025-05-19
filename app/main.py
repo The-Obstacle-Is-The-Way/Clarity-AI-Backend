@@ -52,8 +52,8 @@ if __name__ == "__main__":
     # This block runs only when the script is executed directly (e.g., by Uvicorn)
     # Load settings when running as main
     from app.core.config.settings import (
-        get_settings as get_core_settings,
-    )  # Ensure correct get_settings
+        get_settings as get_core_settings,  # Ensure correct get_settings
+    )
 
     settings = get_core_settings()
 

@@ -13,10 +13,9 @@ import pytest
 # Defer entity import
 # from app.domain.entities.appointment import Appointment
 # Import only Enums
-from app.domain.entities.appointment import (
+from app.domain.entities.appointment import (  # AppointmentPriority # Still assuming this doesn't exist
     AppointmentStatus,
     AppointmentType,
-    # AppointmentPriority # Still assuming this doesn't exist
 )
 from app.domain.exceptions.appointment_exceptions import AppointmentConflictError
 

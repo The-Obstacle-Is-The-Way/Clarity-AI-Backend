@@ -27,16 +27,18 @@ from app.core.config.settings import Settings as AppSettings  # Use alias
 # Assuming base exceptions are in core.exceptions.base_exceptions
 from app.core.exceptions.base_exceptions import (
     ModelExecutionError,  # Changed from ModelInferenceError
+)
+from app.core.exceptions.base_exceptions import (
     ResourceNotFoundError,
 )
 from app.domain.entities.user import User  # Added User import
 
 # Add imports for create_application and Settings
 from app.factory import create_application
-from app.presentation.api.dependencies.auth import (
+from app.presentation.api.dependencies.auth import (  # Standard auth dependency
     get_current_active_user,
     get_current_user,
-)  # Standard auth dependency
+)
 from app.presentation.api.dependencies.services import (
     get_digital_twin_service,
 )

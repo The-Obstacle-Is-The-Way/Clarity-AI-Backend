@@ -17,9 +17,7 @@ from app.core.interfaces.repositories.audit_log_repository_interface import (
     IAuditLogRepository,
 )
 from app.domain.entities.audit_log import AuditLog
-from app.infrastructure.persistence.sqlalchemy.models.audit_log import (
-    AuditLog as AuditLogModel,
-)
+from app.infrastructure.persistence.sqlalchemy.models.audit_log import AuditLog as AuditLogModel
 
 
 class AuditLogRepository(IAuditLogRepository):

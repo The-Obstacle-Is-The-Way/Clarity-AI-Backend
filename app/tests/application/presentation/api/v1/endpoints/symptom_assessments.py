@@ -9,9 +9,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.domain.entities.symptom_assessment import (
+from app.domain.entities.symptom_assessment import (  # For query param validation
     AssessmentType,
-)  # For query param validation
+)
 
 # Assuming User type from auth dependency matches this import or is compatible (e.g., dict)
 from app.domain.entities.user import User
@@ -89,9 +89,9 @@ async def record_symptom_assessment(
     #        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User not authorized to record this assessment.")
 
     try:
-        from app.domain.entities.symptom_assessment import (
+        from app.domain.entities.symptom_assessment import (  # Import entity
             SymptomAssessment,
-        )  # Import entity
+        )
 
         new_assessment_entity = SymptomAssessment(**assessment_data.model_dump())
 

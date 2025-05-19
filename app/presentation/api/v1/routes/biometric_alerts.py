@@ -16,9 +16,7 @@ from fastapi import (
     Path,
     Query,
 )
-from fastapi import (
-    status as http_status,
-)
+from fastapi import status as http_status
 from pydantic import UUID4
 
 from app.core.domain.entities.alert import Alert, AlertPriority, AlertStatus, AlertType
