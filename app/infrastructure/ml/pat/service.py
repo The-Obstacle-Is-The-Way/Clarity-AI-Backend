@@ -23,10 +23,10 @@ from app.core.config.settings import get_settings  # Import main settings functi
 # from sagemaker.predictor import Predictor # Removed unused import
 # Removed incorrect ml_settings import
 # from app.config.ml_settings import ml_settings
-from app.core.exceptions import ValidationError  # Replaced DataPreprocessingError
 from app.core.exceptions import (
     AnalysisError,
     ModelNotFoundError,
+    ValidationError,  # Replaced DataPreprocessingError
 )
 
 logger = logging.getLogger(__name__)

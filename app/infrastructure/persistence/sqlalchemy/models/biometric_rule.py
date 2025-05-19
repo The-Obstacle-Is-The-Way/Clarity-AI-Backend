@@ -11,9 +11,6 @@ from datetime import datetime
 
 from sqlalchemy import (
     JSON,
-)
-from sqlalchemy import UUID as SQLAlchemyUUID
-from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
@@ -21,6 +18,7 @@ from sqlalchemy import (
     String,
     Text,
 )
+from sqlalchemy import UUID as SQLAlchemyUUID
 from sqlalchemy.orm import relationship
 
 from app.infrastructure.persistence.sqlalchemy.models.base import (

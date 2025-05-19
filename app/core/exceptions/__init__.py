@@ -11,11 +11,9 @@ from app.core.errors.security_exceptions import (
     RateLimitExceededError,
     SecurityException,
     SessionExpiredError,
-)
-from app.core.errors.security_exceptions import TokenExpiredError as SecurityTokenExpiredError
-from app.core.errors.security_exceptions import (
     TokenValidationError,
 )
+from app.core.errors.security_exceptions import TokenExpiredError as SecurityTokenExpiredError
 
 # Application specific errors and codes
 from app.core.exceptions.application_error import (

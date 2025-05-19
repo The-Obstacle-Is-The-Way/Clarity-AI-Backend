@@ -14,17 +14,13 @@ import pytest
 from app.domain.entities.biometric_twin import BiometricDataPoint
 from app.domain.exceptions import ValidationError
 from app.domain.services.biometric_event_processor import (
-    AlertRule,  # Assuming AlertRule exists or is defined elsewhere
-)
-from app.domain.services.biometric_event_processor import (
-    InAppAlertObserver,  # Assuming ClinicalRuleEngine exists or is defined elsewhere
-)
-from app.domain.services.biometric_event_processor import (
     AlertObserver,
     AlertPriority,
+    AlertRule,  # Assuming AlertRule exists or is defined elsewhere
     BiometricAlert,
     BiometricEventProcessor,
     EmailAlertObserver,
+    InAppAlertObserver,  # Assuming ClinicalRuleEngine exists or is defined elsewhere
     SMSAlertObserver,
 )
 from app.domain.utils.datetime_utils import UTC

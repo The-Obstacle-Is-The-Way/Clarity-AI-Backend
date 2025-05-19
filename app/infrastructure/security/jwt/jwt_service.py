@@ -91,14 +91,12 @@ except ImportError:
 try:
     from app.domain.exceptions.token_exceptions import (
         InvalidTokenException,
-    )
-    from app.domain.exceptions.token_exceptions import (
-        TokenBlacklistedException as RevokedTokenException,
-    )
-    from app.domain.exceptions.token_exceptions import (
         TokenException,
         TokenExpiredException,
         TokenGenerationException,
+    )
+    from app.domain.exceptions.token_exceptions import (
+        TokenBlacklistedException as RevokedTokenException,
     )
 except ImportError:
     # Define fallbacks
