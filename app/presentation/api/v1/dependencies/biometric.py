@@ -27,17 +27,31 @@ def get_biometric_service() -> BiometricServiceInterface:
     Returns:
         BiometricServiceInterface: Instance of the biometric service.
     """
-    return get_service_instance(BiometricServiceInterface)
+    from app.infrastructure.di.container import get_container
+    return get_container().get(BiometricServiceInterface)
 
 
 def get_alert_service() -> AlertServiceInterface:
     """Dependency injector for AlertServiceInterface."""
-    return get_service_instance(AlertServiceInterface)
+    from app.infrastructure.di.container import get_container
+    return get_container().get(AlertServiceInterface)
 
 
 def get_alert_rule_template_service() -> AlertRuleTemplateServiceInterface:
     """Dependency injector for AlertRuleTemplateServiceInterface."""
-    return get_service_instance(AlertRuleTemplateServiceInterface)
+    from app.application.services.alert_rule_template_service import AlertRuleTemplateService
+    from app.infrastructure.di.container import get_container
+    
+    # Get container
+    container = get_container()
+    
+    # Try to get the service if already registered
+    try:
+        return container.get(AlertRuleTemplateServiceInterface)
+    except KeyError:
+        # If not registered, manually create it with repositories that will be injected later
+        # We'll pass None for repositories as they'll be injected on method calls
+        return AlertRuleTemplateService(None, None)
 
 
 def get_biometric_rule_repository(
@@ -45,14 +59,18 @@ def get_biometric_rule_repository(
 ) -> BiometricRuleRepository:
     """Dependency injector for BiometricRuleRepository."""
     # Use the correct provider for repositories requiring a session
-    return get_repository_instance(BiometricRuleRepository, session)
+    from app.infrastructure.di.container import get_container
+    factory = get_container().get_repository_factory(BiometricRuleRepository)
+    return factory(session)
 
 
 def get_biometric_alert_template_repository(
     session: AsyncSession = Depends(get_db_session),
 ) -> BiometricAlertTemplateRepository:
     """Dependency injector for BiometricAlertTemplateRepository."""
-    return get_repository_instance(BiometricAlertTemplateRepository, session)
+    from app.infrastructure.di.container import get_container
+    factory = get_container().get_repository_factory(BiometricAlertTemplateRepository)
+    return factory(session)
 
 
 # Type aliases for cleaner dependency annotations

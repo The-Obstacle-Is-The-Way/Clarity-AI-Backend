@@ -106,7 +106,7 @@ class AlertRuleTemplateService(AlertRuleTemplateServiceInterface):
         self,
         template_id: str,
         patient_id: UUID,
-        customization: dict[str, Any] = None
+        customization: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
         Apply a template to create a rule for a specific patient.

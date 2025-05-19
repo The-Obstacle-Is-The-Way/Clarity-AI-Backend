@@ -5,7 +5,7 @@ This interface defines the contract for services that manage biometric alert rul
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional
+from typing import Any
 from uuid import UUID
 
 class AlertRuleTemplateServiceInterface(ABC):
@@ -17,7 +17,7 @@ class AlertRuleTemplateServiceInterface(ABC):
     """
     
     @abstractmethod
-    async def get_all_templates(self) -> List[dict[str, Any]]:
+    async def get_all_templates(self) -> list[dict[str, Any]]:
         """
         Get all available alert rule templates.
         
@@ -27,7 +27,7 @@ class AlertRuleTemplateServiceInterface(ABC):
         pass
     
     @abstractmethod
-    async def get_template_by_id(self, template_id: str) -> Optional[dict[str, Any]]:
+    async def get_template_by_id(self, template_id: str) -> dict[str, Any] | None:
         """
         Get a specific template by ID or code.
         
@@ -44,7 +44,7 @@ class AlertRuleTemplateServiceInterface(ABC):
         self,
         template_id: str,
         patient_id: UUID,
-        customization: dict[str, Any] = None
+        customization: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
         Apply a template to create a rule for a specific patient.
