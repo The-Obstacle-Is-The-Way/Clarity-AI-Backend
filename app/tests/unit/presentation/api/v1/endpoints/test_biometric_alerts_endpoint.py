@@ -777,6 +777,7 @@ class TestBiometricAlertsEndpoints:
         alert_service_mock = MagicMock(spec=AlertServiceInterface)
         # Return (False, "Alert not found", 404) to ensure 404 status code
         alert_service_mock.update_alert_status = AsyncMock(return_value=(False, "Alert not found", 404))
+        alert_service_mock.validate_access = AsyncMock(return_value=True)
         
         # Add missing abstract methods
         alert_service_mock.create_rule = AsyncMock(return_value=None)
@@ -875,8 +876,11 @@ class TestBiometricAlertsEndpoints:
     ) -> None:
         # Mock the alert service to properly handle the 404 case
         alert_service_mock = MagicMock(spec=AlertServiceInterface)
-        # Return a tuple (None, error_message, 404) to indicate a not found condition
-        alert_service_mock.get_patient_alert_summary = AsyncMock(return_value=(None, "Patient not found", 404))
+        # Make the service raise an HTTPException with 404 status code that the endpoint will propagate
+        alert_service_mock.get_patient_alert_summary = AsyncMock(side_effect=HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found"
+        ))
         alert_service_mock.validate_access = AsyncMock(return_value=True)
         
         # Add missing abstract methods
