@@ -15,6 +15,7 @@ class MockSettings(BaseModel):
     APP_NAME: str = "Clarity AI Backend"
     APP_ENV: str = "test"
     DEBUG: bool = True
+    TESTING: bool = False
     
     # API configuration
     API_PREFIX: str = "/api"

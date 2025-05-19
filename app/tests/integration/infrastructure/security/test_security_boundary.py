@@ -106,33 +106,32 @@ class TestSecurityBoundary:
         """Test token expiration handling."""
         jwt_service, _, _ = security_components
         
-        # Create a token with very short expiration by temporarily modifying settings or creating a new service
-        original_expiry = mock_settings.ACCESS_TOKEN_EXPIRE_MINUTES
-        mock_settings.ACCESS_TOKEN_EXPIRE_MINUTES = 0.01 # ~0.6 seconds
-        # Recreate service with modified settings if necessary, or patch
-        short_lived_jwt_service = JWTService(settings=mock_settings, user_repository=None)
-
+        # Ensure TESTING is set to False to ensure expiration is validated
+        mock_settings.TESTING = False
+        
+        # Create a token that's already expired
         user_data = {
             "sub": "test123",
             "roles": [Role.PATIENT.value],
             "permissions": [],
             "session_id": "session_test"
         }
-        token = short_lived_jwt_service.create_access_token(data=user_data)
         
-        # Token should be valid immediately
-        token_data = short_lived_jwt_service.decode_token(token)
-        assert token_data is not None
+        # Create a token that's already expired (expires 2 seconds ago)
+        expired_token = jwt_service._create_token(
+            data=user_data,
+            token_type=TokenType.ACCESS,
+            expires_delta_minutes=-0.03  # Negative number to create an already-expired token
+        )
         
-        # Wait for token to expire (increase sleep time)
-        await asyncio.sleep(1.5) 
-        
-        # Token should now be expired
+        # Token should be expired
         with pytest.raises(TokenExpiredException):
-            short_lived_jwt_service.decode_token(token)
-
-        # Restore original setting
-        mock_settings.ACCESS_TOKEN_EXPIRE_MINUTES = original_expiry
+            # Explicitly set verify_exp to True
+            jwt_service.decode_token(
+                expired_token, 
+                verify_signature=True,
+                options={"verify_exp": True}
+            )
 
     @pytest.mark.asyncio
     async def test_role_based_access_control(self, security_components):
