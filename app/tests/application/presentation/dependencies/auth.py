@@ -72,9 +72,7 @@ def get_jwt_service() -> JWTService:
 # Dependency provider for AuthenticationService (depends on get_jwt_service)
 def get_authentication_service(
     # Declare dependencies using Depends
-    user_repo: UserRepositoryInterface = Depends(
-        get_user_repository
-    ),  # Use interface hint
+    user_repo: UserRepositoryInterface = Depends(get_user_repository),  # Use interface hint
     password_handler: PasswordHandler = Depends(get_password_handler),
     jwt_service: JWTService = Depends(get_jwt_service),
 ) -> AuthenticationService:
@@ -129,9 +127,7 @@ async def get_current_user(
     try:
         logger.debug("Attempting to validate token and retrieve user.")
         # Validate token and get user using the service
-        user, _ = await auth_service.validate_token(
-            token
-        )  # Ignoring permissions for now
+        user, _ = await auth_service.validate_token(token)  # Ignoring permissions for now
         if user is None:
             # Should not happen if validate_token raises exceptions properly
             logger.error("validate_token returned None user without raising error.")

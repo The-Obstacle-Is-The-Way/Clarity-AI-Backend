@@ -110,9 +110,7 @@ async def get_comprehensive_insights(
     logger.info(f"Generating comprehensive insights for patient {patient_id}")
     try:
         # Simply return the service response directly
-        return await dt_service.generate_comprehensive_patient_insights(
-            patient_id=patient_id
-        )
+        return await dt_service.generate_comprehensive_patient_insights(patient_id=patient_id)
     except ResourceNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -147,9 +145,7 @@ async def get_comprehensive_insights(
 async def analyze_clinical_text(
     patient_id: UUID,
     request: Request,  # Add the Request object
-    request_data: dict | None = Body(
-        default=None
-    ),  # Make Body optional with default None
+    request_data: dict | None = Body(default=None),  # Make Body optional with default None
     dt_service: DigitalTwinServiceDep = None,  # Keep it as None to avoid Depends issues
     current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
@@ -161,15 +157,11 @@ async def analyze_clinical_text(
     # Debug prints
     print(f"DEBUG request: {request}")
     print(f"DEBUG request_data: {request_data}")
-    print(
-        f"DEBUG request.state has parsed_body: {'parsed_body' in request.state.__dict__}"
-    )
+    print(f"DEBUG request.state has parsed_body: {'parsed_body' in request.state.__dict__}")
 
     # Try to get data from different sources
     if hasattr(request.state, "parsed_body") and request.state.parsed_body:
-        print(
-            f"DEBUG Using parsed_body from request.state: {request.state.parsed_body}"
-        )
+        print(f"DEBUG Using parsed_body from request.state: {request.state.parsed_body}")
         parsed_data = request.state.parsed_body
     elif request_data is not None:
         print(f"DEBUG Using request_data: {request_data}")

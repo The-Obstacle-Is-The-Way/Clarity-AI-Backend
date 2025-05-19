@@ -96,9 +96,7 @@ class MockDigitalTwinRepository(MockRepository[DigitalTwin], IDigitalTwinReposit
         self.get_by_patient_id = AsyncMock(return_value=None)
 
 
-class MockBiometricRuleRepository(
-    MockRepository[BiometricRule], IBiometricRuleRepository
-):
+class MockBiometricRuleRepository(MockRepository[BiometricRule], IBiometricRuleRepository):
     """Mock implementation of BiometricRuleRepository for testing."""
 
     def __init__(self, session: AsyncSession | None = None):
@@ -107,9 +105,7 @@ class MockBiometricRuleRepository(
         self.get_active_rules = AsyncMock(return_value=[])
 
 
-class MockBiometricAlertRepository(
-    MockRepository[BiometricAlert], IBiometricAlertRepository
-):
+class MockBiometricAlertRepository(MockRepository[BiometricAlert], IBiometricAlertRepository):
     """Mock implementation of BiometricAlertRepository for testing."""
 
     def __init__(self, session: AsyncSession | None = None):
@@ -119,9 +115,7 @@ class MockBiometricAlertRepository(
         self.acknowledge = AsyncMock(return_value=True)
 
 
-class MockBiometricTwinRepository(
-    MockRepository[BiometricTwinState], IBiometricTwinRepository
-):
+class MockBiometricTwinRepository(MockRepository[BiometricTwinState], IBiometricTwinRepository):
     """Mock implementation of BiometricTwinRepository for testing."""
 
     def __init__(self, session: AsyncSession | None = None):
@@ -174,9 +168,7 @@ def create_repository(
         logger.error(f"No mock repository registered for type: {repo_type.__name__}")
         raise ValueError(msg)
 
-    logger.debug(
-        f"Creating mock repository for {repo_type.__name__} using {mock_class.__name__}"
-    )
+    logger.debug(f"Creating mock repository for {repo_type.__name__} using {mock_class.__name__}")
     # Ignore type checker error for dynamic creation
     return mock_class(session)  # type: ignore[return-value]
 
@@ -192,23 +184,18 @@ class RepositoryFactory:
     ):
         self._session = db_session
         self._repository_map = repository_map
-        logger.debug(
-            f"RepositoryFactory initialized with {len(repository_map)} mock mappings."
-        )
+        logger.debug(f"RepositoryFactory initialized with {len(repository_map)} mock mappings.")
 
     def get_repository(self, repo_interface: type[RepoInterface]) -> RepoInterface:
         """Gets an instance of the requested repository interface."""
         mock_class = self._repository_map.get(repo_interface)
         if not mock_class:
             msg = f"Mock repository not found for {repo_interface.__name__}"
-            logger.error(
-                f"No mock repository registered for interface: {repo_interface.__name__}"
-            )
+            logger.error(f"No mock repository registered for interface: {repo_interface.__name__}")
             raise ValueError(msg)
 
         logger.debug(
-            f"Providing mock instance of {mock_class.__name__} "
-            f"for {repo_interface.__name__}"
+            f"Providing mock instance of {mock_class.__name__} " f"for {repo_interface.__name__}"
         )
         # Instantiate the mock repository with the session
         return mock_class(self._session)  # type: ignore[return-value]
@@ -245,8 +232,7 @@ class MockUnitOfWork(IUnitOfWork):
         if exc_type:
             await self.rollback()
             logger.warning(
-                f"MockUnitOfWork exiting with exception: {exc_type.__name__}, "
-                f"rolling back."
+                f"MockUnitOfWork exiting with exception: {exc_type.__name__}, " f"rolling back."
             )
         else:
             await self.commit()

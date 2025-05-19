@@ -25,12 +25,8 @@ def mock_settings() -> MagicMock:
 
     # Mock JWT_SECRET_KEY to behave like SecretStr
     mock_jwt_secret = MagicMock(spec=SecretStr)
-    mock_jwt_secret.get_secret_value.return_value = (
-        "test-secret-for-service-test-32-bytes"
-    )
-    type(settings).JWT_SECRET_KEY = PropertyMock(
-        return_value=mock_jwt_secret
-    )  # Use PropertyMock
+    mock_jwt_secret.get_secret_value.return_value = "test-secret-for-service-test-32-bytes"
+    type(settings).JWT_SECRET_KEY = PropertyMock(return_value=mock_jwt_secret)  # Use PropertyMock
 
     settings.JWT_ALGORITHM = "HS256"
     settings.ACCESS_TOKEN_EXPIRE_MINUTES = 15
@@ -131,9 +127,7 @@ class TestJWTService:
         """Test that expired tokens raise TokenExpiredException during decoding."""
         user_data = {"sub": self.user_subject, "roles": self.user_roles}
         # Create token that expired 1 minute ago
-        expired_token = jwt_service.create_access_token(
-            data=user_data, expires_delta_minutes=-1
-        )
+        expired_token = jwt_service.create_access_token(data=user_data, expires_delta_minutes=-1)
 
         await asyncio.sleep(0.1)  # Ensure time passes expiry
 

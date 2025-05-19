@@ -66,9 +66,7 @@ class BiometricSummaryResponse(BaseModelConfig):
     biometric_type: BiometricType
     timestamp: datetime
     device_id: str | None = None
-    summary_value: dict[str, Any] = Field(
-        ..., description="Summarized biometric values"
-    )
+    summary_value: dict[str, Any] = Field(..., description="Summarized biometric values")
 
 
 class BiometricBatchItem(BiometricCreateRequest):

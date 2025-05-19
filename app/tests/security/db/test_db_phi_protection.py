@@ -97,9 +97,7 @@ except ImportError:
 
     # Mock repository interfaces for UoW instantiation if real ones are complex to get here
     IUserRepository = MagicMock()
-    IPatientRepository = (
-        ConcretePatientRepository  # Use our existing mock PatientRepository
-    )
+    IPatientRepository = ConcretePatientRepository  # Use our existing mock PatientRepository
     IDigitalTwinRepository = MagicMock()
     IBiometricRuleRepository = MagicMock()
     IBiometricAlertRepository = MagicMock()
@@ -218,9 +216,7 @@ class TestDBPHIProtection:
         return {"role": "guest", "user_id": None}
 
     @pytest.mark.asyncio
-    async def test_data_encryption_at_rest(
-        self, unit_of_work, admin_context, mock_logger, db
-    ):
+    async def test_data_encryption_at_rest(self, unit_of_work, admin_context, mock_logger, db):
         """Test that PHI is encrypted when stored in the database."""
         uow = unit_of_work
 
@@ -260,12 +256,8 @@ class TestDBPHIProtection:
             social_security_number_lve="999-00-1111",
             address=patient_primary_address,
             emergency_contact=emergency_contact,
-            created_at=datetime(
-                2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc
-            ),  # Fixed datetime
-            updated_at=datetime(
-                2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc
-            ),  # Fixed datetime
+            created_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),  # Fixed datetime
+            updated_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),  # Fixed datetime
             is_active=True,
         )
 
@@ -353,9 +345,7 @@ class TestDBPHIProtection:
 
         mock_logger.info(f"Raw SSN from DB for patient {patient_id}: {raw_ssn_from_db}")
         assert raw_ssn_from_db is not None, "Raw SSN not found in DB"
-        assert raw_ssn_from_db.startswith(
-            "v1:"
-        ), "Raw SSN in DB does not have v1: prefix"
+        assert raw_ssn_from_db.startswith("v1:"), "Raw SSN in DB does not have v1: prefix"
         assert (
             raw_ssn_from_db != original_patient.social_security_number_lve
         ), "Raw SSN in DB is same as original (unencrypted)"
@@ -529,9 +519,7 @@ class TestDBPHIProtection:
                 minimal_patient_data, context=test_user_context
             )
             await uow_create.commit()
-        assert (
-            created_domain_patient is not None
-        ), "Patient creation failed with minimal data"
+        assert created_domain_patient is not None, "Patient creation failed with minimal data"
 
         # For testing only the creation flow, stop here
         # This simplifies the test and ensures we're testing at least the creation functionality
@@ -579,9 +567,7 @@ class TestDBPHIProtection:
                         created_domain_patient.id, context=test_user_context
                     )
 
-                assert (
-                    retrieved_after_update is not None
-                ), "Patient not found after update"
+                assert retrieved_after_update is not None, "Patient not found after update"
                 print(
                     f"DEBUG: retrieved_after_update.first_name: {retrieved_after_update.first_name}"
                 )
@@ -591,18 +577,12 @@ class TestDBPHIProtection:
                 assert retrieved_after_update.first_name == "AuditLogUpdatedFirstName"
                 assert retrieved_after_update.last_name == "AuditLogUpdatedLastName"
             else:
-                pytest.fail(
-                    "Cannot proceed to update test as patient retrieval failed earlier."
-                )
+                pytest.fail("Cannot proceed to update test as patient retrieval failed earlier.")
         else:
-            pytest.fail(
-                "Cannot proceed to get/update tests as patient creation failed."
-            )
+            pytest.fail("Cannot proceed to get/update tests as patient creation failed.")
 
     @pytest.mark.asyncio
-    async def test_phi_filtering_by_role(
-        self, unit_of_work, admin_context, patient_context
-    ):
+    async def test_phi_filtering_by_role(self, unit_of_work, admin_context, patient_context):
         """Test PHI filtering based on user roles."""
         uow = unit_of_work
         patient_id = uuid.uuid4()
@@ -672,8 +652,8 @@ class TestDBPHIProtection:
                 )
                 # Attempt a simple read operation.
                 # This will trigger the .patients property and then .get_by_id()
-                retrieved_patient_in_minimal_test = (
-                    await minimal_uow.patients.get_by_id(test_patient_id)
+                retrieved_patient_in_minimal_test = await minimal_uow.patients.get_by_id(
+                    test_patient_id
                 )
                 mock_logger.info(
                     f"Minimal UoW test: Attempted to get patient {test_patient_id}. Result: {retrieved_patient_in_minimal_test}"
@@ -702,7 +682,9 @@ class TestDBPHIProtection:
             f"Test_no_phi: uow instance {id(uow)}, session status BEFORE 'async with uow': session is {id(uow._session) if hasattr(uow, '_session') and uow._session else 'None'}. Transaction started: {uow._transaction_started if hasattr(uow, '_transaction_started') else 'N/A'}"
         )
 
-        phi_laden_id = "patient_id_with_sensitive_info"  # This is just a string, not a real ID for get_by_id
+        phi_laden_id = (
+            "patient_id_with_sensitive_info"  # This is just a string, not a real ID for get_by_id
+        )
 
         with pytest.raises(Exception) as excinfo:
             async with uow:  # Calls uow.__aenter__()

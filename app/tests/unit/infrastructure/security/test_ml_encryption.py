@@ -113,9 +113,7 @@ class TestMLEncryptionService:
         # assert "=" in encrypted_embedding  # Base64 padding
 
         # Decrypt the embedding
-        decrypted_embedding = ml_encryption_service.decrypt_embedding(
-            encrypted_embedding
-        )
+        decrypted_embedding = ml_encryption_service.decrypt_embedding(encrypted_embedding)
 
         # Verify decryption result
         assert isinstance(decrypted_embedding, np.ndarray)
@@ -187,9 +185,7 @@ class TestMLEncryptionService:
 
         # Patient data should be encrypted
         assert isinstance(encrypted_data["patient_data"], dict)
-        assert all(
-            val.startswith("v1:") for val in encrypted_data["patient_data"].values()
-        )
+        assert all(val.startswith("v1:") for val in encrypted_data["patient_data"].values())
 
         # Check that non-sensitive fields are not encrypted
         assert encrypted_data["model_type"] == "sentiment_analysis"
@@ -210,9 +206,7 @@ class TestMLEncryptionService:
 
         # Check that sensitive fields are properly decrypted
         assert decrypted_data["feature_names"] == test_ml_data["feature_names"]
-        assert (
-            decrypted_data["patient_identifiers"] == test_ml_data["patient_identifiers"]
-        )
+        assert decrypted_data["patient_identifiers"] == test_ml_data["patient_identifiers"]
 
         # Check nested decryption for embeddings with dtype conversion
         embeddings = decrypted_data["embeddings"]
@@ -342,9 +336,7 @@ class TestMLEncryptionService:
     def test_get_ml_encryption_service(self):
         """Test the factory function for getting ML encryption service."""
         # Use direct key in factory function
-        service = get_ml_encryption_service(
-            direct_key="test_direct_key", use_legacy_prefix=True
-        )
+        service = get_ml_encryption_service(direct_key="test_direct_key", use_legacy_prefix=True)
 
         # Test encryption with the service
         embedding = np.array([0.1, 0.2, 0.3], dtype=np.float32)
@@ -405,9 +397,7 @@ class TestMLSecurityCompliance:
         decrypted_data = ml_encryption_service.decrypt_phi_safe_data(encrypted_data)
 
         # Verify the decrypted data matches the original
-        assert (
-            decrypted_data["patient_data"]["name"] == phi_data["patient_data"]["name"]
-        )
+        assert decrypted_data["patient_data"]["name"] == phi_data["patient_data"]["name"]
         assert decrypted_data["patient_data"]["ssn"] == phi_data["patient_data"]["ssn"]
 
     def test_error_message_phi_protection(self, ml_encryption_service):

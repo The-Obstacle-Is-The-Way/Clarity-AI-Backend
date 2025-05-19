@@ -124,9 +124,7 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_role(
-        self, role: str, skip: int = 0, limit: int = 100
-    ) -> list[User]:
+    async def get_by_role(self, role: str, skip: int = 0, limit: int = 100) -> list[User]:
         """
         Retrieve users by their role.
 

@@ -38,9 +38,7 @@ def get_service(service_name: str) -> Any:
     if service_name not in _SERVICE_REGISTRY:
         # Depending on how tests are structured, you might want to return a mock
         # or raise an error.
-        print(
-            f"Warning: Service '{service_name}' not found in registry. Returning None."
-        )
+        print(f"Warning: Service '{service_name}' not found in registry. Returning None.")
         return None  # Or raise KeyError(f"Service '{service_name}' not registered.")
 
     return _SERVICE_REGISTRY[service_name]
@@ -54,9 +52,7 @@ def get_service_by_type(service_type: type[T]) -> T:
     service_name = service_type.__name__  # Example naming convention
     print(f"Attempting to get service by type: {service_name}")
     if service_name not in _SERVICE_REGISTRY:
-        print(
-            f"Warning: Service type '{service_name}' not found in registry. Returning None."
-        )
+        print(f"Warning: Service type '{service_name}' not found in registry. Returning None.")
         # return None # Or raise error
         raise KeyError(f"Service type '{service_name}' not found in registry.")
 

@@ -33,9 +33,7 @@ class TestFieldEncryption(unittest.TestCase):
         """Set up test environment."""
         # Instantiate BaseEncryptionService (using Mock for testing)
         self.encryption_service = MockEncryptionService()
-        self.encryption = FieldEncryptor(
-            self.encryption_service
-        )  # Instantiate FieldEncryptor
+        self.encryption = FieldEncryptor(self.encryption_service)  # Instantiate FieldEncryptor
 
         # Define PHI fields for testing
         self.phi_fields = [
@@ -122,9 +120,7 @@ class TestFieldEncryption(unittest.TestCase):
             decrypted_data["patient_id"] = int(decrypted_data["patient_id"])
 
         # Compare key fields individually to handle type differences
-        self.assertEqual(
-            str(original_data["patient_id"]), str(decrypted_data["patient_id"])
-        )
+        self.assertEqual(str(original_data["patient_id"]), str(decrypted_data["patient_id"]))
         self.assertEqual(original_data["name"], decrypted_data["name"])
         self.assertEqual(original_data["address"], decrypted_data["address"])
         self.assertEqual(
@@ -167,22 +163,16 @@ class TestFieldEncryption(unittest.TestCase):
             data = self.encryption.decrypt_fields(data, self.phi_fields)
 
         # Handle patient_id type conversion (string vs int)
-        if isinstance(original_data["patient_id"], str) and isinstance(
-            data["patient_id"], int
-        ):
+        if isinstance(original_data["patient_id"], str) and isinstance(data["patient_id"], int):
             original_data["patient_id"] = int(original_data["patient_id"])
-        elif isinstance(original_data["patient_id"], int) and isinstance(
-            data["patient_id"], str
-        ):
+        elif isinstance(original_data["patient_id"], int) and isinstance(data["patient_id"], str):
             data["patient_id"] = int(data["patient_id"])
 
         # Compare key fields individually to handle type differences
         self.assertEqual(str(original_data["patient_id"]), str(data["patient_id"]))
         self.assertEqual(original_data["name"], data["name"])
         self.assertEqual(original_data["address"], data["address"])
-        self.assertEqual(
-            original_data["demographics"]["ssn"], data["demographics"]["ssn"]
-        )
+        self.assertEqual(original_data["demographics"]["ssn"], data["demographics"]["ssn"])
         self.assertEqual(original_data["gender"], data["gender"])
         self.assertEqual(original_data["diagnosis"], data["diagnosis"])
 
@@ -192,9 +182,7 @@ class TestFieldEncryption(unittest.TestCase):
         invalid_encrypted = "ENC_INVALID"  # Missing proper format
 
         try:
-            result = self.encryption_service.decrypt(
-                invalid_encrypted
-            )  # Use service directly
+            result = self.encryption_service.decrypt(invalid_encrypted)  # Use service directly
             # If no exception is raised, the function should return the original value
             self.assertEqual(invalid_encrypted, result)
         except EncryptionError:
@@ -219,9 +207,7 @@ class TestFieldEncryption(unittest.TestCase):
         self.assertNotEqual(
             test_data["medical_record_number"], encrypted_data["medical_record_number"]
         )
-        self.assertNotEqual(
-            test_data["treatment_notes"], encrypted_data["treatment_notes"]
-        )
+        self.assertNotEqual(test_data["treatment_notes"], encrypted_data["treatment_notes"])
 
         # Diagnosis code (not considered direct PHI) should remain unchanged
         self.assertEqual(test_data["diagnosis_code"], encrypted_data["diagnosis_code"])

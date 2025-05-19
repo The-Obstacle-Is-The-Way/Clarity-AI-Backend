@@ -33,9 +33,7 @@ async def _parse_payload(request: Request) -> dict:
         )
 
 
-@router.post(
-    "/process", dependencies=[Depends(verify_api_key)], status_code=status.HTTP_200_OK
-)
+@router.post("/process", dependencies=[Depends(verify_api_key)], status_code=status.HTTP_200_OK)
 async def process_endpoint(
     prompt: str = Body(..., description="The prompt to process"),
     model: str | None = Body(None, description="Optional model name"),
@@ -72,9 +70,7 @@ async def process_endpoint(
     }
 
 
-@router.post(
-    "/analyze", dependencies=[Depends(verify_api_key)], status_code=status.HTTP_200_OK
-)
+@router.post("/analyze", dependencies=[Depends(verify_api_key)], status_code=status.HTTP_200_OK)
 async def analyze_endpoint(
     request: Request, service: MentaLLaMAInterface = Depends(get_mentallama_service)
 ) -> dict[str, Any]:
@@ -207,9 +203,7 @@ async def analyze_wellness_dimensions_endpoint(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="At least one dimension must be specified",
         )
-    dims: dict[str, Any] = {
-        dim: {"score": 0.0, "recommendations": []} for dim in dimensions
-    }
+    dims: dict[str, Any] = {dim: {"score": 0.0, "recommendations": []} for dim in dimensions}
     return {"structured_data": {"dimensions": dims}}
 
 

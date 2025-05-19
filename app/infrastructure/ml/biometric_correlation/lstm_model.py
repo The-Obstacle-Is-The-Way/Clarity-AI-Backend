@@ -136,9 +136,7 @@ class BiometricCorrelationModel:
             Dictionary containing correlation analysis results
         """
         # If input data is empty, return empty correlations
-        if input_data is not None and (
-            isinstance(input_data, np.ndarray) and input_data.size == 0
-        ):
+        if input_data is not None and (isinstance(input_data, np.ndarray) and input_data.size == 0):
             return {
                 "correlations": [],
                 "model_metrics": {
@@ -194,9 +192,7 @@ class BiometricCorrelationModel:
         for i in range(biometric_data.shape[1]):
             for j in range(mental_health_data.shape[1]):
                 # Calculate correlation coefficient
-                corr_matrix = np.corrcoef(
-                    biometric_data[:, i], mental_health_data[:, j]
-                )
+                corr_matrix = np.corrcoef(biometric_data[:, i], mental_health_data[:, j])
                 correlations[i, j] = corr_matrix[0, 1]
 
         # Find top correlations
@@ -304,8 +300,6 @@ class BiometricCorrelationModel:
         return {
             "anomalies_by_feature": anomalies_by_feature,
             "anomalies_by_time": anomalies_by_time,
-            "total_anomalies": sum(
-                info["anomaly_count"] for info in anomalies_by_feature.values()
-            ),
+            "total_anomalies": sum(info["anomaly_count"] for info in anomalies_by_feature.values()),
             "analysis_window": window_size,
         }

@@ -48,9 +48,7 @@ class MedicationDosage:
             raise ValueError("Frequency must be positive")
 
         if self.max_daily_value is not None and self.max_daily_value < self.value:
-            raise ValueError(
-                "Maximum daily value cannot be less than single dose value"
-            )
+            raise ValueError("Maximum daily value cannot be less than single dose value")
 
     def validate_dosage(self) -> None:
         """

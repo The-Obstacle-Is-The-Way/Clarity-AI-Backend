@@ -76,9 +76,7 @@ async def client(
     if hasattr(test_settings, "JWT_SECRET_KEY"):
         test_settings.JWT_SECRET_KEY = "test_secret_key_for_testing_only"
 
-    app_instance = create_application(
-        settings_override=test_settings, skip_auth_middleware=True
-    )
+    app_instance = create_application(settings_override=test_settings, skip_auth_middleware=True)
 
     # Override the JWT service dependency to use our global mock
     app_instance.dependency_overrides[get_jwt_service] = lambda: global_mock_jwt_service
@@ -118,9 +116,7 @@ async def client(
             # Create token synchronously for middleware
             token = "test.token.for.middleware"
             # Insert Authorization header
-            request.headers.__dict__["_list"].append(
-                (b"authorization", f"Bearer {token}".encode())
-            )
+            request.headers.__dict__["_list"].append((b"authorization", f"Bearer {token}".encode()))
 
         return await call_next(request)
 
@@ -214,9 +210,7 @@ async def test_read_patient_success(
     assert response.status_code == status.HTTP_200_OK
     # The response should match the PatientRead schema derived from the mock_patient_entity
     # Reconstruct the expected JSON based on PatientRead schema
-    expected_response_json = PatientRead.model_validate(mock_patient_entity).model_dump(
-        mode="json"
-    )
+    expected_response_json = PatientRead.model_validate(mock_patient_entity).model_dump(mode="json")
     assert response.json() == expected_response_json
 
     # Clean up overrides
@@ -316,9 +310,7 @@ async def test_create_patient_success(
     patient_payload = {
         "first_name": faker.first_name(),
         "last_name": faker.last_name(),
-        "date_of_birth": faker.date_of_birth(
-            minimum_age=18, maximum_age=90
-        ).isoformat(),
+        "date_of_birth": faker.date_of_birth(minimum_age=18, maximum_age=90).isoformat(),
         "email": faker.email(),
         "phone_number": faker.phone_number(),
     }
@@ -412,9 +404,7 @@ async def test_create_patient_validation_error(
     invalid_patient_payload = {
         "first_name": faker.first_name(),
         # Missing last_name
-        "date_of_birth": faker.date_of_birth(
-            minimum_age=18, maximum_age=90
-        ).isoformat(),
+        "date_of_birth": faker.date_of_birth(minimum_age=18, maximum_age=90).isoformat(),
     }
 
     # Act - Call our test endpoint with invalid data with auth headers
@@ -430,9 +420,7 @@ async def test_create_patient_validation_error(
     assert "detail" in response_data
     assert isinstance(response_data["detail"], list)
     assert len(response_data["detail"]) > 0
-    assert (
-        response_data["detail"][0]["loc"][1] == "last_name"
-    )  # Missing field validation error
+    assert response_data["detail"][0]["loc"][1] == "last_name"  # Missing field validation error
 
 
 @pytest.mark.asyncio
@@ -447,9 +435,7 @@ async def test_read_patient_unauthorized(client: tuple[FastAPI, AsyncClient]) ->
     # instead of trying to access the database
     async def mock_get_patient_id():
         # Simulate unauthorized access error
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     # Override the dependency
     app_instance.dependency_overrides[get_patient_id] = mock_get_patient_id

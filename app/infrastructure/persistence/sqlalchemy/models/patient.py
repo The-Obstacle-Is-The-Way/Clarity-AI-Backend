@@ -80,9 +80,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
 
     # --- Primary Key and Foreign Keys ---
     # Note: id column MUST be defined precisely to avoid SQLAlchemy mapping issues
-    id = Column(
-        GUID(), primary_key=True, default=uuid.uuid4, nullable=False, index=True
-    )
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4, nullable=False, index=True)
     external_id = Column(String(64), unique=True, index=True, nullable=True)
     user_id = Column(GUID(), ForeignKey("users.id"), index=True, nullable=True)
 
@@ -103,24 +101,16 @@ class Patient(Base, TimestampMixin, AuditMixin):
     _email = Column("email", EncryptedString, nullable=True)
     _phone_number = Column("phone_number", EncryptedString, nullable=True)
     _insurance_provider = Column("insurance_provider", EncryptedString, nullable=True)
-    _insurance_policy_number = Column(
-        "insurance_policy_number", EncryptedString, nullable=True
-    )
-    _insurance_group_number = Column(
-        "insurance_group_number", EncryptedString, nullable=True
-    )
+    _insurance_policy_number = Column("insurance_policy_number", EncryptedString, nullable=True)
+    _insurance_group_number = Column("insurance_group_number", EncryptedString, nullable=True)
     _address_line1 = Column("address_line1", EncryptedString, nullable=True)
     _address_line2 = Column("address_line2", EncryptedString, nullable=True)
     _city = Column("city", EncryptedString, nullable=True)
     _state = Column("state", EncryptedString, nullable=True)
     _zip_code = Column("zip_code", EncryptedString, nullable=True)
     _country = Column("country", EncryptedString, nullable=True)
-    _emergency_contact_name = Column(
-        "emergency_contact_name", EncryptedString, nullable=True
-    )
-    _emergency_contact_phone = Column(
-        "emergency_contact_phone", EncryptedString, nullable=True
-    )
+    _emergency_contact_name = Column("emergency_contact_name", EncryptedString, nullable=True)
+    _emergency_contact_phone = Column("emergency_contact_phone", EncryptedString, nullable=True)
     _emergency_contact_relationship = Column(
         "emergency_contact_relationship", EncryptedString, nullable=True
     )
@@ -128,9 +118,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
     # Fields that might be JSON or larger text
     _contact_info = Column("contact_info", EncryptedJSON, nullable=True)
     _address_details = Column("address_details", EncryptedJSON, nullable=True)
-    _emergency_contact_details = Column(
-        "emergency_contact_details", EncryptedJSON, nullable=True
-    )
+    _emergency_contact_details = Column("emergency_contact_details", EncryptedJSON, nullable=True)
     _preferences = Column("preferences", EncryptedJSON, nullable=True)
     _medical_history = Column("medical_history", EncryptedText, nullable=True)
     _medications = Column("medications", EncryptedText, nullable=True)
@@ -253,9 +241,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
             try:
                 model.id = uuid.UUID(str(model.id))
             except ValueError:
-                logger.error(
-                    f"Invalid ID format for patient: {model.id}. Generating new UUID."
-                )
+                logger.error(f"Invalid ID format for patient: {model.id}. Generating new UUID.")
                 model.id = uuid.uuid4()
 
         model.external_id = (
@@ -266,9 +252,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # user_id should be set based on who is creating/owning this record.
         # DomainPatient doesn't have user_id, but PatientModel requires it (FK).
         # This needs to be passed or set contextually. For now, assume it might come via created_by.
-        created_by_uuid = getattr(
-            patient, "created_by", None
-        )  # DomainPatient might not have this
+        created_by_uuid = getattr(patient, "created_by", None)  # DomainPatient might not have this
         if isinstance(created_by_uuid, uuid.UUID):
             model.user_id = created_by_uuid
         elif isinstance(created_by_uuid, str):
@@ -278,9 +262,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 logger.warning(
                     f"Invalid created_by UUID string: {created_by_uuid}. user_id will be None."
                 )
-                model.user_id = (
-                    None  # Or handle as error if user_id is non-nullable and no default
-                )
+                model.user_id = None  # Or handle as error if user_id is non-nullable and no default
         else:
             model.user_id = None  # Fallback if not provided or invalid type
 
@@ -349,9 +331,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
 
         # Insurance Info - NOT in core DomainPatient
         model._insurance_provider = getattr(patient, "insurance_provider", None)
-        model._insurance_policy_number = getattr(
-            patient, "insurance_policy_number", None
-        )
+        model._insurance_policy_number = getattr(patient, "insurance_policy_number", None)
         model._insurance_group_number = getattr(patient, "insurance_group_number", None)
 
         # Address components - NOT directly in core DomainPatient (it has Address VO in contact_info or as separate field)
@@ -376,9 +356,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         emergency_contact_vo = getattr(patient, "emergency_contact", None)
         if isinstance(emergency_contact_vo, EmergencyContact):
             model._emergency_contact_name = getattr(emergency_contact_vo, "name", None)
-            model._emergency_contact_phone = getattr(
-                emergency_contact_vo, "phone", None
-            )
+            model._emergency_contact_phone = getattr(emergency_contact_vo, "phone", None)
             model._emergency_contact_relationship = getattr(
                 emergency_contact_vo, "relationship", None
             )
@@ -441,12 +419,8 @@ class Patient(Base, TimestampMixin, AuditMixin):
         model._medical_history = _serialize_to_json_string(
             getattr(patient, "medical_history", None)
         )
-        model._medications = _serialize_to_json_string(
-            getattr(patient, "medications", None)
-        )
-        model._allergies = _serialize_to_json_string(
-            getattr(patient, "allergies", None)
-        )
+        model._medications = _serialize_to_json_string(getattr(patient, "medications", None))
+        model._allergies = _serialize_to_json_string(getattr(patient, "allergies", None))
 
         notes_val = getattr(patient, "notes", None)  # Assuming notes is a simple string
         model._notes = str(notes_val) if notes_val is not None else None
@@ -464,15 +438,11 @@ class Patient(Base, TimestampMixin, AuditMixin):
         print(f"  _contact_info VALUE: {model._contact_info}")
         print(f"  _address_details TYPE: {type(model._address_details)}")
         print(f"  _address_details VALUE: {model._address_details}")
-        print(
-            f"  _emergency_contact_details TYPE: {type(model._emergency_contact_details)}"
-        )
+        print(f"  _emergency_contact_details TYPE: {type(model._emergency_contact_details)}")
         print(f"  _emergency_contact_details VALUE: {model._emergency_contact_details}")
         # DEBUG PRINTS END
 
-        logger.debug(
-            f"[from_domain] Completed conversion for patient model ID: {model.id}"
-        )
+        logger.debug(f"[from_domain] Completed conversion for patient model ID: {model.id}")
         return model
 
     async def to_domain(self) -> DomainPatient:
@@ -483,9 +453,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         logger.debug(f"[to_domain] Starting conversion for model patient ID: {self.id}")
 
         # Add SQLAlchemy inspect debug prints here
-        print(
-            f"DEBUG [PatientModel.to_domain] - Inspecting attributes for instance ID: {self.id}"
-        )
+        print(f"DEBUG [PatientModel.to_domain] - Inspecting attributes for instance ID: {self.id}")
         instance_state = inspect(self)
 
         # Attributes to inspect (adjust as needed, especially for JSON fields)
@@ -509,12 +477,8 @@ class Patient(Base, TimestampMixin, AuditMixin):
                     # Use a generic approach for getattr to avoid issues if attr is complex
                     actual_value_via_getattr = getattr(self, attr_name)
                     print(f"  DEBUG Attr [{attr_name}]:")
-                    print(
-                        f"    - Value via getattr(): {actual_value_via_getattr!r}"
-                    )
-                    print(
-                        f"    - Type  via getattr(): {type(actual_value_via_getattr)}"
-                    )
+                    print(f"    - Value via getattr(): {actual_value_via_getattr!r}")
+                    print(f"    - Type  via getattr(): {type(actual_value_via_getattr)}")
 
                     if instance_state.attrs.has_key(attr_name):
                         attr_state = instance_state.attrs.get(attr_name)
@@ -578,9 +542,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # Access fields directly. TypeDecorators will handle decryption and deserialization.
         first_name = _decode_if_bytes(self._first_name)
         last_name = _decode_if_bytes(self._last_name)
-        if (
-            self._date_of_birth
-        ):  # _date_of_birth is now the decrypted string from EncryptedString
+        if self._date_of_birth:  # _date_of_birth is now the decrypted string from EncryptedString
             decrypted_dob_str = self._date_of_birth
             if decrypted_dob_str:
                 try:
@@ -592,9 +554,9 @@ class Patient(Base, TimestampMixin, AuditMixin):
                         f"Failed to parse decrypted date_of_birth '{decrypted_dob_str}': {e}"
                     )
                     # If we can't parse the date, check if it has an encrypted_ prefix (might happen in tests)
-                    if isinstance(
-                        decrypted_dob_str, str
-                    ) and decrypted_dob_str.startswith("encrypted_"):
+                    if isinstance(decrypted_dob_str, str) and decrypted_dob_str.startswith(
+                        "encrypted_"
+                    ):
                         try:
                             # Try to parse after removing the prefix
                             stripped_dob = decrypted_dob_str[len("encrypted_") :]
@@ -647,9 +609,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         logger.debug(f"[to_domain] Accessing complex fields for {self.id}")
 
         # Prepare ContactInfo domain object
-        contact_info_raw = (
-            self._contact_info
-        )  # Should be dict or None after EncryptedJSON
+        contact_info_raw = self._contact_info  # Should be dict or None after EncryptedJSON
         contact_info_domain_obj = None
         if isinstance(contact_info_raw, dict):
             try:
@@ -657,30 +617,22 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 # Or, if ContactInfo is a Pydantic model itself in DomainPatient:
                 # from app.core.domain.entities.patient import ContactInfo as DomainContactInfo
                 # contact_info_domain_obj = DomainContactInfo(**contact_info_raw)
-                contact_info_domain_obj = (
-                    contact_info_raw  # Pass dict if DomainPatient expects it
-                )
+                contact_info_domain_obj = contact_info_raw  # Pass dict if DomainPatient expects it
             except Exception as e:
-                logger.error(
-                    f"Failed to process contact_info for patient {self.id}: {e}"
-                )
+                logger.error(f"Failed to process contact_info for patient {self.id}: {e}")
         elif isinstance(contact_info_raw, str):
             # Try to parse JSON string to dict
             try:
                 contact_info_domain_obj = json.loads(contact_info_raw)
             except json.JSONDecodeError:
-                logger.error(
-                    f"Failed to parse contact_info JSON string for patient {self.id}"
-                )
+                logger.error(f"Failed to parse contact_info JSON string for patient {self.id}")
         elif contact_info_raw is not None:
             logger.warning(
                 f"contact_info for patient {self.id} is not a dict or string: {type(contact_info_raw)}"
             )
 
         # Prepare Address domain object
-        address_raw = (
-            self._address_details
-        )  # Should be dict or None after EncryptedJSON
+        address_raw = self._address_details  # Should be dict or None after EncryptedJSON
         address_domain_obj = None
         if isinstance(address_raw, dict):
             try:
@@ -712,10 +664,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
             if any(v is not None for v in address_components.values()):
                 try:
                     address_domain_obj = Address(
-                        **{
-                            k: v if v is not None else ""
-                            for k, v in address_components.items()
-                        }
+                        **{k: v if v is not None else "" for k, v in address_components.items()}
                     )
                 except Exception as e:
                     logger.error(
@@ -758,13 +707,9 @@ class Patient(Base, TimestampMixin, AuditMixin):
         notes_str = _decode_if_bytes(
             self._notes
         )  # Assuming notes is intended to be a simple string
-        extra_data_dict = (
-            self._extra_data
-        )  # This should be a dict after EncryptedJSON processing
+        extra_data_dict = self._extra_data  # This should be a dict after EncryptedJSON processing
 
-        def _parse_json_string(
-            json_str: str | bytes | None, field_name: str
-        ) -> Any | None:
+        def _parse_json_string(json_str: str | bytes | None, field_name: str) -> Any | None:
             if json_str is None:
                 return None
 
@@ -848,9 +793,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 "Pydantic V2 Validation error in to_domain. Errors: {e.errors()}",
                 exc_info=True,
             )
-            logger.error(
-                "Problematic patient_args for DomainPatient: {patient_args}"
-            )
+            logger.error("Problematic patient_args for DomainPatient: {patient_args}")
             raise PersistenceError(
                 "Data integrity issue converting DB model to domain model: {e.errors()}"
             ) from e
@@ -859,9 +802,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 "Unexpected error creating DomainPatient in to_domain: {e}",
                 exc_info=True,
             )
-            logger.error(
-                "Problematic patient_args for DomainPatient: {patient_args}"
-            )
+            logger.error("Problematic patient_args for DomainPatient: {patient_args}")
             raise PersistenceError(
                 "Unexpected error converting DB model to domain model: {e}"
             ) from e

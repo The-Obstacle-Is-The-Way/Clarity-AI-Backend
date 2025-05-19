@@ -108,9 +108,7 @@ class MentaLLaMAModelLoader:
             logger.info(f"Loading MentaLLaMA model locally: {self.model_name}")
 
             # Load model and tokenizer
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model_name, trust_remote_code=True
-            )
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
 
             # Check if CUDA is available
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -231,7 +229,9 @@ class MentaLLaMAModelLoader:
 
             # Prepare the prompts - add system prompt if available
             if params.system_prompt:
-                full_prompt = f"<s>[INST] <<SYS>>\n{params.system_prompt}\n<</SYS>>\n\n{prompt} [/INST]"
+                full_prompt = (
+                    f"<s>[INST] <<SYS>>\n{params.system_prompt}\n<</SYS>>\n\n{prompt} [/INST]"
+                )
             else:
                 full_prompt = f"<s>[INST] {prompt} [/INST]"
 
@@ -270,9 +270,7 @@ class MentaLLaMAModelLoader:
             safety_triggered = False
 
             if safety_filter:
-                filtered_text, safety_triggered = self._apply_safety_filter(
-                    generated_text
-                )
+                filtered_text, safety_triggered = self._apply_safety_filter(generated_text)
 
             return {
                 "text": filtered_text,
@@ -339,9 +337,7 @@ class MentaLLaMAModelLoader:
 
             # Check for successful response
             if response.status_code != 200:
-                error_msg = (
-                    f"API returned error: {response.status_code}: {response.text}"
-                )
+                error_msg = f"API returned error: {response.status_code}: {response.text}"
                 logger.error(error_msg)
                 raise MentalLLaMAInferenceError(error_msg)
 
@@ -478,9 +474,7 @@ class MentaLLaMAModelLoader:
         ]
 
         # Check if any patterns are present
-        safety_triggered = any(
-            pattern in text.lower() for pattern in inappropriate_patterns
-        )
+        safety_triggered = any(pattern in text.lower() for pattern in inappropriate_patterns)
 
         if safety_triggered:
             # Replace with safe content

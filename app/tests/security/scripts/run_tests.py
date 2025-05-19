@@ -14,9 +14,7 @@ from datetime import datetime
 from typing import Any
 
 # Add the root directory to Python path
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
-)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
 
 def run_quantum_security_tests():
@@ -106,9 +104,7 @@ class SecurityTestRunner:
         import uuid
 
         # Ensure test_results directory exists in scripts folder
-        results_dir = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "test_results"
-        )
+        results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_results")
         os.makedirs(results_dir, exist_ok=True)
 
         # Create a unique report filename based on the test file

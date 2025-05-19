@@ -48,9 +48,7 @@ class InMemoryRateLimiter(RateLimiterService):
 
     async def is_allowed(self, identifier: str) -> bool:
         # Basic placeholder - allows all requests
-        print(
-            f"Warning: Using placeholder InMemoryRateLimiter for {identifier}. Allowing request."
-        )
+        print(f"Warning: Using placeholder InMemoryRateLimiter for {identifier}. Allowing request.")
         return True
 
     async def check_rate_limit(self, request: Request) -> bool:

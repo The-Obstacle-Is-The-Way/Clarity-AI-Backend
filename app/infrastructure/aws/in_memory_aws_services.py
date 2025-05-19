@@ -112,9 +112,7 @@ class InMemoryS3Service(S3ServiceInterface):
             "ResponseMetadata": {"HTTPStatusCode": 200},
         }
 
-    def list_objects(
-        self, bucket_name: str, prefix: str | None = None
-    ) -> dict[str, Any]:
+    def list_objects(self, bucket_name: str, prefix: str | None = None) -> dict[str, Any]:
         """List objects in an S3 bucket with optional prefix."""
         if bucket_name not in self._buckets:
             return {"Contents": []}
@@ -122,9 +120,7 @@ class InMemoryS3Service(S3ServiceInterface):
         contents = []
         for key, body in self._buckets[bucket_name].items():
             if prefix is None or key.startswith(prefix):
-                contents.append(
-                    {"Key": key, "Size": len(body), "LastModified": datetime.now(UTC)}
-                )
+                contents.append({"Key": key, "Size": len(body), "LastModified": datetime.now(UTC)})
 
         return {"Contents": contents}
 
@@ -207,12 +203,8 @@ class InMemoryComprehendMedicalService(ComprehendMedicalServiceInterface):
                     "Category": "MEDICAL_CONDITION",
                     "Type": "DX_NAME",
                     "Score": 0.97,
-                    "BeginOffset": text.find("depression")
-                    if "depression" in text
-                    else 0,
-                    "EndOffset": text.find("depression") + 10
-                    if "depression" in text
-                    else 10,
+                    "BeginOffset": text.find("depression") if "depression" in text else 0,
+                    "EndOffset": text.find("depression") + 10 if "depression" in text else 10,
                 },
                 {
                     "Id": 1,
@@ -248,12 +240,8 @@ class InMemoryComprehendMedicalService(ComprehendMedicalServiceInterface):
                     "Category": "PROTECTED_HEALTH_INFORMATION",
                     "Type": "ID",
                     "Score": 0.99,
-                    "BeginOffset": text.find("123-45-6789")
-                    if "123-45-6789" in text
-                    else 0,
-                    "EndOffset": text.find("123-45-6789") + 11
-                    if "123-45-6789" in text
-                    else 11,
+                    "BeginOffset": text.find("123-45-6789") if "123-45-6789" in text else 0,
+                    "EndOffset": text.find("123-45-6789") + 11 if "123-45-6789" in text else 11,
                 },
             ],
             "ModelVersion": "ComprehendMedicalPHIModelV20190401",
@@ -271,12 +259,8 @@ class InMemoryComprehendMedicalService(ComprehendMedicalServiceInterface):
                     "Category": "MEDICAL_CONDITION",
                     "Type": "DX_NAME",
                     "Score": 0.95,
-                    "BeginOffset": text.find("depression")
-                    if "depression" in text
-                    else 0,
-                    "EndOffset": text.find("depression") + 10
-                    if "depression" in text
-                    else 10,
+                    "BeginOffset": text.find("depression") if "depression" in text else 0,
+                    "EndOffset": text.find("depression") + 10 if "depression" in text else 10,
                     "ICD10CMConcepts": [
                         {
                             "Code": "F32.9",
@@ -322,9 +306,7 @@ class InMemoryBedrockService(BedrockServiceInterface):
             "ResponseMetadata": {"HTTPStatusCode": 200},
         }
 
-    def invoke_model(
-        self, model_id: str, body: dict[str, Any], **kwargs
-    ) -> dict[str, Any]:
+    def invoke_model(self, model_id: str, body: dict[str, Any], **kwargs) -> dict[str, Any]:
         """Simulate invoking a foundation model."""
         # Mock response for testing
         return {
@@ -412,9 +394,7 @@ class InMemoryBedrockRuntimeService(BedrockRuntimeServiceInterface):
             ]
         else:
             chunks = [
-                {
-                    "output": "This is a simulated streaming response for psychiatric assessment."
-                }
+                {"output": "This is a simulated streaming response for psychiatric assessment."}
             ]
 
         return {

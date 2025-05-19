@@ -60,9 +60,7 @@ class TestEnhancedXGBoostService:
         assert 0 <= prediction["confidence"] <= 1.0
         assert prediction["timeframe_days"] > 0
 
-    def test_predict_treatment_response_multiple_regions(
-        self, xgboost_service, test_patient_id
-    ):
+    def test_predict_treatment_response_multiple_regions(self, xgboost_service, test_patient_id):
         """Test treatment response prediction across multiple brain regions."""
         # Test predictions for different brain regions
         regions = [
@@ -122,13 +120,9 @@ class TestEnhancedXGBoostService:
 
         # Verify predictions differ by neurotransmitter
         response_values = [p["predicted_response"] for p in predictions]
-        assert (
-            len(set(response_values)) > 1
-        ), "Predictions should vary by neurotransmitter"
+        assert len(set(response_values)) > 1, "Predictions should vary by neurotransmitter"
 
-    def test_predict_treatment_response_effect_magnitude(
-        self, xgboost_service, test_patient_id
-    ):
+    def test_predict_treatment_response_effect_magnitude(self, xgboost_service, test_patient_id):
         """Test that treatment effect magnitude influences prediction."""
         # Test predictions for different effect magnitudes
         effect_magnitudes = [0.1, 0.3, 0.5, 0.7, 0.9]
@@ -187,9 +181,7 @@ class TestEnhancedXGBoostService:
         # Verify effect magnitude is a string like 'large' or 'medium'
         assert first_interaction["effect_magnitude"] in ["large", "medium", "small"]
 
-    def test_simulate_treatment_cascade(
-        self, xgboost_service, test_patient_id, test_baseline_data
-    ):
+    def test_simulate_treatment_cascade(self, xgboost_service, test_patient_id, test_baseline_data):
         """Test simulation of treatment cascade effects."""
         # Test cascade simulation
         cascade = xgboost_service.simulate_treatment_cascade(
@@ -261,10 +253,7 @@ class TestEnhancedXGBoostService:
 
         # Verify peak and stabilization days are reasonable
         assert temporal_analysis["peak_response_day"] > 0
-        assert (
-            temporal_analysis["stabilization_day"]
-            >= temporal_analysis["peak_response_day"]
-        )
+        assert temporal_analysis["stabilization_day"] >= temporal_analysis["peak_response_day"]
 
     def test_response_curve_shape(self, xgboost_service, test_patient_id):
         """Test that the response curve has a reasonable shape."""
@@ -295,18 +284,12 @@ class TestEnhancedXGBoostService:
     def test_feature_encoding(self, xgboost_service):
         """Test that features are correctly encoded."""
         # Test encoding brain region
-        region_encoding1 = xgboost_service._encode_brain_region(
-            BrainRegion.PREFRONTAL_CORTEX
-        )
+        region_encoding1 = xgboost_service._encode_brain_region(BrainRegion.PREFRONTAL_CORTEX)
         region_encoding2 = xgboost_service._encode_brain_region(BrainRegion.AMYGDALA)
 
         # Test encoding neurotransmitter
-        nt_encoding1 = xgboost_service._encode_neurotransmitter(
-            Neurotransmitter.SEROTONIN
-        )
-        nt_encoding2 = xgboost_service._encode_neurotransmitter(
-            Neurotransmitter.DOPAMINE
-        )
+        nt_encoding1 = xgboost_service._encode_neurotransmitter(Neurotransmitter.SEROTONIN)
+        nt_encoding2 = xgboost_service._encode_neurotransmitter(Neurotransmitter.DOPAMINE)
 
         # Verify encodings are valid numbers in expected range
         assert 0 <= region_encoding1 <= 1

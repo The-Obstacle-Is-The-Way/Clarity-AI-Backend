@@ -127,9 +127,7 @@ class TreatmentDetails(BaseModel):
     dosage: str | None = Field(
         None, description="Dosage information for medications (e.g., '50mg daily')"
     )
-    duration: str | None = Field(
-        None, description="Duration of treatment (e.g., '12 weeks')"
-    )
+    duration: str | None = Field(None, description="Duration of treatment (e.g., '12 weeks')")
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -212,12 +210,8 @@ class TreatmentHistory(BaseModel):
 class TreatmentPlan(BaseModel):
     """Treatment plan for prediction."""
 
-    treatments: list[dict[str, Any]] = Field(
-        ..., description="List of planned treatments"
-    )
-    intensity: str = Field(
-        ..., description="Treatment plan intensity (LOW, MODERATE, HIGH)"
-    )
+    treatments: list[dict[str, Any]] = Field(..., description="List of planned treatments")
+    intensity: str = Field(..., description="Treatment plan intensity (LOW, MODERATE, HIGH)")
     duration: str | None = Field(
         None, description="Planned duration of treatment (e.g., '12 weeks')"
     )
@@ -343,9 +337,7 @@ class RiskPredictionRequest(BaseModel):
     demographic_data: DemographicData | None = Field(
         None, description="Demographic data for prediction"
     )
-    temporal_data: TemporalData | None = Field(
-        None, description="Temporal data for prediction"
-    )
+    temporal_data: TemporalData | None = Field(None, description="Temporal data for prediction")
     confidence_threshold: float | None = Field(
         None,
         ge=0.0,
@@ -391,13 +383,9 @@ class TreatmentResponseRequest(BaseModel):
         ...,
         description="Type of treatment (e.g., 'medication-response', 'therapy-response')",
     )
-    treatment_details: TreatmentDetails = Field(
-        ..., description="Details of the treatment"
-    )
+    treatment_details: TreatmentDetails = Field(..., description="Details of the treatment")
     clinical_data: ClinicalData = Field(..., description="Clinical data for prediction")
-    genetic_data: GeneticData | None = Field(
-        None, description="Genetic data for prediction"
-    )
+    genetic_data: GeneticData | None = Field(None, description="Genetic data for prediction")
     treatment_history: TreatmentHistory | None = Field(
         None, description="Treatment history for prediction"
     )
@@ -580,24 +568,14 @@ class RiskPredictionResponse(BaseModel):
     patient_id: str = Field(..., description="Unique identifier for the patient")
     model_type: str = Field(..., description="Type of model used for prediction")
     timestamp: str = Field(..., description="Timestamp of prediction")
-    risk_score: float = Field(
-        ..., ge=0.0, le=1.0, description="Numeric risk score (0-1 scale)"
-    )
-    risk_level: str = Field(
-        ..., description="Categorical risk level (LOW, MODERATE, HIGH)"
-    )
+    risk_score: float = Field(..., ge=0.0, le=1.0, description="Numeric risk score (0-1 scale)")
+    risk_level: str = Field(..., description="Categorical risk level (LOW, MODERATE, HIGH)")
     confidence: float = Field(
         ..., ge=0.0, le=1.0, description="Confidence level in prediction (0-1 scale)"
     )
-    meets_threshold: bool = Field(
-        ..., description="Whether prediction meets confidence threshold"
-    )
-    contributing_factors: list[str] = Field(
-        ..., description="Factors contributing to risk"
-    )
-    recommended_actions: list[str] = Field(
-        ..., description="Recommended clinical actions"
-    )
+    meets_threshold: bool = Field(..., description="Whether prediction meets confidence threshold")
+    contributing_factors: list[str] = Field(..., description="Factors contributing to risk")
+    recommended_actions: list[str] = Field(..., description="Recommended clinical actions")
     detailed_factors: dict[str, Any] | None = Field(
         None, description="Detailed analysis of contributing factors"
     )
@@ -648,9 +626,7 @@ class TreatmentResponseResponse(BaseModel):
     )
     expected_timeframe: str = Field(..., description="Expected timeframe for response")
     side_effects_risk: dict[str, float] = Field(..., description="Risk of side effects")
-    alternatives: list[dict[str, Any]] = Field(
-        ..., description="Alternative treatment options"
-    )
+    alternatives: list[dict[str, Any]] = Field(..., description="Alternative treatment options")
     detailed_side_effects: dict[str, Any] | None = Field(
         None, description="Detailed analysis of side effects"
     )
@@ -704,9 +680,7 @@ class OutcomePredictionResponse(BaseModel):
     model_type: str = Field(..., description="Type of model used for prediction")
     timestamp: str = Field(..., description="Timestamp of prediction")
     timeframe: str = Field(..., description="Timeframe for prediction")
-    outcomes: dict[str, float] = Field(
-        ..., description="Predicted outcomes for various measures"
-    )
+    outcomes: dict[str, float] = Field(..., description="Predicted outcomes for various measures")
     expected_trajectory: dict[str, Any] = Field(
         ..., description="Expected clinical trajectory over time"
     )
@@ -773,15 +747,11 @@ class FeatureImportanceResponse(BaseModel):
     prediction_id: str = Field(..., description="ID of the prediction being explained")
     patient_id: str = Field(..., description="Unique identifier for the patient")
     model_type: str = Field(..., description="Type of model used for prediction")
-    timestamp: str = Field(
-        ..., description="Timestamp of feature importance calculation"
-    )
+    timestamp: str = Field(..., description="Timestamp of feature importance calculation")
     features: list[dict[str, Any]] = Field(
         ..., description="List of features with importance scores"
     )
-    explanation_method: str = Field(
-        ..., description="Method used for explanation (e.g., SHAP)"
-    )
+    explanation_method: str = Field(..., description="Method used for explanation (e.g., SHAP)")
     model_version: str = Field(..., description="Version of the model")
 
     model_config = ConfigDict(
@@ -822,16 +792,12 @@ class FeatureImportanceResponse(BaseModel):
 class DigitalTwinIntegrationResponse(BaseModel):
     """Response model for digital twin integration."""
 
-    integration_id: str = Field(
-        ..., description="Unique identifier for this integration"
-    )
+    integration_id: str = Field(..., description="Unique identifier for this integration")
     patient_id: str = Field(..., description="Unique identifier for the patient")
     profile_id: str = Field(..., description="ID of the digital twin profile")
     prediction_id: str = Field(..., description="ID of the integrated prediction")
     timestamp: str = Field(..., description="Timestamp of integration")
-    status: str = Field(
-        ..., description="Status of integration (SUCCESS, PARTIAL, FAILED)"
-    )
+    status: str = Field(..., description="Status of integration (SUCCESS, PARTIAL, FAILED)")
     digital_twin_components_updated: list[str] = Field(
         ..., description="Components of digital twin that were updated"
     )
@@ -873,9 +839,7 @@ class ModelInfoResponse(BaseModel):
     last_updated: str = Field(..., description="Last update date")
     description: str = Field(..., description="Model description")
     features: list[str] = Field(..., description="Features used by the model")
-    performance_metrics: dict[str, float] = Field(
-        ..., description="Performance metrics"
-    )
+    performance_metrics: dict[str, float] = Field(..., description="Performance metrics")
     training_dataset: str = Field(..., description="Description of training dataset")
     supports_explanations: bool = Field(
         ..., description="Whether the model supports feature importance explanations"

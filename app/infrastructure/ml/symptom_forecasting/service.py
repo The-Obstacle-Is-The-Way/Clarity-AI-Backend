@@ -81,9 +81,7 @@ class SymptomForecastingService:
                 forecast = self._create_mock_forecast(symptom, horizon_days)
                 forecast_results[symptom] = forecast
 
-            self.logger.info(
-                f"Symptom forecasting completed for patient ID: {patient_id}"
-            )
+            self.logger.info(f"Symptom forecasting completed for patient ID: {patient_id}")
             return {
                 "forecasts": forecast_results,
                 "forecast_id": f"sf-{uuid.uuid4().hex[:8]}",
@@ -147,9 +145,7 @@ class SymptomForecastingService:
                 if "patterns" in symptom_trend:
                     patterns.extend(symptom_trend["patterns"])
 
-            self.logger.info(
-                f"Symptom trend analysis completed for patient ID: {patient_id}"
-            )
+            self.logger.info(f"Symptom trend analysis completed for patient ID: {patient_id}")
             return {
                 "trends": trends,
                 "common_triggers": list(set(triggers)),  # Remove duplicates
@@ -282,9 +278,7 @@ class SymptomForecastingService:
                 {
                     "day": day,
                     "severity": severity,
-                    "confidence": round(
-                        0.9 - (day * 0.05), 2
-                    ),  # Confidence decreases with time
+                    "confidence": round(0.9 - (day * 0.05), 2),  # Confidence decreases with time
                 }
             )
 
@@ -396,12 +390,8 @@ class SymptomForecastingService:
             "data_points": len(history),
             "confidence": round(random.uniform(0.7, 0.9), 2),
             "period_analyzed": {
-                "start": (
-                    history[0].get("timestamp", "unknown") if history else "unknown"
-                ),
-                "end": (
-                    history[-1].get("timestamp", "unknown") if history else "unknown"
-                ),
+                "start": (history[0].get("timestamp", "unknown") if history else "unknown"),
+                "end": (history[-1].get("timestamp", "unknown") if history else "unknown"),
             },
         }
 

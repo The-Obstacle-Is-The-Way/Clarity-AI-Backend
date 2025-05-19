@@ -33,9 +33,7 @@ class ContactInfo(BaseModel):
 
     email: EmailStr | None = Field(None, description="Patient's primary email address")
     phone: str | None = Field(None, description="Patient's primary phone number")
-    email_secondary: EmailStr | None = Field(
-        None, description="Patient's secondary email address"
-    )
+    email_secondary: EmailStr | None = Field(None, description="Patient's secondary email address")
 
     model_config = {
         "from_attributes": True,
@@ -81,18 +79,14 @@ class Patient(BaseModel):
     # Demographics & Social
     ethnicity: str | None = Field(None, description="Patient's ethnicity")
     race: str | None = Field(None, description="Patient's race")
-    preferred_language: str | None = Field(
-        None, description="Patient's preferred language"
-    )
+    preferred_language: str | None = Field(None, description="Patient's preferred language")
     religion_spirituality: str | None = Field(
         None, description="Patient's religion or spirituality"
     )
     occupation: str | None = Field(None, description="Patient's occupation")
     education_level: str | None = Field(None, description="Patient's education level")
     marital_status: str | None = Field(None, description="Patient's marital status")
-    living_arrangement: str | None = Field(
-        None, description="Patient's living arrangement"
-    )
+    living_arrangement: str | None = Field(None, description="Patient's living arrangement")
 
     # Identifiers (LVE - Limited Value Encryption, often stored encrypted)
     medical_record_number_lve: str | None = Field(
@@ -134,9 +128,7 @@ class Patient(BaseModel):
     care_team_contact_info: str | None = Field(
         None, description="Care team contact information text"
     )
-    treatment_history_notes: str | None = Field(
-        None, description="Notes on treatment history"
-    )
+    treatment_history_notes: str | None = Field(None, description="Notes on treatment history")
     current_medications_lve: str | None = Field(
         None, description="Current medications text (LVE)"
     )  # if different from list
@@ -145,9 +137,7 @@ class Patient(BaseModel):
     audit_id: uuid.UUID | None = Field(
         None, description="ID linking to audit log entry for this record"
     )
-    created_by: uuid.UUID | None = Field(
-        None, description="ID of the user who created this record"
-    )
+    created_by: uuid.UUID | None = Field(None, description="ID of the user who created this record")
     updated_by: uuid.UUID | None = Field(
         None, description="ID of the user who last updated this record"
     )
@@ -187,9 +177,7 @@ class Patient(BaseModel):
         current_contact_info_data = {}
         if raw_contact_info:
             if isinstance(raw_contact_info, ContactInfo):
-                current_contact_info_data = raw_contact_info.model_dump(
-                    exclude_none=True
-                )
+                current_contact_info_data = raw_contact_info.model_dump(exclude_none=True)
             elif isinstance(raw_contact_info, dict):
                 current_contact_info_data = raw_contact_info
 
@@ -218,9 +206,7 @@ class Patient(BaseModel):
             except ValueError:
                 pass
         if not isinstance(v, date):
-            raise ValueError(
-                "date_of_birth must be a valid date object or an ISO format string."
-            )
+            raise ValueError("date_of_birth must be a valid date object or an ISO format string.")
         if v >= date.today():
             raise ValueError("Date of birth must be in the past")
         return v
@@ -253,9 +239,7 @@ class Patient(BaseModel):
                 )
 
         # If not None, Gender instance, or string, it's invalid
-        raise ValueError(
-            f"Gender must be a string or Gender enum instance, got {type(v)}"
-        )
+        raise ValueError(f"Gender must be a string or Gender enum instance, got {type(v)}")
 
     def update_timestamp(self):
         self.updated_at = datetime.now(timezone.utc)
@@ -269,10 +253,7 @@ class Patient(BaseModel):
         return (
             today.year
             - self.date_of_birth.year
-            - (
-                (today.month, today.day)
-                < (self.date_of_birth.month, self.date_of_birth.day)
-            )
+            - ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
         )
 
     def is_minor(self) -> bool:

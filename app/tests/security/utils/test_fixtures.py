@@ -115,9 +115,7 @@ def get_test_patient_record() -> dict[str, Any]:
                 "route": "Oral",
             }
         ],
-        "allergies": [
-            {"substance": "Penicillin", "reaction": "Hives", "severity": "Moderate"}
-        ],
+        "allergies": [{"substance": "Penicillin", "reaction": "Hives", "severity": "Moderate"}],
         "insurance": {
             "provider": "Blue Cross Blue Shield",
             "policy_number": "BCB123456789",

@@ -247,9 +247,7 @@ class RedisCacheService(CacheService):
             self._logger.error(f"Redis error in get_hash operation: {e!s}")
             return {}
 
-    async def set_hash(
-        self, key: str, values: dict[str, Any], ttl: int | None = None
-    ) -> bool:
+    async def set_hash(self, key: str, values: dict[str, Any], ttl: int | None = None) -> bool:
         """
         Set multiple fields in a hash.
 

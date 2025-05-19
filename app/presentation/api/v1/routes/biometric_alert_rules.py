@@ -47,9 +47,7 @@ router = APIRouter(
 )
 async def create_alert_rule(
     rule_data: AlertRuleCreateRequest,
-    alert_rule_service: BiometricAlertRuleService = Depends(
-        get_biometric_alert_rule_service
-    ),
+    alert_rule_service: BiometricAlertRuleService = Depends(get_biometric_alert_rule_service),
     current_user: User = Depends(get_current_active_user_wrapper),
     db: AsyncSession = Depends(get_db),
 ) -> AlertRuleResponse:
@@ -84,19 +82,11 @@ async def create_alert_rule(
             id=rule.id,
             name=rule.name,
             description=rule.description,
-            biometric_type=rule.conditions[0].metric_type.value
-            if rule.conditions
-            else None,
-            threshold_level=rule.conditions[0].threshold_value
-            if rule.conditions
-            else None,
-            comparison_operator=rule.conditions[0].operator.value
-            if rule.conditions
-            else None,
+            biometric_type=rule.conditions[0].metric_type.value if rule.conditions else None,
+            threshold_level=rule.conditions[0].threshold_value if rule.conditions else None,
+            comparison_operator=rule.conditions[0].operator.value if rule.conditions else None,
             is_active=rule.is_active,
-            created_by=str(rule.provider_id)
-            if rule.provider_id
-            else str(current_user.id),
+            created_by=str(rule.provider_id) if rule.provider_id else str(current_user.id),
             updated_by=str(current_user.id),
             created_at=rule.created_at,
             last_updated=rule.updated_at or rule.created_at,
@@ -118,9 +108,7 @@ async def create_alert_rule(
 )
 async def create_alert_rule_from_template(
     template_request: AlertRuleCreateFromTemplateRequest,
-    alert_rule_service: BiometricAlertRuleService = Depends(
-        get_biometric_alert_rule_service
-    ),
+    alert_rule_service: BiometricAlertRuleService = Depends(get_biometric_alert_rule_service),
     current_user: User = Depends(get_current_active_user_wrapper),
 ) -> AlertRuleResponse:
     """Endpoint to create a new alert rule from a template."""
@@ -141,13 +129,9 @@ async def create_alert_rule_from_template(
 
         # Prepare overrides
         custom_overrides = (
-            template_request.customization.model_dump()
-            if template_request.customization
-            else {}
+            template_request.customization.model_dump() if template_request.customization else {}
         )
-        custom_overrides["provider_id"] = (
-            UUID(current_user.id) if current_user.id else None
-        )
+        custom_overrides["provider_id"] = UUID(current_user.id) if current_user.id else None
 
         # Create rule from template
         rule = await alert_rule_service.create_rule_from_template(
@@ -161,19 +145,11 @@ async def create_alert_rule_from_template(
             id=rule.id,
             name=rule.name,
             description=rule.description,
-            biometric_type=rule.conditions[0].metric_type.value
-            if rule.conditions
-            else None,
-            threshold_level=rule.conditions[0].threshold_value
-            if rule.conditions
-            else None,
-            comparison_operator=rule.conditions[0].operator.value
-            if rule.conditions
-            else None,
+            biometric_type=rule.conditions[0].metric_type.value if rule.conditions else None,
+            threshold_level=rule.conditions[0].threshold_value if rule.conditions else None,
+            comparison_operator=rule.conditions[0].operator.value if rule.conditions else None,
             is_active=rule.is_active,
-            created_by=str(rule.provider_id)
-            if rule.provider_id
-            else str(current_user.id),
+            created_by=str(rule.provider_id) if rule.provider_id else str(current_user.id),
             updated_by=str(current_user.id),
             created_at=rule.created_at,
             last_updated=rule.updated_at or rule.created_at,
@@ -195,9 +171,7 @@ async def create_alert_rule_from_template(
 async def get_alert_rules(
     patient_id: UUID | None = Query(None, description="Filter by patient ID"),
     is_active: bool | None = Query(None, description="Filter by active status"),
-    alert_rule_service: BiometricAlertRuleService = Depends(
-        get_biometric_alert_rule_service
-    ),
+    alert_rule_service: BiometricAlertRuleService = Depends(get_biometric_alert_rule_service),
     current_user: User = Depends(get_current_active_user_wrapper),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
@@ -219,15 +193,9 @@ async def get_alert_rules(
                 id=rule.id,
                 name=rule.name,
                 description=rule.description,
-                biometric_type=rule.conditions[0].metric_type.value
-                if rule.conditions
-                else None,
-                threshold_level=rule.conditions[0].threshold_value
-                if rule.conditions
-                else None,
-                comparison_operator=rule.conditions[0].operator.value
-                if rule.conditions
-                else None,
+                biometric_type=rule.conditions[0].metric_type.value if rule.conditions else None,
+                threshold_level=rule.conditions[0].threshold_value if rule.conditions else None,
+                comparison_operator=rule.conditions[0].operator.value if rule.conditions else None,
                 is_active=rule.is_active,
                 created_by=str(rule.provider_id) if rule.provider_id else "unknown",
                 updated_by=str(rule.provider_id) if rule.provider_id else "unknown",
@@ -252,9 +220,7 @@ async def get_alert_rules(
 )
 async def get_alert_rule(
     rule_id: UUID4 = Path(..., description="ID of the alert rule to retrieve"),
-    alert_rule_service: BiometricAlertRuleService = Depends(
-        get_biometric_alert_rule_service
-    ),
+    alert_rule_service: BiometricAlertRuleService = Depends(get_biometric_alert_rule_service),
     current_user: User = Depends(get_current_active_user_wrapper),
 ) -> AlertRuleResponse:
     """
@@ -276,15 +242,9 @@ async def get_alert_rule(
             id=rule.id,
             name=rule.name,
             description=rule.description,
-            biometric_type=rule.conditions[0].metric_type.value
-            if rule.conditions
-            else None,
-            threshold_level=rule.conditions[0].threshold_value
-            if rule.conditions
-            else None,
-            comparison_operator=rule.conditions[0].operator.value
-            if rule.conditions
-            else None,
+            biometric_type=rule.conditions[0].metric_type.value if rule.conditions else None,
+            threshold_level=rule.conditions[0].threshold_value if rule.conditions else None,
+            comparison_operator=rule.conditions[0].operator.value if rule.conditions else None,
             is_active=rule.is_active,
             created_by=str(rule.provider_id) if rule.provider_id else "unknown",
             updated_by=str(rule.provider_id) if rule.provider_id else "unknown",
@@ -310,9 +270,7 @@ async def get_alert_rule(
 async def update_alert_rule(
     rule_data: AlertRuleUpdateRequest,
     rule_id: UUID4 = Path(..., description="ID of the alert rule to update"),
-    alert_rule_service: BiometricAlertRuleService = Depends(
-        get_biometric_alert_rule_service
-    ),
+    alert_rule_service: BiometricAlertRuleService = Depends(get_biometric_alert_rule_service),
     current_user: User = Depends(get_current_active_user_wrapper),
 ) -> AlertRuleResponse:
     """
@@ -338,36 +296,24 @@ async def update_alert_rule(
 
             # Extract current values to use as defaults
             current_metric = (
-                current_rule.conditions[0].metric_type.value
-                if current_rule.conditions
-                else None
+                current_rule.conditions[0].metric_type.value if current_rule.conditions else None
             )
             current_operator = (
-                current_rule.conditions[0].operator.value
-                if current_rule.conditions
-                else None
+                current_rule.conditions[0].operator.value if current_rule.conditions else None
             )
             current_threshold = (
-                current_rule.conditions[0].threshold_value
-                if current_rule.conditions
-                else None
+                current_rule.conditions[0].threshold_value if current_rule.conditions else None
             )
             current_description = (
-                current_rule.conditions[0].description
-                if current_rule.conditions
-                else None
+                current_rule.conditions[0].description if current_rule.conditions else None
             )
 
             # Create conditions with updated values
             update_dict["conditions"] = [
                 {
                     "metric_name": update_dict.pop("biometric_type", current_metric),
-                    "comparator_operator": update_dict.pop(
-                        "comparison_operator", current_operator
-                    ),
-                    "threshold_value": update_dict.pop(
-                        "threshold_level", current_threshold
-                    ),
+                    "comparator_operator": update_dict.pop("comparison_operator", current_operator),
+                    "threshold_value": update_dict.pop("threshold_level", current_threshold),
                     "description": current_description,
                 }
             ]
@@ -399,9 +345,7 @@ async def update_alert_rule(
             if updated_rule.conditions
             else None,
             is_active=updated_rule.is_active,
-            created_by=str(updated_rule.provider_id)
-            if updated_rule.provider_id
-            else "unknown",
+            created_by=str(updated_rule.provider_id) if updated_rule.provider_id else "unknown",
             updated_by=str(current_user.id),
             created_at=updated_rule.created_at,
             last_updated=updated_rule.updated_at or datetime.now(timezone.utc),
@@ -424,9 +368,7 @@ async def update_alert_rule(
 )
 async def delete_alert_rule(
     rule_id: UUID4 = Path(..., description="ID of the alert rule to delete"),
-    alert_rule_service: BiometricAlertRuleService = Depends(
-        get_biometric_alert_rule_service
-    ),
+    alert_rule_service: BiometricAlertRuleService = Depends(get_biometric_alert_rule_service),
     current_user: User = Depends(get_current_active_user_wrapper),
 ) -> None:
     """

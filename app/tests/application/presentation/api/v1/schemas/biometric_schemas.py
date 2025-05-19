@@ -70,20 +70,14 @@ class BiometricDataPointResponse(BaseModel):
 
     data_id: UUID = Field(..., description="Unique identifier for this data point")
     data_type: str = Field(..., description="Type of biometric data")
-    value: float | int | str | dict[str, Any] = Field(
-        ..., description="The measured value"
-    )
+    value: float | int | str | dict[str, Any] = Field(..., description="The measured value")
     timestamp: datetime = Field(..., description="When the measurement was taken")
-    source: str = Field(
-        ..., description="Device or system that provided the measurement"
-    )
+    source: str = Field(..., description="Device or system that provided the measurement")
     metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Additional contextual information about the measurement",
     )
-    confidence: float = Field(
-        ..., description="Confidence level in the measurement (0.0-1.0)"
-    )
+    confidence: float = Field(..., description="Confidence level in the measurement (0.0-1.0)")
 
     # V2 Config
     model_config = ConfigDict()
@@ -194,15 +188,9 @@ class TrendAnalysisResponse(BaseModel):
     data_points_count: int = Field(
         ..., description="Number of data points included in the analysis"
     )
-    average: float | None = Field(
-        default=None, description="Average value over the period"
-    )
-    minimum: float | None = Field(
-        default=None, description="Minimum value over the period"
-    )
-    maximum: float | None = Field(
-        default=None, description="Maximum value over the period"
-    )
+    average: float | None = Field(default=None, description="Average value over the period")
+    minimum: float | None = Field(default=None, description="Minimum value over the period")
+    maximum: float | None = Field(default=None, description="Maximum value over the period")
     trend: str | None = Field(
         default=None,
         description="Detected trend direction",
@@ -212,9 +200,7 @@ class TrendAnalysisResponse(BaseModel):
     last_updated: str | None = Field(
         default=None, description="Timestamp of the most recent data point"
     )
-    message: str | None = Field(
-        default=None, description="Additional information or explanation"
-    )
+    message: str | None = Field(default=None, description="Additional information or explanation")
 
 
 class CorrelationAnalysisRequest(BaseModel):

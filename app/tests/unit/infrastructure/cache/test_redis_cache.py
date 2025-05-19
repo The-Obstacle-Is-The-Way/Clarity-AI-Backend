@@ -277,9 +277,7 @@ async def test_methods_with_no_redis_client():
     # Test all methods
     assert await cache.get("any-key") is None
     assert await cache.set("any-key", "value") is False
-    assert (
-        await cache.delete_bool("any-key") is False
-    )  # Use delete_bool for boolean return
+    assert await cache.delete_bool("any-key") is False  # Use delete_bool for boolean return
     assert await cache.exists("any-key") is False
     assert (
         await cache.increment_with_none("any-key") is None

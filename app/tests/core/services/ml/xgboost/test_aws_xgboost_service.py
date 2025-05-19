@@ -130,9 +130,7 @@ class TestAWSXGBoostServiceInitialization:
             "dynamodb_table": "predictions",
             "s3_bucket": "xgboost-models",
             "log_level": "INFO",
-            "model_mappings": {
-                "mock-model": "test-endpoint"
-            },  # Add based on initialize defaults
+            "model_mappings": {"mock-model": "test-endpoint"},  # Add based on initialize defaults
             "privacy_level": PrivacyLevel.STANDARD,  # Add based on initialize defaults
             # 'audit_table_name': 'test-audit-table' # Add if needed
         }
@@ -144,19 +142,13 @@ class TestAWSXGBoostServiceInitialization:
         assert service._endpoint_prefix == "xgboost-"
         # Assuming _validate_aws_config sets these directly or indirectly
         # Need to confirm attribute names if validation logic changes
-        assert (
-            service._dynamodb_table_name == "predictions"
-        )  # Example: Assuming internal name
-        assert (
-            service._bucket_name == "xgboost-models"
-        )  # Example: Assuming internal name
+        assert service._dynamodb_table_name == "predictions"  # Example: Assuming internal name
+        assert service._bucket_name == "xgboost-models"  # Example: Assuming internal name
 
         # Verify AWS clients initialization
         # DynamoDB client Table invocation is handled by the shim; skip direct client assertion
         mock_aws_clients["predictions_table"].scan.assert_called_once()
-        mock_aws_clients["s3"].head_bucket.assert_called_once_with(
-            Bucket="xgboost-models"
-        )
+        mock_aws_clients["s3"].head_bucket.assert_called_once_with(Bucket="xgboost-models")
         mock_aws_clients["sagemaker"].list_endpoints.assert_called_once()
 
     def test_initialization_failure_dynamodb(self, mock_aws_clients):
@@ -240,9 +232,7 @@ class TestPredictRisk:
                 "model_id": "model-123",
             }
         ).encode("utf-8")
-        mock_aws_clients[
-            "sagemaker_runtime"
-        ].invoke_endpoint.return_value = mock_response
+        mock_aws_clients["sagemaker_runtime"].invoke_endpoint.return_value = mock_response
 
         # Mock DynamoDB put_item
         mock_aws_clients["predictions_table"].put_item.return_value = {}
@@ -254,9 +244,7 @@ class TestPredictRisk:
         time_frame_days = 90
 
         # Call method
-        with patch(
-            "uuid.uuid4", return_value=uuid.UUID("123e4567-e89b-12d3-a456-426614174000")
-        ):
+        with patch("uuid.uuid4", return_value=uuid.UUID("123e4567-e89b-12d3-a456-426614174000")):
             result = aws_xgboost_service.predict_risk(
                 patient_id=patient_id,
                 risk_type=risk_type,
@@ -314,9 +302,7 @@ class TestPredictRisk:
         """Test risk prediction with invalid risk type."""
         # Test data
         patient_id = "patient-123"
-        risk_type = (
-            ModelType.TREATMENT_RESPONSE_MEDICATION
-        )  # Not a risk type, use ModelType
+        risk_type = ModelType.TREATMENT_RESPONSE_MEDICATION  # Not a risk type, use ModelType
         features = {"age": 35, "phq9_score": 18}
 
         # Call method and verify exception
@@ -403,9 +389,7 @@ class TestGetPrediction:
         mock_aws_clients["predictions_table"].get_item.return_value = {}
 
         # Call method and verify exception
-        with pytest.raises(
-            ResourceNotFoundError
-        ) as exc_info:  # Use ResourceNotFoundError
+        with pytest.raises(ResourceNotFoundError) as exc_info:  # Use ResourceNotFoundError
             aws_xgboost_service.get_prediction("pred-123")
 
         assert "Prediction pred-123 not found" in str(exc_info.value)
@@ -424,9 +408,7 @@ class TestGetPrediction:
         )
 
         # Call method and verify exception
-        with pytest.raises(
-            ServiceConnectionError
-        ) as exc_info:  # Correct exception type
+        with pytest.raises(ServiceConnectionError) as exc_info:  # Correct exception type
             aws_xgboost_service.get_prediction("pred-123")
 
         assert "Failed to retrieve prediction" in str(exc_info.value)

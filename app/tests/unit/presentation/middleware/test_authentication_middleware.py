@@ -72,17 +72,17 @@ def mock_jwt_service_fixture():  # Renamed fixture
             user_id_part = token_str.split("_", 1)[1]
             # For repo_error_user, ensure the sub is a valid UUID string that maps to an error in user_repo
             if user_id_part == "repo_error_user":
-                sub_value = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15"  # Dedicated UUID for repo error test
+                sub_value = (
+                    "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15"  # Dedicated UUID for repo error test
+                )
             elif user_id_part == "not_found_user":
-                sub_value = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14"  # Dedicated UUID for not_found test
+                sub_value = (
+                    "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14"  # Dedicated UUID for not_found test
+                )
             elif user_id_part == "inactive_user":
-                sub_value = (
-                    "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12"  # Already a UUID string
-                )
+                sub_value = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12"  # Already a UUID string
             else:  # Default case for other user_ tokens if any, or could raise error
-                sub_value = (
-                    user_id_part  # Fallback, assuming it might be a valid UUID string
-                )
+                sub_value = user_id_part  # Fallback, assuming it might be a valid UUID string
 
             return TokenPayload(
                 sub=sub_value,
@@ -90,13 +90,9 @@ def mock_jwt_service_fixture():  # Renamed fixture
                 iat=1713830000,
                 jti=f"jti-{user_id_part}",
                 type="access",
-                roles=[
-                    "test_scope_user_specific"
-                ],  # Specific scope for these user tokens
+                roles=["test_scope_user_specific"],  # Specific scope for these user tokens
             )
-        raise InvalidTokenException(
-            f"Mock decode_token received unexpected token: {token_str}"
-        )
+        raise InvalidTokenException(f"Mock decode_token received unexpected token: {token_str}")
 
     # Use a regular MagicMock with side_effect for synchronous return
     mock_service.decode_token = MagicMock(side_effect=decode_side_effect)
@@ -120,9 +116,7 @@ def mock_get_user_by_id_side_effect_fixture():  # RENAMED and REFACTORED
         password_hash_val,
         account_status_val,
     ):
-        mock_orm_user = MagicMock(
-            name=f"MockOrmUser_{id_val}"
-        )  # Add a name for easier debugging
+        mock_orm_user = MagicMock(name=f"MockOrmUser_{id_val}")  # Add a name for easier debugging
         mock_orm_user.id = UUID(id_val)
         mock_orm_user.username = username_val
         mock_orm_user.email = email_val
@@ -163,9 +157,7 @@ def mock_get_user_by_id_side_effect_fixture():  # RENAMED and REFACTORED
                 password_hash_val="hashed_pass",
                 account_status_val=UserStatus.ACTIVE,
             )
-        elif (
-            user_id_str == "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12"
-        ):  # For user_inactive_user token
+        elif user_id_str == "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12":  # For user_inactive_user token
             return create_mock_orm_user_local(
                 id_val="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12",
                 username_val="inactive_user",
@@ -177,9 +169,7 @@ def mock_get_user_by_id_side_effect_fixture():  # RENAMED and REFACTORED
                 password_hash_val="hashed_pass",
                 account_status_val=UserStatus.INACTIVE,
             )
-        elif (
-            user_id_str == "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14"
-        ):  # For user_not_found_user token
+        elif user_id_str == "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14":  # For user_not_found_user token
             logger.info(
                 f"SIDE_EFFECT: User ID {user_id_str} configured to return None (user not found)."
             )
@@ -309,9 +299,7 @@ class TestAuthenticationMiddleware:
                 mock_active_user.is_active = True
                 mock_active_user.account_status = UserStatus.ACTIVE
                 # Critical: Make sure account_status == ACTIVE works correctly in comparison
-                mock_active_user.__eq__ = lambda other: str(other) == str(
-                    UserStatus.ACTIVE
-                )
+                mock_active_user.__eq__ = lambda other: str(other) == str(UserStatus.ACTIVE)
                 # Make sure any boolean test on this user returns True
                 mock_active_user.__bool__ = lambda: True
                 mock_active_user.__str__ = lambda: "Active Doctor User"
@@ -325,9 +313,7 @@ class TestAuthenticationMiddleware:
         mock_session_factory_on_state = (
             MagicMock()
         )  # This is request.app.state.actual_session_factory
-        mock_db_session_from_factory = (
-            AsyncMock()
-        )  # This is what session_factory() returns
+        mock_db_session_from_factory = AsyncMock()  # This is what session_factory() returns
 
         # Configure mock_db_session_from_factory to be an async context manager
         mock_db_session_from_factory.__aenter__.return_value = (
@@ -371,16 +357,12 @@ class TestAuthenticationMiddleware:
         # So we can't reliably check the call arguments here
 
     @pytest.mark.asyncio
-    async def test_missing_token(
-        self, auth_middleware_fixture, unauthenticated_request_fixture
-    ):
+    async def test_missing_token(self, auth_middleware_fixture, unauthenticated_request_fixture):
         # Ensure app.state attributes are set for this request fixture too
         # For consistency, even if not strictly needed for this specific early exit path:
         mock_session_factory_on_state = MagicMock()
         mock_db_session_from_factory = AsyncMock()
-        mock_db_session_from_factory.__aenter__.return_value = (
-            mock_db_session_from_factory
-        )
+        mock_db_session_from_factory.__aenter__.return_value = mock_db_session_from_factory
         mock_db_session_from_factory.__aexit__.return_value = None
         mock_session_factory_on_state.return_value = mock_db_session_from_factory
         unauthenticated_request_fixture.app.state.actual_session_factory = (
@@ -428,9 +410,7 @@ class TestAuthenticationMiddleware:
         # Setup mocks on request.app.state for this test case
         mock_session_factory_on_state = MagicMock()
         mock_db_session_from_factory = AsyncMock()
-        mock_db_session_from_factory.__aenter__.return_value = (
-            mock_db_session_from_factory
-        )
+        mock_db_session_from_factory.__aenter__.return_value = mock_db_session_from_factory
         mock_db_session_from_factory.__aexit__.return_value = None
         mock_session_factory_on_state.return_value = mock_db_session_from_factory
         request.app.state.actual_session_factory = mock_session_factory_on_state
@@ -443,8 +423,7 @@ class TestAuthenticationMiddleware:
         mock_jwt_service_fixture.decode_token.assert_called_with(token_name)
         # mock_get_by_id should NOT have been called if decode_token raised an exception
         if (
-            "expired" not in expected_message_part
-            and "invalid" not in expected_message_part
+            "expired" not in expected_message_part and "invalid" not in expected_message_part
         ):  # crude check
             mock_get_by_id.assert_not_called()
 
@@ -471,9 +450,7 @@ class TestAuthenticationMiddleware:
         # Setup mocks on request.app.state
         mock_session_factory_on_state = MagicMock()
         mock_db_session_from_factory = AsyncMock()
-        mock_db_session_from_factory.__aenter__.return_value = (
-            mock_db_session_from_factory
-        )
+        mock_db_session_from_factory.__aenter__.return_value = mock_db_session_from_factory
         mock_db_session_from_factory.__aexit__.return_value = None
         mock_session_factory_on_state.return_value = mock_db_session_from_factory
         request.app.state.actual_session_factory = mock_session_factory_on_state
@@ -487,9 +464,7 @@ class TestAuthenticationMiddleware:
             assert getattr(user, "is_authenticated", None) is False
 
             # First, make sure the middleware adds the auth credentials
-            auth_middleware_fixture.dispatch = (
-                auth_middleware_fixture.__class__.dispatch
-            )
+            auth_middleware_fixture.dispatch = auth_middleware_fixture.__class__.dispatch
 
             # Set auth credentials for the test
             auth_creds = req.scope.get("auth")
@@ -498,9 +473,7 @@ class TestAuthenticationMiddleware:
             assert auth_creds.scopes == []  # This was already .scopes, it's correct
             return JSONResponse({"status": "healthy"})
 
-        response = await auth_middleware_fixture.dispatch(
-            request, call_next_public_assertions
-        )
+        response = await auth_middleware_fixture.dispatch(request, call_next_public_assertions)
         assert response.status_code == status.HTTP_200_OK
         assert json.loads(response.body) == {"status": "healthy"}
         mock_jwt_service_fixture.decode_token.assert_not_called()  # Ensure JWT service wasn't called
@@ -737,14 +710,10 @@ class TestAuthenticationMiddleware:
             assert "scope2" in auth_creds.scopes
             assert "admin:all" in auth_creds.scopes
 
-            return JSONResponse(
-                {"status": "scoped_success"}, status_code=status.HTTP_200_OK
-            )
+            return JSONResponse({"status": "scoped_success"}, status_code=status.HTTP_200_OK)
 
         # Call the middleware
-        response = await auth_middleware_fixture.dispatch(
-            request, verify_scopes_call_next
-        )
+        response = await auth_middleware_fixture.dispatch(request, verify_scopes_call_next)
 
         # Verify successful response
         assert response.status_code == status.HTTP_200_OK

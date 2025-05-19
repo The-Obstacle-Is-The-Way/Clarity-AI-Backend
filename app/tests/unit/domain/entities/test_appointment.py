@@ -65,9 +65,7 @@ class TestAppointment:
         assert appointment.provider_id == valid_appointment_data["provider_id"]
         assert appointment.start_time == valid_appointment_data["start_time"]
         assert appointment.end_time == valid_appointment_data["end_time"]
-        assert (
-            appointment.appointment_type == valid_appointment_data["appointment_type"]
-        )
+        assert appointment.appointment_type == valid_appointment_data["appointment_type"]
         assert appointment.status == valid_appointment_data["status"]
         assert appointment.location == valid_appointment_data["location"]
         assert appointment.notes == valid_appointment_data["notes"]
@@ -201,9 +199,7 @@ class TestAppointment:
 
         assert appointment.start_time == new_start_time
         assert appointment.end_time == new_start_time + original_duration
-        assert (
-            appointment.status == AppointmentStatus.RESCHEDULED
-        )  # Changed from SCHEDULED
+        assert appointment.status == AppointmentStatus.RESCHEDULED  # Changed from SCHEDULED
         assert appointment.last_updated > original_updated_at
 
     def test_reschedule_invalid_times(self, valid_appointment_data, future_datetime):
@@ -216,9 +212,7 @@ class TestAppointment:
             InvalidAppointmentTimeError,
             match="Rescheduled end time must be after start time.",
         ):
-            appointment.reschedule(
-                new_start_time, new_start_time - timedelta(minutes=1)
-            )
+            appointment.reschedule(new_start_time, new_start_time - timedelta(minutes=1))
 
         # End time equal to start time
         with pytest.raises(

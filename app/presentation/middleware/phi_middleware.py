@@ -66,9 +66,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
             # Email patterns
             re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"),
             # Date of birth patterns
-            re.compile(
-                r"\b(0[1-9]|1[0-2])[-/.](0[1-9]|[12]\d|3[01])[-/.](19|20)\d{2}\b"
-            ),
+            re.compile(r"\b(0[1-9]|1[0-2])[-/.](0[1-9]|[12]\d|3[01])[-/.](19|20)\d{2}\b"),
             # Common patient identifiers
             re.compile(r"\bPATIENT[-_]?ID[:=]?\d+\b", re.IGNORECASE),
         ]
@@ -138,9 +136,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
             )
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                content={
-                    "detail": "Protected health information (PHI) is not allowed in URLs"
-                },
+                content={"detail": "Protected health information (PHI) is not allowed in URLs"},
             )
         except PHISanitizationError as e:
             # Log sanitization failure

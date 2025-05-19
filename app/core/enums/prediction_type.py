@@ -78,13 +78,9 @@ class PredictionType(Enum):
             return PredictionCategory.TREATMENT
         elif "SYMPTOM" in self.name:
             return PredictionCategory.SYMPTOM
-        elif (
-            "OUTCOME" in self.name or "RECOVERY" in self.name or "QUALITY" in self.name
-        ):
+        elif "OUTCOME" in self.name or "RECOVERY" in self.name or "QUALITY" in self.name:
             return PredictionCategory.OUTCOME
-        elif any(
-            term in self.name for term in ["NEUROTRANSMITTER", "BRAIN", "RECEPTOR"]
-        ):
+        elif any(term in self.name for term in ["NEUROTRANSMITTER", "BRAIN", "RECEPTOR"]):
             return PredictionCategory.DIGITAL_TWIN
         else:
             return PredictionCategory.CUSTOM

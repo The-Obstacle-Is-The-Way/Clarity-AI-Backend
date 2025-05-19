@@ -37,9 +37,7 @@ class MockPatientRepository(IPatientRepository):
             "id": str(patient.id),
             "first_name": patient.first_name,
             "last_name": patient.last_name,
-            "date_of_birth": patient.date_of_birth.isoformat()
-            if patient.date_of_birth
-            else None,
+            "date_of_birth": patient.date_of_birth.isoformat() if patient.date_of_birth else None,
             "gender": patient.gender,
             "email": patient.email,
             "phone": patient.phone,
@@ -82,9 +80,7 @@ class MockPatientRepository(IPatientRepository):
 
         return patient
 
-    async def get_patient(
-        self, patient_id: str | UUID
-    ) -> dict[str, Any] | None:
+    async def get_patient(self, patient_id: str | UUID) -> dict[str, Any] | None:
         """
         Get a patient by ID.
 
@@ -142,9 +138,7 @@ class MockPatientRepository(IPatientRepository):
 
         return True
 
-    async def list_patients(
-        self, query: dict[str, Any] | None = None
-    ) -> list[dict[str, Any]]:
+    async def list_patients(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """
         List all patients, optionally filtered by query.
 

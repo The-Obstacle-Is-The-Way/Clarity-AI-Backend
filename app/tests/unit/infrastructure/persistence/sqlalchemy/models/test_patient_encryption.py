@@ -113,9 +113,7 @@ def sample_domain_patient_data() -> dict:
             "Penicillin: Rash",
             "Peanuts: Anaphylaxis",
         ],  # Add allergies
-        "medications_supplements": [
-            "Medication: MockMed, Dosage: 10mg daily"
-        ],  # Add medications
+        "medications_supplements": ["Medication: MockMed, Dosage: 10mg daily"],  # Add medications
         "treatment_plans": [
             "Weekly therapy sessions",
             "Daily mindfulness practice",
@@ -225,9 +223,7 @@ class TestPatientModelEncryptionAndTypes:
         # The encryption value will depend on the mock, but we can just check basic behaviors
 
     @pytest.mark.asyncio
-    @patch(
-        "app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance"
-    )
+    @patch("app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance")
     @pytest.mark.asyncio
     async def test_encrypted_json_process_result_value(
         self, mock_esi: MagicMock, mock_encryption_service_for_model_tests: MagicMock
@@ -251,9 +247,7 @@ class TestPatientModelEncryptionAndTypes:
         assert result == original_python_object
 
     @pytest.mark.asyncio
-    @patch(
-        "app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance"
-    )
+    @patch("app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance")
     @pytest.mark.asyncio
     async def test_encrypted_json_process_result_value_handles_none(
         self, mock_esi: MagicMock, mock_encryption_service_for_model_tests: MagicMock
@@ -265,9 +259,7 @@ class TestPatientModelEncryptionAndTypes:
         mock_encryption_service_for_model_tests.decrypt.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch(
-        "app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance"
-    )
+    @patch("app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance")
     @pytest.mark.asyncio
     async def test_encrypted_json_process_bind_param_handles_none(
         self, mock_esi: MagicMock, mock_encryption_service_for_model_tests: MagicMock
@@ -279,9 +271,7 @@ class TestPatientModelEncryptionAndTypes:
         mock_encryption_service_for_model_tests.encrypt.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch(
-        "app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance"
-    )
+    @patch("app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance")
     @pytest.mark.asyncio
     async def test_patient_model_to_domain(
         self,
@@ -298,9 +288,7 @@ class TestPatientModelEncryptionAndTypes:
 
         # Setup the mock for decrypt to strip the 'encrypted_' prefix
         def mock_decrypt(encrypted_value):
-            if isinstance(encrypted_value, str) and encrypted_value.startswith(
-                "encrypted_"
-            ):
+            if isinstance(encrypted_value, str) and encrypted_value.startswith("encrypted_"):
                 # Get the value without the prefix
                 decrypted_value = encrypted_value[len("encrypted_") :]
                 # For date_of_birth, ensure it returns a properly formatted date string
@@ -315,20 +303,14 @@ class TestPatientModelEncryptionAndTypes:
         # In a real scenario, these would come from the database already encrypted
         model_instance = PatientModel()
         model_instance.id = sample_domain_patient_data["id"]
-        model_instance._first_name = (
-            f"encrypted_{sample_domain_patient_data['first_name']}"
-        )
-        model_instance._last_name = (
-            f"encrypted_{sample_domain_patient_data['last_name']}"
-        )
+        model_instance._first_name = f"encrypted_{sample_domain_patient_data['first_name']}"
+        model_instance._last_name = f"encrypted_{sample_domain_patient_data['last_name']}"
         model_instance._email = f"encrypted_{sample_domain_patient_data['email']}"
 
         # Set date of birth as a string (since that's how it would be stored)
         dob_str = sample_domain_patient_data["date_of_birth"].isoformat()
         model_instance._date_of_birth = f"encrypted_{dob_str}"
-        logger.info(
-            f"Set model_instance._date_of_birth to: '{model_instance._date_of_birth}'"
-        )
+        logger.info(f"Set model_instance._date_of_birth to: '{model_instance._date_of_birth}'")
 
         # Set gender - normally an Enum value in the domain but stored as string in DB
         model_instance._gender = sample_domain_patient_data[
@@ -336,12 +318,8 @@ class TestPatientModelEncryptionAndTypes:
         ].value  # Set directly as the Enum value
 
         # Set other fields
-        model_instance._phone_number = (
-            f"encrypted_{sample_domain_patient_data['phone_number']}"
-        )
-        model_instance._mrn = (
-            f"encrypted_{sample_domain_patient_data['medical_record_number_lve']}"
-        )
+        model_instance._phone_number = f"encrypted_{sample_domain_patient_data['phone_number']}"
+        model_instance._mrn = f"encrypted_{sample_domain_patient_data['medical_record_number_lve']}"
 
         # Set complex fields by directly JSONifying them
         model_instance._medical_history = (
@@ -366,14 +344,10 @@ class TestPatientModelEncryptionAndTypes:
         # Check date_of_birth specifically - it needs to parse correctly from the string format
         assert domain_entity.date_of_birth is not None
         assert isinstance(domain_entity.date_of_birth, date)
-        assert (
-            domain_entity.date_of_birth == sample_domain_patient_data["date_of_birth"]
-        )
+        assert domain_entity.date_of_birth == sample_domain_patient_data["date_of_birth"]
 
     @pytest.mark.asyncio
-    @patch(
-        "app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance"
-    )
+    @patch("app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance")
     @pytest.mark.asyncio
     async def test_patient_model_from_domain(
         self,
@@ -393,10 +367,7 @@ class TestPatientModelEncryptionAndTypes:
         assert model_instance._first_name == sample_domain_patient_data["first_name"]
         assert model_instance._last_name == sample_domain_patient_data["last_name"]
         assert model_instance._email == sample_domain_patient_data["email"]
-        assert (
-            model_instance._mrn
-            == sample_domain_patient_data["medical_record_number_lve"]
-        )
+        assert model_instance._mrn == sample_domain_patient_data["medical_record_number_lve"]
         assert model_instance._medical_history == json.dumps(
             sample_domain_patient_data["medical_history"]
         )

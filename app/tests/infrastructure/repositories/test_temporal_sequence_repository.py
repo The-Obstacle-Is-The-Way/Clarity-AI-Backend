@@ -126,9 +126,7 @@ class TestSqlAlchemyTemporalSequenceRepository:
         assert added_model.sequence_id == test_sequence.sequence_id
         assert added_model.patient_id == test_sequence.patient_id
         assert added_model.feature_names == test_sequence.feature_names
-        assert (
-            added_model.sequence_metadata == test_sequence.sequence_metadata
-        )  # Renamed
+        assert added_model.sequence_metadata == test_sequence.sequence_metadata  # Renamed
 
         # Verify data points creation
         data_points = mock_session.add_all.call_args[0][0]
@@ -141,9 +139,7 @@ class TestSqlAlchemyTemporalSequenceRepository:
             assert point.values == test_sequence.values[i]
 
     @pytest.mark.asyncio()
-    async def test_get_by_id_found(
-        self, mock_session, mock_sequence_model, mock_data_points
-    ):
+    async def test_get_by_id_found(self, mock_session, mock_sequence_model, mock_data_points):
         """Test getting a sequence by ID when found."""
         # Setup
         repo = SqlAlchemyTemporalSequenceRepository(session=mock_session)
@@ -154,9 +150,7 @@ class TestSqlAlchemyTemporalSequenceRepository:
         mock_sequence_result.first = MagicMock(return_value=mock_sequence_model)
 
         mock_data_points_result = MagicMock()
-        mock_data_points_result.scalars = MagicMock(
-            return_value=mock_data_points_result
-        )
+        mock_data_points_result.scalars = MagicMock(return_value=mock_data_points_result)
         mock_data_points_result.all = MagicMock(return_value=mock_data_points)
 
         mock_session.execute.side_effect = [
@@ -172,9 +166,7 @@ class TestSqlAlchemyTemporalSequenceRepository:
         assert result.sequence_id == mock_sequence_model.sequence_id
         assert result.patient_id == mock_sequence_model.patient_id
         assert result.feature_names == mock_sequence_model.feature_names
-        assert (
-            result.sequence_metadata == mock_sequence_model.sequence_metadata
-        )  # Renamed
+        assert result.sequence_metadata == mock_sequence_model.sequence_metadata  # Renamed
         assert len(result.timestamps) == len(mock_data_points)
         assert len(result.values) == len(mock_data_points)
 
@@ -202,9 +194,7 @@ class TestSqlAlchemyTemporalSequenceRepository:
         mock_session.execute.assert_called_once()
 
     @pytest.mark.asyncio()
-    async def test_get_by_patient_id(
-        self, mock_session, mock_sequence_model, mock_data_points
-    ):
+    async def test_get_by_patient_id(self, mock_session, mock_sequence_model, mock_data_points):
         """Test getting sequences by patient ID."""
         # Setup
         repo = SqlAlchemyTemporalSequenceRepository(session=mock_session)
@@ -215,9 +205,7 @@ class TestSqlAlchemyTemporalSequenceRepository:
         mock_sequence_result.all = MagicMock(return_value=[mock_sequence_model])
 
         mock_data_points_result = MagicMock()
-        mock_data_points_result.scalars = MagicMock(
-            return_value=mock_data_points_result
-        )
+        mock_data_points_result.scalars = MagicMock(return_value=mock_data_points_result)
         mock_data_points_result.all = MagicMock(return_value=mock_data_points)
 
         mock_session.execute.side_effect = [
@@ -282,9 +270,7 @@ class TestSqlAlchemyTemporalSequenceRepository:
         assert mock_session.execute.call_count == 2
 
     @pytest.mark.asyncio()
-    async def test_get_latest_by_feature(
-        self, mock_session, mock_sequence_model, mock_data_points
-    ):
+    async def test_get_latest_by_feature(self, mock_session, mock_sequence_model, mock_data_points):
         """Test getting the latest sequence containing a specific feature."""
         # Setup
         repo = SqlAlchemyTemporalSequenceRepository(session=mock_session)
@@ -295,9 +281,7 @@ class TestSqlAlchemyTemporalSequenceRepository:
         mock_sequence_result.all = MagicMock(return_value=[mock_sequence_model])
 
         mock_data_points_result = MagicMock()
-        mock_data_points_result.scalars = MagicMock(
-            return_value=mock_data_points_result
-        )
+        mock_data_points_result.scalars = MagicMock(return_value=mock_data_points_result)
         mock_data_points_result.all = MagicMock(return_value=mock_data_points)
 
         mock_session.execute.side_effect = [

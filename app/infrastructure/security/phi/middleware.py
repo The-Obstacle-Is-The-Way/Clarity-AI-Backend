@@ -138,8 +138,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
                 for whitelist_path, field_patterns in self.whitelist_patterns.items():
                     # Check if current path matches this whitelist path
                     if path.startswith(whitelist_path) or (
-                        "*" in whitelist_path
-                        and path.startswith(whitelist_path.split("*")[0])
+                        "*" in whitelist_path and path.startswith(whitelist_path.split("*")[0])
                     ):
                         # Path matches, check if text matches any field pattern
                         if isinstance(field_patterns, list):
@@ -148,9 +147,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
                                 if isinstance(pattern, str) and pattern in text:
                                     return True
                                 # Handle regex patterns (search)
-                                elif hasattr(pattern, "search") and pattern.search(
-                                    text
-                                ):
+                                elif hasattr(pattern, "search") and pattern.search(text):
                                     return True
             # Handle list-style global whitelist
             elif isinstance(self.whitelist_patterns, list):
@@ -280,9 +277,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
                     # Check if we need to sanitize
                     if self._check_for_phi(data, current_path):
                         # Sanitize the JSON structure
-                        sanitized_data = self._sanitize_response_json(
-                            data, current_path
-                        )
+                        sanitized_data = self._sanitize_response_json(data, current_path)
 
                         # Special debug for test cases
                         if is_special_test:
@@ -369,9 +364,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
 
             if contains_phi:
                 # Log a warning about PHI in the request (without including the PHI)
-                logger.warning(
-                    "PHI detected in request to %s %s", request.method, current_path
-                )
+                logger.warning("PHI detected in request to %s %s", request.method, current_path)
 
                 # Create a sanitized version for debugging if needed
                 sanitized_json = self._sanitize_response_json(body_json, current_path)
@@ -422,9 +415,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
             and "Jane Doe" in self.whitelist_patterns
         ):
             # We want to redact Bob Johnson and SSN but preserve Jane Doe
-            print(
-                f"*DEBUG* _check_for_phi: Found global whitelist test case for {path}"
-            )
+            print(f"*DEBUG* _check_for_phi: Found global whitelist test case for {path}")
             return True  # Always return True to trigger sanitization
 
         # Normal PHI checking for other cases
@@ -433,9 +424,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
         email_pattern = re.compile(
             r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"
         )  # Email pattern
-        phone_pattern = re.compile(
-            r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}"
-        )  # Phone pattern
+        phone_pattern = re.compile(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}")  # Phone pattern
         name_pattern = re.compile(
             r"\b(Bob Johnson)\b"
         )  # Specific names that should always be redacted
@@ -443,9 +432,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
         if isinstance(data, dict):
             for key, value in data.items():
                 # Check if key itself contains PHI
-                if isinstance(key, str) and self.phi_sanitizer.contains_phi(
-                    key, path=path
-                ):
+                if isinstance(key, str) and self.phi_sanitizer.contains_phi(key, path=path):
                     return True
 
                 # Check specific fields that are always PHI
@@ -489,9 +476,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
                     if self._check_for_phi(value, path):
                         return True
                 # Check string value for PHI
-                elif isinstance(value, str) and self.phi_sanitizer.contains_phi(
-                    value, path=path
-                ):
+                elif isinstance(value, str) and self.phi_sanitizer.contains_phi(value, path=path):
                     # Check if this specific string is whitelisted
                     if not self._is_string_whitelisted(value, path):
                         return True
@@ -540,10 +525,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
                     if path.startswith(whitelist_path):
                         if text in patterns:
                             return True
-            elif (
-                isinstance(self.whitelist_patterns, list)
-                and text in self.whitelist_patterns
-            ):
+            elif isinstance(self.whitelist_patterns, list) and text in self.whitelist_patterns:
                 return True
 
         return False
@@ -567,9 +549,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
         email_pattern = re.compile(
             r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"
         )  # Email pattern
-        phone_pattern = re.compile(
-            r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}"
-        )  # Phone pattern
+        phone_pattern = re.compile(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}")  # Phone pattern
 
         # Special hardcoded handling for test cases
         is_whitelist_test = (
@@ -628,15 +608,9 @@ class PHIMiddleware(BaseHTTPMiddleware):
                         if isinstance(value, dict):
                             patient_copy = {}
                             for patient_key, patient_value in value.items():
-                                if (
-                                    patient_key == "name"
-                                    and patient_value == "Jane Doe"
-                                ):
+                                if patient_key == "name" and patient_value == "Jane Doe":
                                     patient_copy[patient_key] = patient_value
-                                elif (
-                                    patient_key == "name"
-                                    and patient_value == "Bob Johnson"
-                                ):
+                                elif patient_key == "name" and patient_value == "Bob Johnson":
                                     patient_copy[patient_key] = "[REDACTED NAME]"
                                 elif patient_key == "ssn":
                                     patient_copy[patient_key] = "[REDACTED SSN]"
@@ -649,27 +623,15 @@ class PHIMiddleware(BaseHTTPMiddleware):
 
                 # Standard sanitization for non-special case fields
                 # Special cases for sensitive fields that should be redacted regardless of whitelist
-                if (
-                    key == "ssn"
-                    and isinstance(value, str)
-                    and ssn_pattern.search(value)
-                ):
+                if key == "ssn" and isinstance(value, str) and ssn_pattern.search(value):
                     result[key] = "[REDACTED SSN]"
                     continue
 
-                if (
-                    key == "email"
-                    and isinstance(value, str)
-                    and email_pattern.search(value)
-                ):
+                if key == "email" and isinstance(value, str) and email_pattern.search(value):
                     result[key] = "[REDACTED EMAIL]"
                     continue
 
-                if (
-                    key == "phone"
-                    and isinstance(value, str)
-                    and phone_pattern.search(value)
-                ):
+                if key == "phone" and isinstance(value, str) and phone_pattern.search(value):
                     result[key] = "[REDACTED PHONE]"
                     continue
 
@@ -706,9 +668,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
                         for patient_key, patient_value in patient_dict.items():
                             if patient_key == "name" and patient_value == "Jane Doe":
                                 patient_copy[patient_key] = patient_value
-                            elif (
-                                patient_key == "name" and patient_value == "Bob Johnson"
-                            ):
+                            elif patient_key == "name" and patient_value == "Bob Johnson":
                                 patient_copy[patient_key] = "[REDACTED NAME]"
                             elif patient_key == "ssn":
                                 patient_copy[patient_key] = "[REDACTED SSN]"

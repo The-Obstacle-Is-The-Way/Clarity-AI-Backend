@@ -223,9 +223,7 @@ class XGBoostSymptomModel:
 
         def objective(trial):
             params = {
-                "learning_rate": trial.suggest_float(
-                    "learning_rate", 0.001, 0.1, log=True
-                ),
+                "learning_rate": trial.suggest_float("learning_rate", 0.001, 0.1, log=True),
                 "max_depth": trial.suggest_int("max_depth", 3, 10),
                 "subsample": trial.suggest_float("subsample", 0.6, 1.0),
                 "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
@@ -260,9 +258,7 @@ class XGBoostSymptomModel:
 
         # Get best parameters
         best_params = study.best_params
-        best_params["n_estimators"] = int(
-            study.best_trial.user_attrs.get("n_estimators", 1000)
-        )
+        best_params["n_estimators"] = int(study.best_trial.user_attrs.get("n_estimators", 1000))
         best_params["objective"] = "reg:squarederror"
         best_params["tree_method"] = "hist"
         best_params["verbosity"] = 0
@@ -314,12 +310,8 @@ class XGBoostSymptomModel:
 
         if y_train.ndim == 1:
             # Single target variable
-            dtrain = xgb.DMatrix(
-                X_train, label=y_train, feature_names=self.feature_names
-            )
-            model = xgb.train(
-                self.params, dtrain, num_boost_round=self.params["n_estimators"]
-            )
+            dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=self.feature_names)
+            model = xgb.train(self.params, dtrain, num_boost_round=self.params["n_estimators"])
             self.models[self.target_names[0]] = model
 
             # Calculate feature importance
@@ -331,12 +323,8 @@ class XGBoostSymptomModel:
         else:
             # Multiple target variables
             for i, target_name in enumerate(self.target_names):
-                dtrain = xgb.DMatrix(
-                    X_train, label=y_train[:, i], feature_names=self.feature_names
-                )
-                model = xgb.train(
-                    self.params, dtrain, num_boost_round=self.params["n_estimators"]
-                )
+                dtrain = xgb.DMatrix(X_train, label=y_train[:, i], feature_names=self.feature_names)
+                model = xgb.train(self.params, dtrain, num_boost_round=self.params["n_estimators"])
                 self.models[target_name] = model
 
                 # Calculate feature importance
@@ -403,9 +391,7 @@ class XGBoostSymptomModel:
 
                 for h in range(horizon):
                     # Make prediction for current step
-                    dmatrix = xgb.DMatrix(
-                        current_input, feature_names=self.feature_names
-                    )
+                    dmatrix = xgb.DMatrix(current_input, feature_names=self.feature_names)
                     step_pred = self.models[target_name].predict(dmatrix)
 
                     # Store prediction
@@ -419,9 +405,7 @@ class XGBoostSymptomModel:
                 multi_step_predictions[target_name] = multi_step
 
             # Combine all predictions
-            combined_predictions = np.zeros(
-                (X.shape[0], horizon, len(self.target_names))
-            )
+            combined_predictions = np.zeros((X.shape[0], horizon, len(self.target_names)))
 
             for i, target_name in enumerate(self.target_names):
                 combined_predictions[:, :, i] = multi_step_predictions[target_name]

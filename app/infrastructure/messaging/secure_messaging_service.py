@@ -138,9 +138,7 @@ class SecureMessagingService:
 
         return private_key_bytes, public_key_bytes
 
-    def _encrypt_symmetric_key(
-        self, symmetric_key: bytes, recipient_public_key: bytes
-    ) -> bytes:
+    def _encrypt_symmetric_key(self, symmetric_key: bytes, recipient_public_key: bytes) -> bytes:
         """
         Encrypt a symmetric key using the recipient's public key.
 
@@ -294,9 +292,7 @@ class SecureMessagingService:
 
         return message_package
 
-    def decrypt_message(
-        self, message_package: dict[str, Any], private_key: bytes
-    ) -> str:
+    def decrypt_message(self, message_package: dict[str, Any], private_key: bytes) -> str:
         """
         Decrypt a message.
 
@@ -362,9 +358,7 @@ class SecureMessagingService:
         encrypted_subject = self.encryption_service.encrypt_file(subject)
 
         # Encrypt the message content for the recipient
-        encrypted_package = self.encrypt_message_for_recipient(
-            content, recipient_public_key
-        )
+        encrypted_package = self.encrypt_message_for_recipient(content, recipient_public_key)
 
         # Create the message
         message_id = str(uuid.uuid4())
@@ -391,9 +385,7 @@ class SecureMessagingService:
 
         return message
 
-    def send_message(
-        self, message: dict[str, Any], message_repository
-    ) -> dict[str, Any]:
+    def send_message(self, message: dict[str, Any], message_repository) -> dict[str, Any]:
         """
         Send a message.
 
@@ -418,9 +410,7 @@ class SecureMessagingService:
         except Exception as e:
             raise MessageSendException(f"Failed to send message: {e!s}")
 
-    async def mark_as_delivered(
-        self, message_id: str, message_repository
-    ) -> dict[str, Any]:
+    async def mark_as_delivered(self, message_id: str, message_repository) -> dict[str, Any]:
         """
         Mark a message as delivered.
 
@@ -450,9 +440,7 @@ class SecureMessagingService:
             # Save the message
             return await message_repository.save(message)
         except Exception as e:
-            raise SecureMessagingException(
-                f"Failed to mark message as delivered: {e!s}"
-            )
+            raise SecureMessagingException(f"Failed to mark message as delivered: {e!s}")
 
     async def mark_as_read(self, message_id: str, message_repository) -> dict[str, Any]:
         """

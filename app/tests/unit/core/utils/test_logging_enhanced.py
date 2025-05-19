@@ -86,9 +86,7 @@ class TestGetLogger:
                     mock_phi_filter.assert_called_once()
 
                     # Verify handler was added to logger
-                    mock_logger_instance.addHandler.assert_called_once_with(
-                        mock_handler
-                    )
+                    mock_logger_instance.addHandler.assert_called_once_with(mock_handler)
 
                     # Verify propagate was set to False
                     assert mock_logger_instance.propagate is False

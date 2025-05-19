@@ -31,15 +31,11 @@ class AlertRuleCreate(BaseModel):
     priority: str = Field(
         ..., description="Priority level of the rule (urgent, warning, informational)"
     )
-    condition: dict[str, Any] | None = Field(
-        None, description="Condition that triggers the alert"
-    )
+    condition: dict[str, Any] | None = Field(None, description="Condition that triggers the alert")
     template_id: str | None = Field(
         None, description="ID of the template to use for creating the rule"
     )
-    parameters: dict[str, Any] | None = Field(
-        None, description="Parameters for the template"
-    )
+    parameters: dict[str, Any] | None = Field(None, description="Parameters for the template")
     patient_id: UUID | None = Field(
         None, description="Optional ID of the patient this rule applies to"
     )
@@ -69,9 +65,7 @@ class AlertRuleUpdate(BaseModel):
     priority: str | None = Field(
         None, description="Priority level of the rule (urgent, warning, informational)"
     )
-    condition: dict[str, Any] | None = Field(
-        None, description="Condition that triggers the alert"
-    )
+    condition: dict[str, Any] | None = Field(None, description="Condition that triggers the alert")
     is_active: bool | None = Field(None, description="Whether the rule is active")
 
     @field_validator("priority")
@@ -94,19 +88,13 @@ class AlertRuleResponse(BaseModel):
     priority: str = Field(
         ..., description="Priority level of the rule (urgent, warning, informational)"
     )
-    condition: dict[str, Any] = Field(
-        ..., description="Condition that triggers the alert"
-    )
+    condition: dict[str, Any] = Field(..., description="Condition that triggers the alert")
     created_by: UUID = Field(..., description="ID of the user who created the rule")
     patient_id: UUID | None = Field(
         None, description="Optional ID of the patient this rule applies to"
     )
-    created_at: datetime = Field(
-        ..., description="Timestamp of when the rule was created"
-    )
-    updated_at: datetime = Field(
-        ..., description="Timestamp of when the rule was last updated"
-    )
+    created_at: datetime = Field(..., description="Timestamp of when the rule was created")
+    updated_at: datetime = Field(..., description="Timestamp of when the rule was last updated")
     is_active: bool = Field(..., description="Whether the rule is active")
 
 
@@ -126,9 +114,7 @@ class AlertRuleTemplateResponse(BaseModel):
     required_parameters: list[str] = Field(
         ..., description="List of required parameters for the template"
     )
-    condition_template: dict[str, Any] = Field(
-        ..., description="Template for the condition"
-    )
+    condition_template: dict[str, Any] = Field(..., description="Template for the condition")
 
 
 class AlertRuleTemplateListResponse(BaseModel):
@@ -146,9 +132,7 @@ class BiometricDataPointResponse(BaseModel):
     data_id: str = Field(..., description="Unique identifier for the data point")
     data_type: str = Field(..., description="Type of biometric data")
     value: float = Field(..., description="Value of the data point")
-    timestamp: datetime = Field(
-        ..., description="Timestamp of when the data point was recorded"
-    )
+    timestamp: datetime = Field(..., description="Timestamp of when the data point was recorded")
     source: str = Field(..., description="Source of the data point")
 
 
@@ -161,12 +145,8 @@ class BiometricAlertResponse(BaseModel):
     rule_name: str = Field(..., description="Name of the rule that triggered the alert")
     priority: str = Field(..., description="Priority level of the alert")
     message: str = Field(..., description="Alert message")
-    created_at: datetime = Field(
-        ..., description="Timestamp of when the alert was created"
-    )
-    acknowledged: bool = Field(
-        ..., description="Whether the alert has been acknowledged"
-    )
+    created_at: datetime = Field(..., description="Timestamp of when the alert was created")
+    acknowledged: bool = Field(..., description="Whether the alert has been acknowledged")
     acknowledged_at: datetime | None = Field(
         None, description="Timestamp of when the alert was acknowledged"
     )
@@ -181,18 +161,14 @@ class BiometricAlertResponse(BaseModel):
 class BiometricAlertListResponse(BaseModel):
     """Response model for a list of biometric alerts."""
 
-    alerts: list[BiometricAlertResponse] = Field(
-        ..., description="List of biometric alerts"
-    )
+    alerts: list[BiometricAlertResponse] = Field(..., description="List of biometric alerts")
     count: int = Field(..., description="Number of biometric alerts")
 
 
 class AlertAcknowledgementRequest(BaseModel):
     """Request model for acknowledging an alert."""
 
-    notes: str | None = Field(
-        None, description="Optional notes about the acknowledgement"
-    )
+    notes: str | None = Field(None, description="Optional notes about the acknowledgement")
 
 
 # Update forward references for all models in this file

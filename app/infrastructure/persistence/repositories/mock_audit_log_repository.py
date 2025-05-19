@@ -116,9 +116,7 @@ class MockAuditLogRepository(IAuditLogRepository):
         # Filter logs by time period
         filtered_logs = list(self.logs.values())
         if start_time:
-            filtered_logs = [
-                log for log in filtered_logs if log.timestamp >= start_time
-            ]
+            filtered_logs = [log for log in filtered_logs if log.timestamp >= start_time]
         if end_time:
             filtered_logs = [log for log in filtered_logs if log.timestamp <= end_time]
 

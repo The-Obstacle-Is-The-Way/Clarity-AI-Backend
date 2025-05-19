@@ -96,9 +96,7 @@ class Appointment(BaseEntity):
 
     # Fields for cancellation details
     cancellation_reason: str | None = None
-    cancelled_by_user_id: UUID | None = (
-        None  # Assuming the ID of user/provider who cancelled
-    )
+    cancelled_by_user_id: UUID | None = None  # Assuming the ID of user/provider who cancelled
     cancelled_at: datetime | None = None
 
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
@@ -130,15 +128,11 @@ class Appointment(BaseEntity):
         if self.start_time < (
             datetime.now(UTC) - timedelta(seconds=10)
         ):  # Allow 10s leeway for past for tests
-            raise InvalidAppointmentTimeError(
-                "Appointment start time cannot be in the past."
-            )
+            raise InvalidAppointmentTimeError("Appointment start time cannot be in the past.")
 
         # 1. Temporal invariant – end must be strictly after start.
         if self.end_time <= self.start_time:
-            raise InvalidAppointmentTimeError(
-                "Appointment end time must be after start time."
-            )
+            raise InvalidAppointmentTimeError("Appointment end time must be after start time.")
 
         # 2. Ensure *created_at* and *last_updated* are timezone‑aware ISO‑8601
         #    datetime objects when supplied as strings (mirrors logic in the
@@ -193,20 +187,14 @@ class Appointment(BaseEntity):
         self.status = new_status
         self.touch()
 
-    def reschedule(
-        self, new_start_time: datetime, new_end_time: datetime | None = None
-    ) -> None:
+    def reschedule(self, new_start_time: datetime, new_end_time: datetime | None = None) -> None:
         """Move the appointment while maintaining its original duration."""
 
         duration = (
-            new_end_time - new_start_time
-            if new_end_time
-            else self.end_time - self.start_time
+            new_end_time - new_start_time if new_end_time else self.end_time - self.start_time
         )
         if duration <= timedelta(0):
-            raise InvalidAppointmentTimeError(
-                "Rescheduled end time must be after start time."
-            )
+            raise InvalidAppointmentTimeError("Rescheduled end time must be after start time.")
 
         self.start_time = new_start_time
         self.end_time = new_start_time + duration

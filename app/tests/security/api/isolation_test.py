@@ -24,9 +24,7 @@ def create_isolated_app():
     @app.get("/test/runtime-error")
     async def runtime_error():
         """Endpoint that raises a RuntimeError with sensitive information."""
-        raise RuntimeError(
-            "This is a sensitive internal error detail that should be masked"
-        )
+        raise RuntimeError("This is a sensitive internal error detail that should be masked")
 
     @app.get("/test/http-error")
     async def http_error():
@@ -37,9 +35,7 @@ def create_isolated_app():
 
     # Add specific handlers for different exception types
     @app.exception_handler(RuntimeError)
-    async def runtime_error_handler(
-        request: Request, exc: RuntimeError
-    ) -> JSONResponse:
+    async def runtime_error_handler(request: Request, exc: RuntimeError) -> JSONResponse:
         """Handle RuntimeError and mask sensitive information."""
         logger.error(f"RuntimeError in isolation test: {exc}")
 
@@ -54,9 +50,7 @@ def create_isolated_app():
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         """Handle HTTP exceptions and mask sensitive information."""
-        logger.error(
-            f"HTTP exception in isolation test: {exc.status_code} - {exc.detail}"
-        )
+        logger.error(f"HTTP exception in isolation test: {exc.status_code} - {exc.detail}")
 
         # Return sanitized, masked response for 500 errors, pass through others
         if exc.status_code == 500:
@@ -66,9 +60,7 @@ def create_isolated_app():
             )
         else:
             # For non-500 errors, keep original status and detail
-            return JSONResponse(
-                status_code=exc.status_code, content={"detail": str(exc.detail)}
-            )
+            return JSONResponse(status_code=exc.status_code, content={"detail": str(exc.detail)})
 
     # Handle all other exceptions
     @app.exception_handler(Exception)

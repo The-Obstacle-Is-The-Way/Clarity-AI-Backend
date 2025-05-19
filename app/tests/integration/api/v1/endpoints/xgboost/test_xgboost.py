@@ -52,9 +52,7 @@ class MockXGBoostService:
         if "risk" in model_type.lower():
             return await self.predict_risk(patient_id, model_type, features)
         elif "treatment" in model_type.lower():
-            return await self.predict_treatment_response(
-                patient_id, model_type, {}, features
-            )
+            return await self.predict_treatment_response(patient_id, model_type, {}, features)
         elif "outcome" in model_type.lower():
             return await self.predict_outcome(
                 patient_id,
@@ -102,9 +100,7 @@ class MockXGBoostService:
 
     async def integrate_with_digital_twin(self, patient_id, digital_twin_id, features):
         """Mock digital twin integration."""
-        return await self.integrate_with_digital_twin_mock(
-            patient_id, digital_twin_id, features
-        )
+        return await self.integrate_with_digital_twin_mock(patient_id, digital_twin_id, features)
 
     async def get_model_info(self, model_id=None, model_type=None):
         """Mock model info retrieval."""
@@ -353,9 +349,7 @@ async def test_predict_risk(xgboost_test_client):
     mock_service.predict_risk = AsyncMock(return_value=mock_service_response)
 
     # Add the kwargs parameter to the URL as a query parameter, since it's required
-    response = await client.post(
-        "/api/v1/xgboost/risk-prediction?kwargs={}", json=direct_payload
-    )
+    response = await client.post("/api/v1/xgboost/risk-prediction?kwargs={}", json=direct_payload)
 
     assert (
         response.status_code == status.HTTP_200_OK
@@ -372,10 +366,7 @@ async def test_predict_risk(xgboost_test_client):
     assert response_data["model_version"] == mock_service_response["model_version"]
     assert response_data["time_frame_days"] == direct_payload["time_frame_days"]
     # Based on include_explainability=True, feature_importance should be present
-    assert (
-        response_data["feature_importance"]
-        == mock_service_response["feature_importance"]
-    )
+    assert response_data["feature_importance"] == mock_service_response["feature_importance"]
 
 
 # Add more tests for different scenarios and other endpoints

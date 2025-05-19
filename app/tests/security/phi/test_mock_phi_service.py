@@ -118,16 +118,12 @@ class TestMockPHIDetection(BaseSecurityTest):
         assert result["metadata"]["confidence"] <= 1.0
 
         # Compare with consolidated sanitizer
-        assert (
-            self.sanitizer.sanitize_string(self.sample_phi_text) != self.sample_phi_text
-        )
+        assert self.sanitizer.sanitize_string(self.sample_phi_text) != self.sample_phi_text
 
     def test_detect_phi_empty_text(self) -> None:
         """Test PHI detection with empty text."""
         # Since the service validates empty text, we need to catch the exception
-        with pytest.raises(
-            InvalidRequestError, match="text must be a non-empty string"
-        ):
+        with pytest.raises(InvalidRequestError, match="text must be a non-empty string"):
             self.service.detect_phi("")
 
     def test_detect_phi_non_phi_text(self) -> None:
@@ -193,9 +189,7 @@ class TestMockPHIDetection(BaseSecurityTest):
         # Test each type individually
         for phi_type, test_text in test_cases.items():
             sanitized = self.sanitizer.sanitize_string(test_text)
-            assert (
-                sanitized != test_text
-            ), f"Sanitizer failed to detect PHI in '{test_text}'"
+            assert sanitized != test_text, f"Sanitizer failed to detect PHI in '{test_text}'"
 
             # Check for expected redaction markers
             if phi_type == "name":
@@ -234,9 +228,7 @@ class TestMockPHIDetection(BaseSecurityTest):
     def test_redact_phi_empty_text(self) -> None:
         """Test PHI redaction with empty text."""
         # Since the service validates empty text, we need to catch the exception
-        with pytest.raises(
-            InvalidRequestError, match="text must be a non-empty string"
-        ):
+        with pytest.raises(InvalidRequestError, match="text must be a non-empty string"):
             self.service.redact_phi("")
 
     def test_redact_phi_non_phi_text(self) -> None:
@@ -257,9 +249,7 @@ class TestMockPHIDetection(BaseSecurityTest):
     def test_redact_phi_with_detection_level(self) -> None:
         """Test PHI redaction with different detection levels."""
         # Test with minimal level
-        minimal_result = self.service.redact_phi(
-            self.sample_phi_text, detection_level="minimal"
-        )
+        minimal_result = self.service.redact_phi(self.sample_phi_text, detection_level="minimal")
 
         # Then with aggressive level
         aggressive_result = self.service.redact_phi(
@@ -311,9 +301,7 @@ class TestMockPHIDetection(BaseSecurityTest):
 
             # Compare with consolidated sanitizer
             sanitized = self.sanitizer.sanitize_string(test_text)
-            assert (
-                sanitized != test_text
-            ), f"Sanitizer failed to detect PHI in '{test_text}'"
+            assert sanitized != test_text, f"Sanitizer failed to detect PHI in '{test_text}'"
 
             # Check specific redaction markers based on PHI type
             if phi_type == "ssn":

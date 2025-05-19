@@ -23,9 +23,7 @@ from app.domain.services.enhanced_digital_twin_neurotransmitter_service import (
 )
 
 
-class MockEnhancedDigitalTwinNeurotransmitterService(
-    EnhancedDigitalTwinNeurotransmitterService
-):
+class MockEnhancedDigitalTwinNeurotransmitterService(EnhancedDigitalTwinNeurotransmitterService):
     """
     Mock implementation of the Enhanced Digital Twin Neurotransmitter Service.
 
@@ -37,9 +35,7 @@ class MockEnhancedDigitalTwinNeurotransmitterService(
         """Initialize the mock neurotransmitter service."""
         self._patient_mappings: dict[UUID, NeurotransmitterMapping] = {}
 
-    async def get_neurotransmitter_mapping(
-        self, patient_id: UUID
-    ) -> NeurotransmitterMapping:
+    async def get_neurotransmitter_mapping(self, patient_id: UUID) -> NeurotransmitterMapping:
         """
         Get the neurotransmitter mapping for a patient.
         Creates a default mapping if one doesn't exist.
@@ -51,9 +47,7 @@ class MockEnhancedDigitalTwinNeurotransmitterService(
             NeurotransmitterMapping for the patient
         """
         if patient_id not in self._patient_mappings:
-            self._patient_mappings[
-                patient_id
-            ] = create_default_neurotransmitter_mapping()
+            self._patient_mappings[patient_id] = create_default_neurotransmitter_mapping()
 
         return self._patient_mappings[patient_id]
 
@@ -74,21 +68,13 @@ class MockEnhancedDigitalTwinNeurotransmitterService(
 
         # Apply updates (this is simplified; a real implementation would validate and apply changes)
         if "receptor_profiles" in mapping_updates:
-            for neurotransmitter, profile in mapping_updates[
-                "receptor_profiles"
-            ].items():
+            for neurotransmitter, profile in mapping_updates["receptor_profiles"].items():
                 nt = Neurotransmitter(neurotransmitter)
                 mapping.receptor_profiles[nt] = ReceptorProfile(
                     neurotransmitter=nt,
-                    affinity=profile.get(
-                        "affinity", mapping.receptor_profiles[nt].affinity
-                    ),
-                    expression=profile.get(
-                        "expression", mapping.receptor_profiles[nt].expression
-                    ),
-                    modulation=profile.get(
-                        "modulation", mapping.receptor_profiles[nt].modulation
-                    ),
+                    affinity=profile.get("affinity", mapping.receptor_profiles[nt].affinity),
+                    expression=profile.get("expression", mapping.receptor_profiles[nt].expression),
+                    modulation=profile.get("modulation", mapping.receptor_profiles[nt].modulation),
                 )
 
         return mapping
@@ -122,8 +108,7 @@ class MockEnhancedDigitalTwinNeurotransmitterService(
 
                 # SSRIs increase serotonin
                 if "ssri" in med_name or any(
-                    ssri in med_name
-                    for ssri in ["fluoxetine", "sertraline", "escitalopram"]
+                    ssri in med_name for ssri in ["fluoxetine", "sertraline", "escitalopram"]
                 ):
                     if nt == Neurotransmitter.SEROTONIN:
                         results[nt]["predicted_change"] = random.uniform(0.3, 0.7)
@@ -141,19 +126,13 @@ class MockEnhancedDigitalTwinNeurotransmitterService(
                         results[nt]["uncertainty"] = random.uniform(0.05, 0.2)
 
                 # Dopamine agents
-                elif any(
-                    da in med_name
-                    for da in ["methylphenidate", "amphetamine", "bupropion"]
-                ):
+                elif any(da in med_name for da in ["methylphenidate", "amphetamine", "bupropion"]):
                     if nt == Neurotransmitter.DOPAMINE:
                         results[nt]["predicted_change"] = random.uniform(0.4, 0.8)
                         results[nt]["uncertainty"] = random.uniform(0.1, 0.25)
 
                 # Benzodiazepines enhance GABA
-                elif any(
-                    benzo in med_name
-                    for benzo in ["diazepam", "alprazolam", "lorazepam"]
-                ):
+                elif any(benzo in med_name for benzo in ["diazepam", "alprazolam", "lorazepam"]):
                     if nt == Neurotransmitter.GABA:
                         results[nt]["predicted_change"] = random.uniform(0.3, 0.7)
                         results[nt]["uncertainty"] = random.uniform(0.05, 0.15)
@@ -221,9 +200,7 @@ class MockEnhancedDigitalTwinNeurotransmitterService(
                         random.uniform(-0.7, -0.3),
                         random.uniform(0.3, 0.7),
                     ],
-                    "clinical_significance": random.choice(
-                        list(ClinicalSignificance)
-                    ).name,
+                    "clinical_significance": random.choice(list(ClinicalSignificance)).name,
                 }
             )
 

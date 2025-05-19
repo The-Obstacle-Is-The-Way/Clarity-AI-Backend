@@ -42,9 +42,7 @@ class DigitalTwinApplicationService:
             twin.update_configuration(initial_config)
 
         created_twin = await self.repo.create(twin)
-        logger.info(
-            f"Successfully created digital twin {created_twin.id} for patient {patient_id}"
-        )
+        logger.info(f"Successfully created digital twin {created_twin.id} for patient {patient_id}")
         return created_twin
 
     async def get_twin_by_patient_id(self, patient_id: UUID) -> DigitalTwin | None:
@@ -59,21 +57,15 @@ class DigitalTwinApplicationService:
         logger.info(f"Updating configuration for digital twin of patient {patient_id}")
         twin = await self.repo.get_by_patient_id(patient_id)
         if not twin:
-            logger.warning(
-                f"Digital twin not found for patient {patient_id} during config update"
-            )
+            logger.warning(f"Digital twin not found for patient {patient_id} during config update")
             return None
 
         twin.update_configuration(config_data)
         updated_twin = await self.repo.update(twin)
         if updated_twin:
-            logger.info(
-                f"Successfully updated configuration for digital twin {updated_twin.id}"
-            )
+            logger.info(f"Successfully updated configuration for digital twin {updated_twin.id}")
         else:
-            logger.error(
-                f"Failed to persist configuration update for twin of patient {patient_id}"
-            )
+            logger.error(f"Failed to persist configuration update for twin of patient {patient_id}")
         return updated_twin
 
     # Add more methods for other use cases:

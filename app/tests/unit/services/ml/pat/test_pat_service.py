@@ -72,27 +72,21 @@ class TestBedrockPAT:
         assert service._dynamodb_table == "test-table"
 
     @pytest.mark.asyncio
-    async def test_analyze_actigraphy(
-        self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture
-    ):
+    async def test_analyze_actigraphy(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture):
         """Test analyzing actigraphy data."""
         service = bedrock_pat_service
         patient_id = f"patient-{uuid.uuid4()}"
         # Generate realistic-looking readings
         readings = [
             {
-                "timestamp": (
-                    datetime.now(timezone.utc) - timedelta(minutes=i)
-                ).isoformat(),
+                "timestamp": (datetime.now(timezone.utc) - timedelta(minutes=i)).isoformat(),
                 "x": random.uniform(-2, 2),
                 "y": random.uniform(-2, 2),
                 "z": random.uniform(-2, 2),
             }
             for i in range(60)  # Simulate 1 minute of data
         ]
-        start_time_iso = (
-            datetime.now(timezone.utc) - timedelta(minutes=60)
-        ).isoformat()
+        start_time_iso = (datetime.now(timezone.utc) - timedelta(minutes=60)).isoformat()
         end_time_iso = datetime.now(timezone.utc).isoformat()
         sampling_rate = 1.0  # Hz
 
@@ -124,9 +118,7 @@ class TestBedrockPAT:
         # Return the *parsed* dictionary directly for this test's purpose
         mock_stream.read = AsyncMock(return_value=analysis_data)
         # Mock invoke_model on the runtime instance within the service's mocks
-        service.mocks["bedrock"].invoke_model = AsyncMock(
-            return_value={"body": mock_stream}
-        )
+        service.mocks["bedrock"].invoke_model = AsyncMock(return_value={"body": mock_stream})
         # Re-configure mocks on the specific instance if needed after factory call
         service.mocks["dynamodb"].put_item = AsyncMock(return_value={})
 
@@ -149,9 +141,7 @@ class TestBedrockPAT:
         assert analysis_result.analysis_id == expected_analysis_id
         assert analysis_result.patient_id == patient_id
         # Compare ISO strings or datetime objects consistently
-        assert (
-            analysis_result.timestamp == fixed_timestamp
-        )  # Now comparison should work
+        assert analysis_result.timestamp == fixed_timestamp  # Now comparison should work
         assert analysis_result.analysis_type == "sleep_quality"
         assert analysis_result.model_version == "test-sleep-model-v1"
         assert analysis_result.confidence_score == 0.95
@@ -196,12 +186,8 @@ class TestBedrockPAT:
             "insights": [{"text": "Good sleep quality detected"}],
         }
         mock_stream = AsyncMock()
-        mock_stream.read = AsyncMock(
-            return_value=json.dumps(mock_bedrock_response).encode("utf-8")
-        )
-        service.mocks["bedrock"].invoke_model = AsyncMock(
-            return_value={"body": mock_stream}
-        )
+        mock_stream.read = AsyncMock(return_value=json.dumps(mock_bedrock_response).encode("utf-8"))
+        service.mocks["bedrock"].invoke_model = AsyncMock(return_value={"body": mock_stream})
 
         # Call the service method
         result = await service.get_actigraphy_embeddings(
@@ -211,12 +197,8 @@ class TestBedrockPAT:
 
         # Assertions
         assert isinstance(result, list)  # Check if it's a list
-        assert (
-            len(result) > 0
-        )  # Check if the list is not empty (using placeholder return)
-        assert all(
-            isinstance(item, float) for item in result
-        )  # Check if all items are floats
+        assert len(result) > 0  # Check if the list is not empty (using placeholder return)
+        assert all(isinstance(item, float) for item in result)  # Check if all items are floats
 
         # Verify interaction on the client mock
         service.mocks["bedrock"].invoke_model.assert_called_once()
@@ -255,18 +237,14 @@ class TestBedrockPAT:
         }
 
         # Configure the mock DynamoDB client's get_item response
-        service.dynamodb_client.get_item = AsyncMock(
-            return_value={"Item": mock_dynamodb_item}
-        )
+        service.dynamodb_client.get_item = AsyncMock(return_value={"Item": mock_dynamodb_item})
 
         # Call the service method
         retrieved_analysis = await service.get_analysis_by_id(analysis_id)
 
         # Assertions
         assert retrieved_analysis is not None
-        assert (
-            retrieved_analysis.analysis_id == analysis_id
-        )  # Check if parser added this correctly
+        assert retrieved_analysis.analysis_id == analysis_id  # Check if parser added this correctly
         assert retrieved_analysis.patient_id == patient_id_hash
         assert retrieved_analysis.timestamp == timestamp  # Compare datetime objects
         assert retrieved_analysis.analysis_type == AnalysisTypeEnum.SLEEP_QUALITY
@@ -417,15 +395,11 @@ class TestBedrockPAT:
         """Test retrieving analysis results for a patient with no results."""
         service = bedrock_pat_service
         patient_id = "patient-without-analyses-222"
-        patient_hash = service._hash_identifier(
-            patient_id
-        )  # Get expected hash for message
+        patient_hash = service._hash_identifier(patient_id)  # Get expected hash for message
 
         # Mock DynamoDB query response to return no items
         # Using direct client access since it's set in the fixture
-        service.mocks["dynamodb"].query = AsyncMock(
-            return_value={"Items": [], "Count": 0}
-        )
+        service.mocks["dynamodb"].query = AsyncMock(return_value={"Items": [], "Count": 0})
 
         # Mock get_item as well, although it shouldn't be called
         service.mocks["dynamodb"].get_item = AsyncMock()
@@ -502,12 +476,8 @@ class TestBedrockPAT:
                     "deep_percentage": {"N": "0.22"},
                 }
             },
-            "Insights": {
-                "L": [{"S": "Good sleep quality detected"}]
-            },  # Changed to List[String]
-            "Warnings": {
-                "L": [{"S": "Slightly high sleep latency."}]
-            },  # Added warnings
+            "Insights": {"L": [{"S": "Good sleep quality detected"}]},  # Changed to List[String]
+            "Warnings": {"L": [{"S": "Slightly high sleep latency."}]},  # Added warnings
         }
         # Configure get_item mock on the client (might still be needed by internal logic)
         service.dynamodb_client.get_item = AsyncMock(
@@ -515,17 +485,11 @@ class TestBedrockPAT:
         )
 
         # Configure invoke_model mock for integration summary
-        mock_integration_summary = (
-            "Integrated sleep patterns show moderate consistency."
-        )
+        mock_integration_summary = "Integrated sleep patterns show moderate consistency."
         mock_bedrock_response = {"results": [{"outputText": mock_integration_summary}]}
         mock_stream = MagicMock()
-        mock_stream.read = AsyncMock(
-            return_value=json.dumps(mock_bedrock_response).encode("utf-8")
-        )
-        service.mocks["bedrock"].invoke_model = AsyncMock(
-            return_value={"body": mock_stream}
-        )
+        mock_stream.read = AsyncMock(return_value=json.dumps(mock_bedrock_response).encode("utf-8"))
+        service.mocks["bedrock"].invoke_model = AsyncMock(return_value={"body": mock_stream})
 
         # Call the service method with the correct arguments and types
         result = await service.integrate_with_digital_twin(
@@ -544,9 +508,7 @@ class TestBedrockPAT:
 
         # Verify mocks were called correctly (client for dynamodb might not be called now)
         # service.dynamodb_client.get_item.assert_called_once_with(...) # May not be called
-        service.mocks[
-            "bedrock"
-        ].invoke_model.assert_called_once()  # Bedrock should be called
+        service.mocks["bedrock"].invoke_model.assert_called_once()  # Bedrock should be called
 
 
 # --- Fixtures ---

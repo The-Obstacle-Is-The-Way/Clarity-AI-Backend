@@ -44,16 +44,10 @@ class ModelMetrics:
         results = {
             "accuracy": float(metrics.accuracy_score(y_true, y_pred)),
             "precision": float(
-                metrics.precision_score(
-                    y_true, y_pred, average=average, zero_division=0
-                )
+                metrics.precision_score(y_true, y_pred, average=average, zero_division=0)
             ),
-            "recall": float(
-                metrics.recall_score(y_true, y_pred, average=average, zero_division=0)
-            ),
-            "f1_score": float(
-                metrics.f1_score(y_true, y_pred, average=average, zero_division=0)
-            ),
+            "recall": float(metrics.recall_score(y_true, y_pred, average=average, zero_division=0)),
+            "f1_score": float(metrics.f1_score(y_true, y_pred, average=average, zero_division=0)),
         }
 
         # Add confusion matrix
@@ -69,9 +63,7 @@ class ModelMetrics:
             else:
                 try:
                     results["roc_auc"] = float(
-                        metrics.roc_auc_score(
-                            y_true, y_prob, multi_class="ovr", average=average
-                        )
+                        metrics.roc_auc_score(y_true, y_prob, multi_class="ovr", average=average)
                     )
                 except Exception:
                     # If ROC AUC cannot be calculated (e.g., missing classes)
@@ -80,9 +72,7 @@ class ModelMetrics:
         return results
 
     @staticmethod
-    def calculate_regression_metrics(
-        y_true: np.ndarray, y_pred: np.ndarray
-    ) -> dict[str, float]:
+    def calculate_regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
         """
         Calculate standard metrics for regression models.
 
@@ -96,13 +86,9 @@ class ModelMetrics:
         return {
             "mean_absolute_error": float(metrics.mean_absolute_error(y_true, y_pred)),
             "mean_squared_error": float(metrics.mean_squared_error(y_true, y_pred)),
-            "root_mean_squared_error": float(
-                np.sqrt(metrics.mean_squared_error(y_true, y_pred))
-            ),
+            "root_mean_squared_error": float(np.sqrt(metrics.mean_squared_error(y_true, y_pred))),
             "r2_score": float(metrics.r2_score(y_true, y_pred)),
-            "explained_variance": float(
-                metrics.explained_variance_score(y_true, y_pred)
-            ),
+            "explained_variance": float(metrics.explained_variance_score(y_true, y_pred)),
         }
 
     @staticmethod
@@ -127,8 +113,7 @@ class ModelMetrics:
         if not multivariate:
             # For univariate time series
             results["mean_absolute_percentage_error"] = float(
-                np.mean(np.abs((y_true - y_pred) / np.maximum(np.abs(y_true), 1e-10)))
-                * 100
+                np.mean(np.abs((y_true - y_pred) / np.maximum(np.abs(y_true), 1e-10))) * 100
             )
 
             # Symmetric Mean Absolute Percentage Error (handles zero values better)
@@ -150,10 +135,7 @@ class ModelMetrics:
                 # MAPE
                 mape = (
                     np.mean(
-                        np.abs(
-                            (y_true_var - y_pred_var)
-                            / np.maximum(np.abs(y_true_var), 1e-10)
-                        )
+                        np.abs((y_true_var - y_pred_var) / np.maximum(np.abs(y_true_var), 1e-10))
                     )
                     * 100
                 )
@@ -161,9 +143,7 @@ class ModelMetrics:
 
                 # SMAPE
                 denominator = np.maximum(np.abs(y_true_var) + np.abs(y_pred_var), 1e-10)
-                smape = (
-                    np.mean(2.0 * np.abs(y_true_var - y_pred_var) / denominator) * 100
-                )
+                smape = np.mean(2.0 * np.abs(y_true_var - y_pred_var) / denominator) * 100
                 smape_values.append(smape)
 
             results["mean_absolute_percentage_error"] = float(np.mean(mape_values))
@@ -194,9 +174,7 @@ class ModelMetrics:
         # Per-medication class metrics
         class_metrics = {}
         for i, medication_class in enumerate(medication_classes):
-            class_metrics[
-                medication_class
-            ] = ModelMetrics.calculate_classification_metrics(
+            class_metrics[medication_class] = ModelMetrics.calculate_classification_metrics(
                 y_true[:, i], y_pred[:, i]
             )
 

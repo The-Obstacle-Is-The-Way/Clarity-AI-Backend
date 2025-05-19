@@ -69,13 +69,9 @@ class AuditMixin:  # Inherit from object (or nothing)
     Adds fields required for proper audit trails in a HIPAA-compliant system.
     """
 
-    created_by = Column(
-        String(36), nullable=True, comment="User ID who created this record"
-    )
+    created_by = Column(String(36), nullable=True, comment="User ID who created this record")
 
-    updated_by = Column(
-        String(36), nullable=True, comment="User ID who last updated this record"
-    )
+    updated_by = Column(String(36), nullable=True, comment="User ID who last updated this record")
 
     audit_id = Column(
         String(36),

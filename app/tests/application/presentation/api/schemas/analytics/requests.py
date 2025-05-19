@@ -101,9 +101,7 @@ class AnalyticsEventItem(BaseModel):
         None, description="Identifier of the session in which the event occurred"
     )
 
-    timestamp: str | None = Field(
-        None, description="When the event occurred, as ISO 8601 string"
-    )
+    timestamp: str | None = Field(None, description="When the event occurred, as ISO 8601 string")
 
 
 class AnalyticsEventsBatchRequest(BaseModel):
@@ -121,9 +119,7 @@ class AnalyticsEventsBatchRequest(BaseModel):
         max_length=1000,
     )
 
-    batch_id: str | None = Field(
-        None, description="Optional identifier for this batch of events"
-    )
+    batch_id: str | None = Field(None, description="Optional identifier for this batch of events")
 
     @model_validator(mode="after")
     def sanitize_events(self) -> "AnalyticsEventsBatchRequest":
@@ -194,9 +190,7 @@ class AnalyticsAggregationRequest(BaseModel):
         examples=["2025-03-30T00:00:00Z"],
     )
 
-    use_cache: bool = Field(
-        True, description="Whether to use cached results if available"
-    )
+    use_cache: bool = Field(True, description="Whether to use cached results if available")
 
     @model_validator(mode="after")
     def validate_time_range(self) -> "AnalyticsAggregationRequest":

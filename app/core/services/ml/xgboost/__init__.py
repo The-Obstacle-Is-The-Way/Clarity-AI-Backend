@@ -127,9 +127,7 @@ def create_xgboost_service_from_env() -> XGBoostInterface:
     except KeyError as e:
         # Missing environment variable
         logger.error(f"Missing environment variable: {e}")
-        raise ConfigurationError(
-            f"Missing environment variable: {e}", field=str(e)
-        ) from e
+        raise ConfigurationError(f"Missing environment variable: {e}", field=str(e)) from e
 
     except Exception as e:
         # Other errors
@@ -162,9 +160,7 @@ def _get_aws_config_from_env() -> dict[str, Any]:
         # Check required variables
         for var in required_vars:
             if var not in os.environ:
-                raise ConfigurationError(
-                    f"Missing environment variable: {var}", field=var
-                )
+                raise ConfigurationError(f"Missing environment variable: {var}", field=var)
 
         # Create configuration dictionary
         config = {
@@ -188,9 +184,7 @@ def _get_aws_config_from_env() -> dict[str, Any]:
     except KeyError as e:
         # This shouldn't happen due to the check above, but just in case
         logger.error(f"Missing environment variable: {e}")
-        raise ConfigurationError(
-            f"Missing environment variable: {e}", field=str(e)
-        ) from e
+        raise ConfigurationError(f"Missing environment variable: {e}", field=str(e)) from e
 
 
 def _get_mock_config_from_env() -> dict[str, Any]:

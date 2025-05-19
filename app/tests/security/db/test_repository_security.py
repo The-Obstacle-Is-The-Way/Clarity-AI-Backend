@@ -125,9 +125,7 @@ class MockPatient:
 def patient_repository(db_session, encryption_service):
     """Create a PatientRepository with mocked dependencies."""
     # Create the repository with the mocked session and encryption service
-    repo = PatientRepository(
-        db_session=db_session, encryption_service=encryption_service
-    )
+    repo = PatientRepository(db_session=db_session, encryption_service=encryption_service)
 
     # Initialize user context with admin rights
     repo.user_context = {"id": "test_user", "role": "admin"}
@@ -174,9 +172,7 @@ async def test_patient_creation_encrypts_phi(patient_repository, encryption_serv
         encrypted_value = encryption_service.encrypt(value)
         encrypted_fields[field_name] = encrypted_value
         # Verify each field was properly encrypted (our mock adds 'ENC:' prefix)
-        assert (
-            encrypted_value == f"ENC:{value}"
-        ), f"Field {field_name} was not properly encrypted"
+        assert encrypted_value == f"ENC:{value}", f"Field {field_name} was not properly encrypted"
 
     # THEN we should have all PHI data encrypted
     assert len(encrypted_fields) == len(phi_fields), "Not all PHI fields were encrypted"
@@ -275,20 +271,12 @@ async def test_authorization_check_before_operations():
     # THEN we should see appropriate permission enforcements
 
     # Admin should have access to all operations
-    assert (
-        check_permission(admin_user, "123", "view") == True
-    ), "Admins should have view access"
-    assert (
-        check_permission(admin_user, "123", "edit") == True
-    ), "Admins should have edit access"
+    assert check_permission(admin_user, "123", "view") == True, "Admins should have view access"
+    assert check_permission(admin_user, "123", "edit") == True, "Admins should have edit access"
 
     # Doctors should have access to patient operations
-    assert (
-        check_permission(doctor_user, "123", "view") == True
-    ), "Doctors should have view access"
-    assert (
-        check_permission(doctor_user, "123", "edit") == True
-    ), "Doctors should have edit access"
+    assert check_permission(doctor_user, "123", "view") == True, "Doctors should have view access"
+    assert check_permission(doctor_user, "123", "edit") == True, "Doctors should have edit access"
 
     # Patients should only have access to their own data
     assert (
@@ -343,18 +331,16 @@ async def test_audit_logging_on_patient_changes():
                 if user_id in message:
                     log_contains_user_id = True
 
-        assert (
-            log_contains_patient_id
-        ), "Audit log must contain patient ID for HIPAA compliance"
-        assert (
-            log_contains_user_id
-        ), "Audit log must contain user ID for HIPAA compliance"
+        assert log_contains_patient_id, "Audit log must contain patient ID for HIPAA compliance"
+        assert log_contains_user_id, "Audit log must contain user ID for HIPAA compliance"
 
         # Reset mock to clear previous calls
         mock_logging.reset_mock()
 
         # WHEN we simulate logging a patient update
-        update_message = f"Patient {patient_id} updated by user {user_id}. Fields changed: name, address"
+        update_message = (
+            f"Patient {patient_id} updated by user {user_id}. Fields changed: name, address"
+        )
         logging.getLogger("test").info(update_message)
 
         # THEN we should see appropriate audit logs for the update as well
@@ -406,9 +392,7 @@ async def test_phi_never_appears_in_exceptions():
             ), f"PHI data ({field_name}) should never appear in exception messages"
 
         # Verify error message follows HIPAA compliance by being generic
-        assert (
-            "Error retrieving data" in error_message
-        ), "Error should be generic without PHI"
+        assert "Error retrieving data" in error_message, "Error should be generic without PHI"
 
 
 def test_encryption_key_rotation(encryption_service):
@@ -425,13 +409,9 @@ def test_encryption_key_rotation(encryption_service):
     new_key_after_rotation = encryption_service._encryption_key
 
     # Mock decryption to use old key for existing data if necessary
-    with patch.object(
-        encryption_service, "decrypt", side_effect=lambda x: data
-    ) as mock_decrypt:
+    with patch.object(encryption_service, "decrypt", side_effect=lambda x: data) as mock_decrypt:
         decrypted_data = encryption_service.decrypt(encrypted_data)
-        assert (
-            decrypted_data == data
-        ), "Data encrypted with old key should decrypt with new key"
+        assert decrypted_data == data, "Data encrypted with old key should decrypt with new key"
         mock_decrypt.assert_called_once_with(encrypted_data)
 
     # Manually set the new key for test assertion

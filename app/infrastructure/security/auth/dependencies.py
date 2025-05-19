@@ -34,9 +34,7 @@ def get_current_active_user(request: Request) -> User:
     """
     user = getattr(request.state, "user", None)
     if user is None:
-        logger.warning(
-            "Dependency error: No authenticated user found in request.state."
-        )
+        logger.warning("Dependency error: No authenticated user found in request.state.")
         # This indicates AuthenticationMiddleware might not have run or failed silently
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -166,9 +164,7 @@ class RoleChecker:
                 detail=f"Requires one of the following roles: {', '.join(r.value for r in self.required_roles)}",
             )
 
-        logger.debug(
-            f"Authorization Granted for User {user.id} for roles: {self.required_roles}"
-        )
+        logger.debug(f"Authorization Granted for User {user.id} for roles: {self.required_roles}")
 
 
 # --- Convenience Dependency Functions ---

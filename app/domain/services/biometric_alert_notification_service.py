@@ -75,9 +75,7 @@ class BiometricAlertNotificationService(AlertObserver):
         for channel in channels:
             await self._send_notification(alert, channel, recipients)
 
-    def _get_channels_for_priority(
-        self, priority: AlertPriority
-    ) -> list[NotificationChannel]:
+    def _get_channels_for_priority(self, priority: AlertPriority) -> list[NotificationChannel]:
         """
         Determine appropriate notification channels based on alert priority.
 
@@ -106,9 +104,7 @@ class BiometricAlertNotificationService(AlertObserver):
             # Informational alerts use in-app only
             return [NotificationChannel.IN_APP]
 
-    async def _get_alert_recipients(
-        self, alert: BiometricAlert
-    ) -> list[dict[str, Any]]:
+    async def _get_alert_recipients(self, alert: BiometricAlert) -> list[dict[str, Any]]:
         """
         Determine recipients for an alert notification.
 
@@ -154,9 +150,7 @@ class BiometricAlertNotificationService(AlertObserver):
         """
         # Filter recipients based on their preferences
         filtered_recipients = [
-            r
-            for r in recipients
-            if r["notification_preferences"].get(channel.value, False)
+            r for r in recipients if r["notification_preferences"].get(channel.value, False)
         ]
 
         if not filtered_recipients:
@@ -206,9 +200,7 @@ class BiometricAlertNotificationService(AlertObserver):
             f"Please log in to the secure portal to view details and take action."
         )
 
-    async def _send_sms_notifications(
-        self, message: str, recipients: list[dict[str, Any]]
-    ) -> None:
+    async def _send_sms_notifications(self, message: str, recipients: list[dict[str, Any]]) -> None:
         """
         Send SMS notifications to recipients.
 

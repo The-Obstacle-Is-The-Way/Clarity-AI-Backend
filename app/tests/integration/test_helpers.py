@@ -171,10 +171,7 @@ class AuthBypass:
                 email = user.email
             if roles is None and hasattr(user, "roles"):
                 # Convert roles from UserRole enum to strings
-                roles = [
-                    role.value if hasattr(role, "value") else str(role)
-                    for role in user.roles
-                ]
+                roles = [role.value if hasattr(role, "value") else str(role) for role in user.roles]
         else:
             # Handle UUID or string UUID
             if isinstance(user_or_id, str):
@@ -211,9 +208,7 @@ class AuthBypass:
 
         return token
 
-    def get_auth_headers(
-        self, user_or_role: User | UserRole | str
-    ) -> dict[str, str]:
+    def get_auth_headers(self, user_or_role: User | UserRole | str) -> dict[str, str]:
         """
         Get authentication headers for a user or role
 
@@ -276,9 +271,7 @@ class AuthBypass:
             "X-Test-Auth-Bypass": f"{role}:{user_id}",
         }
 
-    def override_auth_dependencies(
-        self, app: FastAPI, role: UserRole | str = UserRole.PATIENT
-    ):
+    def override_auth_dependencies(self, app: FastAPI, role: UserRole | str = UserRole.PATIENT):
         """
         Override authentication dependencies in a FastAPI app
 
@@ -327,9 +320,7 @@ class AuthBypass:
 
         return original_overrides
 
-    def restore_auth_dependencies(
-        self, app: FastAPI, original_overrides: dict[Any, Any]
-    ):
+    def restore_auth_dependencies(self, app: FastAPI, original_overrides: dict[Any, Any]):
         """
         Restore original authentication dependencies
 

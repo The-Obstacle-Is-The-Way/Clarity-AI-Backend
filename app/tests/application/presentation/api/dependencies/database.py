@@ -36,9 +36,7 @@ try:
 except ImportError:
     # If these interfaces don't exist yet, use placeholders for now
     # This allows the app to start while we implement these interfaces
-    logger.warning(
-        "Biometric repository interfaces not found, using Any as placeholder"
-    )
+    logger.warning("Biometric repository interfaces not found, using Any as placeholder")
     from typing import Any
 
     IBiometricAlertRepository = Any
@@ -76,9 +74,7 @@ _repository_map: dict[type[T], type[T]] = {}
 
 def register_repository(interface: type[T], implementation: type[T]) -> None:
     global _repository_map
-    logger.debug(
-        f"Registering repository: {interface.__name__} -> {implementation.__name__}"
-    )
+    logger.debug(f"Registering repository: {interface.__name__} -> {implementation.__name__}")
     _repository_map[interface] = implementation
 
 
@@ -111,9 +107,7 @@ def get_repository(repo_type: type[T]) -> Callable[[AsyncSession], T]:
     The lookup of the implementation is deferred until the dependency is actually called.
     """
     # === DEBUG PRINT ===
-    print(
-        f"---> [DEBUG] Original get_repository called for repo_type: {repo_type.__name__}"
-    )
+    print(f"---> [DEBUG] Original get_repository called for repo_type: {repo_type.__name__}")
     # === END DEBUG PRINT ===
 
     # This inner function will be returned and called by FastAPI's dependency injection
@@ -135,9 +129,7 @@ def get_repository(repo_type: type[T]) -> Callable[[AsyncSession], T]:
                     f"---------> [DEBUG] FAILURE: No implementation found for {repo_type.__name__} in _repository_map: {_repository_map}"
                 )
                 # === END DEBUG PRINT ===
-                logger.error(
-                    f"Failed to find repository implementation for {repo_type.__name__}"
-                )
+                logger.error(f"Failed to find repository implementation for {repo_type.__name__}")
                 # Log current map state for debugging
                 logger.debug(f"Current repository map: {_repository_map}")
                 raise NotImplementedError(

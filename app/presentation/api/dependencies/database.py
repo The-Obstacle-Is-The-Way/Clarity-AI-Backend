@@ -34,9 +34,7 @@ async def get_session_factory_from_request_state(
         logger.error(
             "DEPENDENCY:get_session_factory_from_request_state: request has NO 'state' attribute!"
         )
-        raise RuntimeError(
-            "request has no state attribute, cannot get session factory."
-        )
+        raise RuntimeError("request has no state attribute, cannot get session factory.")
 
     factory = getattr(request.state, "actual_session_factory", None)
 
@@ -47,16 +45,12 @@ async def get_session_factory_from_request_state(
         # More detailed logging of request.state content
         req_state_content_for_log = "N/A"
         if hasattr(request.state, "_state") and isinstance(request.state._state, dict):
-            req_state_content_for_log = {
-                k: type(v) for k, v in request.state._state.items()
-            }
+            req_state_content_for_log = {k: type(v) for k, v in request.state._state.items()}
         elif isinstance(request.state, dict):
             req_state_content_for_log = {k: type(v) for k, v in request.state.items()}
         elif hasattr(request.state, "__dict__"):
             req_state_content_for_log = {
-                k: type(v)
-                for k, v in request.state.__dict__.items()
-                if not k.startswith("_")
+                k: type(v) for k, v in request.state.__dict__.items() if not k.startswith("_")
             }
         else:
             req_state_content_for_log = dir(request.state)
@@ -74,9 +68,7 @@ async def get_session_factory_from_request_state(
 # --- Modified get_async_session_utility ---
 async def get_async_session_utility(
     # Now depends on the renamed dependency above
-    factory: async_sessionmaker[AsyncSession] = Depends(
-        get_session_factory_from_request_state
-    ),
+    factory: async_sessionmaker[AsyncSession] = Depends(get_session_factory_from_request_state),
 ) -> AsyncGenerator[AsyncSession, None]:
     """Yields an SQLAlchemy AsyncSession using a factory from application state."""
     logger.debug(
@@ -125,9 +117,7 @@ DatabaseSessionDep = Annotated[AsyncSession, Depends(get_async_session_utility)]
 
 # --- Original get_db_session - now simplified ---
 async def get_db_session(
-    session: AsyncSession = Depends(
-        get_async_session_utility
-    ),  # Simply depends on the utility
+    session: AsyncSession = Depends(get_async_session_utility),  # Simply depends on the utility
 ) -> AsyncSession:
     """Injects a database session. This is the primary dependency for routes."""
     logger.debug(

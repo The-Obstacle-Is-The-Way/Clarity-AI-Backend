@@ -95,9 +95,7 @@ class SymptomForecastingServiceImpl(SymptomForecastingService):
         Returns:
             Dictionary containing the forecast results with confidence intervals
         """
-        logger.info(
-            f"Generating forecast for patient {patient_id}, horizon: {horizon_days} days"
-        )
+        logger.info(f"Generating forecast for patient {patient_id}, horizon: {horizon_days} days")
 
         try:
             # Preprocess the input data
@@ -155,9 +153,7 @@ class SymptomForecastingServiceImpl(SymptomForecastingService):
 
         try:
             # Preprocess the input data
-            processed_data = preprocess_time_series_data(
-                data, max_history=lookback_days
-            )
+            processed_data = preprocess_time_series_data(data, max_history=lookback_days)
 
             # Extract key patterns using the transformer model's attention mechanism
             patterns = self.transformer_model.extract_patterns(processed_data)
@@ -179,9 +175,7 @@ class SymptomForecastingServiceImpl(SymptomForecastingService):
             return result
 
         except Exception as e:
-            logger.error(
-                f"Error analyzing symptom patterns for patient {patient_id}: {e!s}"
-            )
+            logger.error(f"Error analyzing symptom patterns for patient {patient_id}: {e!s}")
             raise RuntimeError(f"Failed to analyze symptom patterns: {e!s}")
 
     async def detect_anomalies(
@@ -198,18 +192,14 @@ class SymptomForecastingServiceImpl(SymptomForecastingService):
         Returns:
             Dictionary containing detected anomalies with severity scores
         """
-        logger.info(
-            f"Detecting anomalies for patient {patient_id}, sensitivity: {sensitivity}"
-        )
+        logger.info(f"Detecting anomalies for patient {patient_id}, sensitivity: {sensitivity}")
 
         try:
             # Preprocess the input data
             processed_data = preprocess_time_series_data(data)
 
             # Detect anomalies using the ensemble model
-            anomalies = self.ensemble_model.detect_anomalies(
-                processed_data, threshold=sensitivity
-            )
+            anomalies = self.ensemble_model.detect_anomalies(processed_data, threshold=sensitivity)
 
             # Format the results
             result = {

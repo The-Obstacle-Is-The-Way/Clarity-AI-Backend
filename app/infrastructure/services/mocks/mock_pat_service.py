@@ -75,9 +75,7 @@ class MockPATService(PATService):
             # Create activity distribution
             activity_dist = {}
             for i, activity in enumerate(activity_types):
-                activity_dist[activity] = round(
-                    weights[i] + random.uniform(-0.1, 0.1), 2
-                )
+                activity_dist[activity] = round(weights[i] + random.uniform(-0.1, 0.1), 2)
 
             # Normalize to ensure sum is 1.0
             total = sum(activity_dist.values())
@@ -89,9 +87,7 @@ class MockPATService(PATService):
                 {
                     "time_period": period,
                     "activity_distribution": activity_dist,
-                    "dominant_activity": max(activity_dist.items(), key=lambda x: x[1])[
-                        0
-                    ],
+                    "dominant_activity": max(activity_dist.items(), key=lambda x: x[1])[0],
                     "confidence": round(random.uniform(0.7, 0.9), 2),
                 }
             )
@@ -136,8 +132,7 @@ class MockPATService(PATService):
 
         # Insight on activity level
         avg_sedentary = sum(
-            p["activity_distribution"]["sedentary"]
-            for p in response["activity_patterns"]
+            p["activity_distribution"]["sedentary"] for p in response["activity_patterns"]
         ) / len(response["activity_patterns"])
 
         if avg_sedentary > 0.6:
@@ -242,9 +237,7 @@ class MockPATService(PATService):
             for hour in range(hours_in_day):
                 # Generate different patterns based on time of day
                 if 0 <= hour < 6:  # Night
-                    dominant_activity = (
-                        "sleep" if random.random() < 0.9 else "sedentary"
-                    )
+                    dominant_activity = "sleep" if random.random() < 0.9 else "sedentary"
                     activity_level = random.uniform(0.0, 0.2)
                 elif 6 <= hour < 9:  # Morning
                     activities = ["sedentary", "light", "moderate"]
@@ -281,9 +274,7 @@ class MockPATService(PATService):
 
         elif granularity == "daily":
             # Generate daily patterns
-            days_to_generate = (
-                7 if time_period == "week" else 30 if time_period == "month" else 1
-            )
+            days_to_generate = 7 if time_period == "week" else 30 if time_period == "month" else 1
 
             for day in range(days_to_generate):
                 # Some randomness for daily variations
@@ -292,35 +283,23 @@ class MockPATService(PATService):
                 # Weekend vs. weekday patterns
                 is_weekend = day % 7 >= 5  # Saturday or Sunday
                 if is_weekend:
-                    activity_modifier = random.uniform(
-                        -0.1, 0.2
-                    )  # More variable on weekends
+                    activity_modifier = random.uniform(-0.1, 0.2)  # More variable on weekends
                 else:
-                    activity_modifier = random.uniform(
-                        -0.05, 0.05
-                    )  # More consistent on weekdays
+                    activity_modifier = random.uniform(-0.05, 0.05)  # More consistent on weekdays
 
                 # Apply modifier
-                adjusted_activity = max(
-                    0.1, min(1.0, daily_activity_level + activity_modifier)
-                )
+                adjusted_activity = max(0.1, min(1.0, daily_activity_level + activity_modifier))
 
                 patterns.append(
                     {
                         "day": day + 1,
-                        "date": (
-                            datetime.now() - timedelta(days=days_to_generate - day)
-                        )
+                        "date": (datetime.now() - timedelta(days=days_to_generate - day))
                         .date()
                         .isoformat(),
                         "is_weekend": is_weekend,
                         "activity_level": round(adjusted_activity, 2),
-                        "step_count": int(
-                            adjusted_activity * random.uniform(5000, 15000)
-                        ),
-                        "active_hours": round(
-                            adjusted_activity * random.uniform(8, 16), 1
-                        ),
+                        "step_count": int(adjusted_activity * random.uniform(5000, 15000)),
+                        "active_hours": round(adjusted_activity * random.uniform(8, 16), 1),
                         "sedentary_hours": round(
                             (1 - adjusted_activity) * random.uniform(8, 16), 1
                         ),
@@ -328,9 +307,7 @@ class MockPATService(PATService):
                             "sedentary": round(
                                 (1 - adjusted_activity) + random.uniform(-0.1, 0.1), 2
                             ),
-                            "light": round(
-                                adjusted_activity * 0.5 + random.uniform(-0.1, 0.1), 2
-                            ),
+                            "light": round(adjusted_activity * 0.5 + random.uniform(-0.1, 0.1), 2),
                             "moderate": round(
                                 adjusted_activity * 0.3 + random.uniform(-0.1, 0.1), 2
                             ),
@@ -377,9 +354,7 @@ class MockPATService(PATService):
                 4.0,
                 min(10.0, base_sleep_duration + day_modifier * 0.5 + weekend_modifier),
             )
-            sleep_efficiency = max(
-                0.6, min(0.98, base_sleep_efficiency + day_modifier * 0.05)
-            )
+            sleep_efficiency = max(0.6, min(0.98, base_sleep_efficiency + day_modifier * 0.05))
             sleep_onset = max(
                 5, min(90, base_sleep_onset + day_modifier * 10 + weekend_modifier * 15)
             )
@@ -394,15 +369,11 @@ class MockPATService(PATService):
                 random.uniform(-1, 1) if not is_weekend else random.uniform(-0.5, 2)
             )
             bedtime_min = random.randint(0, 59)
-            bedtime = (
-                f"{int(bedtime_hour + bedtime_hour_variance):02d}:{bedtime_min:02d}"
-            )
+            bedtime = f"{int(bedtime_hour + bedtime_hour_variance):02d}:{bedtime_min:02d}"
 
             # Wake time based on sleep duration
             # Parse bedtime into datetime for calculation
-            bedtime_dt = datetime.combine(
-                date, datetime.strptime(bedtime, "%H:%M").time()
-            )
+            bedtime_dt = datetime.combine(date, datetime.strptime(bedtime, "%H:%M").time())
             waketime_dt = bedtime_dt + timedelta(hours=sleep_duration)
             waketime = waketime_dt.strftime("%H:%M")
 
@@ -422,50 +393,34 @@ class MockPATService(PATService):
             )
 
         # Calculate overall statistics
-        avg_sleep_duration = sum(
-            day["sleep_duration_hours"] for day in daily_sleep
-        ) / len(daily_sleep)
-        avg_sleep_efficiency = sum(
-            day["sleep_efficiency"] for day in daily_sleep
-        ) / len(daily_sleep)
-        avg_sleep_onset = sum(day["sleep_onset_minutes"] for day in daily_sleep) / len(
+        avg_sleep_duration = sum(day["sleep_duration_hours"] for day in daily_sleep) / len(
             daily_sleep
         )
-        avg_awakenings = sum(day["awakenings"] for day in daily_sleep) / len(
+        avg_sleep_efficiency = sum(day["sleep_efficiency"] for day in daily_sleep) / len(
             daily_sleep
         )
+        avg_sleep_onset = sum(day["sleep_onset_minutes"] for day in daily_sleep) / len(daily_sleep)
+        avg_awakenings = sum(day["awakenings"] for day in daily_sleep) / len(daily_sleep)
 
         # Calculate sleep regularity (consistency in bedtime and wake time)
-        bedtimes = [
-            datetime.strptime(day["bedtime"], "%H:%M").time() for day in daily_sleep
-        ]
+        bedtimes = [datetime.strptime(day["bedtime"], "%H:%M").time() for day in daily_sleep]
         bedtime_minutes = [(t.hour * 60 + t.minute) % (24 * 60) for t in bedtimes]
 
-        waketimes = [
-            datetime.strptime(day["wake_time"], "%H:%M").time() for day in daily_sleep
-        ]
+        waketimes = [datetime.strptime(day["wake_time"], "%H:%M").time() for day in daily_sleep]
         waketime_minutes = [(t.hour * 60 + t.minute) for t in waketimes]
 
         # Calculate standard deviation in minutes
         bedtime_std = (
-            sum(
-                (x - sum(bedtime_minutes) / len(bedtime_minutes)) ** 2
-                for x in bedtime_minutes
-            )
+            sum((x - sum(bedtime_minutes) / len(bedtime_minutes)) ** 2 for x in bedtime_minutes)
             / len(bedtime_minutes)
         ) ** 0.5
         waketime_std = (
-            sum(
-                (x - sum(waketime_minutes) / len(waketime_minutes)) ** 2
-                for x in waketime_minutes
-            )
+            sum((x - sum(waketime_minutes) / len(waketime_minutes)) ** 2 for x in waketime_minutes)
             / len(waketime_minutes)
         ) ** 0.5
 
         # Convert to regularity index (higher is better, max 1.0)
-        bedtime_regularity = max(
-            0, min(1, 1 - (bedtime_std / 120))
-        )  # Scale: 0-2 hours std dev
+        bedtime_regularity = max(0, min(1, 1 - (bedtime_std / 120)))  # Scale: 0-2 hours std dev
         waketime_regularity = max(0, min(1, 1 - (waketime_std / 120)))
 
         # Combine into sleep regularity index
@@ -574,30 +529,21 @@ class MockPATService(PATService):
                                 ]
                             ),
                             "severity": round(random.uniform(0.7, 1.0), 2),
-                            "confidence": round(
-                                random.uniform(max(0.5, sensitivity), 0.95), 2
-                            ),
+                            "confidence": round(random.uniform(max(0.5, sensitivity), 0.95), 2),
                             "description": "Significant deviation from normal sleep pattern",
                             "metrics": {
                                 "expected": {
-                                    "duration_hours": round(
-                                        random.uniform(7.0, 8.0), 1
-                                    ),
+                                    "duration_hours": round(random.uniform(7.0, 8.0), 1),
                                     "efficiency": round(random.uniform(0.85, 0.95), 2),
                                 },
                                 "observed": {
-                                    "duration_hours": round(
-                                        random.uniform(4.0, 6.0), 1
-                                    ),
+                                    "duration_hours": round(random.uniform(4.0, 6.0), 1),
                                     "efficiency": round(random.uniform(0.6, 0.75), 2),
                                 },
                             },
                         }
                     )
-                elif (
-                    activity_type.lower() == "movement"
-                    or activity_type.lower() == "activity"
-                ):
+                elif activity_type.lower() == "movement" or activity_type.lower() == "activity":
                     anomalies.append(
                         {
                             "timestamp": date.isoformat(),
@@ -610,9 +556,7 @@ class MockPATService(PATService):
                                 ]
                             ),
                             "severity": round(random.uniform(0.7, 1.0), 2),
-                            "confidence": round(
-                                random.uniform(max(0.5, sensitivity), 0.95), 2
-                            ),
+                            "confidence": round(random.uniform(max(0.5, sensitivity), 0.95), 2),
                             "description": "Abnormal movement pattern detected",
                             "metrics": {
                                 "expected": {
@@ -639,9 +583,7 @@ class MockPATService(PATService):
                                 ]
                             ),
                             "severity": round(random.uniform(0.7, 1.0), 2),
-                            "confidence": round(
-                                random.uniform(max(0.5, sensitivity), 0.95), 2
-                            ),
+                            "confidence": round(random.uniform(max(0.5, sensitivity), 0.95), 2),
                             "description": "Unusual heart rate pattern detected",
                             "metrics": {
                                 "expected": {
@@ -673,9 +615,7 @@ class MockPATService(PATService):
                                 ]
                             ),
                             "severity": round(random.uniform(0.7, 1.0), 2),
-                            "confidence": round(
-                                random.uniform(max(0.5, sensitivity), 0.95), 2
-                            ),
+                            "confidence": round(random.uniform(max(0.5, sensitivity), 0.95), 2),
                             "description": "Significant deviation from normal sleep pattern",
                         }
                     )
@@ -692,9 +632,7 @@ class MockPATService(PATService):
                                 ]
                             ),
                             "severity": round(random.uniform(0.7, 1.0), 2),
-                            "confidence": round(
-                                random.uniform(max(0.5, sensitivity), 0.95), 2
-                            ),
+                            "confidence": round(random.uniform(max(0.5, sensitivity), 0.95), 2),
                             "description": "Abnormal movement pattern detected",
                         }
                     )
@@ -711,9 +649,7 @@ class MockPATService(PATService):
                                 ]
                             ),
                             "severity": round(random.uniform(0.7, 1.0), 2),
-                            "confidence": round(
-                                random.uniform(max(0.5, sensitivity), 0.95), 2
-                            ),
+                            "confidence": round(random.uniform(max(0.5, sensitivity), 0.95), 2),
                             "description": "Unusual heart rate pattern detected",
                         }
                     )
@@ -757,9 +693,7 @@ class MockPATService(PATService):
             },
             "rhythm_stability": {
                 "overall_stability": round(random.uniform(0.6, 0.9), 2),  # 0.0-1.0
-                "weekday_weekend_difference": round(
-                    random.uniform(0.5, 2.0), 1
-                ),  # hours
+                "weekday_weekend_difference": round(random.uniform(0.5, 2.0), 1),  # hours
                 "day_to_day_variation": round(random.uniform(0.5, 1.5), 1),  # hours
             },
             "model_version": "mock-pat-v1.0",
@@ -795,9 +729,7 @@ class MockPATService(PATService):
                     "time": f"{hour:02d}:00",
                     "activity_level": round(activity_level, 2),
                     "heart_rate": round(heart_rate),
-                    "typical_state": "sleep"
-                    if (0 <= hour < 7) or hour >= 22
-                    else "active",
+                    "typical_state": "sleep" if (0 <= hour < 7) or hour >= 22 else "active",
                 }
             )
 

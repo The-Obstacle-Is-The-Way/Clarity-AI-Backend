@@ -127,9 +127,7 @@ class MentalLLaMAValidationError(MentalLLaMABaseException):
         """Human-readable string including validation errors."""
         base = super().__str__()
         if self.validation_errors:
-            errors = ", ".join(
-                f"{field}: {err}" for field, err in self.validation_errors.items()
-            )
+            errors = ", ".join(f"{field}: {err}" for field, err in self.validation_errors.items())
             return f"{base} [{errors}]"
         return base
 

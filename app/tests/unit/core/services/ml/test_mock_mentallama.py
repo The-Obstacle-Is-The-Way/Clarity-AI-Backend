@@ -204,9 +204,7 @@ class TestMockMentaLLaMA:
         twin_id = twin_result["digital_twin_id"]
 
         # Create a session with the digital twin
-        session_result = self.service.create_digital_twin_session(
-            twin_id, session_type="therapy"
-        )
+        session_result = self.service.create_digital_twin_session(twin_id, session_type="therapy")
         assert "session_id" in session_result
         session_id = session_result["session_id"]
 

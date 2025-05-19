@@ -40,9 +40,7 @@ class SQLAlchemyAppointmentRepository:
     # Construction helpers
     # ------------------------------------------------------------------
 
-    def __init__(
-        self, db_session: AsyncSession, notification_service: NotificationServiceT
-    ):
+    def __init__(self, db_session: AsyncSession, notification_service: NotificationServiceT):
         self.db_session: AsyncSession = db_session
         self.notification_service: NotificationServiceT = notification_service
 
@@ -53,9 +51,7 @@ class SQLAlchemyAppointmentRepository:
             if not hasattr(self.db_session, attr):
                 setattr(self.db_session, attr, [])  # type: ignore[attr-defined]
 
-        logger.debug(
-            "SQLAlchemyAppointmentRepository initialised – session=%s", type(db_session)
-        )
+        logger.debug("SQLAlchemyAppointmentRepository initialised – session=%s", type(db_session))
 
     # ------------------------------------------------------------------
     # Public API – *minimal* subset required by the test‑suite
@@ -93,9 +89,7 @@ class SQLAlchemyAppointmentRepository:
         # ------------------------------------------------------------------
         # 3. Fire‑and‑forget domain notification
         # ------------------------------------------------------------------
-        sender = getattr(
-            self.notification_service, "send_appointment_notification", None
-        )
+        sender = getattr(self.notification_service, "send_appointment_notification", None)
         if callable(sender):
             try:
                 sender(appointment)
@@ -116,9 +110,7 @@ class SQLAlchemyAppointmentRepository:
     # the patient repository while still short‑circuiting for the mock
     # session when possible.
 
-    async def get_by_id(
-        self, appointment_id: Any
-    ) -> Appointment | None:
+    async def get_by_id(self, appointment_id: Any) -> Appointment | None:
         # Fast path for mock session
         if hasattr(self.db_session, "_query_results"):
             self.db_session._last_executed_query = "mock_get_by_id"

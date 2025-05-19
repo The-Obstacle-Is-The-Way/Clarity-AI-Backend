@@ -153,9 +153,7 @@ class DigitalTwinService(DigitalTwinInterface):
         }
 
         self._sessions[session_id] = session
-        logger.info(
-            "Created Digital Twin session: %s, type: %s", session_id, session_type
-        )
+        logger.info("Created Digital Twin session: %s, type: %s", session_id, session_type)
 
         return {
             "session_id": session_id,
@@ -232,9 +230,7 @@ class DigitalTwinService(DigitalTwinInterface):
 
         if not session_id or not message:
             logger.error("Invalid request: session_id and message are required")
-            raise InvalidRequestError(
-                "Invalid request: session_id and message are required"
-            )
+            raise InvalidRequestError("Invalid request: session_id and message are required")
 
         session = self._sessions.get(session_id)
         if not session:
@@ -279,9 +275,7 @@ class DigitalTwinService(DigitalTwinInterface):
         # Update insights based on message content
         self._update_insights(session, message)
 
-        logger.info(
-            "Message sent to Digital Twin session %s: %s", session_id, message_id
-        )
+        logger.info("Message sent to Digital Twin session %s: %s", session_id, message_id)
 
         return {
             "message_id": message_id,
@@ -294,9 +288,7 @@ class DigitalTwinService(DigitalTwinInterface):
             },
         }
 
-    def end_session(
-        self, session_id: str, end_reason: str | None = None
-    ) -> dict[str, Any]:
+    def end_session(self, session_id: str, end_reason: str | None = None) -> dict[str, Any]:
         """
         End a Digital Twin session.
 
@@ -347,9 +339,7 @@ class DigitalTwinService(DigitalTwinInterface):
             "summary": summary,
         }
 
-    def get_insights(
-        self, session_id: str, insight_type: str | None = None
-    ) -> dict[str, Any]:
+    def get_insights(self, session_id: str, insight_type: str | None = None) -> dict[str, Any]:
         """
         Get insights from a Digital Twin session.
 
@@ -491,9 +481,7 @@ class DigitalTwinService(DigitalTwinInterface):
         for keyword, score in anxiety_keywords.items():
             if keyword in message.lower():
                 current = session["insights"]["anxiety"]["score"]
-                session["insights"]["anxiety"]["score"] = max(
-                    -5, min(5, current + score)
-                )
+                session["insights"]["anxiety"]["score"] = max(-5, min(5, current + score))
                 session["insights"]["anxiety"]["factors"].append(keyword)
                 session["insights"]["anxiety"]["last_updated"] = datetime.datetime.now(
                     timezone.utc
@@ -513,9 +501,7 @@ class DigitalTwinService(DigitalTwinInterface):
         for keyword, score in social_keywords.items():
             if keyword in message.lower():
                 current = session["insights"]["social"]["score"]
-                session["insights"]["social"]["score"] = max(
-                    -5, min(5, current + score)
-                )
+                session["insights"]["social"]["score"] = max(-5, min(5, current + score))
                 session["insights"]["social"]["factors"].append(keyword)
                 session["insights"]["social"]["last_updated"] = datetime.datetime.now(
                     timezone.utc

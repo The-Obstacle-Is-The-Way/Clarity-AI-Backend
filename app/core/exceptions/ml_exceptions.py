@@ -210,9 +210,7 @@ class ServiceUnavailableError(MLServiceError):
 class DigitalTwinError(MLServiceError):
     """Exception raised for errors specific to Digital Twin operations."""
 
-    def __init__(
-        self, message: str = "Error in Digital Twin operation", *args, **kwargs
-    ):
+    def __init__(self, message: str = "Error in Digital Twin operation", *args, **kwargs):
         """
         Initialize Digital Twin error.
 

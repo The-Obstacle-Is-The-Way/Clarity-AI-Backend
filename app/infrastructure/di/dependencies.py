@@ -63,9 +63,7 @@ class ServiceFactory:
 
         # Create visualization preprocessor
         neurotransmitter_mapping = create_default_neurotransmitter_mapping()
-        preprocessor = NeurotransmitterVisualizationPreprocessor(
-            neurotransmitter_mapping
-        )
+        preprocessor = NeurotransmitterVisualizationPreprocessor(neurotransmitter_mapping)
 
         # Create and return service instance
         return TemporalNeurotransmitterService(

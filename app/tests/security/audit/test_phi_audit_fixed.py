@@ -19,9 +19,7 @@ import pytest
 from scripts.test.security.run_hipaa_phi_audit import PHIAuditor, PHIDetector
 
 # Add scripts directory to path
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../scripts"))
-)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../scripts")))
 
 # Import PHI auditor
 

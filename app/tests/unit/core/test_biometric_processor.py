@@ -185,9 +185,7 @@ class TestBiometricEventProcessor:
         assert mock_observer in processor.observers[AlertPriority.WARNING]
         assert mock_observer in processor.observers[AlertPriority.INFORMATIONAL]
 
-    def test_process_data_point_no_alert(
-        self, processor, sample_data_point, sample_rule
-    ):
+    def test_process_data_point_no_alert(self, processor, sample_data_point, sample_rule):
         """Test processing a data point that doesn't trigger an alert."""
         # Modify the data point to have a heart rate below the threshold
         sample_data_point.value = 90.0

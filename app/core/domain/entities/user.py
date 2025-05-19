@@ -43,16 +43,10 @@ class User(BaseModel):
         default_factory=list, description="User's roles in the system"
     )
     is_active: bool = Field(True, description="Whether the user is active")
-    status: UserStatus = Field(
-        default=UserStatus.ACTIVE, description="User's account status"
-    )
+    status: UserStatus = Field(default=UserStatus.ACTIVE, description="User's account status")
     created_at: datetime = Field(..., description="When the user was created")
-    updated_at: datetime | None = Field(
-        None, description="When the user was last updated"
-    )
-    full_name: str | None = Field(
-        None, description="User's full name (first + last)"
-    )
+    updated_at: datetime | None = Field(None, description="When the user was last updated")
+    full_name: str | None = Field(None, description="User's full name (first + last)")
 
     # Authentication fields
     hashed_password: str = Field(
@@ -76,9 +70,7 @@ class User(BaseModel):
         """
         role_value = role.value if hasattr(role, "value") else str(role)
         for user_role in self.roles:
-            user_role_value = (
-                user_role.value if hasattr(user_role, "value") else str(user_role)
-            )
+            user_role_value = user_role.value if hasattr(user_role, "value") else str(user_role)
             if user_role_value == role_value:
                 return True
         return False

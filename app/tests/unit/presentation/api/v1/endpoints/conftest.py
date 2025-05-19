@@ -29,8 +29,7 @@ def global_mock_jwt_service() -> MagicMock:
         # Return a properly constructed TokenPayload
         return TokenPayload(
             sub="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-            exp=int(datetime.now(timezone.utc).timestamp())
-            + 3600,  # 1 hour in the future
+            exp=int(datetime.now(timezone.utc).timestamp()) + 3600,  # 1 hour in the future
             iat=int(datetime.now(timezone.utc).timestamp()),
             jti=str(uuid.uuid4()),
             type=TokenType.ACCESS,
@@ -63,8 +62,7 @@ def global_mock_jwt_service() -> MagicMock:
     def mock_verify_access_token(token, **kwargs):
         return TokenPayload(
             sub="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-            exp=int(datetime.now(timezone.utc).timestamp())
-            + 3600,  # 1 hour in the future
+            exp=int(datetime.now(timezone.utc).timestamp()) + 3600,  # 1 hour in the future
             iat=int(datetime.now(timezone.utc).timestamp()),
             jti=str(uuid.uuid4()),
             type=TokenType.ACCESS,
@@ -80,8 +78,7 @@ def global_mock_jwt_service() -> MagicMock:
     def mock_verify_refresh_token(token, **kwargs):
         return TokenPayload(
             sub="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-            exp=int(datetime.now(timezone.utc).timestamp())
-            + 3600 * 24,  # 24 hours in the future
+            exp=int(datetime.now(timezone.utc).timestamp()) + 3600 * 24,  # 24 hours in the future
             iat=int(datetime.now(timezone.utc).timestamp()),
             jti=str(uuid.uuid4()),
             type=TokenType.REFRESH,
@@ -99,9 +96,7 @@ def global_mock_jwt_service() -> MagicMock:
 def authenticated_user() -> User:
     """Create a test user with authentication credentials."""
     return User(
-        id=str(
-            uuid.UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
-        ),  # Convert UUID to string
+        id=str(uuid.UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")),  # Convert UUID to string
         username="test_doctor",
         email="test.doctor@example.com",
         full_name="Test Doctor",

@@ -74,9 +74,7 @@ class TestSymptomForecastingModelService:
             "medication_history": [
                 {
                     "medication": "Sertraline",
-                    "start_date": (datetime.now() - timedelta(days=60)).strftime(
-                        "%Y-%m-%d"
-                    ),
+                    "start_date": (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d"),
                     "end_date": None,
                     "dosage": "50mg",
                     "frequency": "daily",
@@ -126,9 +124,7 @@ class TestSymptomForecastingModelService:
         """Test that preprocess_patient_data correctly processes valid patient data."""
         # Execute
         patient_id = UUID(sample_patient_data["patient_id"])
-        df, metadata = await service.preprocess_patient_data(
-            patient_id, sample_patient_data
-        )
+        df, metadata = await service.preprocess_patient_data(patient_id, sample_patient_data)
 
         # Verify
         assert isinstance(df, pd.DataFrame)
@@ -165,9 +161,7 @@ class TestSymptomForecastingModelService:
         # Correct patch and return_value structure
         mock_df = pd.DataFrame(
             {
-                "date": pd.date_range(
-                    start=datetime.now() - timedelta(days=3), periods=3
-                ),
+                "date": pd.date_range(start=datetime.now() - timedelta(days=3), periods=3),
                 "symptom_severity": [6, 5, 4],
                 "sleep_hours": [6.5, 7.2, 8.0],
                 "heart_rate_avg": [72, 68, 65],
@@ -197,9 +191,7 @@ class TestSymptomForecastingModelService:
             assert "confidence_intervals" in result["forecast"]
 
     @pytest.mark.asyncio
-    async def test_predict_symptom_progression_invalid_days(
-        self, service, sample_patient_data
-    ):
+    async def test_predict_symptom_progression_invalid_days(self, service, sample_patient_data):
         """Test prediction with invalid forecast days."""
         # Setup
         patient_id = UUID(sample_patient_data["patient_id"])
@@ -220,9 +212,7 @@ class TestSymptomForecastingModelService:
             )
 
     @pytest.mark.asyncio
-    async def test_predict_symptom_with_interventions(
-        self, service, sample_patient_data
-    ):
+    async def test_predict_symptom_with_interventions(self, service, sample_patient_data):
         """Test prediction with interventions."""
         # Setup
         patient_id = UUID(sample_patient_data["patient_id"])
@@ -319,9 +309,7 @@ class TestSymptomForecastingModelService:
                 {
                     "type": "medication",
                     "name": "Fluoxetine",
-                    "start_date": (datetime.now() + timedelta(days=1)).strftime(
-                        "%Y-%m-%d"
-                    ),
+                    "start_date": (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d"),
                     "expected_effect": -0.5,
                 },
                 {

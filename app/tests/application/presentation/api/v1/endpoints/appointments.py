@@ -143,9 +143,7 @@ async def get_appointment(
 
     appointment = await repo.get_by_id(appointment_id)
     if not appointment:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
 
     # TODO: Add authorization: Can current_user view this appointment?
     # Example check:
@@ -169,15 +167,10 @@ async def get_appointment(
 async def list_appointments(
     patient_id: UUID | None = Query(None, description="Filter by patient ID"),
     provider_id: UUID | None = Query(None, description="Filter by provider ID"),
-    start_date: datetime
-    | None = Query(None, description="Filter by start date (inclusive)"),
-    end_date: datetime
-    | None = Query(None, description="Filter by end date (exclusive)"),
-    status: AppointmentStatus
-    | None = Query(None, description="Filter by appointment status"),
-    limit: int = Query(
-        50, ge=1, le=200, description="Maximum number of appointments to return"
-    ),
+    start_date: datetime | None = Query(None, description="Filter by start date (inclusive)"),
+    end_date: datetime | None = Query(None, description="Filter by end date (exclusive)"),
+    status: AppointmentStatus | None = Query(None, description="Filter by appointment status"),
+    limit: int = Query(50, ge=1, le=200, description="Maximum number of appointments to return"),
     offset: int = Query(0, ge=0, description="Number of appointments to skip"),
     current_user: User = Depends(get_current_user),
     repo: IAppointmentRepository = Depends(get_appointment_repo),
@@ -265,9 +258,7 @@ async def update_appointment(
 
     existing_appointment = await repo.get_by_id(appointment_id)
     if not existing_appointment:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
 
     # TODO: Add authorization: Can current_user update this appointment?
 
@@ -292,9 +283,7 @@ async def update_appointment(
     try:
         # Use entity methods if they exist (e.g., for status change validation)
         if "status" in update_data:
-            existing_appointment.update_status(
-                update_data["status"]
-            )  # Uses entity method
+            existing_appointment.update_status(update_data["status"])  # Uses entity method
         # Simplified touch logic for mock
         existing_appointment.touch()
 
@@ -364,9 +353,7 @@ async def cancel_appointment(
 
     existing_appointment = await repo.get_by_id(appointment_id)
     if not existing_appointment:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
 
     # TODO: Add authorization check
 

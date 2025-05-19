@@ -166,9 +166,7 @@ class TemporalKnowledgeGraph:
         """Get all edges of a specific type."""
         return [edge for edge in self.edges.values() if edge.edge_type == edge_type]
 
-    def get_node_neighbors(
-        self, node_id: UUID
-    ) -> dict[EdgeType, list[KnowledgeGraphNode]]:
+    def get_node_neighbors(self, node_id: UUID) -> dict[EdgeType, list[KnowledgeGraphNode]]:
         """Get all neighboring nodes grouped by edge type."""
         if node_id not in self.nodes:
             raise ValueError(f"Node {node_id} not found in graph")
@@ -208,10 +206,7 @@ class TemporalKnowledgeGraph:
         for edge_id, edge in self.edges.items():
             if start_time <= edge.created_at <= end_time:
                 # Only add the edge if both connected nodes exist in the subgraph
-                if (
-                    edge.source_id in subgraph.nodes
-                    and edge.target_id in subgraph.nodes
-                ):
+                if edge.source_id in subgraph.nodes and edge.target_id in subgraph.nodes:
                     subgraph.add_edge(edge)
 
         return subgraph
@@ -260,18 +255,14 @@ class TemporalKnowledgeGraph:
                     {
                         "type": "symptom_cluster",
                         "diagnosis": node.label,
-                        "symptoms": [
-                            self.nodes[edge.source_id].label for edge in symptom_edges
-                        ],
+                        "symptoms": [self.nodes[edge.source_id].label for edge in symptom_edges],
                         "confidence": min(edge.confidence for edge in symptom_edges),
                     }
                 )
 
         return patterns
 
-    def _extract_chains(
-        self, edges: list[KnowledgeGraphEdge]
-    ) -> list[list[KnowledgeGraphEdge]]:
+    def _extract_chains(self, edges: list[KnowledgeGraphEdge]) -> list[list[KnowledgeGraphEdge]]:
         """Helper method to extract chains of connected edges."""
         # Build an adjacency list representation
         adjacency = {}
@@ -317,20 +308,14 @@ class BayesianBeliefNetwork:
     """A Bayesian belief network for probabilistic reasoning about patient state."""
 
     patient_id: UUID
-    variables: dict[str, dict] = field(
-        default_factory=dict
-    )  # Variable name -> properties
+    variables: dict[str, dict] = field(default_factory=dict)  # Variable name -> properties
     conditional_probabilities: dict[str, dict] = field(
         default_factory=dict
     )  # Variable -> parent configurations -> probabilities
-    evidence: dict[str, float] = field(
-        default_factory=dict
-    )  # Current evidence (variable -> value)
+    evidence: dict[str, float] = field(default_factory=dict)  # Current evidence (variable -> value)
     last_updated: datetime = field(default_factory=datetime.now)
 
-    def add_variable(
-        self, name: str, states: list[str], description: str | None = None
-    ) -> None:
+    def add_variable(self, name: str, states: list[str], description: str | None = None) -> None:
         """Add a variable (node) to the network."""
         self.variables[name] = {
             "states": states,
@@ -369,9 +354,7 @@ class BayesianBeliefNetwork:
         # Validate that probabilities sum to approximately 1.0 (allowing for floating point errors)
         prob_sum = sum(probabilities.values())
         if not 0.99 <= prob_sum <= 1.01:
-            raise ValueError(
-                f"Probabilities for {variable} must sum to 1.0, got {prob_sum}"
-            )
+            raise ValueError(f"Probabilities for {variable} must sum to 1.0, got {prob_sum}")
 
         # Create parent configuration string
         config = self._parent_config_to_string(parent_values)
@@ -387,9 +370,7 @@ class BayesianBeliefNetwork:
             if var not in self.variables:
                 raise ValueError(f"Variable {var} not found in network")
             if value not in self.variables[var]["states"]:
-                raise ValueError(
-                    f"Value {value} is not a valid state for variable {var}"
-                )
+                raise ValueError(f"Value {value} is not a valid state for variable {var}")
 
             self.evidence[var] = value
 
@@ -404,8 +385,7 @@ class BayesianBeliefNetwork:
         # Start with variables that have evidence
         for var, value in self.evidence.items():
             beliefs[var] = {
-                state: 1.0 if state == value else 0.0
-                for state in self.variables[var]["states"]
+                state: 1.0 if state == value else 0.0 for state in self.variables[var]["states"]
             }
 
         # Process variables in topological order (parents before children)
@@ -441,9 +421,7 @@ class BayesianBeliefNetwork:
                         )
                 else:
                     # Use the defined conditional probabilities
-                    for state, prob in self.conditional_probabilities[var][
-                        config_str
-                    ].items():
+                    for state, prob in self.conditional_probabilities[var][config_str].items():
                         beliefs[var][state] += prob * self._parent_config_probability(
                             parent_config, beliefs
                         )
@@ -452,9 +430,7 @@ class BayesianBeliefNetwork:
 
     def _parent_config_to_string(self, parent_values: dict[str, str]) -> str:
         """Convert parent configuration to a string key."""
-        return ",".join(
-            f"{parent}={value}" for parent, value in sorted(parent_values.items())
-        )
+        return ",".join(f"{parent}={value}" for parent, value in sorted(parent_values.items()))
 
     def _topological_sort(self) -> list[str]:
         """Sort variables so that parents come before children."""

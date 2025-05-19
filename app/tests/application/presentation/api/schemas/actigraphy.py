@@ -64,9 +64,7 @@ class AccelerometerReading(BaseModel):
     y: float = Field(..., description="Y-axis acceleration in g")
     z: float = Field(..., description="Z-axis acceleration in g")
     heart_rate: int | None = Field(None, description="Heart rate in BPM, if available")
-    metadata: dict[str, Any] | None = Field(
-        None, description="Additional metadata for the reading"
-    )
+    metadata: dict[str, Any] | None = Field(None, description="Additional metadata for the reading")
 
 
 class DeviceInfo(BaseModel):
@@ -87,17 +85,13 @@ class DeviceInfo(BaseModel):
         description="Manufacturer of the device",
         examples=["Apple", "Fitbit", "Samsung"],
     )
-    firmware_version: str | None = Field(
-        None, description="Firmware version of the device"
-    )
+    firmware_version: str | None = Field(None, description="Firmware version of the device")
     position: str | None = Field(
         None,
         description="Position of the device on the body",
         examples=["wrist_left", "wrist_right", "waist", "ankle"],
     )
-    metadata: dict[str, Any] | None = Field(
-        None, description="Additional metadata for the device"
-    )
+    metadata: dict[str, Any] | None = Field(None, description="Additional metadata for the device")
 
 
 # Request Models
@@ -121,9 +115,7 @@ class AnalyzeActigraphyRequest(BaseModel):
         examples=["2025-03-28T16:00:00Z"],
     )
     sampling_rate_hz: float = Field(..., description="Sampling rate in Hz", gt=0)
-    device_info: DeviceInfo = Field(
-        ..., description="Information about the recording device"
-    )
+    device_info: DeviceInfo = Field(..., description="Information about the recording device")
     analysis_types: list[AnalysisType] = Field(
         ..., description="Types of analyses to perform", min_length=1
     )
@@ -132,9 +124,7 @@ class AnalyzeActigraphyRequest(BaseModel):
     def validate_times(self) -> "AnalyzeActigraphyRequest":
         """Validate that end_time is after start_time."""
         # Normalize trailing Z only, to avoid doubling offsets
-        start_str = (
-            self.start_time[:-1] if self.start_time.endswith("Z") else self.start_time
-        )
+        start_str = self.start_time[:-1] if self.start_time.endswith("Z") else self.start_time
         end_str = self.end_time[:-1] if self.end_time.endswith("Z") else self.end_time
         start = datetime.fromisoformat(start_str)
         end = datetime.fromisoformat(end_str)
@@ -168,9 +158,7 @@ class GetActigraphyEmbeddingsRequest(BaseModel):
     def validate_times(self) -> "GetActigraphyEmbeddingsRequest":
         """Validate that end_time is after start_time."""
         # Normalize trailing Z only
-        start_str = (
-            self.start_time[:-1] if self.start_time.endswith("Z") else self.start_time
-        )
+        start_str = self.start_time[:-1] if self.start_time.endswith("Z") else self.start_time
         end_str = self.end_time[:-1] if self.end_time.endswith("Z") else self.end_time
         start = datetime.fromisoformat(start_str)
         end = datetime.fromisoformat(end_str)
@@ -185,12 +173,8 @@ class IntegrateWithDigitalTwinRequest(BaseModel):
     """Request to integrate actigraphy analysis with a digital twin profile."""
 
     patient_id: str = Field(..., description="Unique identifier for the patient")
-    profile_id: str = Field(
-        ..., description="Unique identifier for the digital twin profile"
-    )
-    analysis_id: str = Field(
-        ..., description="Unique identifier for the analysis to integrate"
-    )
+    profile_id: str = Field(..., description="Unique identifier for the digital twin profile")
+    analysis_id: str = Field(..., description="Unique identifier for the analysis to integrate")
 
 
 # Response Models
@@ -199,15 +183,9 @@ class IntegrateWithDigitalTwinRequest(BaseModel):
 class DataSummary(BaseModel):
     """Summary of the analyzed data."""
 
-    start_time: str = Field(
-        ..., description="ISO-8601 formatted start time of the recording"
-    )
-    end_time: str = Field(
-        ..., description="ISO-8601 formatted end time of the recording"
-    )
-    duration_seconds: float = Field(
-        ..., description="Duration of the recording in seconds"
-    )
+    start_time: str = Field(..., description="ISO-8601 formatted start time of the recording")
+    end_time: str = Field(..., description="ISO-8601 formatted end time of the recording")
+    duration_seconds: float = Field(..., description="Duration of the recording in seconds")
     readings_count: int = Field(..., description="Number of readings in the recording")
     sampling_rate_hz: float = Field(..., description="Sampling rate in Hz")
 
@@ -217,33 +195,21 @@ class AnalysisResult(BaseModel):
 
     analysis_id: str = Field(..., description="Unique identifier for the analysis")
     patient_id: str = Field(..., description="Unique identifier for the patient")
-    timestamp: str = Field(
-        ..., description="ISO-8601 formatted timestamp of the analysis"
-    )
+    timestamp: str = Field(..., description="ISO-8601 formatted timestamp of the analysis")
     analysis_types: list[str] = Field(..., description="Types of analyses performed")
-    device_info: dict[str, Any] = Field(
-        ..., description="Information about the recording device"
-    )
+    device_info: dict[str, Any] = Field(..., description="Information about the recording device")
     data_summary: DataSummary = Field(..., description="Summary of the analyzed data")
-    results: dict[str, Any] = Field(
-        ..., description="Analysis results for each analysis type"
-    )
+    results: dict[str, Any] = Field(..., description="Analysis results for each analysis type")
     # Convenience fields for individual analysis types
-    sleep_metrics: dict[str, Any] | None = Field(
-        None, description="Sleep quality metrics"
-    )
-    activity_levels: dict[str, Any] | None = Field(
-        None, description="Activity level metrics"
-    )
+    sleep_metrics: dict[str, Any] | None = Field(None, description="Sleep quality metrics")
+    activity_levels: dict[str, Any] | None = Field(None, description="Activity level metrics")
 
 
 class AnalysisSummary(BaseModel):
     """Summary of an analysis for lists."""
 
     analysis_id: str = Field(..., description="Unique identifier for the analysis")
-    timestamp: str = Field(
-        ..., description="ISO-8601 formatted timestamp of the analysis"
-    )
+    timestamp: str = Field(..., description="ISO-8601 formatted timestamp of the analysis")
     analysis_types: list[str] = Field(..., description="Types of analyses performed")
     data_summary: DataSummary = Field(..., description="Summary of the analyzed data")
 
@@ -260,9 +226,7 @@ class Pagination(BaseModel):
 class AnalysesList(BaseModel):
     """List of analyses with pagination information."""
 
-    analyses: list[AnalysisSummary] = Field(
-        ..., description="List of analysis summaries"
-    )
+    analyses: list[AnalysisSummary] = Field(..., description="List of analysis summaries")
     pagination: Pagination = Field(..., description="Pagination information")
 
 
@@ -284,14 +248,10 @@ class EmbeddingResult(BaseModel):
     timestamp: str = Field(
         ..., description="ISO-8601 formatted timestamp of the embedding generation"
     )
-    data_summary: DataSummary = Field(
-        ..., description="Summary of the data used for embedding"
-    )
+    data_summary: DataSummary = Field(..., description="Summary of the data used for embedding")
     embedding: EmbeddingData = Field(..., description="Embedding data")
     # Legacy aliases for embedding vector and size
-    embeddings: list[float] = Field(
-        ..., description="Legacy alias for embedding vector"
-    )
+    embeddings: list[float] = Field(..., description="Legacy alias for embedding vector")
     embedding_size: int = Field(..., description="Legacy alias for embedding size")
 
 
@@ -301,31 +261,23 @@ class Insight(BaseModel):
     type: str = Field(..., description="Type of insight")
     description: str = Field(..., description="Description of the insight")
     recommendation: str = Field(..., description="Recommendation based on the insight")
-    confidence: float = Field(
-        ..., description="Confidence score for the insight", ge=0.0, le=1.0
-    )
+    confidence: float = Field(..., description="Confidence score for the insight", ge=0.0, le=1.0)
 
 
 class ProfileUpdate(BaseModel):
     """Information about the digital twin profile update."""
 
-    updated_aspects: list[str] = Field(
-        ..., description="Aspects of the profile that were updated"
-    )
+    updated_aspects: list[str] = Field(..., description="Aspects of the profile that were updated")
     confidence_score: float = Field(
         ..., description="Confidence score for the update", ge=0.0, le=1.0
     )
-    updated_at: str = Field(
-        ..., description="ISO-8601 formatted timestamp of the update"
-    )
+    updated_at: str = Field(..., description="ISO-8601 formatted timestamp of the update")
 
 
 class AnalyzeActigraphyResponse(BaseModel):
     """Response containing the ID and status of the initiated analysis."""
 
-    analysis_id: uuid.UUID = Field(
-        ..., description="Unique identifier for the analysis task"
-    )
+    analysis_id: uuid.UUID = Field(..., description="Unique identifier for the analysis task")
     status: str = Field("processing", description="Current status of the analysis task")
 
 
@@ -348,23 +300,11 @@ class UploadResponse(BaseModel):
 class IntegrationResult(BaseModel):
     """Result of digital twin integration."""
 
-    integration_id: str = Field(
-        ..., description="Unique identifier for the integration"
-    )
+    integration_id: str = Field(..., description="Unique identifier for the integration")
     patient_id: str = Field(..., description="Unique identifier for the patient")
-    profile_id: str = Field(
-        ..., description="Unique identifier for the digital twin profile"
-    )
-    analysis_id: str = Field(
-        ..., description="Unique identifier for the integrated analysis"
-    )
-    timestamp: str = Field(
-        ..., description="ISO-8601 formatted timestamp of the integration"
-    )
+    profile_id: str = Field(..., description="Unique identifier for the digital twin profile")
+    analysis_id: str = Field(..., description="Unique identifier for the integrated analysis")
+    timestamp: str = Field(..., description="ISO-8601 formatted timestamp of the integration")
     status: str = Field(..., description="Status of the integration")
-    insights: list[Insight] = Field(
-        ..., description="Insights derived from the analysis"
-    )
-    profile_update: ProfileUpdate = Field(
-        ..., description="Information about the profile update"
-    )
+    insights: list[Insight] = Field(..., description="Insights derived from the analysis")
+    profile_update: ProfileUpdate = Field(..., description="Information about the profile update")

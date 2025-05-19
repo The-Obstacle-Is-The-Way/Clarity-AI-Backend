@@ -210,15 +210,11 @@ class CorrelatedEvent(TemporalEvent[T]):
         base_dict = super().to_dict()
         base_dict.update(
             {
-                "correlation_type": self.correlation_type.name
-                if self.correlation_type
-                else None,
+                "correlation_type": self.correlation_type.name if self.correlation_type else None,
                 "correlation_strength": self.correlation_strength,
                 "correlated_events": [str(e) for e in self.correlated_events],
                 "correlation_id": str(self.correlation_id),
-                "parent_event_id": str(self.parent_event_id)
-                if self.parent_event_id
-                else None,
+                "parent_event_id": str(self.parent_event_id) if self.parent_event_id else None,
             }
         )
         return base_dict
@@ -242,9 +238,7 @@ class CorrelatedEvent(TemporalEvent[T]):
         metadata = kwargs.pop("metadata", {}) or {}
 
         # Create the child event
-        child_event = cls(
-            event_type=event_type, metadata=metadata, timestamp=datetime.now(UTC)
-        )
+        child_event = cls(event_type=event_type, metadata=metadata, timestamp=datetime.now(UTC))
 
         # Set correlation ID to match parent
         child_event.correlation_id = parent_event.correlation_id

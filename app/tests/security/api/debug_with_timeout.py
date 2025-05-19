@@ -32,9 +32,7 @@ async def run_test_with_timeout(client_app_tuple):
         logger.debug("About to send request...")
         # Set a timeout for the entire test
         response = await asyncio.wait_for(
-            client.get(
-                "/test-api/test/runtime-error", headers={"X-Request-ID": request_id}
-            ),
+            client.get("/test-api/test/runtime-error", headers={"X-Request-ID": request_id}),
             timeout=8.0,
         )
 
@@ -87,6 +85,4 @@ async def run_debug_test(client_app_tuple_func_scoped):
 if __name__ == "__main__":
     # This would need to be run with pytest, not directly
     logger.debug("This script should be run through pytest, not directly")
-    logger.debug(
-        "Use: python -m pytest app/tests/security/api/debug_with_timeout.py -v"
-    )
+    logger.debug("Use: python -m pytest app/tests/security/api/debug_with_timeout.py -v")

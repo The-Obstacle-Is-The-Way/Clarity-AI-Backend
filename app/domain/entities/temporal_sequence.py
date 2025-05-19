@@ -100,15 +100,8 @@ class TemporalSequence(Generic[T]):
         if values is not None and values and not isinstance(values[0], list):
             values = [[v] for v in values]
         # Validate required fields
-        if (
-            not sequence_id
-            or timestamps is None
-            or values is None
-            or patient_id is None
-        ):
-            raise ValueError(
-                "sequence_id, timestamps, values, and patient_id are required"
-            )
+        if not sequence_id or timestamps is None or values is None or patient_id is None:
+            raise ValueError("sequence_id, timestamps, values, and patient_id are required")
         # Validate input lengths match
         if len(timestamps) != len(values):
             raise ValueError("Number of timestamps must match number of value vectors")
@@ -390,9 +383,7 @@ class TemporalSequence(Generic[T]):
 
         return result
 
-    def get_trend(
-        self, feature_index: int = 0, window_size: timedelta | None = None
-    ) -> str:
+    def get_trend(self, feature_index: int = 0, window_size: timedelta | None = None) -> str:
         """
         Calculate trend direction over time for a specific feature.
 
@@ -414,9 +405,7 @@ class TemporalSequence(Generic[T]):
         if window_size:
             cutoff = datetime.now(UTC) - window_size
             windowed_data = [
-                (ts, v)
-                for ts, v in zip(timestamps, values, strict=False)
-                if ts >= cutoff
+                (ts, v) for ts, v in zip(timestamps, values, strict=False) if ts >= cutoff
             ]
             if len(windowed_data) < 2:
                 return "insufficient_data"
@@ -586,7 +575,5 @@ class TemporalSequence(_GenericTemporalSequence):
             "name": self.name,
             "description": self.description,
             "time_unit": self.time_unit,
-            "time_points": [
-                {"time_value": p.time_value, "data": p.data} for p in self.time_points
-            ],
+            "time_points": [{"time_value": p.time_value, "data": p.data} for p in self.time_points],
         }

@@ -67,14 +67,10 @@ async def get_async_session_utility(
     logger.debug("GET_ASYNC_SESSION_UTILITY: Entered.")
 
     if session_factory is None:
-        logger.error(
-            "GET_ASYNC_SESSION_UTILITY: session_factory is None. Cannot create session."
-        )
+        logger.error("GET_ASYNC_SESSION_UTILITY: session_factory is None. Cannot create session.")
         raise RuntimeError("GET_ASYNC_SESSION_UTILITY: session_factory is None.")
 
-    logger.debug(
-        f"GET_ASYNC_SESSION_UTILITY: Using provided session_factory: {session_factory}"
-    )
+    logger.debug(f"GET_ASYNC_SESSION_UTILITY: Using provided session_factory: {session_factory}")
 
     session: AsyncSession | None = None
     try:

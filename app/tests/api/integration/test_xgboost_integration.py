@@ -191,9 +191,7 @@ async def client(
 
     # Create and yield the client using our custom client class
     transport = ASGITransport(app=app)
-    async with CustomAsyncClient(
-        transport=transport, base_url="http://test"
-    ) as client_instance:
+    async with CustomAsyncClient(transport=transport, base_url="http://test") as client_instance:
         yield client_instance
 
     # Clean up
@@ -405,9 +403,7 @@ class TestXGBoostIntegration:
             )
         )
         # Correct path based on router
-        await client.get(
-            f"/api/v1/xgboost/model-info/{model_type}"
-        )  # Path adjusted if necessary
+        await client.get(f"/api/v1/xgboost/model-info/{model_type}")  # Path adjusted if necessary
 
     # --- Add healthcheck test if endpoint exists ---
     @pytest.mark.asyncio

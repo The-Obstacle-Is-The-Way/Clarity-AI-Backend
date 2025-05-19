@@ -126,21 +126,15 @@ class TestDigitalTwin:
             "suicidal_ideation",
         ]
         assert digital_twin.state.current_treatment_effectiveness == "worsening"
-        assert digital_twin.state.predicted_phq9_trajectory == [
-            {"week": 1, "score": 18.5}
-        ]
+        assert digital_twin.state.predicted_phq9_trajectory == [{"week": 1, "score": 18.5}]
         assert isinstance(digital_twin.state.last_sync_time, datetime)
-        assert (
-            digital_twin.state.last_sync_time > original_updated_at
-        )  # Sync time updated
+        assert digital_twin.state.last_sync_time > original_updated_at  # Sync time updated
         assert digital_twin.last_updated > original_updated_at  # Entity updated time
         assert digital_twin.version == original_version + 1  # Version incremented
 
     def test_update_state_partial(self, digital_twin: DigitalTwin):
         """Test partially updating the digital twin state."""
-        original_risk = (
-            digital_twin.state.overall_risk_level
-        )  # Should be None initially
+        original_risk = digital_twin.state.overall_risk_level  # Should be None initially
         original_updated_at = digital_twin.last_updated
         original_version = digital_twin.version
         time.sleep(0.01)
@@ -171,10 +165,7 @@ class TestDigitalTwin:
         # Check valid key was updated
         assert digital_twin.state.overall_risk_level == "low"
         # Check other keys remain unchanged
-        assert (
-            digital_twin.state.dominant_symptoms
-            == original_state_dict["dominant_symptoms"]
-        )
+        assert digital_twin.state.dominant_symptoms == original_state_dict["dominant_symptoms"]
         # Check timestamp and version updated
         assert digital_twin.last_updated > original_updated_at
         assert digital_twin.version == original_version + 1
@@ -202,8 +193,7 @@ class TestDigitalTwin:
         assert digital_twin.configuration.alert_thresholds == {"phq9_change": 4.0}
         # Check unchanged config value
         assert (
-            digital_twin.configuration.data_sources_enabled
-            == original_config.data_sources_enabled
+            digital_twin.configuration.data_sources_enabled == original_config.data_sources_enabled
         )
         assert digital_twin.last_updated > original_updated_at
         assert digital_twin.version == original_version + 1
@@ -220,12 +210,9 @@ class TestDigitalTwin:
         }
         digital_twin.update_configuration(new_config_data)
 
-        assert digital_twin.configuration.prediction_models_enabled == [
-            "risk_hospitalization"
-        ]
+        assert digital_twin.configuration.prediction_models_enabled == ["risk_hospitalization"]
         assert (
-            digital_twin.configuration.simulation_granularity_hours
-            == original_granularity
+            digital_twin.configuration.simulation_granularity_hours == original_granularity
         )  # Unchanged
         assert digital_twin.last_updated > original_updated_at
         assert digital_twin.version == original_version + 1

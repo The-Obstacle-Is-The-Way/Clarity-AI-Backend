@@ -35,9 +35,7 @@ class MockMentalLLaMAService(MockMentaLLaMA):
         self.config = config or {}
 
     # Service methods that delegate to the mock implementation
-    def analyze_sentiment(
-        self, text: str, options: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def analyze_sentiment(self, text: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
         """Analyze sentiment in text, returning emotions and valence."""
         return super().analyze_sentiment(text, options)
 
@@ -50,15 +48,11 @@ class MockMentalLLaMAService(MockMentaLLaMA):
         """Analyze wellness dimensions in text."""
         return super().analyze_wellness_dimensions(text, dimensions, options)
 
-    def detect_depression(
-        self, text: str, options: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def detect_depression(self, text: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
         """Detect depression indicators in text."""
         return super().detect_depression(text, options)
 
-    def assess_risk(
-        self, text: str, options: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def assess_risk(self, text: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
         """Assess risk factors in text."""
         return super().assess_risk(text, options)
 

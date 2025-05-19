@@ -119,15 +119,11 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         try:
             user_id = UUID(user_id_str)
         except ValueError as e:
-            raise AuthenticationException(
-                f"Invalid user ID format in token: {e}"
-            ) from e
+            raise AuthenticationException(f"Invalid user ID format in token: {e}") from e
 
         # Extract roles or scopes from token
         roles = getattr(token_payload, "roles", [])
-        scopes = getattr(
-            token_payload, "scopes", roles
-        )  # Use roles as fallback for scopes
+        scopes = getattr(token_payload, "scopes", roles)  # Use roles as fallback for scopes
 
         # Initialize session
         session = None
@@ -156,21 +152,15 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 # Default to ACTIVE if no status found but is_active is True
                 is_active = getattr(domain_user, "is_active", True)
                 user_status = UserStatus.ACTIVE if is_active else UserStatus.INACTIVE
-                logger.info(
-                    f"Using derived status from is_active ({is_active}): {user_status}"
-                )
+                logger.info(f"Using derived status from is_active ({is_active}): {user_status}")
 
             # Log all attributes of domain_user for debugging
             logger.info(f"Domain user attributes: {dir(domain_user)}")
             logger.info(
                 f"Domain user account_status: {getattr(domain_user, 'account_status', 'not found')}"
             )
-            logger.info(
-                f"Domain user status: {getattr(domain_user, 'status', 'not found')}"
-            )
-            logger.info(
-                f"Domain user is_active: {getattr(domain_user, 'is_active', 'not found')}"
-            )
+            logger.info(f"Domain user status: {getattr(domain_user, 'status', 'not found')}")
+            logger.info(f"Domain user is_active: {getattr(domain_user, 'is_active', 'not found')}")
 
             # Determine if user is active, handling different ways this might be represented
             is_active = True  # Default to active unless proven otherwise
@@ -196,10 +186,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                     is_active = False
 
             # Check the status attribute directly if account_status wasn't found
-            if (
-                hasattr(domain_user, "status")
-                and "inactive" in str(domain_user.status).lower()
-            ):
+            if hasattr(domain_user, "status") and "inactive" in str(domain_user.status).lower():
                 logger.warning(
                     f"User {user_id} has inactive in status attribute: {domain_user.status}"
                 )
@@ -266,11 +253,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 if hasattr(domain_user, "email"):
                     raw_email = str(domain_user.email)
                     # Check if it's a mock object string representation
-                    if (
-                        "@" not in raw_email
-                        or (raw_email.startswith("<")
-                        and ">" in raw_email)
-                    ):
+                    if "@" not in raw_email or (raw_email.startswith("<") and ">" in raw_email):
                         # Default to a valid test email
                         email = f"{username}@example.com"
                     else:
@@ -281,9 +264,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 # Ensure we have a valid UserStatus enum for status
                 try:
                     # Use ACTIVE if we determined user is active
-                    status_enum = (
-                        UserStatus.ACTIVE if is_active else UserStatus.INACTIVE
-                    )
+                    status_enum = UserStatus.ACTIVE if is_active else UserStatus.INACTIVE
                 except (ValueError, TypeError):
                     # Fallback to ACTIVE for testing
                     status_enum = UserStatus.ACTIVE
@@ -306,9 +287,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             # Re-raise these exceptions without wrapping
             raise
         except Exception as e:
-            logger.error(
-                f"Database error retrieving user {user_id}: {e}", exc_info=True
-            )
+            logger.error(f"Database error retrieving user {user_id}: {e}", exc_info=True)
             raise AuthenticationException(f"Database access error: {e!s}") from e
         finally:
             # Ensure session is properly closed
@@ -344,9 +323,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
         try:
             logger.debug(f"About to validate token: {token[:10]}...")
-            user_context, scopes = await self._validate_and_prepare_user_context(
-                token, request
-            )
+            user_context, scopes = await self._validate_and_prepare_user_context(token, request)
 
             # In case of inactive user, the middleware should have raised an exception before here
             logger.debug(

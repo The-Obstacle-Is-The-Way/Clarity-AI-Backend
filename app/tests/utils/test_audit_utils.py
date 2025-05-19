@@ -66,9 +66,7 @@ async def disable_audit_middleware_context(app: FastAPI) -> AsyncGenerator[None,
         yield
     finally:
         app.state.disable_audit_middleware = original_value
-        logger.info(
-            f"Audit middleware restored to {'disabled' if original_value else 'enabled'}"
-        )
+        logger.info(f"Audit middleware restored to {'disabled' if original_value else 'enabled'}")
 
 
 def replace_middleware_with_mock(
@@ -127,10 +125,7 @@ def disable_authentication_middleware(app: FastAPI) -> None:
     # Add wildcard to public paths for the middleware
     if hasattr(app, "middleware_stack") and app.middleware_stack:
         for middleware in app.middleware_stack.app.middleware:
-            if (
-                isinstance(middleware, dict)
-                and middleware.get("cls") == AuthenticationMiddleware
-            ):
+            if isinstance(middleware, dict) and middleware.get("cls") == AuthenticationMiddleware:
                 middleware_instance = middleware.get("instance")
                 if middleware_instance:
                     # Add a wildcard to public paths
@@ -141,12 +136,8 @@ def disable_authentication_middleware(app: FastAPI) -> None:
                     import re
 
                     middleware_instance.public_path_patterns.append(re.compile(".*"))
-                    middleware_instance.public_path_patterns.append(
-                        re.compile("^/api/.*$")
-                    )
-                    logger.info(
-                        "Added wildcard patterns to auth middleware public paths"
-                    )
+                    middleware_instance.public_path_patterns.append(re.compile("^/api/.*$"))
+                    logger.info("Added wildcard patterns to auth middleware public paths")
 
                     # Replace dispatch method with a pass-through version
                     original_dispatch = middleware_instance.dispatch
@@ -256,9 +247,7 @@ async def disabled_audit_logging_async(app: FastAPI):
         app.state.disable_audit_middleware = original_state
 
 
-def find_middleware_by_type(
-    app: FastAPI, middleware_type: type
-) -> BaseHTTPMiddleware | None:
+def find_middleware_by_type(app: FastAPI, middleware_type: type) -> BaseHTTPMiddleware | None:
     """
     Find middleware of a specific type in the application.
 
@@ -297,9 +286,7 @@ def create_test_request(
         "app": app,
         "path": path,
         "method": method,
-        "headers": [
-            (k.lower().encode(), v.encode()) for k, v in (headers or {}).items()
-        ],
+        "headers": [(k.lower().encode(), v.encode()) for k, v in (headers or {}).items()],
         "client": ("127.0.0.1", 8000),
         "path_params": {},
         "query_string": b"",

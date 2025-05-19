@@ -35,9 +35,7 @@ app = FastAPI(lifespan=lifespan)
 async def force_runtime_error():
     """Endpoint that deliberately raises a RuntimeError, mimicking the test endpoint."""
     logger.debug("Runtime error endpoint called")
-    raise RuntimeError(
-        "This is a sensitive internal error detail that should be masked"
-    )
+    raise RuntimeError("This is a sensitive internal error detail that should be masked")
 
 
 # Add exception handler like in app_factory.py
@@ -46,9 +44,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
     """Handler for all exceptions, returning a sanitized message."""
     logger.debug(f"Generic exception handler called for: {type(exc).__name__}")
     logger.debug(f"Exception details: {exc}")
-    return JSONResponse(
-        status_code=500, content={"detail": "An internal server error occurred."}
-    )
+    return JSONResponse(status_code=500, content={"detail": "An internal server error occurred."})
 
 
 # Request ID middleware

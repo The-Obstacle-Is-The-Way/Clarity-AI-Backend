@@ -71,9 +71,7 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
         Raises:
             ApplicationError: If template not found or creation fails
         """
-        logger.info(
-            f"Creating rule from template {template_id} for patient {patient_id}"
-        )
+        logger.info(f"Creating rule from template {template_id} for patient {patient_id}")
 
         # Get the template from repository
         template = await self.template_repository.get_by_id(template_id)
@@ -89,9 +87,7 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
             name = custom_overrides.get("name", template.name)
             description = custom_overrides.get("description", template.description)
             priority = custom_overrides.get("priority", template.priority)
-            logical_operator = custom_overrides.get(
-                "logical_operator", template.logical_operator
-            )
+            logical_operator = custom_overrides.get("logical_operator", template.logical_operator)
 
             # Create conditions from template
             conditions = []
@@ -104,9 +100,7 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
                 # Create condition with potential overrides
                 condition = RuleCondition(
                     metric_type=template_condition.metric_type,
-                    operator=condition_overrides.get(
-                        "operator", template_condition.operator
-                    ),
+                    operator=condition_overrides.get("operator", template_condition.operator),
                     threshold_value=condition_overrides.get(
                         "threshold_value", template_condition.threshold_value
                     ),
@@ -177,9 +171,7 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
                 try:
                     # Map input metrics to domain entities
                     metric_name = cond_data.get("metric_name", "").lower()
-                    metric_type = getattr(
-                        BiometricMetricType, metric_name.upper(), None
-                    )
+                    metric_type = getattr(BiometricMetricType, metric_name.upper(), None)
                     if not metric_type:
                         raise ValueError(f"Invalid metric name: {metric_name}")
 
@@ -218,9 +210,7 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
             # Map logical operator
             logical_op_str = rule_data.get("logical_operator", "and").lower()
             logical_operator = (
-                RuleLogicalOperator.AND
-                if logical_op_str == "and"
-                else RuleLogicalOperator.OR
+                RuleLogicalOperator.AND if logical_op_str == "and" else RuleLogicalOperator.OR
             )
 
             # Map priority
@@ -309,9 +299,7 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
 
         try:
             # Use the repository's get_rules method with filters
-            rules = await self.rule_repository.get_rules(
-                patient_id=patient_id, is_active=is_active
-            )
+            rules = await self.rule_repository.get_rules(patient_id=patient_id, is_active=is_active)
             return [self._to_dict(rule) for rule in rules]
         except Exception as e:
             logger.error(f"Failed to get rules: {e!s}")
@@ -354,9 +342,7 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
             if "priority" in update_data:
                 priority_str = update_data["priority"].lower()
                 try:
-                    existing_rule.priority = getattr(
-                        AlertPriority, priority_str.upper()
-                    )
+                    existing_rule.priority = getattr(AlertPriority, priority_str.upper())
                 except AttributeError:
                     # Keep existing if invalid
                     pass
@@ -367,9 +353,7 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
             if "logical_operator" in update_data:
                 op_str = update_data["logical_operator"].lower()
                 existing_rule.logical_operator = (
-                    RuleLogicalOperator.AND
-                    if op_str == "and"
-                    else RuleLogicalOperator.OR
+                    RuleLogicalOperator.AND if op_str == "and" else RuleLogicalOperator.OR
                 )
 
             # Update conditions if provided
@@ -380,9 +364,7 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
                     for cond_data in raw_conditions:
                         # Map input metrics to domain entities
                         metric_name = cond_data.get("metric_name", "").lower()
-                        metric_type = getattr(
-                            BiometricMetricType, metric_name.upper(), None
-                        )
+                        metric_type = getattr(BiometricMetricType, metric_name.upper(), None)
                         if not metric_type:
                             raise ValueError(f"Invalid metric name: {metric_name}")
 
@@ -481,9 +463,7 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
                 message=f"Failed to update rule active status: {e!s}",
             )
 
-    async def count_patient_rules(
-        self, patient_id: UUID, is_active: bool | None = None
-    ) -> int:
+    async def count_patient_rules(self, patient_id: UUID, is_active: bool | None = None) -> int:
         """
         Count rules for a patient, optionally filtering by active status.
 

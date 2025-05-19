@@ -43,11 +43,7 @@ class AppointmentUpdate(BaseModel):
     @field_validator("end_time")
     def end_time_must_be_after_start_time_optional(cls, v, values):
         # Only validate if both start and end are being updated
-        if (
-            v is not None
-            and "start_time" in values.data
-            and values.data["start_time"] is not None
-        ):
+        if v is not None and "start_time" in values.data and values.data["start_time"] is not None:
             if v <= values.data["start_time"]:
                 raise ValueError("End time must be after start time")
         # Also handle if only end_time is provided (need original start_time, complex)

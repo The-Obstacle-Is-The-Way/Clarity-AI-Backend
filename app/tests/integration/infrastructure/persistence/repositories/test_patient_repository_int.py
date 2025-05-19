@@ -51,9 +51,7 @@ class TestUser(TestBase):
     last_name = Column(String(100), nullable=True)
 
     # Relationships
-    patients = relationship(
-        "TestPatient", back_populates="user", cascade="all, delete-orphan"
-    )
+    patients = relationship("TestPatient", back_populates="user", cascade="all, delete-orphan")
 
 
 # Test Patient Model
@@ -154,9 +152,7 @@ async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
         await conn.run_sync(TestBase.metadata.create_all)
 
     # Create a session factory
-    session_factory = async_sessionmaker(
-        engine, expire_on_commit=False, class_=AsyncSession
-    )
+    session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
     # Create a session
     async with session_factory() as session:

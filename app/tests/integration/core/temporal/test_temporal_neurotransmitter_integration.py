@@ -188,17 +188,12 @@ async def test_temporal_service_with_xgboost_integration(
     logger.info(
         f"[DEBUG test_fn] Type of temporal_service.nt_mapping: {type(temporal_service.nt_mapping)}"
     )
-    if (
-        hasattr(temporal_service, "nt_mapping")
-        and temporal_service.nt_mapping is not None
-    ):
+    if hasattr(temporal_service, "nt_mapping") and temporal_service.nt_mapping is not None:
         logger.info(
             f"[DEBUG test_fn] hasattr receptor_map? {hasattr(temporal_service.nt_mapping, 'receptor_map')}"
         )
     else:
-        logger.info(
-            "[DEBUG test_fn] temporal_service.nt_mapping is None or does not exist."
-        )
+        logger.info("[DEBUG test_fn] temporal_service.nt_mapping is None or does not exist.")
 
     # Simulate treatment response
     treatment_results = await temporal_service.simulate_treatment_response(
@@ -217,9 +212,7 @@ async def test_temporal_service_with_xgboost_integration(
     assert len(patient_events) > 0
     # Optional: check event types include simulation events
     event_types = {e.event_type for e in patient_events}
-    assert any(
-        "sequence" in et or "simulation" in et or "analysis" in et for et in event_types
-    )
+    assert any("sequence" in et or "simulation" in et or "analysis" in et for et in event_types)
 
     # # Verify XGBoost interaction (if mocked/spied)
     # # assert prediction_calls # Ensure predict was called
@@ -284,9 +277,7 @@ async def test_full_brain_region_coverage_with_visualization(
     # Verify that different regions produce different visualizations
     # Compare nodes and connections counts
     node_counts = [len(data["nodes"]) for data in visualization_data.values()]
-    connection_counts = [
-        len(data["connections"]) for data in visualization_data.values()
-    ]
+    connection_counts = [len(data["connections"]) for data in visualization_data.values()]
 
     # Not all visualizations should have the same node/connection count
     assert (
@@ -331,9 +322,7 @@ async def test_full_neurotransmitter_coverage_with_treatment(
 
         # Verify response contains sequences for multiple neurotransmitters
         assert len(response) > 1
-        assert (
-            nt in response
-        ), f"Response should include target neurotransmitter {nt.value}"
+        assert nt in response, f"Response should include target neurotransmitter {nt.value}"
 
         # Verify that the target neurotransmitter sequence ID is valid
         sequence = await temporal_service.sequence_repository.get_by_id(response[nt])
@@ -353,9 +342,7 @@ async def test_full_neurotransmitter_coverage_with_treatment(
     ), "Different neurotransmitter treatments should affect different numbers of secondary neurotransmitters"
 
 
-@pytest.mark.skip(
-    "Skipping API integration with service test: pending endpoint implementation"
-)
+@pytest.mark.skip("Skipping API integration with service test: pending endpoint implementation")
 @pytest.mark.asyncio()
 async def test_api_integration_with_service(
     test_client: AsyncClient,  # Use test_client fixture from conftest.py

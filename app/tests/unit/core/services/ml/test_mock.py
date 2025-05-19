@@ -163,9 +163,7 @@ class TestMockMentaLLaMA:
         dimensions_found = [dim["dimension"] for dim in result["wellness_dimensions"]]
         assert "emotional" in dimensions_found
         assert "social" in dimensions_found
-        assert (
-            len(dimensions_found) == 2
-        )  # Ensure only requested dimensions are returned
+        assert len(dimensions_found) == 2  # Ensure only requested dimensions are returned
 
     def test_digital_twin_session_workflow(self, mock_service, sample_text):
         """Test the digital twin session workflow."""
@@ -180,9 +178,7 @@ class TestMockMentaLLaMA:
         twin_id = twin_result["digital_twin_id"]
 
         # Create a session with the digital twin
-        session_result = mock_service.create_digital_twin_session(
-            twin_id, session_type="therapy"
-        )
+        session_result = mock_service.create_digital_twin_session(twin_id, session_type="therapy")
         assert "session_id" in session_result
         session_id = session_result["session_id"]
 
@@ -305,9 +301,7 @@ class TestMockPHIDetection:
         assert "[PHI]" in result["redacted_text"]
 
         # Test with specific detection level
-        result = mock_phi_service.redact_phi(
-            sample_phi_text, detection_level="aggressive"
-        )
+        result = mock_phi_service.redact_phi(sample_phi_text, detection_level="aggressive")
         assert "detection_level" in result
         assert result["detection_level"] == "aggressive"
 

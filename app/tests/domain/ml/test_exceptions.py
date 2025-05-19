@@ -103,9 +103,7 @@ class TestMentalLLaMAExceptions:
         model = "gpt-4"
         details = {"error_type": "timeout", "duration": 30.5}
 
-        exception = MentalLLaMAInferenceError(
-            message, model_name=model, details=details
-        )
+        exception = MentalLLaMAInferenceError(message, model_name=model, details=details)
 
         # Verify properties
         assert exception.message == message
@@ -183,9 +181,7 @@ class TestMentalLLaMAExceptions:
         quota_used = 101
         details = {"reset_time": "2025-04-11T00:00:00Z"}
 
-        exception = MentalLLaMAQuotaExceededError(
-            message, quota_limit, quota_used, details
-        )
+        exception = MentalLLaMAQuotaExceededError(message, quota_limit, quota_used, details)
 
         # Verify properties
         assert exception.message == message

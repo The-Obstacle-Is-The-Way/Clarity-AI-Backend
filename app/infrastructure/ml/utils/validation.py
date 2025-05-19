@@ -102,13 +102,9 @@ class ModelInputValidator:
                 )
 
             # Check required fields
-            missing_fields = [
-                field for field in required_fields if field not in df.columns
-            ]
+            missing_fields = [field for field in required_fields if field not in df.columns]
             if missing_fields:
-                raise ValueError(
-                    f"Missing required fields: {', '.join(missing_fields)}"
-                )
+                raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
 
             # Check date field
             if date_field not in df.columns:
@@ -172,16 +168,12 @@ class ModelInputValidator:
                 marker for marker in required_markers if marker not in genetic_markers
             ]
             if missing_markers:
-                raise ValueError(
-                    f"Missing required genetic markers: {', '.join(missing_markers)}"
-                )
+                raise ValueError(f"Missing required genetic markers: {', '.join(missing_markers)}")
 
             # Validate marker values
             for marker, value in genetic_markers.items():
                 if not isinstance(value, (int, float)):
-                    raise ValueError(
-                        f"Genetic marker '{marker}' has invalid value: {value}"
-                    )
+                    raise ValueError(f"Genetic marker '{marker}' has invalid value: {value}")
 
             return genetic_markers
 
@@ -216,13 +208,9 @@ class ModelInputValidator:
 
             # Check against known medications if provided
             if known_medications:
-                unknown_meds = [
-                    med for med in medications if med not in known_medications
-                ]
+                unknown_meds = [med for med in medications if med not in known_medications]
                 if unknown_meds:
-                    logger.warning(
-                        f"Unknown medications in list: {', '.join(unknown_meds)}"
-                    )
+                    logger.warning(f"Unknown medications in list: {', '.join(unknown_meds)}")
 
             return medications
 
@@ -272,9 +260,7 @@ class ModelInputValidator:
             raise ValidationError(f"Biometric data validation error: {e!s}")
 
     @staticmethod
-    def validate_forecast_horizon(
-        horizon: int, min_horizon: int = 1, max_horizon: int = 90
-    ) -> int:
+    def validate_forecast_horizon(horizon: int, min_horizon: int = 1, max_horizon: int = 90) -> int:
         """
         Validate forecast horizon.
 
@@ -298,8 +284,7 @@ class ModelInputValidator:
                 )
             if horizon_int > max_horizon:
                 raise ValueError(
-                    f"Forecast horizon ({horizon_int}) exceeds "
-                    f"maximum allowed ({max_horizon})"
+                    f"Forecast horizon ({horizon_int}) exceeds " f"maximum allowed ({max_horizon})"
                 )
             return horizon_int
 
@@ -340,9 +325,7 @@ class ModelOutputValidator:
                 raise ValueError("Forecast output is empty")
 
             # Check required metrics
-            missing_metrics = [
-                metric for metric in required_metrics if metric not in forecasts
-            ]
+            missing_metrics = [metric for metric in required_metrics if metric not in forecasts]
             if missing_metrics:
                 raise ValueError(
                     f"Missing required metrics in forecast: {', '.join(missing_metrics)}"
@@ -401,9 +384,7 @@ class ModelOutputValidator:
             # Check interval structure and lengths
             for metric, bounds in intervals.items():
                 if "lower" not in bounds or "upper" not in bounds:
-                    raise ValueError(
-                        f"Missing 'lower' or 'upper' bound for metric '{metric}'"
-                    )
+                    raise ValueError(f"Missing 'lower' or 'upper' bound for metric '{metric}'")
 
                 if (
                     len(bounds["lower"]) != expected_length
@@ -465,15 +446,11 @@ class ModelOutputValidator:
             # Check required medications
             missing_meds = [med for med in medications if med not in predictions]
             if missing_meds:
-                raise ValueError(
-                    f"Missing predictions for medications: {', '.join(missing_meds)}"
-                )
+                raise ValueError(f"Missing predictions for medications: {', '.join(missing_meds)}")
 
             # Check prediction structure
             for med, pred in predictions.items():
-                missing_fields = [
-                    field for field in required_fields if field not in pred
-                ]
+                missing_fields = [field for field in required_fields if field not in pred]
                 if missing_fields:
                     raise ValueError(
                         f"Missing required fields for medication '{med}': "
@@ -484,9 +461,7 @@ class ModelOutputValidator:
                 if "effectiveness_score" in pred:
                     score = pred["effectiveness_score"]
                     if not isinstance(score, (int, float)) or score < 0 or score > 1:
-                        raise ValueError(
-                            f"Invalid effectiveness score for '{med}': {score}"
-                        )
+                        raise ValueError(f"Invalid effectiveness score for '{med}': {score}")
 
             return predictions
 
@@ -537,9 +512,7 @@ class ModelOutputValidator:
 
                 for i, indicator in enumerate(indicators):
                     if not isinstance(indicator, dict):
-                        raise ValueError(
-                            f"Invalid indicator at index {i}: not a dictionary"
-                        )
+                        raise ValueError(f"Invalid indicator at index {i}: not a dictionary")
 
                     required_indicator_fields = [
                         "biometric",
@@ -547,9 +520,7 @@ class ModelOutputValidator:
                         "correlation",
                     ]
                     missing_fields = [
-                        field
-                        for field in required_indicator_fields
-                        if field not in indicator
+                        field for field in required_indicator_fields if field not in indicator
                     ]
                     if missing_fields:
                         raise ValueError(
@@ -560,9 +531,7 @@ class ModelOutputValidator:
                     # Check correlation value
                     corr = indicator["correlation"]
                     if not isinstance(corr, (int, float)) or corr < -1 or corr > 1:
-                        raise ValueError(
-                            f"Invalid correlation value at index {i}: {corr}"
-                        )
+                        raise ValueError(f"Invalid correlation value at index {i}: {corr}")
 
             return correlations
 
@@ -606,14 +575,10 @@ class ModelOutputValidator:
                         f"Patient ID mismatch: expected {patient_id}, got {insight_patient_id}"
                     )
             except (ValueError, AttributeError):
-                raise ValueError(
-                    f"Invalid patient ID in insights: {insight_patient_id}"
-                )
+                raise ValueError(f"Invalid patient ID in insights: {insight_patient_id}")
 
             # Check required services
-            missing_services = [
-                service for service in required_services if service not in insights
-            ]
+            missing_services = [service for service in required_services if service not in insights]
             if missing_services:
                 raise ValueError(
                     f"Missing required services in insights: {', '.join(missing_services)}"
@@ -721,9 +686,7 @@ class DataSanitizer:
             if key.lower() in [k.lower() for k in sensitive_keys]:
                 sanitized[key] = "****"
             elif isinstance(value, dict):
-                sanitized[key] = DataSanitizer.sanitize_dict_for_logging(
-                    value, sensitive_keys
-                )
+                sanitized[key] = DataSanitizer.sanitize_dict_for_logging(value, sensitive_keys)
             elif isinstance(value, list):
                 sanitized[key] = [
                     (

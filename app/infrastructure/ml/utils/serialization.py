@@ -221,9 +221,7 @@ class ModelSerializer:
                 logger.error(f"Failed to save model {model_name}: {e!s}")
                 raise
 
-        logger.info(
-            f"Successfully saved ensemble with {len(models)} models to {base_path}"
-        )
+        logger.info(f"Successfully saved ensemble with {len(models)} models to {base_path}")
         return model_paths
 
     @staticmethod
@@ -281,15 +279,11 @@ class ModelSerializer:
                 model_class = model_classes.get(model_name)
                 custom_load_fn = custom_load_fns.get(model_name)
 
-                model, _ = ModelSerializer.load_model(
-                    model_path, model_class, custom_load_fn
-                )
+                model, _ = ModelSerializer.load_model(model_path, model_class, custom_load_fn)
                 models[model_name] = model
             except Exception as e:
                 logger.error(f"Failed to load model {model_name}: {e!s}")
                 raise
 
-        logger.info(
-            f"Successfully loaded ensemble with {len(models)} models from {base_path}"
-        )
+        logger.info(f"Successfully loaded ensemble with {len(models)} models from {base_path}")
         return models, ensemble_metadata

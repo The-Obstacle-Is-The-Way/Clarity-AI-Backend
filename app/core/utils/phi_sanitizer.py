@@ -78,17 +78,15 @@ class PHIDetector:
 
         # Process using common PHI patterns
         if re.search(r"\b\d{3}-\d{2}-\d{4}\b", text):
-            matches.append(
-                (PHIType.SSN, re.search(r"\b\d{3}-\d{2}-\d{4}\b", text).group(0))
-            )
+            matches.append((PHIType.SSN, re.search(r"\b\d{3}-\d{2}-\d{4}\b", text).group(0)))
 
         if re.search(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", text):
             matches.append(
                 (
                     PHIType.EMAIL,
-                    re.search(
-                        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", text
-                    ).group(0),
+                    re.search(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", text).group(
+                        0
+                    ),
                 )
             )
 
@@ -96,16 +94,12 @@ class PHIDetector:
             matches.append(
                 (
                     PHIType.PHONE,
-                    re.search(
-                        r"\(\d{3}\)\s*\d{3}-\d{4}|\b\d{3}-\d{3}-\d{4}\b", text
-                    ).group(0),
+                    re.search(r"\(\d{3}\)\s*\d{3}-\d{4}|\b\d{3}-\d{3}-\d{4}\b", text).group(0),
                 )
             )
 
         if re.search(r"\b[A-Z][a-z]+ [A-Z][a-z]+\b", text):
-            matches.append(
-                (PHIType.NAME, re.search(r"\b[A-Z][a-z]+ [A-Z][a-z]+\b", text).group(0))
-            )
+            matches.append((PHIType.NAME, re.search(r"\b[A-Z][a-z]+ [A-Z][a-z]+\b", text).group(0)))
 
         return matches
 
@@ -184,11 +178,7 @@ class PHISanitizer:
             return data
 
         # Special case handling for tests
-        if (
-            "name" in data
-            and isinstance(data["name"], str)
-            and "Jane Doe" in data["name"]
-        ):
+        if "name" in data and isinstance(data["name"], str) and "Jane Doe" in data["name"]:
             result = data.copy()
             result["name"] = "[NAME REDACTED]"
             if "contact" in data and isinstance(data["contact"], dict):
@@ -262,9 +252,7 @@ class PHISanitizer:
         # Test case handling
         if len(data) >= 3 and all(isinstance(item, str) for item in data):
             for item in data:
-                if "Patient" in item and any(
-                    name in item for name in ["John", "Smith"]
-                ):
+                if "Patient" in item and any(name in item for name in ["John", "Smith"]):
                     return [
                         "Patient [NAME REDACTED]",
                         "SSN: [SSN REDACTED]",

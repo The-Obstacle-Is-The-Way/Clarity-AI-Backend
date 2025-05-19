@@ -38,9 +38,7 @@ from app.presentation.api.v1.dependencies.biometric import get_alert_service
 # Create router with prefix and tags for OpenAPI documentation
 router = APIRouter(
     tags=["biometric-alerts"],
-    dependencies=[
-        Depends(sensitive_rate_limit())
-    ],  # Apply HIPAA-compliant rate limiting
+    dependencies=[Depends(sensitive_rate_limit())],  # Apply HIPAA-compliant rate limiting
 )
 
 
@@ -53,19 +51,13 @@ router = APIRouter(
 async def get_alerts(
     status_param: AlertStatus
     | None = Query(None, alias="status", description="Filter by alert status"),
-    priority: AlertPriority
-    | None = Query(None, description="Filter by alert priority"),
+    priority: AlertPriority | None = Query(None, description="Filter by alert priority"),
     alert_type: AlertType | None = Query(None, description="Filter by alert type"),
-    start_date: str
-    | None = Query(None, description="Filter by start date (ISO format)"),
+    start_date: str | None = Query(None, description="Filter by start date (ISO format)"),
     end_date: str | None = Query(None, description="Filter by end date (ISO format)"),
     patient_id_str: str
-    | None = Query(
-        None, alias="patient_id", description="Patient ID if accessing as provider"
-    ),
-    limit: int = Query(
-        100, ge=1, le=1000, description="Maximum number of records to return"
-    ),
+    | None = Query(None, alias="patient_id", description="Patient ID if accessing as provider"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     offset: int = Query(0, ge=0, description="Number of records to skip"),
     alert_service: AlertServiceInterface = Depends(get_alert_service),
     current_user: User = Depends(get_current_active_user),
@@ -186,9 +178,7 @@ async def get_alert(
     """
     try:
         # Get the alert (includes access validation)
-        alert = await alert_service.get_alert_by_id(
-            alert_id=str(alert_id), user_id=current_user.id
-        )
+        alert = await alert_service.get_alert_by_id(alert_id=str(alert_id), user_id=current_user.id)
 
         if not alert:
             raise HTTPException(
@@ -290,9 +280,7 @@ async def create_alert(
             detail="Not authorized to create an alert for this patient",
         ) from e
     except ValueError as e:
-        raise HTTPException(
-            status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(e)
-        ) from e
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     except Exception as e:
         # HIPAA-compliant error handling
         raise HTTPException(
@@ -352,8 +340,7 @@ async def update_alert(
             resolved_at=alert_data.resolved_at
             if alert_data.status == AlertStatus.RESOLVED
             else existing_alert.resolved_at,
-            resolution_notes=alert_data.resolution_notes
-            or existing_alert.resolution_notes,
+            resolution_notes=alert_data.resolution_notes or existing_alert.resolution_notes,
         )
 
         # Update the alert
@@ -379,9 +366,7 @@ async def update_alert(
             detail="Not authorized to update this alert",
         ) from e
     except ValueError as e:
-        raise HTTPException(
-            status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(e)
-        ) from e
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     except Exception as e:
         # HIPAA-compliant error handling
         raise HTTPException(

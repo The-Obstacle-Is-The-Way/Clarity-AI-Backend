@@ -94,9 +94,7 @@ class BiometricAlertRuleRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_active_rules_for_patient(
-        self, patient_id: UUID
-    ) -> list[BiometricAlertRule]:
+    async def get_active_rules_for_patient(self, patient_id: UUID) -> list[BiometricAlertRule]:
         """
         Retrieve all active BiometricAlertRules for a specific patient.
 

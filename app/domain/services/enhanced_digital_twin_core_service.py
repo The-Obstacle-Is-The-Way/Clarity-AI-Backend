@@ -35,9 +35,7 @@ class EnhancedDigitalTwinCoreService(ABC):
         initial_data: dict | None = None,
         enable_knowledge_graph: bool = True,
         enable_belief_network: bool = True,
-    ) -> tuple[
-        DigitalTwinState, TemporalKnowledgeGraph | None, BayesianBeliefNetwork | None
-    ]:
+    ) -> tuple[DigitalTwinState, TemporalKnowledgeGraph | None, BayesianBeliefNetwork | None]:
         """
         Initialize a new Digital Twin state with knowledge graph and belief network.
 

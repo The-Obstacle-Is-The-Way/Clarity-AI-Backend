@@ -45,9 +45,7 @@ class RoleBasedAccessControl:
             role: Role to assign
         """
         if role not in self._role_permissions:
-            logger.warning(
-                f"Attempted to assign non-existent role '{role}' to user {user_id}"
-            )
+            logger.warning(f"Attempted to assign non-existent role '{role}' to user {user_id}")
             return
 
         self._user_roles[user_id] = role
@@ -114,10 +112,7 @@ class RoleBasedAccessControl:
         # Direct permission check
         if permission in user_permissions:
             # For "own data" permissions, verify resource belongs to user
-            if (
-                permission in ["read:own_data", "update:own_data"]
-                and resource_id != user_id
-            ):
+            if permission in ["read:own_data", "update:own_data"] and resource_id != user_id:
                 logger.warning(
                     f"User {user_id} attempted to access resource {resource_id} with own-data permission"
                 )

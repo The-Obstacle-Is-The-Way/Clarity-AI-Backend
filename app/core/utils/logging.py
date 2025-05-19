@@ -47,9 +47,7 @@ class PHISanitizingFilter(logging.Filter):
         # Replace the original message attributes with the sanitized one
         # Need to update both msg and message for compatibility with different formatters
         record.msg = sanitized_message
-        record.message = (
-            record.msg
-        )  # Update the 'message' attribute used by some formatters
+        record.message = record.msg  # Update the 'message' attribute used by some formatters
         record.args = ()  # Clear args as they are now baked into the formatted msg
 
         return True  # Always process the record after potential sanitization
@@ -216,9 +214,7 @@ def _create_logged_method(
         # Get or create logger
         method_logger = logger
         if method_logger is None:
-            method_logger = get_logger(
-                f"{self.__class__.__module__}.{self.__class__.__name__}"
-            )
+            method_logger = get_logger(f"{self.__class__.__module__}.{self.__class__.__name__}")
 
         # Build method call representation
         method_call = f"{self.__class__.__name__}.{method.__name__}"

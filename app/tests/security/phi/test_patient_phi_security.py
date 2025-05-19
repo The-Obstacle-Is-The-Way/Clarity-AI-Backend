@@ -131,9 +131,7 @@ class TestPatientPHISecurity(BaseSecurityTest):
                 log_args = call[0]
                 log_kwargs = call[1]
                 log_content = str(log_args) + str(log_kwargs)
-                assert (
-                    patient.email not in log_content
-                ), "Email should not be in audit log"
+                assert patient.email not in log_content, "Email should not be in audit log"
                 assert (
                     patient.insurance_number not in log_content
                 ), "Insurance number should not be in audit log"

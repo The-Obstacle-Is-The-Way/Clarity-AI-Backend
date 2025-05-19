@@ -129,9 +129,7 @@ class BiometricTimeseriesDataModel(Base, TimestampMixin):
     unit = Column(String(50), nullable=True)
     metadata_ = Column("metadata", MutableDict.as_mutable(JSON), nullable=True)
 
-    biometric_twin = relationship(
-        "BiometricTwinModel", back_populates="timeseries_data"
-    )
+    biometric_twin = relationship("BiometricTwinModel", back_populates="timeseries_data")
 
 
 # Export the models in a safe way that helps prevent registry conflicts in tests

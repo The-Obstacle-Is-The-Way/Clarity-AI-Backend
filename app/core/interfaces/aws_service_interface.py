@@ -57,9 +57,7 @@ class S3ServiceInterface(ABC):
         pass
 
     @abstractmethod
-    def list_objects(
-        self, bucket_name: str, prefix: str | None = None
-    ) -> dict[str, Any]:
+    def list_objects(self, bucket_name: str, prefix: str | None = None) -> dict[str, Any]:
         """List objects in an S3 bucket with optional prefix."""
         pass
 
@@ -122,9 +120,7 @@ class BedrockServiceInterface(ABC):
         pass
 
     @abstractmethod
-    def invoke_model(
-        self, model_id: str, body: dict[str, Any], **kwargs
-    ) -> dict[str, Any]:
+    def invoke_model(self, model_id: str, body: dict[str, Any], **kwargs) -> dict[str, Any]:
         """Invoke a foundation model."""
         pass
 

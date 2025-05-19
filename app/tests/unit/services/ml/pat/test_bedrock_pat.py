@@ -71,9 +71,7 @@ class MockS3Service(S3ServiceInterface):
             "LastModified": datetime.now(timezone.utc),
         }
 
-    def list_objects(
-        self, bucket_name: str, prefix: str | None = None
-    ) -> dict[str, Any]:
+    def list_objects(self, bucket_name: str, prefix: str | None = None) -> dict[str, Any]:
         """List objects in an S3 bucket with optional prefix."""
         if not self.check_bucket_exists(bucket_name):
             raise Exception(f"Bucket {bucket_name} does not exist")
@@ -109,7 +107,9 @@ class MockS3Service(S3ServiceInterface):
         self, operation: str, params: dict[str, Any], expires_in: int = 3600
     ) -> str:
         """Generate a presigned URL for an S3 operation."""
-        return f"https://mock-s3-presigned-url.com/{params.get('Bucket', '')}/{params.get('Key', '')}"
+        return (
+            f"https://mock-s3-presigned-url.com/{params.get('Bucket', '')}/{params.get('Key', '')}"
+        )
 
 
 class MockDynamoDBService(DynamoDBServiceInterface):
@@ -162,9 +162,7 @@ class MockDynamoDBService(DynamoDBServiceInterface):
         patient_id = expression_attribute_values.get(":pid")
         if patient_id and "patient_id = :pid" in key_condition_expression:
             items = [
-                item
-                for item in self.mock_items[table_name]
-                if item.get("patient_id") == patient_id
+                item for item in self.mock_items[table_name] if item.get("patient_id") == patient_id
             ]
             return {"Items": items, "Count": len(items)}
 
@@ -229,14 +227,8 @@ class MockBedrockService(BedrockServiceInterface):
             ]
         }
 
-    def invoke_model(
-        self, model_id: str, body: dict[str, Any], **kwargs
-    ) -> dict[str, Any]:
-        return {
-            "body": BodyWrapper(
-                json.dumps({"generated_text": "Mock response from Bedrock"})
-            )
-        }
+    def invoke_model(self, model_id: str, body: dict[str, Any], **kwargs) -> dict[str, Any]:
+        return {"body": BodyWrapper(json.dumps({"generated_text": "Mock response from Bedrock"}))}
 
 
 class MockBedrockRuntimeService(BedrockRuntimeServiceInterface):
@@ -262,15 +254,7 @@ class MockBedrockRuntimeService(BedrockRuntimeServiceInterface):
     ) -> dict[str, Any]:
         return {
             "stream": iter(
-                [
-                    {
-                        "chunk": {
-                            "bytes": json.dumps(
-                                {"completion": "Mock stream response"}
-                            ).encode()
-                        }
-                    }
-                ]
+                [{"chunk": {"bytes": json.dumps({"completion": "Mock stream response"}).encode()}}]
             )
         }
 
@@ -313,9 +297,7 @@ class MockAWSServiceFactory(AWSServiceFactory):
         )
 
         self.bedrock_service = bedrock_service or MockBedrockService()
-        self.bedrock_runtime_service = (
-            bedrock_runtime_service or MockBedrockRuntimeService()
-        )
+        self.bedrock_runtime_service = bedrock_runtime_service or MockBedrockRuntimeService()
         self.comprehend_medical_service = (
             comprehend_medical_service or MockComprehendMedicalService()
         )
@@ -400,13 +382,8 @@ async def test_initialization(bedrock_pat_service, pat_config):
     assert bedrock_pat_service.bucket_name == pat_config["bucket_name"]
     assert bedrock_pat_service.table_name == pat_config["dynamodb_table_name"]
     assert bedrock_pat_service.kms_key_id == pat_config["kms_key_id"]
-    assert (
-        bedrock_pat_service.embedding_model_id
-        == pat_config["bedrock_embedding_model_id"]
-    )
-    assert (
-        bedrock_pat_service.analysis_model_id == pat_config["bedrock_analysis_model_id"]
-    )
+    assert bedrock_pat_service.embedding_model_id == pat_config["bedrock_embedding_model_id"]
+    assert bedrock_pat_service.analysis_model_id == pat_config["bedrock_analysis_model_id"]
     assert bedrock_pat_service.s3_client is not None
     assert bedrock_pat_service.dynamodb_client is not None
     assert bedrock_pat_service.bedrock_runtime is not None
@@ -420,9 +397,7 @@ async def test_initialization_failure_invalid_config():
     invalid_config = {"bucket_name": "test-bucket"}  # Missing required keys
 
     # Now pytest.raises should catch the correct exception type
-    with pytest.raises(
-        InvalidConfigurationError, match="Missing required configuration keys"
-    ):
+    with pytest.raises(InvalidConfigurationError, match="Missing required configuration keys"):
         await service.initialize(invalid_config)
 
 

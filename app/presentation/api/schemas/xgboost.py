@@ -97,12 +97,8 @@ class RiskPredictionRequest(BaseModelConfig):
 
     risk_type: RiskType
     patient_id: str
-    patient_data: dict[str, Any] = Field(
-        ..., description="Patient demographic and baseline data"
-    )
-    clinical_data: dict[str, Any] = Field(
-        ..., description="Clinical data and measurements"
-    )
+    patient_data: dict[str, Any] = Field(..., description="Patient demographic and baseline data")
+    clinical_data: dict[str, Any] = Field(..., description="Clinical data and measurements")
     include_explainability: bool = False
     visualization_type: VisualizationType | None = None
     time_frame_days: int = Field(default=90, description="Prediction timeframe in days")
@@ -167,12 +163,8 @@ class PerformanceMetrics(BaseModelConfig):
     f1_score: float = Field(
         ge=0.0, le=1.0, description="F1 score (harmonic mean of precision and recall)"
     )
-    auc_roc: float | None = Field(
-        None, ge=0.0, le=1.0, description="Area under ROC curve"
-    )
-    specificity: float | None = Field(
-        None, ge=0.0, le=1.0, description="Specificity metric"
-    )
+    auc_roc: float | None = Field(None, ge=0.0, le=1.0, description="Area under ROC curve")
+    specificity: float | None = Field(None, ge=0.0, le=1.0, description="Specificity metric")
     confusion_matrix: dict[str, int] | None = None
     cross_validation_scores: list[float] | None = None
 
@@ -269,9 +261,7 @@ class OutcomePredictionRequest(BaseModelConfig):
 
     patient_id: str
     outcome_timeframe: dict[str, int] | None = None
-    features: dict[str, Any] = Field(
-        ..., description="Features used for the prediction model"
-    )
+    features: dict[str, Any] = Field(..., description="Features used for the prediction model")
     timeframe_days: int = Field(..., description="Prediction timeframe in days")
     clinical_data: dict[str, Any] | None = None
     treatment_plan: dict[str, Any] | None = None
@@ -313,9 +303,7 @@ class XGBoostPredictionRequest(BaseModelConfig):
     """Request schema for XGBoost predictions."""
 
     patient_id: str = Field(..., description="Identifier for the patient")
-    features: dict[str, Any] = Field(
-        ..., description="Input features for the XGBoost model"
-    )
+    features: dict[str, Any] = Field(..., description="Input features for the XGBoost model")
     # Add other relevant fields if needed, e.g., context, specific model target
 
 
@@ -325,9 +313,7 @@ class XGBoostPredictionResponse(BaseModelConfig):
     prediction_id: str = Field(..., description="Unique identifier for this prediction")
     patient_id: str = Field(..., description="Identifier for the patient")
     prediction_value: float = Field(..., description="The raw prediction value/score")
-    predicted_class: str | None = Field(
-        None, description="Predicted class label, if applicable"
-    )
+    predicted_class: str | None = Field(None, description="Predicted class label, if applicable")
     probability: float | None = Field(
         None, ge=0.0, le=1.0, description="Predicted probability, if applicable"
     )
@@ -346,17 +332,13 @@ class XGBoostPredictionResponse(BaseModelConfig):
 class FeatureImportanceResponse(BaseModelConfig):
     """Response schema for feature importance explanations."""
 
-    prediction_id: str = Field(
-        ..., description="The ID of the prediction being explained"
-    )
+    prediction_id: str = Field(..., description="The ID of the prediction being explained")
     patient_id: str = Field(..., description="The ID of the patient")
     features: dict[str, float] = Field(..., description="Feature importance scores")
     timestamp: str | datetime = Field(
         ..., description="Timestamp of when the explanation was generated"
     )
-    model_version: str = Field(
-        ..., description="Version of the model used for the prediction"
-    )
+    model_version: str = Field(..., description="Version of the model used for the prediction")
     explanation_method: str = Field(
         default="SHAP", description="Method used to calculate feature importance"
     )

@@ -47,9 +47,7 @@ class OpenAIMentaLLaMA(MentaLLaMAInterface):
             self._openai_available = True
         except ImportError:
             self._openai_available = False
-            logger.warning(
-                "OpenAI package not installed. Install with: pip install openai>=1.0.0"
-            )
+            logger.warning("OpenAI package not installed. Install with: pip install openai>=1.0.0")
 
     def initialize(self, config: dict[str, Any]) -> None:
         """
@@ -280,9 +278,7 @@ Maintain a balanced, strengths-based approach while acknowledging challenges. Em
             ModelNotFoundError: If model type is not found
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "OpenAI MentaLLaMA service is not initialized"
-            )
+            raise ServiceUnavailableError("OpenAI MentaLLaMA service is not initialized")
 
         if not text or not isinstance(text, str):
             raise InvalidRequestError("Text must be a non-empty string")
@@ -319,9 +315,7 @@ Maintain a balanced, strengths-based approach while acknowledging challenges. Em
                 messages=messages,
                 temperature=opts.get("temperature", 0.7),
                 max_tokens=opts.get("max_tokens", 1000),
-                response_format={"type": "json_object"}
-                if opts.get("json_response")
-                else None,
+                response_format={"type": "json_object"} if opts.get("json_response") else None,
             )
 
             # Extract response text
@@ -333,9 +327,7 @@ Maintain a balanced, strengths-based approach while acknowledging challenges. Em
                 try:
                     result = json.loads(content)
                 except json.JSONDecodeError:
-                    logger.warning(
-                        "Failed to parse JSON response, returning raw content"
-                    )
+                    logger.warning("Failed to parse JSON response, returning raw content")
                     result = {"raw_content": content}
             else:
                 result = {"content": content}
@@ -363,9 +355,7 @@ Maintain a balanced, strengths-based approach while acknowledging challenges. Em
         """
         return self._system_prompts.get(model_type)
 
-    def detect_depression(
-        self, text: str, options: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def detect_depression(self, text: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Detect depression signals in text.
 
@@ -381,9 +371,7 @@ Maintain a balanced, strengths-based approach while acknowledging challenges. Em
             InvalidRequestError: If text is empty or invalid
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "OpenAI MentaLLaMA service is not initialized"
-            )
+            raise ServiceUnavailableError("OpenAI MentaLLaMA service is not initialized")
 
         if not text or not isinstance(text, str):
             raise InvalidRequestError("Text must be a non-empty string")
@@ -445,9 +433,7 @@ Maintain a balanced, strengths-based approach while acknowledging challenges. Em
             InvalidRequestError: If text is empty or invalid
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "OpenAI MentaLLaMA service is not initialized"
-            )
+            raise ServiceUnavailableError("OpenAI MentaLLaMA service is not initialized")
 
         if not text or not isinstance(text, str):
             raise InvalidRequestError("Text must be a non-empty string")
@@ -495,9 +481,7 @@ Maintain a balanced, strengths-based approach while acknowledging challenges. Em
         # Process with risk assessment model
         return self.process(text, "risk_assessment", opts)
 
-    def analyze_sentiment(
-        self, text: str, options: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def analyze_sentiment(self, text: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Analyze sentiment in text.
 
@@ -513,9 +497,7 @@ Maintain a balanced, strengths-based approach while acknowledging challenges. Em
             InvalidRequestError: If text is empty or invalid
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "OpenAI MentaLLaMA service is not initialized"
-            )
+            raise ServiceUnavailableError("OpenAI MentaLLaMA service is not initialized")
 
         if not text or not isinstance(text, str):
             raise InvalidRequestError("Text must be a non-empty string")
@@ -579,9 +561,7 @@ Maintain a balanced, strengths-based approach while acknowledging challenges. Em
             InvalidRequestError: If text is empty or invalid
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "OpenAI MentaLLaMA service is not initialized"
-            )
+            raise ServiceUnavailableError("OpenAI MentaLLaMA service is not initialized")
 
         if not text or not isinstance(text, str):
             raise InvalidRequestError("Text must be a non-empty string")

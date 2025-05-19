@@ -140,9 +140,7 @@ class UserMapper:
                     role_value = role.value if hasattr(role, "value") else str(role)
                     persistence_roles.append(role_value)
                 except ValueError as e:
-                    print(
-                        f"Warning: Could not convert domain role {role} to persistence: {e}"
-                    )
+                    print(f"Warning: Could not convert domain role {role} to persistence: {e}")
 
         # Extract first_name and last_name from full_name if available
         first_name = None
@@ -180,9 +178,7 @@ class UserMapper:
             first_name=first_name,
             last_name=last_name,
             created_at=entity.created_at if hasattr(entity, "created_at") else None,
-            updated_at=datetime.now(timezone.utc)
-            if hasattr(entity, "updated_at")
-            else None,
+            updated_at=datetime.now(timezone.utc) if hasattr(entity, "updated_at") else None,
             last_login=entity.last_login if hasattr(entity, "last_login") else None,
             failed_login_attempts=entity.failed_login_attempts
             if hasattr(entity, "failed_login_attempts")
@@ -196,9 +192,7 @@ class UserMapper:
             model.mfa_secret = entity.mfa_secret
         if hasattr(model, "reset_token") and hasattr(entity, "reset_token"):
             model.reset_token = entity.reset_token
-        if hasattr(model, "reset_token_expires") and hasattr(
-            entity, "reset_token_expires"
-        ):
+        if hasattr(model, "reset_token_expires") and hasattr(entity, "reset_token_expires"):
             model.reset_token_expires = entity.reset_token_expires
 
         return model

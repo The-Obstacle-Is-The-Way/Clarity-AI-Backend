@@ -83,9 +83,7 @@ def serialize_for_encryption(obj: Any) -> str:
             )
 
 
-def deserialize_from_encryption(
-    json_str: str, target_cls: type[PydanticModel] = None
-) -> Any:
+def deserialize_from_encryption(json_str: str, target_cls: type[PydanticModel] = None) -> Any:
     """
     Deserialize JSON string back to an object.
 
@@ -111,9 +109,7 @@ def deserialize_from_encryption(
         # Convert to target class if specified and valid
         if target_cls is not None and issubclass(target_cls, BaseModel):
             # Handle Pydantic v1 vs v2 initialization
-            if hasattr(target_cls, "model_validate") and callable(
-                target_cls.model_validate
-            ):
+            if hasattr(target_cls, "model_validate") and callable(target_cls.model_validate):
                 return target_cls.model_validate(data)
             elif hasattr(target_cls, "parse_obj") and callable(target_cls.parse_obj):
                 return target_cls.parse_obj(data)
@@ -185,12 +181,8 @@ class EncryptedTypeBase(types.TypeDecorator):
             pass
 
         # If we get here, we couldn't find a valid encryption service
-        logger.error(
-            "No encryption service available. This is a critical security error."
-        )
-        raise AttributeError(
-            "No encryption service available. Cannot encrypt/decrypt data."
-        )
+        logger.error("No encryption service available. This is a critical security error.")
+        raise AttributeError("No encryption service available. Cannot encrypt/decrypt data.")
 
     def _convert_bind_param(self, value: Any) -> Any:
         """
@@ -300,9 +292,7 @@ class EncryptedTypeBase(types.TypeDecorator):
                 try:
                     decrypted = decrypted.decode("utf-8")
                 except UnicodeDecodeError:
-                    logger.warning(
-                        "Decryption returned bytes that couldn't be decoded as UTF-8"
-                    )
+                    logger.warning("Decryption returned bytes that couldn't be decoded as UTF-8")
 
             return self._convert_result_value(decrypted)
         except ValueError as e:
@@ -331,12 +321,8 @@ class EncryptedTypeBase(types.TypeDecorator):
 
                     return self._convert_result_value(decrypted)
                 except Exception as e2:
-                    logger.error(
-                        f"All decryption attempts failed: {e2!s}", exc_info=True
-                    )
-                    raise ValueError(
-                        f"Decryption failed with all available keys: {e2!s}"
-                    )
+                    logger.error(f"All decryption attempts failed: {e2!s}", exc_info=True)
+                    raise ValueError(f"Decryption failed with all available keys: {e2!s}")
             else:
                 logger.error(f"Decryption failed: {error_msg}", exc_info=True)
                 raise ValueError(f"Decryption failed: {error_msg}")
@@ -384,9 +370,7 @@ class EncryptedString(EncryptedTypeBase):
             try:
                 return value.decode("utf-8")
             except UnicodeDecodeError:
-                logger.warning(
-                    "Couldn't decode bytes as UTF-8, using fallback conversion"
-                )
+                logger.warning("Couldn't decode bytes as UTF-8, using fallback conversion")
                 return str(value)
 
         return value
@@ -436,9 +420,7 @@ class EncryptedText(EncryptedTypeBase):
             try:
                 return value.decode("utf-8")
             except UnicodeDecodeError:
-                logger.warning(
-                    "Couldn't decode bytes as UTF-8, using fallback conversion"
-                )
+                logger.warning("Couldn't decode bytes as UTF-8, using fallback conversion")
                 return str(value)
 
         return value
@@ -491,9 +473,7 @@ class EncryptedInteger(EncryptedTypeBase):
             try:
                 value = value.decode("utf-8")
             except UnicodeDecodeError:
-                logger.warning(
-                    "Couldn't decode bytes as UTF-8, using fallback conversion"
-                )
+                logger.warning("Couldn't decode bytes as UTF-8, using fallback conversion")
                 value = str(value)
 
         try:
@@ -502,17 +482,13 @@ class EncryptedInteger(EncryptedTypeBase):
 
             # Handle float strings by truncating
             if "." in value_str:
-                logger.warning(
-                    f"Converting float string '{value_str}' to integer (truncating)"
-                )
+                logger.warning(f"Converting float string '{value_str}' to integer (truncating)")
                 return int(float(value_str))
 
             return int(value_str)
         except (ValueError, TypeError) as e:
             logger.error(f"Failed to convert '{value}' to integer: {e!s}")
-            raise ValueError(
-                f"Cannot convert decrypted value '{value}' to integer: {e!s}"
-            )
+            raise ValueError(f"Cannot convert decrypted value '{value}' to integer: {e!s}")
 
 
 class EncryptedJSON(EncryptedTypeBase):
@@ -617,9 +593,7 @@ class EncryptedPickle(EncryptedTypeBase):
             return base64.b64encode(pickled).decode("utf-8")
         except Exception as e:
             logger.error(f"Failed to pickle object: {e!s}")
-            raise TypeError(
-                f"Object of type {type(value).__name__} cannot be pickled: {e!s}"
-            )
+            raise TypeError(f"Object of type {type(value).__name__} cannot be pickled: {e!s}")
 
     def _convert_result_value(self, value: str) -> Any:
         """

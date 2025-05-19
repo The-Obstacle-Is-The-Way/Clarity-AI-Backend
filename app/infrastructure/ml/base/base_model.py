@@ -154,9 +154,7 @@ class BaseModel(ABC):
             ValueError: If any step in the pipeline fails
         """
         try:
-            self.logger.info(
-                f"Starting prediction with model {self.model_name} v{self.version}"
-            )
+            self.logger.info(f"Starting prediction with model {self.model_name} v{self.version}")
             preprocessed_data = self.preprocess(data)
             raw_predictions = self.predict(preprocessed_data)
             processed_results = self.postprocess(raw_predictions)
@@ -247,9 +245,7 @@ class BaseModel(ABC):
                 sanitized[key] = "[REDACTED]"
             elif isinstance(value, dict):
                 sanitized[key] = self.sanitize_patient_data(value)
-            elif isinstance(value, list) and all(
-                isinstance(item, dict) for item in value
-            ):
+            elif isinstance(value, list) and all(isinstance(item, dict) for item in value):
                 sanitized[key] = [self.sanitize_patient_data(item) for item in value]
             else:
                 sanitized[key] = value

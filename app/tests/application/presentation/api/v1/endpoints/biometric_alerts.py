@@ -53,8 +53,7 @@ router = APIRouter(
 )
 async def get_alerts(
     status: AlertStatusPath | None = Query(None, description="Filter by alert status"),
-    priority: AlertPriority
-    | None = Query(None, description="Filter by alert priority"),
+    priority: AlertPriority | None = Query(None, description="Filter by alert priority"),
     start_date: datetime | None = Query(None, description="Filter by start date"),
     end_date: datetime | None = Query(None, description="Filter by end date"),
     page: int = Query(1, ge=1, description="Page number"),
@@ -97,9 +96,7 @@ async def get_alerts(
         ]
         if is_mock_or_placeholder:
             logger = logging.getLogger(__name__)
-            logger.info(
-                f"[MOCK PATH] Detected mock/placeholder repository: {type(repository)}"
-            )
+            logger.info(f"[MOCK PATH] Detected mock/placeholder repository: {type(repository)}")
 
             # Check if the mock has the expected method
             if hasattr(repository.get_by_patient_id, "return_value"):
@@ -112,9 +109,7 @@ async def get_alerts(
                     alert_copy = alert.copy() if hasattr(alert, "copy") else alert
 
                     # Convert enum values to strings
-                    if hasattr(alert_copy, "priority") and hasattr(
-                        alert_copy.priority, "value"
-                    ):
+                    if hasattr(alert_copy, "priority") and hasattr(alert_copy.priority, "value"):
                         alert_copy.priority = alert_copy.priority.value
                     elif (
                         isinstance(alert_copy, dict)
@@ -123,9 +118,7 @@ async def get_alerts(
                     ):
                         alert_copy["priority"] = alert_copy["priority"].value
 
-                    if hasattr(alert_copy, "status") and hasattr(
-                        alert_copy.status, "value"
-                    ):
+                    if hasattr(alert_copy, "status") and hasattr(alert_copy.status, "value"):
                         alert_copy.status = alert_copy.status.value
                     elif (
                         isinstance(alert_copy, dict)
@@ -184,9 +177,7 @@ async def get_alerts(
             end_date=end_date,
         )
 
-        return BiometricAlertListResponse(
-            items=alerts, total=total, page=page, page_size=page_size
-        )
+        return BiometricAlertListResponse(items=alerts, total=total, page=page, page_size=page_size)
     except PersistenceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -244,9 +235,7 @@ async def get_patient_alerts(
         ]
         if is_mock_or_placeholder:
             logger = logging.getLogger(__name__)
-            logger.info(
-                f"[MOCK PATH] Detected mock/placeholder repository: {type(repository)}"
-            )
+            logger.info(f"[MOCK PATH] Detected mock/placeholder repository: {type(repository)}")
 
             # Check if the mock has the expected method
             if hasattr(repository.get_by_patient_id, "return_value"):
@@ -259,9 +248,7 @@ async def get_patient_alerts(
                     alert_copy = alert.copy() if hasattr(alert, "copy") else alert
 
                     # Convert enum values to strings
-                    if hasattr(alert_copy, "priority") and hasattr(
-                        alert_copy.priority, "value"
-                    ):
+                    if hasattr(alert_copy, "priority") and hasattr(alert_copy.priority, "value"):
                         alert_copy.priority = alert_copy.priority.value
                     elif (
                         isinstance(alert_copy, dict)
@@ -270,9 +257,7 @@ async def get_patient_alerts(
                     ):
                         alert_copy["priority"] = alert_copy["priority"].value
 
-                    if hasattr(alert_copy, "status") and hasattr(
-                        alert_copy.status, "value"
-                    ):
+                    if hasattr(alert_copy, "status") and hasattr(alert_copy.status, "value"):
                         alert_copy.status = alert_copy.status.value
                     elif (
                         isinstance(alert_copy, dict)
@@ -331,9 +316,7 @@ async def get_patient_alerts(
             end_date=end_date,
         )
 
-        return BiometricAlertListResponse(
-            items=alerts, total=total, page=page, page_size=page_size
-        )
+        return BiometricAlertListResponse(items=alerts, total=total, page=page, page_size=page_size)
     except PersistenceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -375,9 +358,7 @@ async def get_patient_alert_summary(
         ]
         if is_mock_or_placeholder:
             logger = logging.getLogger(__name__)
-            logger.info(
-                f"[MOCK PATH] Detected mock/placeholder repository: {type(repository)}"
-            )
+            logger.info(f"[MOCK PATH] Detected mock/placeholder repository: {type(repository)}")
 
             # Return mock summary data for tests
             return {
@@ -423,12 +404,8 @@ async def get_patient_alert_summary(
         )
 
         # Count alerts by priority
-        urgent_alerts = sum(
-            1 for alert in alerts if alert.priority == AlertPriority.URGENT
-        )
-        warning_alerts = sum(
-            1 for alert in alerts if alert.priority == AlertPriority.WARNING
-        )
+        urgent_alerts = sum(1 for alert in alerts if alert.priority == AlertPriority.URGENT)
+        warning_alerts = sum(1 for alert in alerts if alert.priority == AlertPriority.WARNING)
         informational_alerts = sum(
             1 for alert in alerts if alert.priority == AlertPriority.INFORMATIONAL
         )
@@ -442,12 +419,8 @@ async def get_patient_alert_summary(
             "in_progress": sum(
                 1 for alert in alerts if alert.status == AlertStatusPath.IN_PROGRESS
             ),
-            "resolved": sum(
-                1 for alert in alerts if alert.status == AlertStatusPath.RESOLVED
-            ),
-            "dismissed": sum(
-                1 for alert in alerts if alert.status == AlertStatusPath.DISMISSED
-            ),
+            "resolved": sum(1 for alert in alerts if alert.status == AlertStatusPath.RESOLVED),
+            "dismissed": sum(1 for alert in alerts if alert.status == AlertStatusPath.DISMISSED),
         }
 
         # Get recent alerts (5 most recent)
@@ -489,9 +462,7 @@ async def get_patient_alert_summary(
 )
 async def update_alert_status(
     alert_id: UUID = Path(..., description="ID of the alert"),
-    status_update: AlertAcknowledgementRequest = Body(
-        ..., description="Status update data"
-    ),
+    status_update: AlertAcknowledgementRequest = Body(..., description="Status update data"),
     repository: BiometricAlertRepository = Depends(get_alert_repository),
     current_user: UserResponseSchema = Depends(get_current_user),
 ) -> BiometricAlertResponse:
@@ -534,9 +505,7 @@ async def update_alert_status(
                         alert_copy[attr_name] = getattr(updated_alert, attr_name)
 
             # Convert enum values to strings
-            if hasattr(alert_copy, "priority") and hasattr(
-                alert_copy.priority, "value"
-            ):
+            if hasattr(alert_copy, "priority") and hasattr(alert_copy.priority, "value"):
                 alert_copy.priority = alert_copy.priority.value
             elif (
                 isinstance(alert_copy, dict)
@@ -562,14 +531,9 @@ async def update_alert_status(
                 "acknowledged_by",
                 "resolved_by",
             ]:
-                if (
-                    hasattr(alert_copy, uuid_field)
-                    and getattr(alert_copy, uuid_field) is not None
-                ):
+                if hasattr(alert_copy, uuid_field) and getattr(alert_copy, uuid_field) is not None:
                     if not isinstance(getattr(alert_copy, uuid_field), str):
-                        setattr(
-                            alert_copy, uuid_field, str(getattr(alert_copy, uuid_field))
-                        )
+                        setattr(alert_copy, uuid_field, str(getattr(alert_copy, uuid_field)))
                 elif (
                     isinstance(alert_copy, dict)
                     and uuid_field in alert_copy
@@ -611,9 +575,7 @@ async def update_alert_status(
         # Format the response
         if isinstance(updated_alert, dict):
             # Convert enum values to strings
-            if "priority" in updated_alert and hasattr(
-                updated_alert["priority"], "value"
-            ):
+            if "priority" in updated_alert and hasattr(updated_alert["priority"], "value"):
                 updated_alert["priority"] = updated_alert["priority"].value
             if "status" in updated_alert and hasattr(updated_alert["status"], "value"):
                 updated_alert["status"] = updated_alert["status"].value
@@ -626,21 +588,14 @@ async def update_alert_status(
                 "acknowledged_by",
                 "resolved_by",
             ]:
-                if (
-                    uuid_field in updated_alert
-                    and updated_alert[uuid_field] is not None
-                ):
+                if uuid_field in updated_alert and updated_alert[uuid_field] is not None:
                     if not isinstance(updated_alert[uuid_field], str):
                         updated_alert[uuid_field] = str(updated_alert[uuid_field])
         else:
             # Convert enum values to strings if object
-            if hasattr(updated_alert, "priority") and hasattr(
-                updated_alert.priority, "value"
-            ):
+            if hasattr(updated_alert, "priority") and hasattr(updated_alert.priority, "value"):
                 updated_alert.priority = updated_alert.priority.value
-            if hasattr(updated_alert, "status") and hasattr(
-                updated_alert.status, "value"
-            ):
+            if hasattr(updated_alert, "status") and hasattr(updated_alert.status, "value"):
                 updated_alert.status = updated_alert.status.value
 
             # Format UUID fields

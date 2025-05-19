@@ -15,9 +15,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 class UserResponseSchema:
     """Mock user response schema for testing."""
 
-    def __init__(
-        self, id=None, username=None, email=None, is_active=True, is_superuser=False
-    ):
+    def __init__(self, id=None, username=None, email=None, is_active=True, is_superuser=False):
         self.id = id or "00000000-0000-0000-0000-000000000000"
         self.username = username or "test_user"
         self.email = email or "test@example.com"

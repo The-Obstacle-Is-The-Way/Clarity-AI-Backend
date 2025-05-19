@@ -234,9 +234,7 @@ class ProviderService:
         # Check for expired credentials
         for i, credential in enumerate(provider.credentials):
             if credential.is_expired:
-                issues.append(
-                    f"Credential {credential.type} from {credential.issuer} is expired"
-                )
+                issues.append(f"Credential {credential.type} from {credential.issuer} is expired")
             elif credential.expires_soon:
                 days_left = (credential.expiration_date - datetime.now(UTC)).days
                 issues.append(
@@ -310,9 +308,7 @@ class ProviderService:
 
         return prescribers
 
-    async def check_patient_capacity(
-        self, provider_id: UUID
-    ) -> tuple[bool, int | None]:
+    async def check_patient_capacity(self, provider_id: UUID) -> tuple[bool, int | None]:
         """
         Check if a provider has capacity for new patients
 
@@ -347,9 +343,7 @@ class ProviderService:
 
         return (has_capacity, remaining)
 
-    async def assign_patient_to_provider(
-        self, patient_id: UUID, provider_id: UUID
-    ) -> bool:
+    async def assign_patient_to_provider(self, patient_id: UUID, provider_id: UUID) -> bool:
         """
         Assign a patient to a provider
 
@@ -376,9 +370,7 @@ class ProviderService:
 
         # Check if provider is accepting patients
         if not provider.accepts_new_patients or not provider.is_active:
-            raise ValidationError(
-                f"Provider {provider.full_name} is not accepting new patients"
-            )
+            raise ValidationError(f"Provider {provider.full_name} is not accepting new patients")
 
         # Check provider capacity
         has_capacity, remaining = await self.check_patient_capacity(provider_id)

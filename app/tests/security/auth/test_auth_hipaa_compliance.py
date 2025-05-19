@@ -38,9 +38,7 @@ class JWTService:
     def create_access_token(self, data, expires_delta=None):
         """Create a test JWT token."""
         to_encode = data.copy()
-        expire = datetime.now(UTC) + timedelta(
-            minutes=expires_delta or self.expires_delta
-        )
+        expire = datetime.now(UTC) + timedelta(minutes=expires_delta or self.expires_delta)
         to_encode.update({"exp": expire})
         return jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
 
@@ -171,9 +169,7 @@ class TestHIPAAAuthCompliance:
         """Test that valid tokens authenticate successfully."""
         payload = auth_middleware.authenticate(doctor_token)
         assert payload is not None
-        assert (
-            payload.role if hasattr(payload, "role") else payload["role"]
-        ) == "doctor"
+        assert (payload.role if hasattr(payload, "role") else payload["role"]) == "doctor"
         assert "sub" in payload
         assert "exp" in payload
 
@@ -256,9 +252,7 @@ class TestHIPAAAuthCompliance:
     def test_token_without_role(self, jwt_service, role_manager):
         """Test that tokens without role get default guest permissions."""
         # Create token without role
-        no_role_token = jwt_service.create_access_token(
-            {"sub": "user999", "name": "No Role User"}
-        )
+        no_role_token = jwt_service.create_access_token({"sub": "user999", "name": "No Role User"})
 
         # Decode token
         payload = jwt_service.decode_token(no_role_token)
@@ -309,14 +303,10 @@ class TestHIPAAAuthCompliance:
         # Verify MFA information is in token
         payload = jwt_service.decode_token(mfa_token)
         assert (
-            payload.mfa_complete
-            if hasattr(payload, "mfa_complete")
-            else payload["mfa_complete"]
+            payload.mfa_complete if hasattr(payload, "mfa_complete") else payload["mfa_complete"]
         ) is True
         assert (
-            payload.auth_level
-            if hasattr(payload, "auth_level")
-            else payload["auth_level"]
+            payload.auth_level if hasattr(payload, "auth_level") else payload["auth_level"]
         ) == "2"
 
     def test_minimal_phi_in_token(self, jwt_service):

@@ -66,9 +66,7 @@ def get_default_encryption_key() -> str:
         return env_key
 
     # Fallback for testing - NEVER use in production
-    logger.warning(
-        "No encryption key found, using default test key. DO NOT USE IN PRODUCTION!"
-    )
+    logger.warning("No encryption key found, using default test key. DO NOT USE IN PRODUCTION!")
     return DEFAULT_TEST_KEY
 
 

@@ -46,9 +46,7 @@ class TestPHIInSourceFiles:
         with file_path.open("w", encoding="utf-8") as f:
             f.write(content)
 
-    def test_python_file_with_phi(
-        self, phi_analyzer: PHICodeAnalyzer, temp_file: Path
-    ) -> None:
+    def test_python_file_with_phi(self, phi_analyzer: PHICodeAnalyzer, temp_file: Path) -> None:
         """Test that PHI is detected in Python files."""
         # Python file with PHI
         python_content = '''
@@ -80,8 +78,7 @@ class TestPHIInSourceFiles:
         var_name_findings = [
             f
             for f in findings_list
-            if f.severity == CodeSeverity.INFO
-            and "Variable name suggests PHI" in f.message
+            if f.severity == CodeSeverity.INFO and "Variable name suggests PHI" in f.message
         ]
         assert len(var_name_findings) > 0
 
@@ -93,9 +90,7 @@ class TestPHIInSourceFiles:
         # phone_findings = [f for f in findings_list if "(555) 123-4567" in f.code_snippet]
         # assert len(phone_findings) > 0
 
-    def test_js_file_with_phi(
-        self, phi_analyzer: PHICodeAnalyzer, temp_file: Path
-    ) -> None:
+    def test_js_file_with_phi(self, phi_analyzer: PHICodeAnalyzer, temp_file: Path) -> None:
         """Test that PHI is detected in JavaScript files."""
         # JavaScript file with PHI
         js_content = """
@@ -136,9 +131,7 @@ class TestPHIInSourceFiles:
         # ssn_findings = [f for f in findings_list if "987-65-4321" in f.code_snippet]
         # assert len(ssn_findings) > 0
 
-    def test_config_file_with_phi(
-        self, phi_analyzer: PHICodeAnalyzer, temp_file: Path
-    ) -> None:
+    def test_config_file_with_phi(self, phi_analyzer: PHICodeAnalyzer, temp_file: Path) -> None:
         """Test that PHI is detected in configuration files."""
         # Config file with sensitive information
         config_content = """
@@ -214,16 +207,12 @@ class TestPHIInSourceFiles:
         # The current generic patterns might still find things (like function calls).
         # Filter for critical/warning findings if needed, or check length is expected
         critical_warning_findings = [
-            f
-            for f in findings_list
-            if f.severity in (CodeSeverity.CRITICAL, CodeSeverity.WARNING)
+            f for f in findings_list if f.severity in (CodeSeverity.CRITICAL, CodeSeverity.WARNING)
         ]
         assert len(critical_warning_findings) == 0
         # Assert specific content is NOT found if necessary
 
-    def test_scan_directory(
-        self, phi_analyzer: PHICodeAnalyzer, temp_dir: Path
-    ) -> None:
+    def test_scan_directory(self, phi_analyzer: PHICodeAnalyzer, temp_dir: Path) -> None:
         """Test scanning a directory for PHI in multiple files."""
         # Create multiple files with and without PHI
         phi_file_path = temp_dir / "phi_file.py"
@@ -289,9 +278,7 @@ class TestPHIInSourceFiles:
         assert len(findings_list) > 0  # Expect findings from phi_file.py
 
         # Check findings are from the correct file
-        phi_file_findings = [
-            f for f in findings_list if f.file_path == str(phi_file_path)
-        ]
+        phi_file_findings = [f for f in findings_list if f.file_path == str(phi_file_path)]
         assert len(phi_file_findings) > 0
 
         # Check clean file has no critical/warning findings attributed to it
@@ -338,23 +325,17 @@ class TestPHIInSourceFiles:
 
         try:
             # Scan the directory with exclusion
-            findings_list = phi_analyzer.analyze_directory(
-                temp_dir, exclude_dirs=["exclude_me"]
-            )
+            findings_list = phi_analyzer.analyze_directory(temp_dir, exclude_dirs=["exclude_me"])
 
             # Verify results
             assert isinstance(findings_list, list)
 
             # Check that no findings come from the excluded directory
-            excluded_findings = [
-                f for f in findings_list if str(exclude_dir_path) in f.file_path
-            ]
+            excluded_findings = [f for f in findings_list if str(exclude_dir_path) in f.file_path]
             assert len(excluded_findings) == 0
 
             # Check that findings DO come from the non-excluded file
-            included_findings = [
-                f for f in findings_list if f.file_path == str(included_file_path)
-            ]
+            included_findings = [f for f in findings_list if f.file_path == str(included_file_path)]
             assert len(included_findings) > 0
         finally:
             # Restore original method
@@ -365,9 +346,7 @@ class TestPHIInSourceFiles:
     # These tests might need to be moved, deleted, or refactored against new interfaces.
 
     # @pytest.mark.skip(reason="Refactoring audit logic, PHICodeAnalyzer scope changed")
-    def test_audit_code_for_phi(
-        self, phi_analyzer: PHICodeAnalyzer, temp_dir: Path
-    ) -> None:
+    def test_audit_code_for_phi(self, phi_analyzer: PHICodeAnalyzer, temp_dir: Path) -> None:
         """Test the comprehensive audit function."""
         # Use Path objects
         py_file = temp_dir / "audit_me.py"
@@ -386,15 +365,11 @@ class TestPHIInSourceFiles:
         assert result["summary"]["total_findings"] > 0
 
         # Check that findings exist for the test file
-        finding_for_file = [
-            f for f in result["findings"] if str(py_file) in f["file_path"]
-        ]
+        finding_for_file = [f for f in result["findings"] if str(py_file) in f["file_path"]]
         assert len(finding_for_file) > 0
 
     # @pytest.mark.skip(reason="Refactoring audit logic, PHICodeAnalyzer scope changed")
-    def test_audit_api_endpoints(
-        self, phi_analyzer: PHICodeAnalyzer, temp_dir: Path
-    ) -> None:
+    def test_audit_api_endpoints(self, phi_analyzer: PHICodeAnalyzer, temp_dir: Path) -> None:
         """Test auditing API endpoints."""
         # Use Path object
         api_spec_file = temp_dir / "openapi.yaml"
@@ -462,9 +437,7 @@ paths:
         phi_findings = [
             f
             for f in findings
-            if any(
-                term in f.message.lower() for term in ["ssn", "dob", "name", "social"]
-            )
+            if any(term in f.message.lower() for term in ["ssn", "dob", "name", "social"])
         ]
 
         # Debug: Print PHI findings
@@ -476,9 +449,7 @@ paths:
         assert len(phi_findings) > 0
 
     # @pytest.mark.skip(reason="Refactoring audit logic, PHICodeAnalyzer scope changed")
-    def test_audit_configuration(
-        self, phi_analyzer: PHICodeAnalyzer, temp_dir: Path
-    ) -> None:
+    def test_audit_configuration(self, phi_analyzer: PHICodeAnalyzer, temp_dir: Path) -> None:
         """Test auditing configuration files."""
         # Use Path object
         config_file = temp_dir / "app.cfg"
@@ -508,8 +479,7 @@ paths:
         password_findings = [
             f
             for f in result["findings"]
-            if "password" in f["message"].lower()
-            or "password" in f["code_snippet"].lower()
+            if "password" in f["message"].lower() or "password" in f["code_snippet"].lower()
         ]
         assert len(password_findings) > 0
 

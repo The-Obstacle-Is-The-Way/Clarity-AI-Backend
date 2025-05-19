@@ -148,9 +148,7 @@ class Provider:
 
         # Check that at least one contact method is provided
         if not self.email and not self.phone:
-            raise ValidationError(
-                "At least one contact method (email or phone) is required"
-            )
+            raise ValidationError("At least one contact method (email or phone) is required")
 
         # Validate email format if provided
         if self.email and not self._is_valid_email(self.email):
@@ -418,18 +416,14 @@ class Provider:
         for day, slots in availability.items():
             for slot in slots:
                 if "start" not in slot or "end" not in slot:
-                    raise ValidationError(
-                        f"Invalid availability slot for {day}: {slot}"
-                    )
+                    raise ValidationError(f"Invalid availability slot for {day}: {slot}")
 
         self.availability = availability
 
         # Update timestamp
         self.updated_at = datetime.now()
 
-    def add_availability_slot(
-        self, day: str, start: time | str, end: time | str
-    ) -> None:
+    def add_availability_slot(self, day: str, start: time | str, end: time | str) -> None:
         """
         Add an availability slot.
 
@@ -517,12 +511,7 @@ class Provider:
 
             # Check for overlap
             # If the requested time falls within the provider's available slot
-            if (
-                start >= slot_start
-                and start < slot_end
-                and end > slot_start
-                and end <= slot_end
-            ):
+            if start >= slot_start and start < slot_end and end > slot_start and end <= slot_end:
                 return True
 
         return False
@@ -565,10 +554,7 @@ class Provider:
         Raises:
             ValidationException: If the maximum patient count is reached
         """
-        if (
-            self.max_patients is not None
-            and self.current_patient_count >= self.max_patients
-        ):
+        if self.max_patients is not None and self.current_patient_count >= self.max_patients:
             raise ValidationError("Maximum patient count reached")
 
         self.current_patient_count += 1

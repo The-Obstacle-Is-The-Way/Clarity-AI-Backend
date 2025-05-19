@@ -155,9 +155,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
             # Add special marker around whitelisted content
             for pattern in whitelist_patterns:
                 # Replace with a special marker that won't be touched by PHI sanitization
-                data = pattern.sub(
-                    lambda m: f"__WHITELIST__{m.group(0)}__WHITELIST__", data
-                )
+                data = pattern.sub(lambda m: f"__WHITELIST__{m.group(0)}__WHITELIST__", data)
         elif isinstance(data, dict):
             for key, value in data.items():
                 data[key] = self._preprocess_response_for_whitelist(value, path)
@@ -219,9 +217,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
             if contains_phi:
                 if self.audit_mode:
                     # Only log in audit mode
-                    logger.warning(
-                        "PHI detected in request to %s (audit mode)", request.url.path
-                    )
+                    logger.warning("PHI detected in request to %s (audit mode)", request.url.path)
                 else:
                     # Preprocess to protect whitelisted content
                     preprocessed_data = self._preprocess_response_for_whitelist(
@@ -237,9 +233,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
                     # Store sanitized data in request state for logging
                     request.state.sanitized_body = sanitized_data
 
-                    logger.info(
-                        "Sanitized PHI in request to %s for logging", request.url.path
-                    )
+                    logger.info("Sanitized PHI in request to %s for logging", request.url.path)
 
         except Exception as e:
             logger.error("Error processing request to %s: %s", request.url.path, str(e))
@@ -295,16 +289,12 @@ class PHIMiddleware(BaseHTTPMiddleware):
             if contains_phi:
                 if self.audit_mode:
                     # Only log in audit mode
-                    logger.warning(
-                        "PHI detected in response from %s (audit mode)", path
-                    )
+                    logger.warning("PHI detected in response from %s (audit mode)", path)
                     # Return unchanged response in audit mode
                     return response
                 else:
                     # Preprocess to protect whitelisted content
-                    preprocessed_data = self._preprocess_response_for_whitelist(
-                        body_json, path
-                    )
+                    preprocessed_data = self._preprocess_response_for_whitelist(body_json, path)
 
                     # Sanitize the response body
                     sanitized_body = self.phi_service.sanitize_dict(preprocessed_data)
@@ -393,6 +383,4 @@ def add_phi_middleware(
     app.add_middleware(BaseHTTPMiddleware, dispatch=middleware.dispatch)
 
     # Log middleware addition
-    logger.info(
-        "PHI middleware added to FastAPI application (audit_mode=%s)", audit_mode
-    )
+    logger.info("PHI middleware added to FastAPI application (audit_mode=%s)", audit_mode)

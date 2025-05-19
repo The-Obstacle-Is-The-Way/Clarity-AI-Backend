@@ -67,9 +67,7 @@ async def read_patient(
     Retrieve a patient by their ID.
     The actual patient object is already fetched and authorized by the dependency.
     """
-    logger.info(
-        f"Endpoint read_patient: Returning data for patient {patient_domain_entity.id}"
-    )
+    logger.info(f"Endpoint read_patient: Returning data for patient {patient_domain_entity.id}")
     return PatientRead.model_validate(patient_domain_entity)
 
 
@@ -90,14 +88,10 @@ async def create_patient_endpoint(
         f"User {current_user.id} attempting to create patient: {patient_data.first_name} {patient_data.last_name}"
     )
     try:
-        created_patient = await service.create_patient(
-            patient_data, created_by_id=current_user.id
-        )
+        created_patient = await service.create_patient(patient_data, created_by_id=current_user.id)
         return created_patient
     except Exception as e:
-        logger.error(
-            f"Error creating patient by user {current_user.id}: {e}", exc_info=True
-        )
+        logger.error(f"Error creating patient by user {current_user.id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while creating the patient.",

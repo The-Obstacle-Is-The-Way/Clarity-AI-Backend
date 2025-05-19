@@ -45,9 +45,7 @@ class MedicationModel(Base, TimestampMixin, AuditMixin):
     # manufacturer = Column(String(255), nullable=True) # Optional
 
     # Relationship to the association table
-    prescriptions = relationship(
-        "PatientMedicationModel", back_populates="medication_catalog_item"
-    )
+    prescriptions = relationship("PatientMedicationModel", back_populates="medication_catalog_item")
 
     def __repr__(self) -> str:
         return f"<MedicationModel(id={self.id}, name='{self.name}')>"
@@ -94,9 +92,7 @@ class PatientMedicationModel(Base, TimestampMixin, AuditMixin):
 
     # Relationships
     patient = relationship("Patient", back_populates="prescriptions")
-    medication_catalog_item = relationship(
-        "MedicationModel", back_populates="prescriptions"
-    )
+    medication_catalog_item = relationship("MedicationModel", back_populates="prescriptions")
     prescribing_provider = relationship(
         "ProviderModel", foreign_keys=[provider_id], back_populates="prescriptions_made"
     )  # MODIFIED: Point to ProviderModel, add back_populates

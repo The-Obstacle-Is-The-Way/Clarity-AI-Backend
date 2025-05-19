@@ -123,8 +123,6 @@ class UserNotFoundException(AuthenticationException):
 class UserAlreadyExistsException(AuthenticationException):
     """Exception raised when attempting to register a user that already exists."""
 
-    def __init__(
-        self, message: str = "User with this email already exists", *args, **kwargs
-    ):
+    def __init__(self, message: str = "User with this email already exists", *args, **kwargs):
         super().__init__(message, *args, **kwargs)
         self.status_code = 409  # HTTP 409 Conflict is appropriate

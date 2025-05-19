@@ -42,9 +42,7 @@ class TestPatientRepository:
     """
 
     @pytest.fixture(autouse=True)
-    async def setup(
-        self, db_session: AsyncSession, encryption_service: BaseEncryptionService
-    ):
+    async def setup(self, db_session: AsyncSession, encryption_service: BaseEncryptionService):
         """Initialize the repository with required dependencies."""
         self.db_session = db_session
         self.encryption_service = encryption_service
@@ -58,9 +56,7 @@ class TestPatientRepository:
             # Save to database
             self.db_session.add(patient_model)
             await self.db_session.commit()  # Commit after the add call
-            await self.db_session.refresh(
-                patient_model
-            )  # Refresh to get DB-generated values
+            await self.db_session.refresh(patient_model)  # Refresh to get DB-generated values
 
             # Convert back to domain entity and return
             return await self._to_domain(patient_model)
@@ -359,9 +355,7 @@ class TestPatientRepositoryIntegration:
         assert patient_id is not None
 
         # Skip the actual repository call to avoid database errors
-        logger.info(
-            f"Test patient creation skipped for ID: {patient_id} (stubbed test)"
-        )
+        logger.info(f"Test patient creation skipped for ID: {patient_id} (stubbed test)")
 
     @pytest.mark.asyncio
     async def test_stub_to_fix_linter(self):

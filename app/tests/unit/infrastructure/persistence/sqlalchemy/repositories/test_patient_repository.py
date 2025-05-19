@@ -123,9 +123,7 @@ def mock_encryption_service():
             return decrypted_bytes.decode("utf-8")
         except Exception as e:
             # Allow returning original string if b64decode fails, useful for non-encrypted test data
-            logging.warning(
-                f"Mock decrypt_string error: {e}. Returning original for testing."
-            )
+            logging.warning(f"Mock decrypt_string error: {e}. Returning original for testing.")
             return encrypted_string  # Fallback for testing with plaintext
 
     mock_service.encrypt_string = AsyncMock(side_effect=mock_encrypt_string)
@@ -275,9 +273,7 @@ class TestPatientRepository:
         mock_patient_model._first_name = "DecryptedFirstName"
         mock_patient_model._last_name = "DecryptedLastName"
         mock_patient_model._email = "decrypted.email@example.com"
-        mock_patient_model._date_of_birth = date(
-            1990, 1, 1
-        ).isoformat()  # Decrypted form
+        mock_patient_model._date_of_birth = date(1990, 1, 1).isoformat()  # Decrypted form
         mock_patient_model._address_line1 = "123 Main St"
         mock_patient_model._city = "Anytown"
         mock_patient_model._state = "CA"
@@ -333,9 +329,7 @@ class TestPatientRepository:
     ):
         """Test get_by_id when patient is not found."""
         patient_uuid = uuid.UUID(sample_patient_id)
-        mock_db_session.execute.return_value.scalars.return_value.one_or_none.return_value = (
-            None
-        )
+        mock_db_session.execute.return_value.scalars.return_value.one_or_none.return_value = None
 
         entity = await patient_repository.get_by_id(sample_patient_id)
 
@@ -350,9 +344,7 @@ class TestPatientRepository:
         "app.infrastructure.persistence.sqlalchemy.models.patient.Patient.from_domain",
         new_callable=AsyncMock,
     )  # Corrected patch target
-    @patch(
-        "app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance"
-    )
+    @patch("app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance")
     @pytest.mark.asyncio
     async def test_create_patient(
         self,
@@ -373,9 +365,7 @@ class TestPatientRepository:
         async def mock_to_domain_on_created():
             return PatientEntity(**sample_patient_data)
 
-        mock_created_model_instance.to_domain = AsyncMock(
-            side_effect=mock_to_domain_on_created
-        )
+        mock_created_model_instance.to_domain = AsyncMock(side_effect=mock_to_domain_on_created)
         # mock_patient_from_domain is now the AsyncMock for PatientModel.from_domain
         mock_patient_from_domain.return_value = mock_created_model_instance
 
@@ -404,9 +394,7 @@ class TestPatientRepository:
         "app.infrastructure.persistence.sqlalchemy.models.patient.Patient",
         new_callable=MagicMock,
     )
-    @patch(
-        "app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance"
-    )
+    @patch("app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance")
     @pytest.mark.asyncio
     async def test_update_patient(
         self,
@@ -453,9 +441,7 @@ class TestPatientRepository:
         assert result_entity.last_name == "UpdatedLastName"
 
     @pytest.mark.asyncio
-    @patch(
-        "app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance"
-    )
+    @patch("app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance")
     @pytest.mark.asyncio
     async def test_get_all_patients(
         self,
@@ -468,9 +454,7 @@ class TestPatientRepository:
         # mock_patient_module_esi used by TypeDecorators implicitly
 
         mock_patient_models = []
-        for i, data_dict in enumerate(
-            sample_patient_list_data
-        ):  # data_dict is now a dict
+        for i, data_dict in enumerate(sample_patient_list_data):  # data_dict is now a dict
             model = MagicMock(spec=PatientModel)
             model.id = data_dict.get("id")  # .get() is fine now
             model._first_name = data_dict.get("first_name")
@@ -493,9 +477,7 @@ class TestPatientRepository:
                         first_name=current_model_data_dict["_first_name"],
                         last_name=current_model_data_dict["_last_name"],
                         email=current_model_data_dict["_email"],
-                        date_of_birth=date.fromisoformat(
-                            current_model_data_dict["_date_of_birth"]
-                        ),
+                        date_of_birth=date.fromisoformat(current_model_data_dict["_date_of_birth"]),
                         address=Address(
                             line1=current_model_data_dict["_address_line1"] or "",
                             city=current_model_data_dict["_city"] or "",
@@ -522,9 +504,7 @@ class TestPatientRepository:
             }
             # Assign an AsyncMock to model.to_domain, with the side_effect being the async function generated by make_to_domain_side_effect
             model.to_domain = AsyncMock(
-                side_effect=await make_to_domain_side_effect(
-                    current_state_for_side_effect
-                )
+                side_effect=await make_to_domain_side_effect(current_state_for_side_effect)
             )
             mock_patient_models.append(model)
 
@@ -540,9 +520,7 @@ class TestPatientRepository:
             assert entity.address.zip_code.startswith("9021")
 
     @pytest.mark.asyncio
-    @patch(
-        "app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance"
-    )
+    @patch("app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance")
     @pytest.mark.asyncio
     async def test_get_by_email(
         self,
@@ -589,9 +567,7 @@ class TestPatientRepository:
                 ),
             )
 
-        mock_patient_model.to_domain = AsyncMock(
-            side_effect=mock_to_domain_for_email_get
-        )
+        mock_patient_model.to_domain = AsyncMock(side_effect=mock_to_domain_for_email_get)
         mock_db_session.execute.return_value.scalars.return_value.one_or_none.return_value = (
             mock_patient_model
         )

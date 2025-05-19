@@ -299,9 +299,7 @@ class TestXGBoostEndpoints:
         }
 
         # Make the request
-        response = client.post(
-            "/api/v1/ml/xgboost/treatment-response", json=request_data
-        )
+        response = client.post("/api/v1/ml/xgboost/treatment-response", json=request_data)
 
         # Verify response
         assert response.status_code == 200
@@ -330,18 +328,14 @@ class TestXGBoostEndpoints:
                 "social_support": "moderate",
             },
             "treatment_plan": {
-                "medications": [
-                    {"name": "Escitalopram", "dose": "10mg", "frequency": "daily"}
-                ],
+                "medications": [{"name": "Escitalopram", "dose": "10mg", "frequency": "daily"}],
                 "therapies": ["cbt"],
                 "expected_adherence": "high",
             },
         }
 
         # Make the request
-        response = client.post(
-            "/api/v1/ml/xgboost/outcome-prediction", json=request_data
-        )
+        response = client.post("/api/v1/ml/xgboost/outcome-prediction", json=request_data)
 
         # Verify response
         assert response.status_code == 200
@@ -380,9 +374,7 @@ class TestXGBoostEndpoints:
             "patient_id": "patient-123",
             "simulation_timeframe": {"weeks": 8},
             "treatment_plan": {
-                "medications": [
-                    {"name": "Escitalopram", "dose": "10mg", "frequency": "daily"}
-                ],
+                "medications": [{"name": "Escitalopram", "dose": "10mg", "frequency": "daily"}],
                 "therapies": ["cbt"],
                 "expected_adherence": "high",
             },
@@ -398,9 +390,7 @@ class TestXGBoostEndpoints:
         }
 
         # Make the request
-        response = client.post(
-            "/api/v1/ml/xgboost/digital-twin-simulation", json=request_data
-        )
+        response = client.post("/api/v1/ml/xgboost/digital-twin-simulation", json=request_data)
 
         # Verify response
         assert response.status_code == 200
@@ -481,9 +471,7 @@ class TestXGBoostEndpoints:
         }
 
         # Make the request
-        response = client.post(
-            "/api/v1/ml/xgboost/treatment-response", json=request_data
-        )
+        response = client.post("/api/v1/ml/xgboost/treatment-response", json=request_data)
 
         # Verify response
         assert response.status_code == 422
@@ -502,9 +490,7 @@ class TestXGBoostEndpoints:
         }
 
         # Make the request
-        response = client.post(
-            "/api/v1/ml/xgboost/outcome-prediction", json=request_data
-        )
+        response = client.post("/api/v1/ml/xgboost/outcome-prediction", json=request_data)
 
         # Verify response
         assert response.status_code == 503

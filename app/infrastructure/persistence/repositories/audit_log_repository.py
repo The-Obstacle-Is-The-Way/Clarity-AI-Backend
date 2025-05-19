@@ -141,14 +141,10 @@ class AuditLogRepository(IAuditLogRepository):
             filter_conditions.append(AuditLogModel.user_id == user_id)
 
         if "resource_type" in filters:
-            filter_conditions.append(
-                AuditLogModel.resource_type == filters["resource_type"]
-            )
+            filter_conditions.append(AuditLogModel.resource_type == filters["resource_type"])
 
         if "resource_id" in filters:
-            filter_conditions.append(
-                AuditLogModel.resource_id == filters["resource_id"]
-            )
+            filter_conditions.append(AuditLogModel.resource_id == filters["resource_id"])
 
         if "action" in filters:
             filter_conditions.append(AuditLogModel.action == filters["action"])
@@ -221,9 +217,7 @@ class AuditLogRepository(IAuditLogRepository):
             .group_by(AuditLogModel.event_type)
         )
         event_type_result = await self._session.execute(event_type_query)
-        event_type_counts = {
-            event_type: count for event_type, count in event_type_result.all()
-        }
+        event_type_counts = {event_type: count for event_type, count in event_type_result.all()}
 
         # Count successful vs failed events
         success_query = (
@@ -248,9 +242,7 @@ class AuditLogRepository(IAuditLogRepository):
             .limit(10)
         )
         user_result = await self._session.execute(user_query)
-        active_users = [
-            (str(user_id), count) for user_id, count in user_result.all() if user_id
-        ]
+        active_users = [(str(user_id), count) for user_id, count in user_result.all() if user_id]
 
         # Return compiled statistics
         return {

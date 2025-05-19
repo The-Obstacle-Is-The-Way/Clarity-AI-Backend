@@ -36,9 +36,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
 
     async def get_by_id(self, alert_id: UUID | str) -> BiometricAlert | None:
         """Placeholder: Get a specific alert by its ID."""
-        print(
-            "\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.get_by_id\n"
-        )
+        print("\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.get_by_id\n")
         # Mock implementation: Return None or raise RepositoryError
         # In a real implementation, this would query self.db
         return None
@@ -53,9 +51,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         offset: int = 0,
     ) -> list[BiometricAlert]:
         """Placeholder: Retrieve biometric alerts for a specific patient with filtering."""
-        print(
-            "\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.get_by_patient_id\n"
-        )
+        print("\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.get_by_patient_id\n")
         # Mock implementation: Return empty list or raise RepositoryError
         # In a real implementation, this would query self.db with filters
         return []
@@ -77,9 +73,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
 
     async def delete(self, alert_id: UUID | str) -> bool:
         """Placeholder: Delete an alert by its ID."""
-        print(
-            "\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.delete\n"
-        )
+        print("\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.delete\n")
         # Mock implementation: Return True/False or raise RepositoryError
         # In a real implementation, this would delete from self.db
         return True  # Assume success for placeholder
@@ -92,9 +86,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         end_date: datetime | None = None,
     ) -> int:
         """Placeholder: Count alerts for a patient with filtering."""
-        print(
-            "\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.count_by_patient\n"
-        )
+        print("\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.count_by_patient\n")
         # Mock implementation: Return 0 or raise RepositoryError
         # In a real implementation, this would count from self.db
         return 0

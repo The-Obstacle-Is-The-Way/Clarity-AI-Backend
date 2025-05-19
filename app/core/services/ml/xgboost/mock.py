@@ -82,9 +82,7 @@ class MockXGBoostService(XGBoostInterface):
                 re.compile(r"\b(Dr\.?\s+)?[A-Z][a-z]+\s+[A-Z][a-z]+\b"),  # Name
             ],
             PrivacyLevel.ENHANCED: [
-                re.compile(
-                    r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b"
-                ),  # Email
+                re.compile(r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b"),  # Email
                 re.compile(r"\b\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"),  # Phone
             ],
             PrivacyLevel.MAXIMUM: [
@@ -131,9 +129,7 @@ class MockXGBoostService(XGBoostInterface):
 
                 # Validate distribution
                 required_levels = {"very_low", "low", "moderate", "high", "very_high"}
-                if not all(
-                    level in self._risk_level_distribution for level in required_levels
-                ):
+                if not all(level in self._risk_level_distribution for level in required_levels):
                     raise ConfigurationError(
                         "Risk level distribution must include all risk levels",
                         field="risk_level_distribution",
@@ -175,9 +171,7 @@ class MockXGBoostService(XGBoostInterface):
                     f"Failed to initialize mock XGBoost service: {e!s}", details=str(e)
                 )
 
-    def register_observer(
-        self, event_type: EventType | str, observer: Observer
-    ) -> None:
+    def register_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Register an observer for a specific event type.
 
@@ -191,9 +185,7 @@ class MockXGBoostService(XGBoostInterface):
         self._observers[event_key].add(observer)
         self._logger.debug(f"Observer registered for event type {event_type}")
 
-    def unregister_observer(
-        self, event_type: EventType | str, observer: Observer
-    ) -> None:
+    def unregister_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Unregister an observer for a specific event type.
 
@@ -249,9 +241,7 @@ class MockXGBoostService(XGBoostInterface):
             )
 
         elif model_type.lower() == "outcome":
-            outcome_timeframe = kwargs.get(
-                "outcome_timeframe", {"timeframe": "short_term"}
-            )
+            outcome_timeframe = kwargs.get("outcome_timeframe", {"timeframe": "short_term"})
             clinical_data = features
             treatment_plan = kwargs.get("treatment_plan", {})
             social_determinants = kwargs.get("social_determinants")
@@ -365,9 +355,7 @@ class MockXGBoostService(XGBoostInterface):
         result["supporting_evidence"] = supporting_evidence
 
         # Add risk factors
-        risk_factors = self._generate_risk_factors(
-            risk_type=risk_type, clinical_data=clinical_data
-        )
+        risk_factors = self._generate_risk_factors(risk_type=risk_type, clinical_data=clinical_data)
         result["risk_factors"] = risk_factors
 
         # Add recommendations
@@ -399,9 +387,7 @@ class MockXGBoostService(XGBoostInterface):
 
             for feature in feature_names:
                 # Hash the feature name with risk_type to get a deterministic value
-                feature_hash = int(
-                    hashlib.md5(f"{feature}_{risk_type}".encode()).hexdigest(), 16
-                )
+                feature_hash = int(hashlib.md5(f"{feature}_{risk_type}".encode()).hexdigest(), 16)
                 importance = (feature_hash % 100) / 100.0
                 raw_importances[feature] = importance
                 total_importance += importance
@@ -609,9 +595,7 @@ class MockXGBoostService(XGBoostInterface):
         )
 
         # Generate confidence (normally high for mock)
-        confidence = 0.80 + (
-            outcome_score * 0.15
-        )  # Higher confidence for more extreme scores
+        confidence = 0.80 + (outcome_score * 0.15)  # Higher confidence for more extreme scores
         confidence = min(0.95, max(0.75, confidence))  # Clamp between 0.75 and 0.95
 
         # Create base result
@@ -743,9 +727,7 @@ class MockXGBoostService(XGBoostInterface):
 
         # Verify patient ID
         if prediction.get("patient_id") != patient_id:
-            raise ValidationError(
-                "Patient ID mismatch", field="patient_id", value=patient_id
-            )
+            raise ValidationError("Patient ID mismatch", field="patient_id", value=patient_id)
 
         # Generate feature importance
         features = prediction.get("features", {})
@@ -835,9 +817,7 @@ class MockXGBoostService(XGBoostInterface):
 
         # Verify patient ID
         if prediction.get("patient_id") != patient_id:
-            raise ValidationError(
-                "Patient ID mismatch", field="patient_id", value=patient_id
-            )
+            raise ValidationError("Patient ID mismatch", field="patient_id", value=patient_id)
 
         # Create or retrieve digital twin profile
         profile = self._profiles.get(
@@ -917,9 +897,7 @@ class MockXGBoostService(XGBoostInterface):
         normalized_type = model_type.lower().replace("_", "-")
 
         if normalized_type not in valid_model_types:
-            raise ModelNotFoundError(
-                f"Model not found: {model_type}", model_type=model_type
-            )
+            raise ModelNotFoundError(f"Model not found: {model_type}", model_type=model_type)
 
         # Generate features based on model type
         features = []
@@ -1115,9 +1093,7 @@ class MockXGBoostService(XGBoostInterface):
         if "social_support" in clinical_data:
             support = clinical_data["social_support"]
             if isinstance(support, (int, float)):
-                modifiers -= (
-                    0.1 * min(support, 10) / 10
-                )  # Negative modifier (reduces risk)
+                modifiers -= 0.1 * min(support, 10) / 10  # Negative modifier (reduces risk)
 
         # Risk type specific factors
         if risk_type == "suicide":
@@ -1163,9 +1139,7 @@ class MockXGBoostService(XGBoostInterface):
             Efficacy score between 0.0 and 1.0
         """
         # Create a seed for deterministic randomness
-        seed = int(
-            hashlib.md5(f"{patient_id}:{treatment_type}".encode()).hexdigest(), 16
-        )
+        seed = int(hashlib.md5(f"{patient_id}:{treatment_type}".encode()).hexdigest(), 16)
         random.seed(seed)
 
         # Base score is random but deterministic for the same patient and treatment type
@@ -1201,9 +1175,7 @@ class MockXGBoostService(XGBoostInterface):
         elif "therapy" in treatment_type:
             # Previous response to therapy
             previous_response = clinical_data.get("previous_therapy_response", {})
-            therapy_type = (
-                treatment_type.split("_")[1] if "_" in treatment_type else "unknown"
-            )
+            therapy_type = treatment_type.split("_")[1] if "_" in treatment_type else "unknown"
             if therapy_type in previous_response:
                 response_value = previous_response[therapy_type]
                 if isinstance(response_value, (int, float)):
@@ -1256,9 +1228,7 @@ class MockXGBoostService(XGBoostInterface):
         """
         # Create a seed for deterministic randomness
         seed = int(
-            hashlib.md5(
-                f"{patient_id}:{outcome_type}:{time_frame_days}".encode()
-            ).hexdigest(),
+            hashlib.md5(f"{patient_id}:{outcome_type}:{time_frame_days}".encode()).hexdigest(),
             16,
         )
         random.seed(seed)
@@ -1272,9 +1242,7 @@ class MockXGBoostService(XGBoostInterface):
         # Treatment intensity factor
         treatments = treatment_plan.get("treatments", [])
         treatment_count = len(treatments)
-        modifiers += 0.05 * min(
-            treatment_count, 3
-        )  # More treatments might be better up to a point
+        modifiers += 0.05 * min(treatment_count, 3)  # More treatments might be better up to a point
 
         # Baseline severity
         severity = clinical_data.get("symptom_severity", 5)
@@ -1495,10 +1463,7 @@ class MockXGBoostService(XGBoostInterface):
                 )
 
         # Add general evidence
-        if (
-            "previous_episodes" in clinical_data
-            and clinical_data["previous_episodes"] > 0
-        ):
+        if "previous_episodes" in clinical_data and clinical_data["previous_episodes"] > 0:
             evidence.append(
                 {
                     "factor": "previous_episodes",
@@ -1545,9 +1510,7 @@ class MockXGBoostService(XGBoostInterface):
             )
 
         if clinical_data.get("substance_use", False):
-            risk_factors["contributing_factors"].append(
-                {"name": "Substance use", "weight": "high"}
-            )
+            risk_factors["contributing_factors"].append({"name": "Substance use", "weight": "high"})
 
         if clinical_data.get("stress_level", 0) > 7:
             risk_factors["contributing_factors"].append(
@@ -1642,9 +1605,7 @@ class MockXGBoostService(XGBoostInterface):
         outcome = {
             "symptom_improvement": f"{adjusted_improvement}%",
             "time_to_response": time_to_response,
-            "sustained_response_likelihood": self._map_score_to_response_level(
-                efficacy_score
-            ),
+            "sustained_response_likelihood": self._map_score_to_response_level(efficacy_score),
             "functional_improvement": "moderate",
         }
 
@@ -1926,9 +1887,7 @@ class MockXGBoostService(XGBoostInterface):
             details["recommendations"].append("More frequent monitoring recommended")
         elif outcome_score < 0.7:
             details["recommendations"].append("Current treatment plan appears adequate")
-            details["recommendations"].append(
-                "Regular follow-up recommended to ensure progress"
-            )
+            details["recommendations"].append("Regular follow-up recommended to ensure progress")
         else:
             details["recommendations"].append("Treatment plan appears highly effective")
             details["recommendations"].append(

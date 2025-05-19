@@ -40,16 +40,10 @@ def _validate_actigraphy_inputs(
     # Check for required keys within device_info
     required_device_keys = ["manufacturer", "model"]
     if not all(key in device_info for key in required_device_keys):
-        raise ValidationError(
-            f"Device info must contain required keys: {required_device_keys}"
-        )
+        raise ValidationError(f"Device info must contain required keys: {required_device_keys}")
 
     # Validation for analysis_types
-    if (
-        not analysis_types
-        or not isinstance(analysis_types, list)
-        or len(analysis_types) == 0
-    ):
+    if not analysis_types or not isinstance(analysis_types, list) or len(analysis_types) == 0:
         raise ValidationError("At least one analysis type must be specified")
 
     # Validate analysis types against supported types
@@ -66,9 +60,7 @@ def _validate_actigraphy_inputs(
     # Validate reading format (only if list is not empty)
     for reading in readings:
         # Ensure reading is a dictionary before checking keys
-        if not isinstance(reading, dict) or not all(
-            key in reading for key in ["x", "y", "z"]
-        ):
+        if not isinstance(reading, dict) or not all(key in reading for key in ["x", "y", "z"]):
             raise ValidationError("Reading format invalid: missing required fields")
 
 
@@ -155,9 +147,7 @@ def _validate_integration_params(
 
     # Either analysis_id or actigraphy_analysis must be provided
     if not analysis_id and not actigraphy_analysis:
-        raise ValidationError(
-            "Either analysis_id or actigraphy_analysis must be provided"
-        )
+        raise ValidationError("Either analysis_id or actigraphy_analysis must be provided")
 
     # If analysis_id provided, verify it exists and belongs to patient
     analysis_data = None

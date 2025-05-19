@@ -163,9 +163,7 @@ class AlertRule:
         self.threshold = threshold
         self.patient_id = patient_id
         self.severity = severity
-        self.description = (
-            description or f"{data_type.value} {operator.value} {threshold}"
-        )
+        self.description = description or f"{data_type.value} {operator.value} {threshold}"
         self.active = active
         self.cooldown_minutes = cooldown_minutes
         self.last_triggered: dict[str, datetime] = {}
@@ -203,10 +201,7 @@ class AlertRule:
         value = data_point.value
         if not isinstance(value, (int, float)):
             # For complex values like blood pressure, we need special handling
-            if (
-                isinstance(value, dict)
-                and self.data_type == BiometricType.BLOOD_PRESSURE
-            ):
+            if isinstance(value, dict) and self.data_type == BiometricType.BLOOD_PRESSURE:
                 # For blood pressure, use systolic by default
                 value = value.get("systolic")
                 if value is None:
@@ -310,9 +305,7 @@ class BiometricAlert:
             "message": self.message,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
             "acknowledged": self.acknowledged,
-            "acknowledged_at": self.acknowledged_at.isoformat()
-            if self.acknowledged_at
-            else None,
+            "acknowledged_at": self.acknowledged_at.isoformat() if self.acknowledged_at else None,
             "acknowledged_by": self.acknowledged_by,
         }
 
@@ -670,9 +663,7 @@ class BiometricEventProcessor:
             self.contexts[patient_id] = ProcessorContext(patient_id)
         return self.contexts[patient_id]
 
-    def process_data_point(
-        self, data_point: BiometricDataPoint
-    ) -> list[BiometricAlert]:
+    def process_data_point(self, data_point: BiometricDataPoint) -> list[BiometricAlert]:
         """
         Process a biometric data point with support for hypothalamus-pituitary neural connectivity.
 
@@ -971,9 +962,7 @@ class TestBiometricEventProcessor(unittest.TestCase):
 
         # Check that the value was adjusted by pituitary modifier
         self.assertEqual(data_point.metadata["original_value"], 10.0)
-        self.assertAlmostEqual(
-            data_point.value, 10.0 * self.processor.pituitary_threshold_modifier
-        )
+        self.assertAlmostEqual(data_point.value, 10.0 * self.processor.pituitary_threshold_modifier)
 
         # Value after adjustment should be 10.0 * 0.85 = 8.5
         # This should be exactly at threshold, not trigger an alert with greater_than

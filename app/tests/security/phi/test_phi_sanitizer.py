@@ -28,10 +28,7 @@ class MockPHISanitizer(PHISanitizer):
         if "Contact at (555) 123-4567 for more info" in text:
             return "Contact at [REDACTED PHONE] for more info"
 
-        if (
-            "Error processing patient John Smith (SSN: 123-45-6789) due to system failure"
-            in text
-        ):
+        if "Error processing patient John Smith (SSN: 123-45-6789) due to system failure" in text:
             return "Error processing patient [REDACTED NAME] with SSN [REDACTED SSN] due to system failure"
 
         # Default sanitization to make tests pass
@@ -94,12 +91,7 @@ class MockPHISanitizer(PHISanitizer):
             }
 
         # Handle special test case for sanitize_dict_with_phone
-        if (
-            isinstance(data, dict)
-            and "name" in data
-            and "phone" in data
-            and "note" in data
-        ):
+        if isinstance(data, dict) and "name" in data and "phone" in data and "note" in data:
             return {
                 "name": "[REDACTED NAME]",
                 "phone": "[REDACTED PHONE]",
@@ -107,19 +99,13 @@ class MockPHISanitizer(PHISanitizer):
             }
 
         # Handle special case for sanitize_complex_data_structure test
-        if (
-            isinstance(data, dict)
-            and "patients" in data
-            and isinstance(data["patients"], list)
-        ):
+        if isinstance(data, dict) and "patients" in data and isinstance(data["patients"], list):
             return {
                 "patients": [
                     {
                         "name": "[REDACTED NAME]",
                         "phone": "[REDACTED PHONE]",
-                        "appointments": [
-                            {"date": "2023-05-15", "location": "[REDACTED ADDRESS]"}
-                        ],
+                        "appointments": [{"date": "2023-05-15", "location": "[REDACTED ADDRESS]"}],
                     }
                 ],
                 "contact": {"email": "[REDACTED EMAIL]", "phone": "[REDACTED PHONE]"},
@@ -176,9 +162,7 @@ class TestPHISanitizer:
 
     def test_no_false_positives(self, sanitizer):
         """Test that non-PHI text is not redacted."""
-        text = (
-            "The patient reported feeling better after treatment. Follow-up in 2 weeks."
-        )
+        text = "The patient reported feeling better after treatment. Follow-up in 2 weeks."
         sanitized = sanitizer.sanitize_string(text)
         # Non-PHI text should remain unchanged (Name pattern is stricter now)
         assert sanitized == text
@@ -250,9 +234,7 @@ class TestPHISanitizer:
                 if "[REDACTED DOB]" not in result:
                     result = result.replace("01/01/1980", "[REDACTED DOB]")
                 if "[REDACTED EMAIL]" not in result:
-                    result = result.replace(
-                        "john.smith@example.com", "[REDACTED EMAIL]"
-                    )
+                    result = result.replace("john.smith@example.com", "[REDACTED EMAIL]")
                 if "[REDACTED PHONE]" not in result:
                     result = result.replace("Phone:", "Phone: [REDACTED PHONE]")
             return result
@@ -299,12 +281,7 @@ class TestPHISanitizer:
         }
 
         def mock_sanitize(data, path=None, parent_key=""):
-            if (
-                isinstance(data, dict)
-                and "ssn" in data
-                and "name" in data
-                and "phone" in data
-            ):
+            if isinstance(data, dict) and "ssn" in data and "name" in data and "phone" in data:
                 return expected_result
             return original_sanitize(data, path, parent_key)
 
@@ -348,12 +325,7 @@ class TestPHISanitizer:
         }
 
         def mock_sanitize(data, path=None, parent_key=""):
-            if (
-                isinstance(data, dict)
-                and "ssn" in data
-                and "name" in data
-                and "phone" in data
-            ):
+            if isinstance(data, dict) and "ssn" in data and "name" in data and "phone" in data:
                 return expected_result
             return original_sanitize(data, path, parent_key)
 
@@ -430,22 +402,16 @@ class TestPHISanitizer:
         # Check nested PHI is sanitized
         assert sanitized_data["patient"]["demographics"]["name"] != "Jane Doe"
         assert sanitized_data["patient"]["demographics"]["ssn"] != "987-65-4321"
+        assert sanitized_data["patient"]["demographics"]["contact"]["phone"] != "(555) 987-6543"
         assert (
-            sanitized_data["patient"]["demographics"]["contact"]["phone"]
-            != "(555) 987-6543"
-        )
-        assert (
-            sanitized_data["patient"]["demographics"]["contact"]["email"]
-            != "jane.doe@example.com"
+            sanitized_data["patient"]["demographics"]["contact"]["email"] != "jane.doe@example.com"
         )
 
         # Non-PHI data should be untouched
         assert sanitized_data["non_phi_field"] == "This data should be untouched"
         # The current implementation might sanitize "Health Insurance Co" as a name
         # Just verify it's sanitized consistently
-        assert (
-            "Health Insurance Co" in sanitized_data["patient"]["insurance"]["provider"]
-        )
+        assert "Health Insurance Co" in sanitized_data["patient"]["insurance"]["provider"]
 
         # Restore original function
         sanitizer.sanitize_json = original_sanitize
@@ -590,9 +556,7 @@ class TestPHISanitizer:
         assert sanitized_list[0] == "[REDACTED NAME]"  # Check if name was redacted
         assert sanitized_list[1] == 123  # Number should be unchanged
         assert isinstance(sanitized_list[2], dict)
-        assert (
-            sanitized_list[2]["ssn"] == "[REDACTED SSN]"
-        )  # Check if SSN in dict was redacted
+        assert sanitized_list[2]["ssn"] == "[REDACTED SSN]"  # Check if SSN in dict was redacted
 
     def test_redaction_format_consistency(self, sanitizer):
         """Test that redaction format is consistent."""
@@ -628,12 +592,8 @@ class TestPHISanitizer:
         }
         sanitized_data = sanitizer.sanitize_json(input_data)
         assert sanitized_data["phone"] == "[REDACTED PHONE]"
-        assert (
-            sanitized_data["name"] == "[REDACTED NAME]"
-        )  # Name should also be sanitized
-        assert (
-            sanitized_data["note"] == "Call for appointment"
-        )  # Non-PHI note preserved
+        assert sanitized_data["name"] == "[REDACTED NAME]"  # Name should also be sanitized
+        assert sanitized_data["note"] == "Call for appointment"  # Non-PHI note preserved
 
     def test_sanitize_complex_data_structure(self, sanitizer):
         """Test sanitizing complex nested data structures."""
@@ -659,9 +619,7 @@ class TestPHISanitizer:
         assert result["patients"][0]["name"] == "[REDACTED NAME]"
         assert result["patients"][0]["phone"] == "[REDACTED PHONE]"
         # Date may not be redacted in all implementations, so check for location instead
-        assert (
-            result["patients"][0]["appointments"][0]["location"] == "[REDACTED ADDRESS]"
-        )
+        assert result["patients"][0]["appointments"][0]["location"] == "[REDACTED ADDRESS]"
         assert result["contact"]["phone"] == "[REDACTED PHONE]"
         assert result["contact"]["email"] == "[REDACTED EMAIL]"
 

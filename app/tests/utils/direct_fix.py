@@ -12,9 +12,7 @@ import sys
 from pprint import pformat
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 # Add the backend directory to sys.path if needed
@@ -67,18 +65,10 @@ async def test_database_tables():
             "patients",
             Base.metadata,
             Column("id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4),
-            Column(
-                "user_id", UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
-            ),
-            Column(
-                "first_name", Text, nullable=True
-            ),  # Match column names with SQL schema
-            Column(
-                "last_name", Text, nullable=True
-            ),  # Match column names with SQL schema
-            Column(
-                "date_of_birth", Text, nullable=True
-            ),  # Match column names with SQL schema
+            Column("user_id", UUID(as_uuid=True), ForeignKey("users.id"), nullable=True),
+            Column("first_name", Text, nullable=True),  # Match column names with SQL schema
+            Column("last_name", Text, nullable=True),  # Match column names with SQL schema
+            Column("date_of_birth", Text, nullable=True),  # Match column names with SQL schema
             Column("email", Text, nullable=True),  # Match column names with SQL schema
             Column("phone", Text, nullable=True),  # Match column names with SQL schema
             Column("created_at", DateTime, default=now_utc, nullable=False),
@@ -123,9 +113,7 @@ async def test_database_tables():
 
             # Check if critical tables exist
             if "users" not in tables or "patients" not in tables:
-                logger.error(
-                    f"CRITICAL ERROR: Missing required tables! Found: {tables}"
-                )
+                logger.error(f"CRITICAL ERROR: Missing required tables! Found: {tables}")
             else:
                 logger.info("SUCCESS: All required tables created")
 
@@ -134,9 +122,7 @@ async def test_database_tables():
                     columns_query = text(f"PRAGMA table_info({table_name})")
                     columns_result = await session.execute(columns_query)
                     columns = columns_result.fetchall()
-                    column_names = [
-                        col[1] for col in columns
-                    ]  # Column name is at index 1
+                    column_names = [col[1] for col in columns]  # Column name is at index 1
                     logger.info(f"Table {table_name} columns: {column_names}")
 
     except Exception as e:

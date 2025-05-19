@@ -144,9 +144,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
             "metadata": response["metadata"],
         }
 
-    def detect_depression(
-        self, text: str, options: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def detect_depression(self, text: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Detect depression signals in text.
 
@@ -260,12 +258,8 @@ class MockMentaLLaMA(MentaLLaMAInterface):
         negative_indicators = ["unhappy", "angry", "frustrated", "anxious", "bad"]
         text_lower = text.lower()
 
-        positive_count = sum(
-            1 for indicator in positive_indicators if indicator in text_lower
-        )
-        negative_count = sum(
-            1 for indicator in negative_indicators if indicator in text_lower
-        )
+        positive_count = sum(1 for indicator in positive_indicators if indicator in text_lower)
+        negative_count = sum(1 for indicator in negative_indicators if indicator in text_lower)
 
         if positive_count > negative_count:
             return self._sentiment_analysis_responses["positive"]
@@ -307,12 +301,8 @@ class MockMentaLLaMA(MentaLLaMAInterface):
         ]
         text_lower = text.lower()
 
-        balanced_count = sum(
-            1 for indicator in balanced_indicators if indicator in text_lower
-        )
-        unbalanced_count = sum(
-            1 for indicator in unbalanced_indicators if indicator in text_lower
-        )
+        balanced_count = sum(1 for indicator in balanced_indicators if indicator in text_lower)
+        unbalanced_count = sum(1 for indicator in unbalanced_indicators if indicator in text_lower)
 
         if balanced_count > unbalanced_count:
             return self._wellness_dimensions_responses["balanced"]
@@ -391,9 +381,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
 
         except Exception as e:
             logger.error(f"Failed to initialize Mock MentaLLaMA service: {e!s}")
-            raise InvalidConfigurationError(
-                f"Failed to initialize Mock MentaLLaMA service: {e!s}"
-            )
+            raise InvalidConfigurationError(f"Failed to initialize Mock MentaLLaMA service: {e!s}")
 
     def _setup_mock_responses(self) -> None:
         """Set up mock responses for different tasks."""
@@ -674,29 +662,19 @@ class MockMentaLLaMA(MentaLLaMAInterface):
         ]
         if any(indicator in prompt_lower for indicator in depression_indicators):
             if "severe" in prompt_lower or "suicide" in prompt_lower:
-                return json.dumps(
-                    self._depression_detection_responses["positive"], indent=2
-                )
+                return json.dumps(self._depression_detection_responses["positive"], indent=2)
             elif "mild" in prompt_lower or "sometimes" in prompt_lower:
-                return json.dumps(
-                    self._depression_detection_responses["mild"], indent=2
-                )
+                return json.dumps(self._depression_detection_responses["mild"], indent=2)
             else:
-                return json.dumps(
-                    self._depression_detection_responses["negative"], indent=2
-                )
+                return json.dumps(self._depression_detection_responses["negative"], indent=2)
 
         # Check for risk indicators in the prompt
         risk_indicators = ["suicide", "harm", "hurt myself", "end my life", "kill"]
         if any(indicator in prompt_lower for indicator in risk_indicators):
             if "plan" in prompt_lower or "decided" in prompt_lower:
-                return json.dumps(
-                    self._risk_assessment_responses["high_risk"], indent=2
-                )
+                return json.dumps(self._risk_assessment_responses["high_risk"], indent=2)
             elif "thought about" in prompt_lower or "considered" in prompt_lower:
-                return json.dumps(
-                    self._risk_assessment_responses["moderate_risk"], indent=2
-                )
+                return json.dumps(self._risk_assessment_responses["moderate_risk"], indent=2)
             else:
                 return json.dumps(self._risk_assessment_responses["low_risk"], indent=2)
 
@@ -704,12 +682,8 @@ class MockMentaLLaMA(MentaLLaMAInterface):
         positive_indicators = ["happy", "joy", "excited", "grateful", "good"]
         negative_indicators = ["unhappy", "angry", "frustrated", "anxious", "bad"]
 
-        positive_count = sum(
-            1 for indicator in positive_indicators if indicator in prompt_lower
-        )
-        negative_count = sum(
-            1 for indicator in negative_indicators if indicator in prompt_lower
-        )
+        positive_count = sum(1 for indicator in positive_indicators if indicator in prompt_lower)
+        negative_count = sum(1 for indicator in negative_indicators if indicator in prompt_lower)
 
         if positive_count > negative_count:
             return json.dumps(self._sentiment_analysis_responses["positive"], indent=2)

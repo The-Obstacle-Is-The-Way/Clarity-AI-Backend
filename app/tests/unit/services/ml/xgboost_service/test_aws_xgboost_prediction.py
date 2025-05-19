@@ -80,9 +80,7 @@ class TestAWSXGBoostServicePrediction:
         return service
 
     @pytest.mark.asyncio
-    async def test_predict_risk_validation(
-        self, aws_xgboost_service, sample_clinical_data
-    ):
+    async def test_predict_risk_validation(self, aws_xgboost_service, sample_clinical_data):
         """Test predict_risk validation for missing patient_id."""
         with pytest.raises(ValidationError):
             await aws_xgboost_service.predict_risk(
@@ -92,9 +90,7 @@ class TestAWSXGBoostServicePrediction:
             )
 
     @pytest.mark.asyncio
-    async def test_predict_risk_empty_data(
-        self, aws_xgboost_service, sample_patient_id
-    ):
+    async def test_predict_risk_empty_data(self, aws_xgboost_service, sample_patient_id):
         """Test predict_risk validation for empty clinical_data."""
         with pytest.raises(ValidationError):
             await aws_xgboost_service.predict_risk(
@@ -129,9 +125,7 @@ class TestAWSXGBoostServicePrediction:
             }
 
         # Directly patch the entire method
-        with patch.object(
-            aws_xgboost_service, "predict_risk", side_effect=direct_predict_risk
-        ):
+        with patch.object(aws_xgboost_service, "predict_risk", side_effect=direct_predict_risk):
             # Make prediction using our overridden implementation
             result = await aws_xgboost_service.predict_risk(
                 patient_id=sample_patient_id,
@@ -159,9 +153,7 @@ class TestAWSXGBoostServicePrediction:
             raise PredictionError("Model error: invalid input shape")
 
         # Directly patch the entire method
-        with patch.object(
-            aws_xgboost_service, "predict_risk", side_effect=prediction_error_func
-        ):
+        with patch.object(aws_xgboost_service, "predict_risk", side_effect=prediction_error_func):
             # Make prediction with expectation of error
             with pytest.raises(PredictionError):
                 await aws_xgboost_service.predict_risk(
@@ -177,13 +169,9 @@ class TestAWSXGBoostServicePrediction:
         """Test predict_risk failure due to AWS service unavailability."""
         # Directly override the predict_risk method to raise the specific error we want to test
 
-        async def connection_error_predict_risk(
-            patient_id, risk_type, clinical_data, **kwargs
-        ):
+        async def connection_error_predict_risk(patient_id, risk_type, clinical_data, **kwargs):
             # Raise the exact error type we want to test
-            raise ServiceConnectionError(
-                "Failed to connect to SageMaker endpoint: test-endpoint"
-            )
+            raise ServiceConnectionError("Failed to connect to SageMaker endpoint: test-endpoint")
 
         # Directly patch the entire method
         with patch.object(

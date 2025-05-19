@@ -72,9 +72,7 @@ class AWSClientFactory:
         """
         return self.session.client("dynamodb")
 
-    def get_bedrock_runtime_client(
-        self, endpoint_url: str | None = None
-    ) -> boto3.client:
+    def get_bedrock_runtime_client(self, endpoint_url: str | None = None) -> boto3.client:
         """Get a Bedrock Runtime client.
 
         Args:
@@ -118,9 +116,7 @@ class AWSClientFactory:
         return self.session.client("comprehendmedical")
 
 
-def format_bedrock_response(
-    response_body: dict[str, Any], analysis_type: str
-) -> dict[str, Any]:
+def format_bedrock_response(response_body: dict[str, Any], analysis_type: str) -> dict[str, Any]:
     """Format a response from Bedrock for actigraphy analysis.
 
     This function extracts and formats the relevant data from a Bedrock response

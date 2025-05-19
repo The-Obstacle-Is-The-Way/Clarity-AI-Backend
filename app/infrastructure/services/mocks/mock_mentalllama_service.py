@@ -37,10 +37,7 @@ class MockMentalLLaMAService(MentalLLaMAService):
         insights = []
 
         # Look for depression indicators
-        if any(
-            kw in note_text.lower()
-            for kw in ["depress", "sad", "low mood", "anhedonia"]
-        ):
+        if any(kw in note_text.lower() for kw in ["depress", "sad", "low mood", "anhedonia"]):
             # Ensure we import the necessary types
             from app.domain.entities.digital_twin_enums import Neurotransmitter
 
@@ -61,9 +58,7 @@ class MockMentalLLaMAService(MentalLLaMAService):
                         Neurotransmitter.SEROTONIN,
                         Neurotransmitter.DOPAMINE,
                     ],  # Add relevant neurotransmitters for depression
-                    supporting_evidence=[
-                        "Lexical indicators of depression in clinical notes"
-                    ],
+                    supporting_evidence=["Lexical indicators of depression in clinical notes"],
                     recommended_actions=[
                         "Consider PHQ-9 assessment",
                         "Review treatment plan",
@@ -72,9 +67,7 @@ class MockMentalLLaMAService(MentalLLaMAService):
             )
 
         # Look for anxiety indicators
-        if any(
-            kw in note_text.lower() for kw in ["anxious", "worry", "panic", "tension"]
-        ):
+        if any(kw in note_text.lower() for kw in ["anxious", "worry", "panic", "tension"]):
             insights.append(
                 ClinicalInsight(
                     id=uuid4(),
@@ -101,9 +94,7 @@ class MockMentalLLaMAService(MentalLLaMAService):
             )
 
         # Look for sleep issues
-        if any(
-            kw in note_text.lower() for kw in ["insomnia", "sleep", "tired", "fatigue"]
-        ):
+        if any(kw in note_text.lower() for kw in ["insomnia", "sleep", "tired", "fatigue"]):
             insights.append(
                 ClinicalInsight(
                     id=uuid4(),
@@ -170,13 +161,9 @@ class MockMentalLLaMAService(MentalLLaMAService):
         recommendations = []
 
         # Check for depression diagnosis codes
-        if any(
-            code.startswith("F32") or code.startswith("F33") for code in diagnosis_codes
-        ):
+        if any(code.startswith("F32") or code.startswith("F33") for code in diagnosis_codes):
             ssri_already_prescribed = any(
-                med.lower().startswith(
-                    ("sertraline", "fluoxetine", "escitalopram", "citalopram")
-                )
+                med.lower().startswith(("sertraline", "fluoxetine", "escitalopram", "citalopram"))
                 for med in current_medications
             )
 
@@ -290,9 +277,7 @@ class MockMentalLLaMAService(MentalLLaMAService):
             ):
                 risk_factors["suicide_risk"]["level"] = "moderate"
                 risk_factors["suicide_risk"]["score"] = 0.4
-                risk_factors["suicide_risk"]["contributing_factors"].append(
-                    "Depression diagnosis"
-                )
+                risk_factors["suicide_risk"]["contributing_factors"].append("Depression diagnosis")
 
             # Bipolar increases risks
             if diag_code.startswith("F31") or "bipolar" in diag_name:
@@ -300,9 +285,7 @@ class MockMentalLLaMAService(MentalLLaMAService):
                 risk_factors["suicide_risk"]["score"] = 0.45
                 risk_factors["hospitalization_risk"]["level"] = "moderate"
                 risk_factors["hospitalization_risk"]["score"] = 0.35
-                risk_factors["suicide_risk"]["contributing_factors"].append(
-                    "Bipolar disorder"
-                )
+                risk_factors["suicide_risk"]["contributing_factors"].append("Bipolar disorder")
                 risk_factors["hospitalization_risk"]["contributing_factors"].append(
                     "Bipolar disorder"
                 )
@@ -323,9 +306,7 @@ class MockMentalLLaMAService(MentalLLaMAService):
             ],
         }
 
-    async def semantic_search(
-        self, patient_id: UUID, query: str, limit: int = 10
-    ) -> list[dict]:
+    async def semantic_search(self, patient_id: UUID, query: str, limit: int = 10) -> list[dict]:
         """
         Perform semantic search across patient records.
 
@@ -414,9 +395,7 @@ class MockMentalLLaMAService(MentalLLaMAService):
         summary = f"Patient {patient_id} Summary:\n\n"
 
         # Add demographic information
-        summary += (
-            "32-year-old individual with history of major depressive disorder (F32.1) "
-        )
+        summary += "32-year-old individual with history of major depressive disorder (F32.1) "
         summary += "and generalized anxiety disorder (F41.1).\n\n"
 
         # Add treatment history
@@ -435,7 +414,9 @@ class MockMentalLLaMAService(MentalLLaMAService):
         if focus_areas:
             summary += "Focus Areas:\n"
             if "medication" in focus_areas:
-                summary += "- Medication: Good adherence to sertraline, minimal side effects reported\n"
+                summary += (
+                    "- Medication: Good adherence to sertraline, minimal side effects reported\n"
+                )
             if "therapy" in focus_areas:
                 summary += "- Therapy: Good engagement in CBT, practicing cognitive restructuring techniques\n"
             if "sleep" in focus_areas:

@@ -76,9 +76,7 @@ def create_xgboost_service(
         implementation_class = _registry[implementation_name]
 
     # Create and return instance
-    logger.info(
-        f"Creating XGBoost service instance using '{implementation_name}' implementation"
-    )
+    logger.info(f"Creating XGBoost service instance using '{implementation_name}' implementation")
 
     # Use cached instance if it exists
     cache_key = f"{implementation_name}:{hash(frozenset(kwargs.items()))}"
@@ -92,9 +90,7 @@ def create_xgboost_service(
     return instance
 
 
-def register_implementation(
-    name: str, implementation_class: type[XGBoostInterface]
-) -> None:
+def register_implementation(name: str, implementation_class: type[XGBoostInterface]) -> None:
     """
     Register a new XGBoost service implementation.
 

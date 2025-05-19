@@ -70,9 +70,7 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
         "ProviderModel", foreign_keys=[provider_id], back_populates="clinical_notes"
     )
     appointment = relationship("AppointmentModel", back_populates="clinical_notes")
-    parent_note = relationship(
-        "ClinicalNoteModel", remote_side=[id], backref="revisions"
-    )
+    parent_note = relationship("ClinicalNoteModel", remote_side=[id], backref="revisions")
 
     def __repr__(self) -> str:
         """Return string representation of the clinical note."""
@@ -94,9 +92,7 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
             patient_id=clinical_note.patient_id,
             provider_id=clinical_note.provider_id,
             appointment_id=clinical_note.appointment_id,
-            note_type=clinical_note.note_type.value
-            if clinical_note.note_type
-            else None,
+            note_type=clinical_note.note_type.value if clinical_note.note_type else None,
             content=clinical_note.content,
             redacted_content=clinical_note.redacted_content,
             title=clinical_note.title,

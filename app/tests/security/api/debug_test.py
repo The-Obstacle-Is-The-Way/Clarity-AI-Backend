@@ -31,9 +31,7 @@ async def force_runtime_error():
 async def generic_exception_handler(request: Request, exc: Exception):
     """Global exception handler."""
     logger.debug(f"Exception handler called for: {type(exc).__name__}")
-    return JSONResponse(
-        status_code=500, content={"detail": "An internal server error occurred."}
-    )
+    return JSONResponse(status_code=500, content={"detail": "An internal server error occurred."})
 
 
 @app.middleware("http")

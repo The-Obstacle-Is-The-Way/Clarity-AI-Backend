@@ -78,9 +78,7 @@ async def get_user_repository_dependency(
 
 
 # Use the concrete implementation for FastAPI compatibility
-UserRepoDep = Annotated[
-    SQLAlchemyUserRepository, Depends(get_user_repository_dependency)
-]
+UserRepoDep = Annotated[SQLAlchemyUserRepository, Depends(get_user_repository_dependency)]
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
@@ -154,9 +152,7 @@ async def get_jwt_service(
 
 
 async def get_current_user(
-    token_credentials: Annotated[
-        HTTPAuthorizationCredentials | None, Depends(bearer_scheme)
-    ],
+    token_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     settings: Settings = Depends(get_settings),
     jwt_service: JWTService = Depends(get_jwt_service),
     user_repo: SQLAlchemyUserRepository = Depends(get_user_repository_dependency),
@@ -183,9 +179,7 @@ async def get_current_user(
         f"--- get_current_user received jwt_service ID: {id(jwt_service)}, Type: {type(jwt_service)} ---"
     )
     logger.info(f"--- get_current_user received user_repo Type: {type(user_repo)} ---")
-    logger.info(
-        f"--- get_current_user CALLED --- Token credentials: {token_credentials}"
-    )
+    logger.info(f"--- get_current_user CALLED --- Token credentials: {token_credentials}")
 
     # Initialize options dict if None
     options = options or {}
@@ -197,9 +191,7 @@ async def get_current_user(
         logger.debug("Test mode detected: Token expiration check disabled")
 
     if token_credentials is None:
-        logger.warning(
-            "get_current_user: No token credentials provided (token is None)."
-        )
+        logger.warning("get_current_user: No token credentials provided (token is None).")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
@@ -325,9 +317,7 @@ async def get_current_user(
         )
 
     # --- DETAILED LOGGING BEFORE STATUS CHECK ---
-    logger.info(
-        f"GET_CURRENT_USER: Inspecting user object before status check. User: {user}"
-    )
+    logger.info(f"GET_CURRENT_USER: Inspecting user object before status check. User: {user}")
     logger.info(f"GET_CURRENT_USER: Type of user: {type(user)}")
     logger.info(f"GET_CURRENT_USER: Attributes of user (dir(user)): {dir(user)}")
     # --- END DETAILED LOGGING ---
@@ -348,9 +338,7 @@ async def get_current_user(
     try:
         logger.info(f"GET_CURRENT_USER: Attempting to access user.id: {user.id}")
         logger.info(f"GET_CURRENT_USER: Attempting to access user.email: {user.email}")
-        logger.info(
-            f"GET_CURRENT_USER: Attempting to access user.username: {user.username}"
-        )
+        logger.info(f"GET_CURRENT_USER: Attempting to access user.username: {user.username}")
         logger.info(f"GET_CURRENT_USER: Attempting to access user.roles: {user.roles}")
     except Exception as e_access:
         logger.error(
@@ -363,9 +351,7 @@ async def get_current_user(
         logger.warning(
             f"get_current_user: User {user.username} is not active. Status: {user.status}"
         )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
 
     logger.info(f"get_current_user: User {user.username} authenticated successfully.")
     return user
@@ -378,9 +364,7 @@ async def require_admin_role(current_user: CurrentUserDep) -> DomainUser:
     """Dependency that requires the current user to have the ADMIN role."""
     # Convert to set to ensure we can use role checking safely
     user_roles = (
-        set(current_user.roles)
-        if isinstance(current_user.roles, list)
-        else current_user.roles
+        set(current_user.roles) if isinstance(current_user.roles, list) else current_user.roles
     )
 
     if UserRole.ADMIN not in user_roles:
@@ -398,9 +382,7 @@ async def require_clinician_role(current_user: CurrentUserDep) -> DomainUser:
     """Dependency that requires the current user to have the CLINICIAN role."""
     # Convert to set to ensure we can use set operations safely
     user_roles_set = (
-        set(current_user.roles)
-        if isinstance(current_user.roles, list)
-        else current_user.roles
+        set(current_user.roles) if isinstance(current_user.roles, list) else current_user.roles
     )
     allowed_roles = {UserRole.CLINICIAN, UserRole.ADMIN}
 
@@ -421,9 +403,7 @@ async def get_current_active_user(
 ) -> DomainUser:
     """Dependency to get the current active user."""
     if current_user.status != UserStatus.ACTIVE:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Account is inactive"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Account is inactive")
     return current_user
 
 
@@ -439,9 +419,7 @@ def require_roles(required_roles: list[UserRole]):
         # The User domain entity should store roles as a set, but it might be a list in tests
         # Convert both to sets to ensure we can use set operations safely
         user_roles_set = (
-            set(current_user.roles)
-            if isinstance(current_user.roles, list)
-            else current_user.roles
+            set(current_user.roles) if isinstance(current_user.roles, list) else current_user.roles
         )
         required_roles_set = set(required_roles)
 
@@ -471,9 +449,7 @@ async def get_current_active_user_wrapper(
 
 
 async def get_optional_user(
-    token_credentials: Annotated[
-        HTTPAuthorizationCredentials | None, Depends(bearer_scheme)
-    ],
+    token_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     jwt_service: JWTServiceDep = None,
     user_repo: UserRepoDep = None,
     **kwargs,
@@ -563,9 +539,7 @@ async def require_patient_role(current_user: CurrentUserDep) -> DomainUser:
     """Dependency that requires the current user to have the PATIENT role."""
     # Convert to set to ensure we can use set operations safely
     user_roles_set = (
-        set(current_user.roles)
-        if isinstance(current_user.roles, list)
-        else current_user.roles
+        set(current_user.roles) if isinstance(current_user.roles, list) else current_user.roles
     )
     allowed_roles = {UserRole.PATIENT, UserRole.ADMIN}
 

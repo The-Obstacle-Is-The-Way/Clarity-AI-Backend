@@ -95,18 +95,14 @@ def app(mock_digital_twin_service: AsyncMock, mock_current_user: User) -> FastAP
 
     # Apply dependency overrides relevant for these unit tests
     app_instance.dependency_overrides[get_current_user] = lambda: mock_current_user
-    app_instance.dependency_overrides[
-        get_current_active_user
-    ] = lambda: mock_current_user
+    app_instance.dependency_overrides[get_current_active_user] = lambda: mock_current_user
 
     # Override the specific digital_twin_service dependency from the correct module
     from app.presentation.api.v1.dependencies.digital_twin import (
         get_digital_twin_service as dt_service_dep,
     )
 
-    app_instance.dependency_overrides[
-        dt_service_dep
-    ] = lambda: mock_digital_twin_service
+    app_instance.dependency_overrides[dt_service_dep] = lambda: mock_digital_twin_service
 
     # Direct import and mounting of the digital_twin router for tests
 
@@ -239,9 +235,7 @@ def sample_personalized_insight_response(sample_patient_id):
     now = datetime.now(UTC)
     return {
         "insight_id": str(uuid4()),
-        "digital_twin_id": str(
-            sample_patient_id
-        ),  # Use patient_id as twin_id for simplicity
+        "digital_twin_id": str(sample_patient_id),  # Use patient_id as twin_id for simplicity
         "patient_id": str(sample_patient_id),
         "query": "Summarize recent mood changes.",
         "insight_type": "clinical",
@@ -343,10 +337,8 @@ class TestDigitalTwinsEndpoints:
     ):
         """Test GET /digital-twins/digital-twin/{patient_id}/status with not found error."""
         # Setup the mock to raise ResourceNotFoundError
-        mock_digital_twin_service.get_digital_twin_status.side_effect = (
-            ResourceNotFoundError(
-                f"No digital twin found for patient {sample_patient_id}"
-            )
+        mock_digital_twin_service.get_digital_twin_status.side_effect = ResourceNotFoundError(
+            f"No digital twin found for patient {sample_patient_id}"
         )
 
         # Make request with corrected path
@@ -403,14 +395,12 @@ class TestDigitalTwinsEndpoints:
     ):
         """Test error handling for comprehensive insights generation."""
         # Configure the mock to raise our custom exception
-        mock_digital_twin_service.generate_comprehensive_patient_insights.side_effect = ModelExecutionError(
-            "Service unavailable"
+        mock_digital_twin_service.generate_comprehensive_patient_insights.side_effect = (
+            ModelExecutionError("Service unavailable")
         )
 
         # Define endpoint path
-        insights_url = (
-            f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/insights"
-        )
+        insights_url = f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/insights"
 
         # Create a simple client to test with different settings
         from fastapi.testclient import TestClient
@@ -418,15 +408,11 @@ class TestDigitalTwinsEndpoints:
         from app.factory import create_application
 
         settings = client.base_url
-        app_test = create_application(
-            include_test_routers=False, skip_auth_middleware=True
-        )
+        app_test = create_application(include_test_routers=False, skip_auth_middleware=True)
 
         # Add the same dependency overrides
 
-        app_test.dependency_overrides[
-            get_digital_twin_service
-        ] = lambda: mock_digital_twin_service
+        app_test.dependency_overrides[get_digital_twin_service] = lambda: mock_digital_twin_service
 
         from app.presentation.api.dependencies.auth import (
             get_current_active_user,
@@ -437,9 +423,7 @@ class TestDigitalTwinsEndpoints:
         )
 
         app_test.dependency_overrides[get_current_user] = lambda: mock_current_user
-        app_test.dependency_overrides[
-            get_current_active_user
-        ] = lambda: mock_current_user
+        app_test.dependency_overrides[get_current_active_user] = lambda: mock_current_user
 
         from app.presentation.api.v1.routes.digital_twin import router
 
@@ -496,9 +480,7 @@ class TestDigitalTwinsEndpoints:
         )
 
     @pytest.mark.asyncio
-    async def test_analyze_clinical_text_validation_error(
-        self, client, sample_patient_id
-    ):
+    async def test_analyze_clinical_text_validation_error(self, client, sample_patient_id):
         """Test POST /digital-twins/digital-twin/{patient_id}/analyze-text with validation error."""
         # Prepare invalid request body (missing required text field)
         request_data = {"analysis_type": "summary"}  # Missing required "text" field
@@ -532,9 +514,7 @@ class TestDigitalTwinsEndpoints:
         )
 
         # Define endpoint path
-        analysis_url = (
-            f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/analyze-text"
-        )
+        analysis_url = f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/analyze-text"
 
         # Create a simple client to test with different settings
         from fastapi.testclient import TestClient
@@ -542,15 +522,11 @@ class TestDigitalTwinsEndpoints:
         from app.factory import create_application
 
         settings = client.base_url
-        app_test = create_application(
-            include_test_routers=False, skip_auth_middleware=True
-        )
+        app_test = create_application(include_test_routers=False, skip_auth_middleware=True)
 
         # Add the same dependency overrides
 
-        app_test.dependency_overrides[
-            get_digital_twin_service
-        ] = lambda: mock_digital_twin_service
+        app_test.dependency_overrides[get_digital_twin_service] = lambda: mock_digital_twin_service
 
         from app.presentation.api.dependencies.auth import (
             get_current_active_user,
@@ -561,9 +537,7 @@ class TestDigitalTwinsEndpoints:
         )
 
         app_test.dependency_overrides[get_current_user] = lambda: mock_current_user
-        app_test.dependency_overrides[
-            get_current_active_user
-        ] = lambda: mock_current_user
+        app_test.dependency_overrides[get_current_active_user] = lambda: mock_current_user
 
         from app.presentation.api.v1.routes.digital_twin import router
 

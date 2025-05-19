@@ -12,16 +12,10 @@ from pydantic import BaseModel, ConfigDict, Field
 class PredictionMetadata(BaseModel):
     """Metadata about a specific prediction result."""
 
-    prediction_id: UUID = Field(
-        ..., description="Unique identifier for the prediction event."
-    )
-    model_id: str = Field(
-        ..., description="Identifier of the model used for the prediction."
-    )
+    prediction_id: UUID = Field(..., description="Unique identifier for the prediction event.")
+    model_id: str = Field(..., description="Identifier of the model used for the prediction.")
     model_version: str = Field(..., description="Version of the model used.")
-    timestamp: datetime = Field(
-        ..., description="Timestamp when the prediction was generated."
-    )
+    timestamp: datetime = Field(..., description="Timestamp when the prediction was generated.")
     input_features_summary: dict[str, Any] | None = Field(
         None, description="Summary or hash of the input features used."
     )

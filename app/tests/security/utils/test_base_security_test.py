@@ -33,9 +33,7 @@ class TestBaseSecurityTest(BaseSecurityTest):
         assert "clinician" in self.test_roles
         # Check fixtures assigned to self
         assert self.db_session is not None  # Instance of MockAsyncSession from fixture
-        assert (
-            self.entity_factory is not None
-        )  # Instance of MockEntityFactory from fixture
+        assert self.entity_factory is not None  # Instance of MockEntityFactory from fixture
         assert self.rbac is not None  # Instance of RoleBasedAccessControl from fixture
 
     def test_has_permission(self):
@@ -61,9 +59,7 @@ class TestBaseSecurityTest(BaseSecurityTest):
         # Basic check for mock token structure
         assert token.startswith("mock_token.{")
         assert f"'sub': '{self.test_user_id}'" in token
-        assert (
-            "'roles': ['user', 'clinician']" in token
-        )  # Based on BaseSecurityTest defaults
+        assert "'roles': ['user', 'clinician']" in token  # Based on BaseSecurityTest defaults
 
         # Test with custom values
         custom_user_id = "custom_user_123"

@@ -80,9 +80,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
         """
         # Get sequence model
         result = await self.session.execute(
-            sa.select(TemporalSequenceModel).where(
-                TemporalSequenceModel.sequence_id == sequence_id
-            )
+            sa.select(TemporalSequenceModel).where(TemporalSequenceModel.sequence_id == sequence_id)
         )
         sequence_model = result.scalars().first()
 
@@ -98,9 +96,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
         data_points = result.scalars().all()
 
         # Convert to domain entity
-        time_points = [
-            TimePoint(time_value=dp.timestamp, data=dp.values) for dp in data_points
-        ]
+        time_points = [TimePoint(time_value=dp.timestamp, data=dp.values) for dp in data_points]
 
         return TemporalSequence(
             sequence_id=sequence_model.sequence_id,
@@ -122,9 +118,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
         """
         # Get sequence models
         result = await self.session.execute(
-            sa.select(TemporalSequenceModel).where(
-                TemporalSequenceModel.patient_id == patient_id
-            )
+            sa.select(TemporalSequenceModel).where(TemporalSequenceModel.patient_id == patient_id)
         )
         sequence_models = result.scalars().all()
 
@@ -140,9 +134,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
             data_points = result.scalars().all()
 
             # Convert to domain entity
-            time_points = [
-                TimePoint(time_value=dp.timestamp, data=dp.values) for dp in data_points
-            ]
+            time_points = [TimePoint(time_value=dp.timestamp, data=dp.values) for dp in data_points]
 
             sequence = TemporalSequence(
                 sequence_id=seq_model.sequence_id,
@@ -174,9 +166,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
 
         # Delete sequence
         result = await self.session.execute(
-            sa.delete(TemporalSequenceModel).where(
-                TemporalSequenceModel.sequence_id == sequence_id
-            )
+            sa.delete(TemporalSequenceModel).where(TemporalSequenceModel.sequence_id == sequence_id)
         )
 
         return result.rowcount > 0
@@ -225,9 +215,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
         data_points = result.scalars().all()
 
         # Convert to domain entity
-        time_points = [
-            TimePoint(time_value=dp.timestamp, data=dp.values) for dp in data_points
-        ]
+        time_points = [TimePoint(time_value=dp.timestamp, data=dp.values) for dp in data_points]
 
         return TemporalSequence(
             sequence_id=latest_model.sequence_id,

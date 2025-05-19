@@ -41,9 +41,7 @@ async def get_encryption_service() -> BaseEncryptionService:
 
 async def get_patient_repository(
     db: AsyncSession = Depends(get_db_session),
-    encryption_service: BaseEncryptionService = Depends(
-        get_encryption_service
-    ),  # Use placeholder
+    encryption_service: BaseEncryptionService = Depends(get_encryption_service),  # Use placeholder
 ) -> PatientRepository:
     """
     Dependency provider for the PatientRepository.

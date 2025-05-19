@@ -53,9 +53,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
             Updated Digital Twin state
         """
         # Get latest digital twin state
-        current_state = await self._digital_twin_repository.get_latest_for_patient(
-            patient_id
-        )
+        current_state = await self._digital_twin_repository.get_latest_for_patient(patient_id)
         if not current_state:
             # Initialize new state if none exists
             current_state = await self.initialize_digital_twin(patient_id)
@@ -102,9 +100,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
                     brain_regions=[],  # PAT insights might not have specific brain regions
                     neurotransmitters=[],  # PAT insights might not have specific neurotransmitters
                     supporting_evidence=[f"Analysis of {data_source} actigraphy data"],
-                    recommended_actions=[
-                        insight.get("recommendation", "Review activity patterns")
-                    ],
+                    recommended_actions=[insight.get("recommendation", "Review activity patterns")],
                 )
                 insights.append(clinical_insight)
 
@@ -240,9 +236,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
             Updated Digital Twin state
         """
         # Get latest digital twin state
-        current_state = await self._digital_twin_repository.get_latest_for_patient(
-            patient_id
-        )
+        current_state = await self._digital_twin_repository.get_latest_for_patient(patient_id)
         if not current_state:
             # Initialize new state if none exists
             current_state = await self.initialize_digital_twin(patient_id)
@@ -283,9 +277,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
                     new_state.brain_state[region_str] = 0.5
 
                 # Adjust activation based on confidence and significance
-                significance_factor = self._get_significance_factor(
-                    insight.clinical_significance
-                )
+                significance_factor = self._get_significance_factor(insight.clinical_significance)
                 adjustment = 0.1 * significance_factor * insight.confidence
                 new_state.brain_state[region_str] = max(
                     0.1, min(0.9, new_state.brain_state[region_str] + adjustment)
@@ -318,40 +310,30 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
 
         # Get digital twin state
         if digital_twin_state_id:
-            twin_state = await self._digital_twin_repository.get_by_id(
-                digital_twin_state_id
-            )
+            twin_state = await self._digital_twin_repository.get_by_id(digital_twin_state_id)
             if not twin_state or twin_state.patient_id != patient_id:
                 raise ValueError(
                     f"Digital Twin state with ID {digital_twin_state_id} not found for patient {patient_id}"
                 )
         else:
-            twin_state = await self._digital_twin_repository.get_latest_for_patient(
-                patient_id
-            )
+            twin_state = await self._digital_twin_repository.get_latest_for_patient(patient_id)
             if not twin_state:
-                raise ValueError(
-                    f"No Digital Twin state found for patient {patient_id}"
-                )
+                raise ValueError(f"No Digital Twin state found for patient {patient_id}")
 
         # Extract relevant patient data for the ML services
-        diagnosis_codes = [
-            diagnosis.code for diagnosis in patient.diagnoses if diagnosis.is_active
-        ]
+        diagnosis_codes = [diagnosis.code for diagnosis in patient.diagnoses if diagnosis.is_active]
         current_medications = [med.name for med in patient.medications if med.is_active]
 
         # Create clinical history summary
         clinical_history = f"Patient {patient.full_name}, {patient.age} years old, with diagnoses: {', '.join(diagnosis_codes)}"
 
         # Generate recommendations from MentalLLaMA
-        llama_recommendations = (
-            await self._mentalllama_service.generate_treatment_recommendations(
-                patient_id=patient_id,
-                diagnosis_codes=diagnosis_codes,
-                current_medications=current_medications,
-                clinical_history=clinical_history,
-                digital_twin_state_id=twin_state.id,
-            )
+        llama_recommendations = await self._mentalllama_service.generate_treatment_recommendations(
+            patient_id=patient_id,
+            diagnosis_codes=diagnosis_codes,
+            current_medications=current_medications,
+            clinical_history=clinical_history,
+            digital_twin_state_id=twin_state.id,
         )
 
         # Create treatment options to evaluate with XGBoost
@@ -428,10 +410,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
             }
 
             # Add options if medication
-            if (
-                llama_rec["recommendation_type"] == "medication"
-                and "options" in llama_rec
-            ):
+            if llama_rec["recommendation_type"] == "medication" and "options" in llama_rec:
                 recommendation["options"] = llama_rec["options"]
 
             # Add frequency and duration if therapy
@@ -447,24 +426,22 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
                     key=lambda p: p.get("efficacy_prediction", {}).get("value", 0),
                 )
 
-                recommendation["predicted_efficacy"] = best_pred.get(
-                    "efficacy_prediction", {}
-                ).get("value")
+                recommendation["predicted_efficacy"] = best_pred.get("efficacy_prediction", {}).get(
+                    "value"
+                )
                 recommendation["predicted_side_effects"] = best_pred.get(
                     "side_effect_prediction", {}
                 ).get("value")
                 recommendation["predicted_adherence"] = best_pred.get(
                     "adherence_prediction", {}
                 ).get("value")
-                recommendation["time_to_response"] = best_pred.get(
-                    "time_to_response", {}
-                ).get("value")
+                recommendation["time_to_response"] = best_pred.get("time_to_response", {}).get(
+                    "value"
+                )
 
             # Add rationale if requested
             if include_rationale:
-                recommendation["rationale"] = llama_rec.get(
-                    "rationale", "Clinical best practice"
-                )
+                recommendation["rationale"] = llama_rec.get("rationale", "Clinical best practice")
 
             combined_recommendations.append(recommendation)
 
@@ -489,21 +466,15 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
         """
         # Get digital twin state
         if digital_twin_state_id:
-            twin_state = await self._digital_twin_repository.get_by_id(
-                digital_twin_state_id
-            )
+            twin_state = await self._digital_twin_repository.get_by_id(digital_twin_state_id)
             if not twin_state or twin_state.patient_id != patient_id:
                 raise ValueError(
                     f"Digital Twin state with ID {digital_twin_state_id} not found for patient {patient_id}"
                 )
         else:
-            twin_state = await self._digital_twin_repository.get_latest_for_patient(
-                patient_id
-            )
+            twin_state = await self._digital_twin_repository.get_latest_for_patient(patient_id)
             if not twin_state:
-                raise ValueError(
-                    f"No Digital Twin state found for patient {patient_id}"
-                )
+                raise ValueError(f"No Digital Twin state found for patient {patient_id}")
 
         # Generate visualization data based on type
         if visualization_type == "brain_model":
@@ -536,9 +507,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
                     "name": region.name.replace("_", " ").title(),
                     "activation": activation,
                     "highlighted": region in regions_of_interest,
-                    "coordinates": self._get_region_coordinates(
-                        region
-                    ),  # Mock coordinates
+                    "coordinates": self._get_region_coordinates(region),  # Mock coordinates
                 }
                 visualization_data["brain_regions"].append(region_data)
 
@@ -546,13 +515,9 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
             # This would be much more sophisticated in a real implementation
             for i, region1 in enumerate(activations.keys()):
                 for j, region2 in enumerate(activations.keys()):
-                    if i < j and (
-                        region1 in regions_of_interest or region2 in regions_of_interest
-                    ):
+                    if i < j and (region1 in regions_of_interest or region2 in regions_of_interest):
                         # Only add connections for highlighted regions
-                        if (
-                            random.random() < 0.3
-                        ):  # Only add some connections to avoid clutter
+                        if random.random() < 0.3:  # Only add some connections to avoid clutter
                             connectivity = {
                                 "source": region1.name,
                                 "target": region2.name,
@@ -596,9 +561,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
                                 "value": metric_value
                                 if not isinstance(metric_value, dict)
                                 else None,
-                                "data": metric_value
-                                if isinstance(metric_value, dict)
-                                else None,
+                                "data": metric_value if isinstance(metric_value, dict) else None,
                             }
                         )
 
@@ -637,9 +600,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
             Updated Digital Twin state
         """
         # Get latest digital twin state
-        current_state = await self._digital_twin_repository.get_latest_for_patient(
-            patient_id
-        )
+        current_state = await self._digital_twin_repository.get_latest_for_patient(patient_id)
         if not current_state:
             # Initialize new state if none exists
             current_state = await self.initialize_digital_twin(patient_id)
@@ -669,9 +630,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
                     new_state.brain_state[region_str] = 0.5
 
                 # Adjust activation based on confidence and significance
-                significance_factor = self._get_significance_factor(
-                    insight.clinical_significance
-                )
+                significance_factor = self._get_significance_factor(insight.clinical_significance)
                 adjustment = 0.1 * significance_factor * insight.confidence
                 new_state.brain_state[region_str] = max(
                     0.1, min(0.9, new_state.brain_state[region_str] + adjustment)
@@ -680,9 +639,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
         # Save and return the new state
         return await self._digital_twin_repository.save(new_state)
 
-    async def compare_states(
-        self, patient_id: UUID, state_id_1: UUID, state_id_2: UUID
-    ) -> dict:
+    async def compare_states(self, patient_id: UUID, state_id_1: UUID, state_id_2: UUID) -> dict:
         """
         Compare two Digital Twin states to identify changes.
 
@@ -722,9 +679,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
                 "timestamp": state_2.timestamp.isoformat(),
                 "version": state_2.version,
             },
-            "time_between_states": (
-                state_2.timestamp - state_1.timestamp
-            ).total_seconds(),
+            "time_between_states": (state_2.timestamp - state_1.timestamp).total_seconds(),
             "brain_state_changes": [],
             "new_insights": [],
             "clinical_metrics_changes": [],
@@ -801,9 +756,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
                                 if isinstance(value_1, (int, float))
                                 and isinstance(value_2, (int, float))
                                 else None,
-                                "percent_change": round(
-                                    ((value_2 - value_1) / value_1) * 100, 1
-                                )
+                                "percent_change": round(((value_2 - value_1) / value_1) * 100, 1)
                                 if isinstance(value_1, (int, float))
                                 and isinstance(value_2, (int, float))
                                 and value_1
@@ -850,9 +803,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
             raise ValueError(f"Patient with ID {patient_id} not found")
 
         # Get latest digital twin state
-        latest_state = await self._digital_twin_repository.get_latest_for_patient(
-            patient_id
-        )
+        latest_state = await self._digital_twin_repository.get_latest_for_patient(patient_id)
         if not latest_state:
             raise ValueError(f"No Digital Twin state found for patient {patient_id}")
 
@@ -879,9 +830,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
         # Use MentalLLaMA to generate a patient history summary
         focus_areas = ["medication", "therapy", "symptoms"]
         if time_range and start_date and end_date:
-            time_range_str = (
-                f"{start_date.date().isoformat()} to {end_date.date().isoformat()}"
-            )
+            time_range_str = f"{start_date.date().isoformat()} to {end_date.date().isoformat()}"
         else:
             time_range_str = "all"
 
@@ -926,14 +875,10 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
             clinical_data = {
                 "age": patient.age,
                 "diagnoses": [
-                    {"code": d.code, "name": d.name}
-                    for d in patient.diagnoses
-                    if d.is_active
+                    {"code": d.code, "name": d.name} for d in patient.diagnoses if d.is_active
                 ],
                 "medications": [
-                    {"name": m.name, "dosage": m.dosage}
-                    for m in patient.medications
-                    if m.is_active
+                    {"name": m.name, "dosage": m.dosage} for m in patient.medications if m.is_active
                 ],
             }
 
@@ -976,9 +921,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
                 "timestamp": latest_state.timestamp.isoformat(),
             },
             "significant_insights": significant_insights,
-            "treatment_recommendations": treatment_recommendations
-            if include_predictions
-            else [],
+            "treatment_recommendations": treatment_recommendations if include_predictions else [],
             "risk_assessment": risk_predictions if include_predictions else {},
             "generated_timestamp": datetime.now().isoformat(),
         }
@@ -993,9 +936,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
                         "type": "medication",
                         "name": med.name,
                         "dosage": med.dosage,
-                        "start_date": med.start_date.isoformat()
-                        if med.start_date
-                        else None,
+                        "start_date": med.start_date.isoformat() if med.start_date else None,
                         "end_date": med.end_date.isoformat() if med.end_date else None,
                         "status": "active" if med.is_active else "inactive",
                     }
@@ -1007,9 +948,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
                 {
                     "type": "therapy",
                     "name": "Cognitive Behavioral Therapy",
-                    "start_date": (datetime.now() - timedelta(days=60))
-                    .date()
-                    .isoformat(),
+                    "start_date": (datetime.now() - timedelta(days=60)).date().isoformat(),
                     "frequency": "weekly",
                     "status": "active",
                 }
@@ -1019,9 +958,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
 
         return summary
 
-    async def process_treatment_event(
-        self, patient_id: UUID, event_data: dict[str, Any]
-    ) -> Any:
+    async def process_treatment_event(self, patient_id: UUID, event_data: dict[str, Any]) -> Any:
         """Stub treatment event processing: appends to treatment_history."""
         prev = await self._digital_twin_repository.get_latest_state(patient_id)
         version = (getattr(prev, "version", 1) or 1) + 1
@@ -1041,9 +978,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
     ) -> list[dict[str, Any]]:
         """Stub recommendations with at least one medication and one therapy."""
         recs = []
-        recs.append(
-            {"type": "medication", "name": "Sertraline", "rationale": "Standard SSRI"}
-        )
+        recs.append({"type": "medication", "name": "Sertraline", "rationale": "Standard SSRI"})
         if include_therapy_options:
             recs.append(
                 {

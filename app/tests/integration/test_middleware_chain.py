@@ -92,9 +92,7 @@ class TestMiddlewareChain:
         assert response.status_code == 401
 
         # With test auth headers
-        auth_headers = {
-            "X-Test-Auth-Bypass": "ADMIN:00000000-0000-0000-0000-000000000001"
-        }
+        auth_headers = {"X-Test-Auth-Bypass": "ADMIN:00000000-0000-0000-0000-000000000001"}
         response = test_client.get("/api/v1/users/me", headers=auth_headers)
         assert response.status_code == 200
         assert response.json()["id"] == "test-user-id"

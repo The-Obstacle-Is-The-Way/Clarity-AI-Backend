@@ -99,9 +99,7 @@ class PATService:
                 try:
                     for device in physical_devices:
                         tf.config.experimental.set_memory_growth(device, True)
-                    logger.info(
-                        f"GPU acceleration enabled with {len(physical_devices)} devices"
-                    )
+                    logger.info(f"GPU acceleration enabled with {len(physical_devices)} devices")
                 except Exception as e:
                     logger.warning(f"Error configuring GPU: {e}")
             else:
@@ -118,9 +116,7 @@ class PATService:
             return
 
         try:
-            logger.info(
-                f"Loading PAT model (size: {self.model_size.value}) from {self.model_path}"
-            )
+            logger.info(f"Loading PAT model (size: {self.model_size.value}) from {self.model_path}")
 
             # Check if model path exists
             if not os.path.exists(self.model_path):
@@ -165,9 +161,7 @@ class PATService:
                 z_values = []
 
                 for entry in raw_data:
-                    timestamps.append(
-                        datetime.fromisoformat(entry["timestamp"]).timestamp()
-                    )
+                    timestamps.append(datetime.fromisoformat(entry["timestamp"]).timestamp())
                     x_values.append(float(entry["x"]))
                     y_values.append(float(entry["y"]))
                     z_values.append(float(entry["z"]))
@@ -265,9 +259,7 @@ class PATService:
             # Cache results if enabled
             if cache_results and cache_key:
                 try:
-                    with open(
-                        os.path.join(self.cache_dir, f"{cache_key}.json"), "w"
-                    ) as f:
+                    with open(os.path.join(self.cache_dir, f"{cache_key}.json"), "w") as f:
                         json.dump(results, f)
                 except Exception as e:
                     logger.warning(f"Failed to cache results: {e}")
@@ -311,21 +303,13 @@ class PATService:
 
         # Process based on analysis type
         if analysis_type == AnalysisType.SLEEP_QUALITY:
-            results = await self._process_sleep_quality(
-                predictions, results, patient_metadata
-            )
+            results = await self._process_sleep_quality(predictions, results, patient_metadata)
         elif analysis_type == AnalysisType.ACTIVITY_PATTERNS:
-            results = await self._process_activity_patterns(
-                predictions, results, patient_metadata
-            )
+            results = await self._process_activity_patterns(predictions, results, patient_metadata)
         elif analysis_type == AnalysisType.CIRCADIAN_RHYTHM:
-            results = await self._process_circadian_rhythm(
-                predictions, results, patient_metadata
-            )
+            results = await self._process_circadian_rhythm(predictions, results, patient_metadata)
         elif analysis_type == AnalysisType.ENERGY_EXPENDITURE:
-            results = await self._process_energy_expenditure(
-                predictions, results, patient_metadata
-            )
+            results = await self._process_energy_expenditure(predictions, results, patient_metadata)
         elif analysis_type == AnalysisType.MENTAL_STATE_CORRELATION:
             results = await self._process_mental_state_correlation(
                 predictions, results, patient_metadata
@@ -480,9 +464,7 @@ class PATService:
 
         results["metrics"] = {
             "total_daily_energy_expenditure": int(np.random.normal(2200, 300)),  # kcal
-            "base_metabolic_rate": int(bmr)
-            if bmr
-            else int(np.random.normal(1500, 200)),  # kcal
+            "base_metabolic_rate": int(bmr) if bmr else int(np.random.normal(1500, 200)),  # kcal
             "active_energy_expenditure": int(np.random.normal(700, 200)),  # kcal
             "activity_level_factor": float(np.random.normal(1.5, 0.2)),
             "peak_energy_hour": int(np.random.normal(14, 2)),
@@ -519,9 +501,7 @@ class PATService:
             "activity_mood_correlation": float(np.random.normal(0.6, 0.2)),
             "sleep_anxiety_correlation": float(np.random.normal(-0.5, 0.2)),
             "circadian_stability_mood_correlation": float(np.random.normal(0.55, 0.15)),
-            "activity_variability_stress_correlation": float(
-                np.random.normal(0.4, 0.15)
-            ),
+            "activity_variability_stress_correlation": float(np.random.normal(0.4, 0.15)),
             "depression_risk_score": float(np.random.normal(0.3, 0.2)),
             "anxiety_risk_score": float(np.random.normal(0.35, 0.2)),
         }
@@ -579,9 +559,7 @@ class PATService:
             "pre_post_sleep_change": float(np.random.normal(0.2, 0.1)),
             "pre_post_circadian_change": float(np.random.normal(0.1, 0.05)),
             "side_effect_probability": float(np.random.normal(0.25, 0.15)),
-            "response_trajectory": "improving"
-            if np.random.random() > 0.3
-            else "stable",
+            "response_trajectory": "improving" if np.random.random() > 0.3 else "stable",
             "days_to_observable_change": int(np.random.normal(14, 5)),
         }
 
@@ -592,36 +570,24 @@ class PATService:
         results["insights"].append(f"Analysis of response to {medication_name}:")
 
         if activity_change > 0.2:
-            results["insights"].append(
-                "Significant positive change in activity patterns observed."
-            )
+            results["insights"].append("Significant positive change in activity patterns observed.")
         elif activity_change > 0.1:
-            results["insights"].append(
-                "Moderate positive change in activity patterns observed."
-            )
+            results["insights"].append("Moderate positive change in activity patterns observed.")
         elif activity_change < -0.1:
             results["insights"].append(
                 "Negative change in activity patterns observed. Consider clinical review."
             )
-            results["warnings"].append(
-                "Potential negative medication effect on activity detected."
-            )
+            results["warnings"].append("Potential negative medication effect on activity detected.")
 
         if sleep_change > 0.2:
-            results["insights"].append(
-                "Significant improvement in sleep patterns observed."
-            )
+            results["insights"].append("Significant improvement in sleep patterns observed.")
         elif sleep_change > 0.1:
-            results["insights"].append(
-                "Moderate improvement in sleep patterns observed."
-            )
+            results["insights"].append("Moderate improvement in sleep patterns observed.")
         elif sleep_change < -0.1:
             results["insights"].append(
                 "Negative impact on sleep patterns observed. Consider clinical review."
             )
-            results["warnings"].append(
-                "Potential negative medication effect on sleep detected."
-            )
+            results["warnings"].append("Potential negative medication effect on sleep detected.")
 
         # Add confidence score
         results["confidence_score"] = float(np.random.normal(0.7, 0.1))

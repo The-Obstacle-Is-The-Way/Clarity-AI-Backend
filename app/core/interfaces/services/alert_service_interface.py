@@ -171,8 +171,6 @@ class AlertServiceInterface(ABC):
         pass
 
     @abstractmethod
-    async def list_rules(
-        self, user_id: str | None = None
-    ) -> list[BiometricAlertRule]:
+    async def list_rules(self, user_id: str | None = None) -> list[BiometricAlertRule]:
         """List alert rules, optionally filtered by user."""
         pass

@@ -63,9 +63,7 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
             return None
 
         # Sort by version (descending) and return the first one
-        return sorted(
-            self._states[patient_id_str], key=lambda s: s.version, reverse=True
-        )[0]
+        return sorted(self._states[patient_id_str], key=lambda s: s.version, reverse=True)[0]
 
     async def create_digital_twin(self, twin_data: dict[str, Any]) -> dict[str, Any]:
         """
@@ -94,9 +92,7 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
 
         return digital_twin
 
-    async def get_digital_twin(
-        self, twin_id: str | UUID
-    ) -> dict[str, Any] | None:
+    async def get_digital_twin(self, twin_id: str | UUID) -> dict[str, Any] | None:
         """
         Get a digital twin by ID.
 
@@ -154,9 +150,7 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
 
         return True
 
-    async def list_digital_twins(
-        self, user_id: str | UUID | None = None
-    ) -> list[dict[str, Any]]:
+    async def list_digital_twins(self, user_id: str | UUID | None = None) -> list[dict[str, Any]]:
         """
         List all digital twins, optionally filtered by user ID.
 
@@ -172,11 +166,7 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
         user_id_str = str(user_id)
 
         # Filter by user ID
-        return [
-            twin
-            for twin in self._digital_twins.values()
-            if twin.get("user_id") == user_id_str
-        ]
+        return [twin for twin in self._digital_twins.values() if twin.get("user_id") == user_id_str]
 
     async def create_session(
         self, twin_id: str | UUID, session_data: dict[str, Any]
@@ -214,9 +204,7 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
 
         return session
 
-    async def get_session(
-        self, session_id: str | UUID
-    ) -> dict[str, Any] | None:
+    async def get_session(self, session_id: str | UUID) -> dict[str, Any] | None:
         """
         Get a session by ID.
 
@@ -281,9 +269,7 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
 
         return session
 
-    async def end_session(
-        self, session_id: str | UUID
-    ) -> dict[str, Any] | None:
+    async def end_session(self, session_id: str | UUID) -> dict[str, Any] | None:
         """
         End a session.
 

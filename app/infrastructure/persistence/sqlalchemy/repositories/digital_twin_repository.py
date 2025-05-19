@@ -90,13 +90,9 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
         # Handle datetime deserialization
         if state_json.get("last_sync_time"):
             try:
-                state_json["last_sync_time"] = datetime.fromisoformat(
-                    state_json["last_sync_time"]
-                )
+                state_json["last_sync_time"] = datetime.fromisoformat(state_json["last_sync_time"])
             except (TypeError, ValueError):
-                logger.warning(
-                    "Could not parse last_sync_time from JSON, setting to None."
-                )
+                logger.warning("Could not parse last_sync_time from JSON, setting to None.")
                 state_json["last_sync_time"] = None
         return DigitalTwinState(**state_json)
 
@@ -130,9 +126,7 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
 
     async def get_by_patient_id(self, patient_id: UUID) -> DigitalTwin | None:
         """Get a digital twin by the patient's ID."""
-        stmt = select(DigitalTwinModel).where(
-            DigitalTwinModel.patient_id == str(patient_id)
-        )
+        stmt = select(DigitalTwinModel).where(DigitalTwinModel.patient_id == str(patient_id))
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
         if model:
@@ -143,9 +137,7 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
         """Update an existing digital twin."""
         model = await self.session.get(DigitalTwinModel, str(digital_twin.id))
         if not model:
-            logger.warning(
-                f"DigitalTwin with ID {digital_twin.id} not found for update."
-            )
+            logger.warning(f"DigitalTwin with ID {digital_twin.id} not found for update.")
             raise ValueError(
                 f"DigitalTwin with ID {digital_twin.id} not found"
             )  # Or a custom domain exception
@@ -163,9 +155,7 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
             return self._to_entity(model)
         except Exception as e:
             await self.session.rollback()
-            logger.error(
-                f"Error updating DigitalTwin ID {model.id}: {e}", exc_info=True
-            )
+            logger.error(f"Error updating DigitalTwin ID {model.id}: {e}", exc_info=True)
             raise
 
     async def delete(self, twin_id: UUID) -> bool:

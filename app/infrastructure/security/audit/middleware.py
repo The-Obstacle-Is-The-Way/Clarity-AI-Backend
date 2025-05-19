@@ -204,16 +204,13 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
                             actor_id=user_id,
                             resource_type=resource_type or "api_resource",
                             resource_id=resource_id or "unknown",
-                            patient_id=resource_id
-                            or "unknown",  # Add patient_id parameter
+                            patient_id=resource_id or "unknown",  # Add patient_id parameter
                             action=action,
                             status=access_status,
                             metadata={
                                 "path": path,
                                 "method": method,
-                                "user_agent": request_context.get(
-                                    "user_agent", "unknown"
-                                ),
+                                "user_agent": request_context.get("user_agent", "unknown"),
                             },
                             ip_address=request_context.get("ip_address"),
                             reason="API request",
@@ -243,17 +240,14 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
                             actor_id=user_id,
                             resource_type=resource_type or "api_resource",
                             resource_id=resource_id or "unknown",
-                            patient_id=resource_id
-                            or "unknown",  # Add patient_id parameter
+                            patient_id=resource_id or "unknown",  # Add patient_id parameter
                             action=action,
                             status=access_status,
                             metadata={
                                 "path": path,
                                 "method": method,
                                 "error": str(e),
-                                "user_agent": request_context.get(
-                                    "user_agent", "unknown"
-                                ),
+                                "user_agent": request_context.get("user_agent", "unknown"),
                             },
                             ip_address=request_context.get("ip_address"),
                             reason="API request (failed)",
@@ -287,9 +281,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
                 # Safely get 'id' attribute and convert to string
                 user_id_val = getattr(user, "id", None)
                 return str(user_id_val) if user_id_val is not None else None
-        except (
-            AttributeError
-        ):  # Should ideally not be hit if getattr is used, but good for safety
+        except AttributeError:  # Should ideally not be hit if getattr is used, but good for safety
             logger.warning(
                 "Attempted to access 'id' on user object without it or user object not as expected in AuditLogMiddleware._extract_user_id"
             )
@@ -320,9 +312,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         phi_match = re.search(r"/api/v\d+/([\w-]+)/([^/]+)/phi/?$", path)
         if phi_match:
             resource_type = phi_match.group(1)
-            resource_id = phi_match.group(2).rstrip(
-                "/"
-            )  # ID is mandatory, rstrip just in case
+            resource_id = phi_match.group(2).rstrip("/")  # ID is mandatory, rstrip just in case
             return resource_type, resource_id
 
         # Priority 2: Match generic resource patterns like /api/vX/resource-type[/optional-id][/...anything_else...]
@@ -376,10 +366,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             bool: True if auditing should be skipped
         """
         # Skip static files, docs, etc.
-        if any(
-            path.startswith(skip_path) or path == skip_path
-            for skip_path in self.skip_paths
-        ):
+        if any(path.startswith(skip_path) or path == skip_path for skip_path in self.skip_paths):
             return True
 
         # Skip static asset paths

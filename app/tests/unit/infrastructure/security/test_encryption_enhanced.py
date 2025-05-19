@@ -161,12 +161,10 @@ class TestEnhancedEncryptionService:
         encrypted = encryption_service.encrypt_dict(data)
 
         # Verify sensitive fields are encrypted (check format)
-        assert isinstance(encrypted["patient_id"], str) and encrypted[
-            "patient_id"
-        ].startswith("v1:")
-        assert isinstance(encrypted["name"], str) and encrypted["name"].startswith(
+        assert isinstance(encrypted["patient_id"], str) and encrypted["patient_id"].startswith(
             "v1:"
         )
+        assert isinstance(encrypted["name"], str) and encrypted["name"].startswith("v1:")
         assert isinstance(encrypted["ssn"], str) and encrypted["ssn"].startswith("v1:")
         assert isinstance(
             encrypted["address"], dict
@@ -187,20 +185,18 @@ class TestEnhancedEncryptionService:
         assert isinstance(encrypted["medications"], list)
         assert len(encrypted["medications"]) == 2
         assert isinstance(encrypted["medications"][0], dict)
-        assert isinstance(encrypted["medications"][0]["name"], str) and encrypted[
-            "medications"
-        ][0]["name"].startswith("v1:")
-        assert isinstance(encrypted["medications"][0]["dosage"], str) and encrypted[
-            "medications"
-        ][0]["dosage"].startswith("v1:")
+        assert isinstance(encrypted["medications"][0]["name"], str) and encrypted["medications"][0][
+            "name"
+        ].startswith("v1:")
+        assert isinstance(encrypted["medications"][0]["dosage"], str) and encrypted["medications"][
+            0
+        ]["dosage"].startswith("v1:")
 
         # Decrypt the data
         decrypted = encryption_service.decrypt_dict(encrypted)
 
         # Verify decrypted data matches original (deep comparison might be needed)
-        assert (
-            decrypted == data
-        )  # Simple comparison works if structure and values match
+        assert decrypted == data  # Simple comparison works if structure and values match
 
     def test_key_rotation(self):
         """Test encryption key rotation using fixed test keys."""
@@ -262,9 +258,7 @@ class TestEnhancedEncryptionService:
         assert decrypted_file.exists()
         assert decrypted_file.read_text() == test_content
 
-    def test_encrypt_file_nonexistent(
-        self, encryption_service: BaseEncryptionService, tmp_path
-    ):
+    def test_encrypt_file_nonexistent(self, encryption_service: BaseEncryptionService, tmp_path):
         """Test encrypting a nonexistent file raises FileNotFoundError."""
         nonexistent_file = tmp_path / "nonexistent.txt"
         output_file = tmp_path / "output.bin"
@@ -273,9 +267,7 @@ class TestEnhancedEncryptionService:
         with pytest.raises(FileNotFoundError):
             encryption_service.encrypt_file(str(nonexistent_file), str(output_file))
 
-    def test_decrypt_file_nonexistent(
-        self, encryption_service: BaseEncryptionService, tmp_path
-    ):
+    def test_decrypt_file_nonexistent(self, encryption_service: BaseEncryptionService, tmp_path):
         """Test decrypting a nonexistent file raises FileNotFoundError."""
         nonexistent_file = tmp_path / "nonexistent.bin"
         output_file = tmp_path / "output.txt"
@@ -295,9 +287,5 @@ class TestEnhancedEncryptionService:
         invalid_encrypted_file.write_bytes(b"This is not a valid Fernet token")
 
         # Attempt to decrypt an invalid file
-        with pytest.raises(
-            ValueError, match=r"Decryption failed for file.*invalid token"
-        ):
-            encryption_service.decrypt_file(
-                str(invalid_encrypted_file), str(output_file)
-            )
+        with pytest.raises(ValueError, match=r"Decryption failed for file.*invalid token"):
+            encryption_service.decrypt_file(str(invalid_encrypted_file), str(output_file))

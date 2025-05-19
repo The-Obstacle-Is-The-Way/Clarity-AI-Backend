@@ -141,9 +141,7 @@ class GeneMedicationModel(BaseModel):
             with open(db_path) as f:
                 self.interaction_db = json.load(f)
 
-            self.logger.info(
-                f"Successfully loaded gene-medication model from {self.model_path}"
-            )
+            self.logger.info(f"Successfully loaded gene-medication model from {self.model_path}")
 
         except Exception as e:
             self.logger.error(f"Failed to load gene-medication model: {e!s}")
@@ -288,9 +286,7 @@ class GeneMedicationModel(BaseModel):
         """
         try:
             # Ensure models are loaded
-            if not all(
-                [self.response_model, self.side_effect_model, self.interaction_model]
-            ):
+            if not all([self.response_model, self.side_effect_model, self.interaction_model]):
                 raise ValueError("Models are not initialized")
 
             features = preprocessed_data["features"]
@@ -427,9 +423,7 @@ class GeneMedicationModel(BaseModel):
 
         return interactions
 
-    def _generate_recommendations(
-        self, medication_predictions: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _generate_recommendations(self, medication_predictions: dict[str, Any]) -> dict[str, Any]:
         """
         Generate medication recommendations based on predictions.
 
@@ -468,9 +462,7 @@ class GeneMedicationModel(BaseModel):
                     interaction_penalty += 0.05
 
             # Overall score (response is more important than side effects)
-            overall_score = (
-                (response_score * 0.6) + (side_effect_score * 0.4) - interaction_penalty
-            )
+            overall_score = (response_score * 0.6) + (side_effect_score * 0.4) - interaction_penalty
 
             medication_scores[medication] = {
                 "overall_score": overall_score,
@@ -565,9 +557,7 @@ class GeneMedicationModel(BaseModel):
             elif prediction["side_effect_risk"]["low"] > 0.7:
                 rationale = f"Low predicted risk of side effects with {medication}"
             else:
-                rationale = (
-                    f"Balanced profile of efficacy and tolerability for {medication}"
-                )
+                rationale = f"Balanced profile of efficacy and tolerability for {medication}"
 
             # Add interaction information if present
             if len(prediction["interactions"]) > 0:
@@ -575,9 +565,7 @@ class GeneMedicationModel(BaseModel):
 
         return rationale
 
-    def _generate_genetic_insights(
-        self, genetic_markers: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+    def _generate_genetic_insights(self, genetic_markers: dict[str, Any]) -> list[dict[str, Any]]:
         """
         Generate insights based on genetic markers.
 
@@ -770,9 +758,7 @@ class GeneMedicationModel(BaseModel):
                 y_val_side_effects = validation_data["side_effect_labels"]
 
                 val_response_accuracy = self.response_model.score(X_val, y_val_response)
-                val_side_effect_accuracy = self.side_effect_model.score(
-                    X_val, y_val_side_effects
-                )
+                val_side_effect_accuracy = self.side_effect_model.score(X_val, y_val_side_effects)
 
                 metrics["validation"] = {
                     "response_model": {"accuracy": val_response_accuracy},

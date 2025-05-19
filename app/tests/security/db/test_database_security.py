@@ -7,9 +7,7 @@ from app.infrastructure.security.encryption.base_encryption_service import (
 
 class TestDatabaseSecurity:
     def setup_method(self):
-        self.encryption_service = BaseEncryptionService(
-            direct_key="test_key_for_db_sec"
-        )
+        self.encryption_service = BaseEncryptionService(direct_key="test_key_for_db_sec")
 
     def test_database_encryption(self):
         """

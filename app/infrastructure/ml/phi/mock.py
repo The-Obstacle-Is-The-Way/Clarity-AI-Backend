@@ -48,9 +48,7 @@ class MockPHIDetection(PHIDetectionInterface):  # Corrected class name and inher
         """
         try:
             if config is None or not isinstance(config, dict):
-                raise InvalidConfigurationError(
-                    "Invalid configuration: must be a dictionary"
-                )
+                raise InvalidConfigurationError("Invalid configuration: must be a dictionary")
 
             self._config = config
             self._detection_level = config.get("detection_level", "strict").lower()
@@ -93,9 +91,7 @@ class MockPHIDetection(PHIDetectionInterface):  # Corrected class name and inher
         self._config = None
         logger.info("Mock PHI detection service shut down")
 
-    def detect_phi(
-        self, text: str, detection_level: str | None = None, **kwargs
-    ) -> dict[str, Any]:
+    def detect_phi(self, text: str, detection_level: str | None = None, **kwargs) -> dict[str, Any]:
         """
         Detect PHI in text.
 
@@ -115,9 +111,7 @@ class MockPHIDetection(PHIDetectionInterface):  # Corrected class name and inher
 
         # Validate text input
         if not isinstance(text, str) or not text.strip():
-            raise InvalidRequestError(
-                "Invalid request: text must be a non-empty string"
-            )
+            raise InvalidRequestError("Invalid request: text must be a non-empty string")
 
         # Validate detection level
         if detection_level is not None and detection_level.lower() not in [
@@ -193,9 +187,7 @@ class MockPHIDetection(PHIDetectionInterface):  # Corrected class name and inher
 
         # Validate input for redaction
         if not isinstance(text, str) or not text.strip():
-            raise InvalidRequestError(
-                "Invalid request: text must be a non-empty string"
-            )
+            raise InvalidRequestError("Invalid request: text must be a non-empty string")
         if detection_level is not None and detection_level.lower() not in [
             "minimal",
             "moderate",
@@ -351,11 +343,7 @@ class MockPHIDetection(PHIDetectionInterface):  # Corrected class name and inher
                 re.compile(r"\b\d{3}[.-]\d{3}[.-]\d{4}\b"),  # Phone: 123-456-7890
                 re.compile(r"\b\(\d{3}\)\s*\d{3}[.-]\d{4}\b"),  # Phone: (123) 456-7890
             ],
-            "EMAIL": [
-                re.compile(
-                    r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
-                )  # Email
-            ],
+            "EMAIL": [re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")],  # Email
             "SSN": [re.compile(r"\b\d{3}[.-]\d{2}[.-]\d{4}\b")],  # SSN: 123-45-6789
             "ADDRESS": [
                 re.compile(
@@ -363,22 +351,14 @@ class MockPHIDetection(PHIDetectionInterface):  # Corrected class name and inher
                     re.IGNORECASE,
                 )  # Street address
             ],
-            "ZIP_CODE": [
-                re.compile(r"\b\d{5}(?:-\d{4})?\b")  # ZIP code: 12345 or 12345-6789
-            ],
-            "CITY_STATE": [
-                re.compile(r"\b[A-Za-z\s]+,\s+[A-Z]{2}\b")  # City, State: New York, NY
-            ],
+            "ZIP_CODE": [re.compile(r"\b\d{5}(?:-\d{4})?\b")],  # ZIP code: 12345 or 12345-6789
+            "CITY_STATE": [re.compile(r"\b[A-Za-z\s]+,\s+[A-Z]{2}\b")],  # City, State: New York, NY
             "MEDICAL_RECORD": [
                 re.compile(r"\bMR[N#]\s*\d+\b"),  # Medical record: MRN 123456
-                re.compile(
-                    r"\bPatient\s+ID\s*[:=]?\s*\d+\b", re.IGNORECASE
-                ),  # Patient ID
+                re.compile(r"\bPatient\s+ID\s*[:=]?\s*\d+\b", re.IGNORECASE),  # Patient ID
             ],
             "HEALTH_PLAN": [
-                re.compile(
-                    r"\b[A-Za-z]+\s+Health\s+Plan\b", re.IGNORECASE
-                ),  # Health plan
+                re.compile(r"\b[A-Za-z]+\s+Health\s+Plan\b", re.IGNORECASE),  # Health plan
                 re.compile(
                     r"\bInsurance\s+ID\s*[:=]?\s*[A-Z0-9]+\b", re.IGNORECASE
                 ),  # Insurance ID
@@ -394,27 +374,17 @@ class MockPHIDetection(PHIDetectionInterface):  # Corrected class name and inher
         """
         return {
             "NAME": [re.compile(r"\b[A-Z][a-z]+ [A-Z][a-z]+\b")],  # Full name: John Doe
-            "DATE": [
-                re.compile(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b")  # Date: 01/01/2020
-            ],
+            "DATE": [re.compile(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b")],  # Date: 01/01/2020
             "AGE": [re.compile(r"\b\d{1,3}\s+years?\s+old\b")],  # Age: 30 years old
-            "PHONE": [
-                re.compile(r"\b\d{3}[.-]\d{3}[.-]\d{4}\b")  # Phone: 123-456-7890
-            ],
-            "EMAIL": [
-                re.compile(
-                    r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
-                )  # Email
-            ],
+            "PHONE": [re.compile(r"\b\d{3}[.-]\d{3}[.-]\d{4}\b")],  # Phone: 123-456-7890
+            "EMAIL": [re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")],  # Email
             "SSN": [re.compile(r"\b\d{3}[.-]\d{2}[.-]\d{4}\b")],  # SSN: 123-45-6789
             "ADDRESS": [
                 re.compile(
                     r"\b\d+\s+[A-Za-z]+ (Street|St|Avenue|Ave|Road|Rd)\b", re.IGNORECASE
                 )  # Street address
             ],
-            "MEDICAL_RECORD": [
-                re.compile(r"\bMRN\s*\d+\b")  # Medical record: MRN 123456
-            ],
+            "MEDICAL_RECORD": [re.compile(r"\bMRN\s*\d+\b")],  # Medical record: MRN 123456
         }
 
     def _get_relaxed_patterns(self) -> dict[str, list[re.Pattern]]:
@@ -427,14 +397,8 @@ class MockPHIDetection(PHIDetectionInterface):  # Corrected class name and inher
         return {
             "NAME": [re.compile(r"\b[A-Z][a-z]+ [A-Z][a-z]+\b")],  # Full name: John Doe
             "SSN": [re.compile(r"\b\d{3}[.-]\d{2}[.-]\d{4}\b")],  # SSN: 123-45-6789
-            "EMAIL": [
-                re.compile(
-                    r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
-                )  # Email
-            ],
-            "PHONE": [
-                re.compile(r"\b\d{3}[.-]\d{3}[.-]\d{4}\b")  # Phone: 123-456-7890
-            ],
+            "EMAIL": [re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")],  # Email
+            "PHONE": [re.compile(r"\b\d{3}[.-]\d{3}[.-]\d{4}\b")],  # Phone: 123-456-7890
         }
 
     def _create_mock_phi_instances(self, level: str) -> list[dict[str, Any]]:

@@ -71,9 +71,7 @@ def get_authentication_service(
     except Exception:  # pragma: no cover – best‑effort fallback
         # DI container not available (e.g. in lightweight tests) – create a
         # **minimal** service instance backed by in‑memory mocks.
-        logger.warning(
-            "DI container missing – returning *mock* AuthenticationService for tests."
-        )
+        logger.warning("DI container missing – returning *mock* AuthenticationService for tests.")
 
         from unittest.mock import MagicMock
 
@@ -179,8 +177,7 @@ async def verify_provider_access(
     """Verify that the user has provider-level access (Clinician, Admin, Provider)."""
     # Normalise for case-insensitive membership tests
     allowed_roles = {
-        role.value.upper()
-        for role in (UserRole.CLINICIAN, UserRole.ADMIN, UserRole.CLINICIAN)
+        role.value.upper() for role in (UserRole.CLINICIAN, UserRole.ADMIN, UserRole.CLINICIAN)
     }
 
     primary_role = (current_user.role or "").upper()
@@ -219,10 +216,7 @@ def require_role(required_role: UserRole):
         # Some code may store mixed-case entries in the *roles* list – normalise
         roles_normalised = [str(r).upper() for r in (current_user.roles or [])]
 
-        if (
-            primary_role != required_role_value
-            and required_role_value not in roles_normalised
-        ):
+        if primary_role != required_role_value and required_role_value not in roles_normalised:
             logger.warning(
                 f"User {current_user.id} with role {current_user.role} tried accessing resource requiring {required_role_value}"
             )
@@ -241,9 +235,7 @@ require_admin_role = require_role(UserRole.ADMIN)
 require_patient_role = require_role(UserRole.PATIENT)
 
 
-async def get_patient_id(
-    patient_id: UUID, current_user: User = Depends(get_current_user)
-) -> UUID:
+async def get_patient_id(patient_id: UUID, current_user: User = Depends(get_current_user)) -> UUID:
     """Dependency to validate patient ID access."""
     # Normalize for robust comparison
     role_value = (current_user.role or "").upper()

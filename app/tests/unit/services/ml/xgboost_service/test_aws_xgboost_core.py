@@ -63,13 +63,9 @@ class TestAWSXGBoostCore:
             side_effect=lambda x: fake_validate_impl(x),
         ):
             # Patch _notify_observers to do nothing
-            with patch.object(
-                AWSXGBoostService, "_notify_observers", return_value=None
-            ):
+            with patch.object(AWSXGBoostService, "_notify_observers", return_value=None):
                 # Patch _validate_aws_resources to do nothing
-                with patch.object(
-                    AWSXGBoostService, "_validate_aws_resources", return_value=None
-                ):
+                with patch.object(AWSXGBoostService, "_validate_aws_resources", return_value=None):
                     # Initialize the service
                     await service.initialize(aws_config)
 
@@ -101,9 +97,7 @@ class TestAWSXGBoostCore:
         with patch.object(
             AWSXGBoostService,
             "_validate_aws_config",
-            side_effect=ConfigurationError(
-                "Missing required AWS parameter: region_name"
-            ),
+            side_effect=ConfigurationError("Missing required AWS parameter: region_name"),
         ):
             # Attempt to initialize
             with pytest.raises(
@@ -131,9 +125,7 @@ class TestAWSXGBoostCore:
         with patch.object(
             AWSXGBoostService,
             "_validate_aws_config",
-            side_effect=ConfigurationError(
-                "Missing required AWS parameter: endpoint_prefix"
-            ),
+            side_effect=ConfigurationError("Missing required AWS parameter: endpoint_prefix"),
         ):
             # Attempt to initialize
             with pytest.raises(
@@ -189,9 +181,7 @@ class TestAWSXGBoostCore:
         service = AWSXGBoostService(aws_service_factory=factory)
 
         # Patch the validate method to use our custom implementation
-        with patch.object(
-            AWSXGBoostService, "_validate_aws_config", side_effect=custom_validate
-        ):
+        with patch.object(AWSXGBoostService, "_validate_aws_config", side_effect=custom_validate):
             # Attempt to initialize with missing region
             with pytest.raises(
                 ConfigurationError, match="Missing required AWS parameter: region_name"
@@ -211,9 +201,7 @@ class TestAWSXGBoostCore:
         # Override default service validation with our customization
         def custom_validate(cfg):
             if "endpoint_prefix" not in cfg:
-                raise ConfigurationError(
-                    "Missing required AWS parameter: endpoint_prefix"
-                )
+                raise ConfigurationError("Missing required AWS parameter: endpoint_prefix")
             return True
 
         # Create the service with patched validation
@@ -221,9 +209,7 @@ class TestAWSXGBoostCore:
         service = AWSXGBoostService(aws_service_factory=factory)
 
         # Patch the validate method to use our custom implementation
-        with patch.object(
-            AWSXGBoostService, "_validate_aws_config", side_effect=custom_validate
-        ):
+        with patch.object(AWSXGBoostService, "_validate_aws_config", side_effect=custom_validate):
             # Attempt to initialize with missing endpoint prefix
             with pytest.raises(
                 ConfigurationError,

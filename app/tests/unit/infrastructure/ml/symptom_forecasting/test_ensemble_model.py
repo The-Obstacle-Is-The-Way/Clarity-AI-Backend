@@ -1,9 +1,7 @@
 """Unit tests for the Ensemble Model for symptom forecasting."""
 import pytest
 
-pytest.skip(
-    "Skipping ensemble model tests (torch unsupported)", allow_module_level=True
-)
+pytest.skip("Skipping ensemble model tests (torch unsupported)", allow_module_level=True)
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
@@ -62,9 +60,7 @@ class TestEnsembleModel:
     def sample_input_data(self):
         """Create sample input data for testing."""
         # Create a DataFrame with symptom severity data
-        dates = pd.date_range(
-            start=datetime.now() - timedelta(days=10), periods=10, freq="D"
-        )
+        dates = pd.date_range(start=datetime.now() - timedelta(days=10), periods=10, freq="D")
         data = {
             "date": dates,
             "symptom_severity": [7, 6, 6, 5, 5, 4, 4, 4, 3, 3],
@@ -85,10 +81,7 @@ class TestEnsembleModel:
 
         # Verify ensemble weights are initialized
         assert isinstance(model.ensemble_weights, dict)
-        assert (
-            model.ensemble_weights["transformer"] + model.ensemble_weights["xgboost"]
-            == 1.0
-        )
+        assert model.ensemble_weights["transformer"] + model.ensemble_weights["xgboost"] == 1.0
 
     @pytest.mark.asyncio
     async def test_predict(self, ensemble_model, sample_input_data):
@@ -118,25 +111,19 @@ class TestEnsembleModel:
         assert result["contributing_models"]["xgboost"]["weight"] == 0.3
 
         # Verify predictions are a weighted average
-        expected_predictions = 0.7 * np.array(
-            [4.2, 4.0, 3.8, 3.6, 3.4]
-        ) + 0.3 * np.array([4.0, 3.9, 3.7, 3.5, 3.3])
-        np.testing.assert_allclose(
-            result["predictions"], expected_predictions, rtol=1e-5
+        expected_predictions = 0.7 * np.array([4.2, 4.0, 3.8, 3.6, 3.4]) + 0.3 * np.array(
+            [4.0, 3.9, 3.7, 3.5, 3.3]
         )
+        np.testing.assert_allclose(result["predictions"], expected_predictions, rtol=1e-5)
 
     @pytest.mark.asyncio
-    async def test_predict_with_invalid_parameters(
-        self, ensemble_model, sample_input_data
-    ):
+    async def test_predict_with_invalid_parameters(self, ensemble_model, sample_input_data):
         """Test predict method with invalid parameters."""
         # Set up
         symptom_type = "anxiety"
 
         # Test with invalid forecast days
-        with pytest.raises(
-            ValueError, match="Forecast days must be a positive integer"
-        ):
+        with pytest.raises(ValueError, match="Forecast days must be a positive integer"):
             await ensemble_model.predict(
                 patient_data=sample_input_data,
                 symptom_type=symptom_type,
@@ -175,15 +162,11 @@ class TestEnsembleModel:
 
         # Verify
         assert "predictions" in result
-        assert (
-            "baseline_predictions" in result
-        )  # Should include baseline without interventions
+        assert "baseline_predictions" in result  # Should include baseline without interventions
         assert "intervention_effects" in result
 
         # The intervention should reduce the symptom severity after day 1
-        assert (
-            result["predictions"][0] == result["baseline_predictions"][0]
-        )  # Day 0, no effect
+        assert result["predictions"][0] == result["baseline_predictions"][0]  # Day 0, no effect
         assert (
             result["predictions"][1] < result["baseline_predictions"][1]
         )  # Day 1+, effect applied

@@ -58,9 +58,7 @@ def provider_repository():
 
 
 @pytest.fixture
-def appointment_service(
-    appointment_repository, patient_repository, provider_repository
-):
+def appointment_service(appointment_repository, patient_repository, provider_repository):
     """Fixture for appointment service."""
     # Import service here
     from app.domain.services.appointment_service import AppointmentService
@@ -120,9 +118,7 @@ class TestAppointmentService:
     # No direct Appointment instantiation needed in tests if using fixtures/service methods
     # Ensure tests use the service methods and rely on the valid_appointment fixture
 
-    def test_get_appointment(
-        self, appointment_service, appointment_repository, valid_appointment
-    ):
+    def test_get_appointment(self, appointment_service, appointment_repository, valid_appointment):
         """Test getting an appointment."""
         appointment_repository.get_by_id.return_value = valid_appointment
         appointment = appointment_service.get_appointment(valid_appointment.id)
@@ -182,9 +178,7 @@ class TestAppointmentService:
         ]
         appointment_repository.get_by_provider_id.return_value = appointments
 
-        with pytest.raises(
-            AppointmentConflictError
-        ):  # Change to AppointmentConflictError
+        with pytest.raises(AppointmentConflictError):  # Change to AppointmentConflictError
             appointment_service.create_appointment(
                 patient_id="patient_new",
                 provider_id="provider456",

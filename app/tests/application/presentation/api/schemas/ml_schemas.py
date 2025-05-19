@@ -15,12 +15,8 @@ class MentaLLaMABaseRequest(BaseModel):
     """Base request model for MentaLLaMA APIs."""
 
     model: str | None = Field(None, description="Model ID to use for processing")
-    max_tokens: int | None = Field(
-        None, description="Maximum tokens to generate", ge=1, le=4000
-    )
-    temperature: float | None = Field(
-        None, description="Sampling temperature", ge=0.0, le=1.0
-    )
+    max_tokens: int | None = Field(None, description="Maximum tokens to generate", ge=1, le=4000)
+    temperature: float | None = Field(None, description="Sampling temperature", ge=0.0, le=1.0)
 
 
 class ProcessTextRequest(MentaLLaMABaseRequest):
@@ -31,43 +27,33 @@ class ProcessTextRequest(MentaLLaMABaseRequest):
         None,
         description="Task to perform (e.g., depression_detection, risk_assessment)",
     )
-    context: dict[str, Any] | None = Field(
-        None, description="Optional context for processing"
-    )
+    context: dict[str, Any] | None = Field(None, description="Optional context for processing")
 
 
 class DepressionDetectionRequest(MentaLLaMABaseRequest):
     """Request model for depression detection."""
 
-    text: str = Field(
-        ..., description="Text to analyze for depression indicators", min_length=1
-    )
+    text: str = Field(..., description="Text to analyze for depression indicators", min_length=1)
     include_rationale: bool = Field(
         True, description="Whether to include rationale in the response"
     )
     severity_assessment: bool = Field(
         True, description="Whether to include severity assessment in the response"
     )
-    context: dict[str, Any] | None = Field(
-        None, description="Optional context for analysis"
-    )
+    context: dict[str, Any] | None = Field(None, description="Optional context for analysis")
 
 
 class RiskAssessmentRequest(MentaLLaMABaseRequest):
     """Request model for risk assessment."""
 
-    text: str = Field(
-        ..., description="Text to analyze for risk indicators", min_length=1
-    )
+    text: str = Field(..., description="Text to analyze for risk indicators", min_length=1)
     include_key_phrases: bool = Field(
         True, description="Whether to include key phrases in the response"
     )
     include_suggested_actions: bool = Field(
         True, description="Whether to include suggested actions in the response"
     )
-    context: dict[str, Any] | None = Field(
-        None, description="Optional context for analysis"
-    )
+    context: dict[str, Any] | None = Field(None, description="Optional context for analysis")
 
 
 class SentimentAnalysisRequest(MentaLLaMABaseRequest):
@@ -77,34 +63,24 @@ class SentimentAnalysisRequest(MentaLLaMABaseRequest):
     include_emotion_distribution: bool = Field(
         True, description="Whether to include emotion distribution in the response"
     )
-    context: dict[str, Any] | None = Field(
-        None, description="Optional context for analysis"
-    )
+    context: dict[str, Any] | None = Field(None, description="Optional context for analysis")
 
 
 class WellnessDimensionsRequest(MentaLLaMABaseRequest):
     """Request model for wellness dimensions analysis."""
 
-    text: str = Field(
-        ..., description="Text to analyze for wellness dimensions", min_length=1
-    )
-    dimensions: list[str] | None = Field(
-        None, description="Optional list of dimensions to analyze"
-    )
+    text: str = Field(..., description="Text to analyze for wellness dimensions", min_length=1)
+    dimensions: list[str] | None = Field(None, description="Optional list of dimensions to analyze")
     include_recommendations: bool = Field(
         True, description="Whether to include recommendations in the response"
     )
-    context: dict[str, Any] | None = Field(
-        None, description="Optional context for analysis"
-    )
+    context: dict[str, Any] | None = Field(None, description="Optional context for analysis")
 
 
 class DigitalTwinConversationRequest(MentaLLaMABaseRequest):
     """Request model for digital twin conversation."""
 
-    prompt: str = Field(
-        ..., description="Text prompt for the conversation", min_length=1
-    )
+    prompt: str = Field(..., description="Text prompt for the conversation", min_length=1)
     patient_id: str = Field(..., description="Patient ID")
     session_id: str | None = Field(
         None, description="Optional session ID for continued conversations"
@@ -137,9 +113,7 @@ class PHIRedactionRequest(BaseModel):
     """Request model for PHI redaction."""
 
     text: str = Field(..., description="Text to redact PHI from", min_length=1)
-    replacement: str = Field(
-        "[REDACTED]", description="Replacement text for redacted PHI"
-    )
+    replacement: str = Field("[REDACTED]", description="Replacement text for redacted PHI")
     detection_level: str | None = Field(
         None, description="Detection level (strict, moderate, relaxed)"
     )
@@ -149,9 +123,7 @@ class DigitalTwinSessionCreateRequest(BaseModel):
     """Request model for creating a digital twin session."""
 
     patient_id: str = Field(..., description="Patient ID")
-    context: dict[str, Any] | None = Field(
-        None, description="Optional context for the session"
-    )
+    context: dict[str, Any] | None = Field(None, description="Optional context for the session")
 
 
 class DigitalTwinMessageRequest(BaseModel):

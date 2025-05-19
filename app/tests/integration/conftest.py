@@ -277,14 +277,10 @@ async def test_client(test_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
     """Provides an AsyncClient instance configured for the test_app, managing its lifespan."""
     from asgi_lifespan import LifespanManager  # Moved import here
 
-    logger.info(
-        f"test_client fixture: Managing lifespan for test_app with id: {id(test_app)}"
-    )
+    logger.info(f"test_client fixture: Managing lifespan for test_app with id: {id(test_app)}")
 
     async with LifespanManager(test_app) as manager:
-        logger.info(
-            f"test_client fixture: LifespanManager active for app id: {id(manager.app)}"
-        )
+        logger.info(f"test_client fixture: LifespanManager active for app id: {id(manager.app)}")
         transport = ASGITransport(app=manager.app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             logger.info(
@@ -357,9 +353,7 @@ def mock_jwt_service_with_placeholder_handling() -> JWTServiceInterface:
     mock_service = MagicMock(spec=JWTServiceInterface)
 
     # Define the side effect function for decode_token as an async function
-    async def decode_token_side_effect(
-        token: str, audience: str | None = None
-    ) -> TokenPayload:
+    async def decode_token_side_effect(token: str, audience: str | None = None) -> TokenPayload:
         logger.info(f"INTEGRATION mock JWT decode_token CALLED with token: {token}")
 
         current_time = datetime.now(timezone.utc)
@@ -372,9 +366,7 @@ def mock_jwt_service_with_placeholder_handling() -> JWTServiceInterface:
                 sub=str(TEST_USER_ID),  # Ensure this is a string representation of UUID
                 username="integration_test_patient",  # This is an extra field not in TokenPayload, will be ignored by Pydantic if not in model
                 email="integration.patient@example.com",  # Extra field
-                roles=[
-                    UserRole.PATIENT.value
-                ],  # Use .value for string representation of enum
+                roles=[UserRole.PATIENT.value],  # Use .value for string representation of enum
                 exp=int(default_exp_time.timestamp()),  # Convert to int timestamp
                 iat=int(default_iat_time.timestamp()),  # Add iat
                 jti=str(uuid.uuid4()),  # Unique token ID
@@ -388,14 +380,10 @@ def mock_jwt_service_with_placeholder_handling() -> JWTServiceInterface:
             )
         elif token == "VALID_PROVIDER_TOKEN":
             return TokenPayload(
-                sub=str(
-                    TEST_CLINICIAN_ID
-                ),  # Ensure this is a string representation of UUID
+                sub=str(TEST_CLINICIAN_ID),  # Ensure this is a string representation of UUID
                 username="integration_test_provider",  # Extra
                 email="integration.provider@example.com",  # Extra
-                roles=[
-                    UserRole.CLINICIAN.value
-                ],  # Use .value for string representation of enum
+                roles=[UserRole.CLINICIAN.value],  # Use .value for string representation of enum
                 exp=int(default_exp_time.timestamp()),  # Convert to int timestamp
                 iat=int(default_iat_time.timestamp()),  # Add iat
                 jti=str(uuid.uuid4()),
@@ -408,14 +396,10 @@ def mock_jwt_service_with_placeholder_handling() -> JWTServiceInterface:
             )
         elif token == "VALID_ADMIN_TOKEN":
             return TokenPayload(
-                sub=str(
-                    uuid.UUID("00000000-0000-0000-0000-000000000003")
-                ),  # Example Admin ID
+                sub=str(uuid.UUID("00000000-0000-0000-0000-000000000003")),  # Example Admin ID
                 username="integration_test_admin",  # Extra
                 email="integration.admin@example.com",  # Extra
-                roles=[
-                    UserRole.ADMIN.value
-                ],  # Use .value for string representation of enum
+                roles=[UserRole.ADMIN.value],  # Use .value for string representation of enum
                 exp=int(default_exp_time.timestamp()),  # Convert to int timestamp
                 iat=int(default_iat_time.timestamp()),  # Add iat
                 jti=str(uuid.uuid4()),
@@ -429,9 +413,7 @@ def mock_jwt_service_with_placeholder_handling() -> JWTServiceInterface:
         elif token == "EXPIRED_TOKEN":
             raise InvalidTokenException("Token has expired")  # Simulate expired token
         elif token == "INVALID_FORMAT_TOKEN":
-            raise InvalidTokenException(
-                "Invalid token format"
-            )  # Simulate malformed token
+            raise InvalidTokenException("Invalid token format")  # Simulate malformed token
         else:
             # Default case for unhandled tokens
             raise InvalidTokenException(
@@ -445,9 +427,7 @@ def mock_jwt_service_with_placeholder_handling() -> JWTServiceInterface:
     # or actual JWTs if this mock service is also used for token generation in some tests.
     # For now, assume they are not the primary focus for decoding tests.
     mock_service.create_access_token = MagicMock(return_value="MOCK_ACCESS_JWT_STRING")
-    mock_service.create_refresh_token = MagicMock(
-        return_value="MOCK_REFRESH_JWT_STRING"
-    )
+    mock_service.create_refresh_token = MagicMock(return_value="MOCK_REFRESH_JWT_STRING")
     mock_service.create_token_pair = MagicMock(
         return_value=("MOCK_ACCESS_JWT_STRING", "MOCK_REFRESH_JWT_STRING")
     )
@@ -465,9 +445,7 @@ def mock_mentallama_api() -> Any:
     """
 
     class MockMentaLLamaAPI:
-        async def predict(
-            self, patient_id: str, data: dict[str, Any]
-        ) -> dict[str, Any]:
+        async def predict(self, patient_id: str, data: dict[str, Any]) -> dict[str, Any]:
             return {
                 "patient_id": patient_id,
                 "prediction": {
@@ -508,9 +486,7 @@ async def app_with_mocked_services() -> FastAPI:
     """
 
     class MockAWSService:
-        def invoke_endpoint(
-            self, endpoint_name: str, data: dict[str, Any]
-        ) -> dict[str, Any]:
+        def invoke_endpoint(self, endpoint_name: str, data: dict[str, Any]) -> dict[str, Any]:
             return {
                 "result": {
                     "prediction": [0.65, 0.35, 0.80],
@@ -570,29 +546,20 @@ async def test_db_engine(test_settings: Settings):
     """
 
     # Get database URL from settings, with fallback
-    database_url = (
-        getattr(test_settings, "DATABASE_URL", None) or "sqlite+aiosqlite:///:memory:"
-    )
+    database_url = getattr(test_settings, "DATABASE_URL", None) or "sqlite+aiosqlite:///:memory:"
 
     # Set async database URL attribute if it doesn't exist (prevents NoneType startswith error)
-    if (
-        not hasattr(test_settings, "ASYNC_DATABASE_URL")
-        or test_settings.ASYNC_DATABASE_URL is None
-    ):
+    if not hasattr(test_settings, "ASYNC_DATABASE_URL") or test_settings.ASYNC_DATABASE_URL is None:
         test_settings.ASYNC_DATABASE_URL = database_url
 
-    logger.info(
-        f"Creating async database engine for integration tests with URL: {database_url}"
-    )
+    logger.info(f"Creating async database engine for integration tests with URL: {database_url}")
 
     # Create engine with appropriate settings for testing (echo=False in tests to reduce noise)
     engine = create_async_engine(
         database_url,
         echo=False,
         future=True,
-        connect_args={"check_same_thread": False}
-        if database_url.startswith("sqlite")
-        else {},
+        connect_args={"check_same_thread": False} if database_url.startswith("sqlite") else {},
     )
 
     logger.info(f"AsyncEngine created successfully: {engine}")
@@ -629,9 +596,7 @@ async def test_app_with_db_session(
     Creates a FastAPI app with fully initialized database session factory in app.state
     for tests that require database access through FastAPI dependency injection.
     """
-    logger.info(
-        "Creating FastAPI app instance with DB session factory for integration tests"
-    )
+    logger.info("Creating FastAPI app instance with DB session factory for integration tests")
 
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -714,26 +679,24 @@ async def test_app_with_auth_override(
         logger.error(
             f"DEBUG_AUTH_OVERRIDE_FIXTURE: app_to_override IS NOT A FastAPI instance! Type: {type(app_to_override)}"
         )
-        raise TypeError(
-            "test_app_with_db_session did not yield a FastAPI app for auth override."
-        )
+        raise TypeError("test_app_with_db_session did not yield a FastAPI app for auth override.")
 
     # Store original overrides to restore them specifically, though clear() is usually enough
     original_overrides = app_to_override.dependency_overrides.copy()
 
     # Override authentication dependencies with appropriate role handlers
-    test_app_with_db_session.dependency_overrides[
-        get_current_user
-    ] = mock_auth_dependency("PATIENT")
-    test_app_with_db_session.dependency_overrides[
-        get_current_active_user
-    ] = mock_auth_dependency("PATIENT")
-    test_app_with_db_session.dependency_overrides[
-        require_admin_role
-    ] = mock_auth_dependency("ADMIN")
-    test_app_with_db_session.dependency_overrides[
-        require_clinician_role
-    ] = mock_auth_dependency("CLINICIAN")
+    test_app_with_db_session.dependency_overrides[get_current_user] = mock_auth_dependency(
+        "PATIENT"
+    )
+    test_app_with_db_session.dependency_overrides[get_current_active_user] = mock_auth_dependency(
+        "PATIENT"
+    )
+    test_app_with_db_session.dependency_overrides[require_admin_role] = mock_auth_dependency(
+        "ADMIN"
+    )
+    test_app_with_db_session.dependency_overrides[require_clinician_role] = mock_auth_dependency(
+        "CLINICIAN"
+    )
 
     return test_app_with_db_session
 
@@ -762,9 +725,9 @@ async def authenticated_client(
     )
 
     # Set up the authentication overrides using the patient role by default
-    test_app_with_db_session.dependency_overrides[
-        get_current_user
-    ] = lambda: mock_auth_dependency("PATIENT")
+    test_app_with_db_session.dependency_overrides[get_current_user] = lambda: mock_auth_dependency(
+        "PATIENT"
+    )
     test_app_with_db_session.dependency_overrides[
         get_current_active_user
     ] = lambda: mock_auth_dependency("PATIENT")
@@ -965,9 +928,7 @@ def test_client(test_app: FastAPI) -> TestClient:
     def get_auth_headers(role: str = "clinician", user_id: str = None):
         """Get authentication headers for the given role."""
         if user_id is None:
-            user_id = (
-                "00000000-0000-0000-0000-000000000002"  # Default test clinician ID
-            )
+            user_id = "00000000-0000-0000-0000-000000000002"  # Default test clinician ID
             if role.lower() == "admin":
                 user_id = "00000000-0000-0000-0000-000000000001"  # Admin ID
             elif role.lower() == "patient":
@@ -998,9 +959,7 @@ def auth_headers():
     def _auth_headers(role: str = "clinician", user_id: str = None):
         """Get auth headers for a specific role."""
         if user_id is None:
-            user_id = (
-                "00000000-0000-0000-0000-000000000002"  # Default test clinician ID
-            )
+            user_id = "00000000-0000-0000-0000-000000000002"  # Default test clinician ID
             if role.lower() == "admin":
                 user_id = "00000000-0000-0000-0000-000000000001"  # Admin ID
             elif role.lower() == "patient":

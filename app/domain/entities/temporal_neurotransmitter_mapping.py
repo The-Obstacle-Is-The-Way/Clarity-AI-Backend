@@ -91,9 +91,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         self.correlations: dict[UUID, dict[UUID, float]] = {}
 
         # Track cascading patterns
-        self.cascade_patterns: dict[
-            BrainRegion, dict[Neurotransmitter, TransmissionPattern]
-        ] = {}
+        self.cascade_patterns: dict[BrainRegion, dict[Neurotransmitter, TransmissionPattern]] = {}
 
         # Baseline activity levels for each region and neurotransmitter
         self.baseline_levels: dict[BrainRegion, dict[Neurotransmitter, float]] = {}
@@ -115,9 +113,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
                 # Regions that produce a neurotransmitter have slightly higher baseline
                 self.baseline_levels[region][nt] = 0.6 if produces else 0.4
 
-    def get_baseline_levels(
-        self, brain_region: BrainRegion
-    ) -> dict[Neurotransmitter, float]:
+    def get_baseline_levels(self, brain_region: BrainRegion) -> dict[Neurotransmitter, float]:
         """
         Get baseline neurotransmitter levels for a specific brain region.
 
@@ -209,9 +205,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
                     + (random.random() - 0.5) * noise_level
                 )
             else:
-                data[t, primary_nt_idx] = (
-                    baseline + (random.random() - 0.5) * noise_level
-                )
+                data[t, primary_nt_idx] = baseline + (random.random() - 0.5) * noise_level
 
             # Ensure values stay in valid range
             data[t, primary_nt_idx] = max(0.0, min(1.0, data[t, primary_nt_idx]))
@@ -221,14 +215,10 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
             if nt_idx != primary_nt_idx:
                 # Create correlation based on receptor affinities
                 other_nt = next(nt for nt in Neurotransmitter if nt.value == nt_name)
-                correlation = (
-                    self.analyze_receptor_affinity(other_nt, brain_region) * 0.8
-                )
+                correlation = self.analyze_receptor_affinity(other_nt, brain_region) * 0.8
 
                 # Generate correlated data
-                other_baseline = self.baseline_levels.get(brain_region, {}).get(
-                    other_nt, 0.5
-                )
+                other_baseline = self.baseline_levels.get(brain_region, {}).get(other_nt, 0.5)
 
                 for t in range(num_timestamps):
                     # Correlation effect + independent component + baseline
@@ -285,10 +275,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         effect_duration: float | None = None,
         initial_level: float = None,
         time_steps: int = None,
-    ) -> (
-        dict[BrainRegion, dict[Neurotransmitter, float]]
-        | dict[BrainRegion, list[float]]
-    ):
+    ) -> dict[BrainRegion, dict[Neurotransmitter, float]] | dict[BrainRegion, list[float]]:
         """
         Predict how a change in one brain region cascades to others.
 
@@ -327,9 +314,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
                     BrainRegion.THALAMUS,
                 ]:
                     # These regions get a delayed increase
-                    result[region] = [0.0] + [
-                        min(1.0, 0.1 * i) for i in range(1, time_steps)
-                    ]
+                    result[region] = [0.0] + [min(1.0, 0.1 * i) for i in range(1, time_steps)]
                 else:
                     # Other regions get minimal effect
                     result[region] = [0.0] * time_steps
@@ -390,9 +375,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
             # For each connected region, propagate effect
             for connected_region, connection_strength in connected_regions:
                 # Calculate propagated effect size
-                propagated_effect = (
-                    effect * connection_strength * 0.8
-                )  # Dampen with distance
+                propagated_effect = effect * connection_strength * 0.8  # Dampen with distance
 
                 # Determine which neurotransmitters are affected
                 affected_neurotransmitters = [nt]  # The primary neurotransmitter
@@ -403,15 +386,11 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
                         # Check if there are receptors for both neurotransmitters
                         has_source_receptors = any(
                             p.neurotransmitter == nt
-                            for p in self.get_receptor_profiles_for_region(
-                                connected_region
-                            )
+                            for p in self.get_receptor_profiles_for_region(connected_region)
                         )
                         has_target_receptors = any(
                             p.neurotransmitter == other_nt
-                            for p in self.get_receptor_profiles_for_region(
-                                connected_region
-                            )
+                            for p in self.get_receptor_profiles_for_region(connected_region)
                         )
 
                         if has_source_receptors and has_target_receptors:
@@ -427,20 +406,14 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
 
                     for profile in profiles:
                         if profile.receptor_type == ReceptorType.INHIBITORY:
-                            modulation = (
-                                -0.7
-                            )  # Inhibitory receptors reverse effect direction
+                            modulation = -0.7  # Inhibitory receptors reverse effect direction
                             break
 
                     # Add to queue with modulated effect
                     secondary_effect = (
-                        propagated_effect
-                        * modulation
-                        * (0.5 if affected_nt != nt else 1.0)
+                        propagated_effect * modulation * (0.5 if affected_nt != nt else 1.0)
                     )
-                    queue.append(
-                        (connected_region, affected_nt, secondary_effect, depth + 1)
-                    )
+                    queue.append((connected_region, affected_nt, secondary_effect, depth + 1))
 
         return cascade_effects
 
@@ -561,18 +534,13 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
 
                 # Then add influence from connected regions
                 for source_region, connections in connectivity.items():
-                    if (
-                        target_region in connections
-                        and result[source_region][t - 1] > 0.01
-                    ):
+                    if target_region in connections and result[source_region][t - 1] > 0.01:
                         # Get the connection strength
                         connection_strength = connections[target_region]
 
                         # Calculate influence based on source level and connection strength
                         # The stronger the connection and higher the source level, the greater the influence
-                        influence = (
-                            result[source_region][t - 1] * connection_strength * 0.4
-                        )
+                        influence = result[source_region][t - 1] * connection_strength * 0.4
 
                         # Add this influence to the target region's level
                         result[target_region][t] += influence
@@ -640,9 +608,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
 
             # Calculate statistics
             mean_value = sum(values) / len(values)
-            std_dev = math.sqrt(
-                sum((x - mean_value) ** 2 for x in values) / len(values)
-            )
+            std_dev = math.sqrt(sum((x - mean_value) ** 2 for x in values) / len(values))
             min_value = min(values)
             max_value = max(values)
 
@@ -702,12 +668,8 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
                             (values_i[k] - mean_i) * (values_j[k] - mean_j)
                             for k in range(len(values_i))
                         )
-                        denom_i = sum(
-                            (values_i[k] - mean_i) ** 2 for k in range(len(values_i))
-                        )
-                        denom_j = sum(
-                            (values_j[k] - mean_j) ** 2 for k in range(len(values_j))
-                        )
+                        denom_i = sum((values_i[k] - mean_i) ** 2 for k in range(len(values_i)))
+                        denom_j = sum((values_j[k] - mean_j) ** 2 for k in range(len(values_j)))
 
                         if denom_i > 0 and denom_j > 0:
                             corr = num / (math.sqrt(denom_i) * math.sqrt(denom_j))
@@ -752,9 +714,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
 
                 # Count sign changes in first derivative
                 diffs = [values[i + 1] - values[i] for i in range(len(values) - 1)]
-                sign_changes = sum(
-                    1 for i in range(len(diffs) - 1) if diffs[i] * diffs[i + 1] < 0
-                )
+                sign_changes = sum(1 for i in range(len(diffs) - 1) if diffs[i] * diffs[i + 1] < 0)
 
                 # Check if there are many sign changes (potential oscillation)
                 oscillation_threshold = len(values) * 0.4
@@ -771,9 +731,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         primary_nt = Neurotransmitter(
             sequence.metadata.get("primary_neurotransmitter", "serotonin")
         )
-        primary_region = BrainRegion(
-            sequence.metadata.get("brain_region", "prefrontal_cortex")
-        )
+        primary_region = BrainRegion(sequence.metadata.get("brain_region", "prefrontal_cortex"))
 
         # Calculate effect size from trend data
         effect_size = 0.5  # Default moderate effect
@@ -821,9 +779,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         # Get timestamps for baseline and comparison periods
         midpoint = len(sequence.timestamps) // 2
         baseline_period = (
-            (sequence.timestamps[0], sequence.timestamps[midpoint - 1])
-            if midpoint > 1
-            else None
+            (sequence.timestamps[0], sequence.timestamps[midpoint - 1]) if midpoint > 1 else None
         )
         comparison_period = (
             (sequence.timestamps[midpoint], sequence.timestamps[-1])
@@ -839,9 +795,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         )
         time_series_data = [
             (timestamp, values[primary_idx])
-            for timestamp, values in zip(
-                sequence.timestamps, sequence.values, strict=False
-            )
+            for timestamp, values in zip(sequence.timestamps, sequence.values, strict=False)
         ]
 
         # Create NeurotransmitterEffect with the correct constructor parameters
@@ -909,9 +863,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
             brain_region=brain_region,
             time_series_data=time_series_data,
             baseline_period=baseline_period,
-            comparison_period=(timestamps[-3], timestamps[-1])
-            if len(timestamps) >= 3
-            else None,
+            comparison_period=(timestamps[-3], timestamps[-1]) if len(timestamps) >= 3 else None,
         )
 
         return effect
@@ -941,9 +893,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
 
         # A&S formula 7.1.26
         t = 1.0 / (1.0 + p * x)
-        y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * math.exp(
-            -x * x
-        )
+        y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * math.exp(-x * x)
 
         return 0.5 * (1.0 + sign * y)
 
@@ -1006,12 +956,8 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
             }
 
             # Determine the initial and final levels to create a clear treatment effect
-            initial_level = (
-                0.2 + random.random() * 0.2
-            )  # Random initial level between 0.2 and 0.4
-            final_level = initial_level + (
-                treatment_effect * 0.5
-            )  # Ensure a clear effect
+            initial_level = 0.2 + random.random() * 0.2  # Random initial level between 0.2 and 0.4
+            final_level = initial_level + (treatment_effect * 0.5)  # Ensure a clear effect
 
             # Get index for the target neurotransmitter
             target_idx = feature_names.index(target_neurotransmitter.value)
@@ -1073,20 +1019,15 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
                         # Default to excitatory for DOPAMINE and inhibitory for GABA
                         is_inhibitory = secondary_nt in [Neurotransmitter.GABA]
                         correlation = -0.8 if is_inhibitory else 0.8
-                        receptor_density = (
-                            0.8  # High density to ensure effects are detected
-                        )
+                        receptor_density = 0.8  # High density to ensure effects are detected
                     else:
                         # Calculate correlation based on receptor density
-                        receptor_density = sum(r.density for r in receptors) / len(
-                            receptors
-                        )
+                        receptor_density = sum(r.density for r in receptors) / len(receptors)
                         correlation = receptor_density * 0.8
 
                         # Determine if inhibitory or excitatory
                         is_inhibitory = any(
-                            r.receptor_type == ReceptorType.INHIBITORY
-                            for r in receptors
+                            r.receptor_type == ReceptorType.INHIBITORY for r in receptors
                         )
                         correlation = -correlation if is_inhibitory else correlation
 
@@ -1109,9 +1050,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
                         new_row = row.copy()
 
                         # Calculate secondary effect with slight delay
-                        t_adjusted = max(0, i - 1) / max(
-                            len(timestamps) - 1, 1
-                        )  # Slight delay
+                        t_adjusted = max(0, i - 1) / max(len(timestamps) - 1, 1)  # Slight delay
                         sigmoid = 1 / (
                             1 + math.exp(-8 * (t_adjusted - 0.4))
                         )  # Faster response curve
@@ -1229,21 +1168,14 @@ def extend_neurotransmitter_mapping(
 
     # Copy brain region connectivity if available
     if hasattr(base_mapping, "brain_region_connectivity"):
-        temporal_mapping.brain_region_connectivity = (
-            base_mapping.brain_region_connectivity
-        )
+        temporal_mapping.brain_region_connectivity = base_mapping.brain_region_connectivity
 
     # Check if the attribute exists before copying
-    if (
-        hasattr(base_mapping, "brain_regions")
-        and base_mapping.brain_regions is not None
-    ):
+    if hasattr(base_mapping, "brain_regions") and base_mapping.brain_regions is not None:
         # Assuming brain_regions should be a set or list of BrainRegion enums
         # Ensure it's copied correctly, converting to set if necessary
         if isinstance(base_mapping.brain_regions, (set, list)):
-            temporal_mapping.brain_regions = set(
-                base_mapping.brain_regions
-            )  # Ensure it's a set
+            temporal_mapping.brain_regions = set(base_mapping.brain_regions)  # Ensure it's a set
         else:
             # Handle unexpected type if necessary, or default to empty set
             logger.warning(
@@ -1260,9 +1192,7 @@ def extend_neurotransmitter_mapping(
 
         # Add regions from receptor profiles if they exist
         if hasattr(temporal_mapping, "receptor_profiles"):
-            derived_regions.update(
-                p.brain_region for p in temporal_mapping.receptor_profiles
-            )
+            derived_regions.update(p.brain_region for p in temporal_mapping.receptor_profiles)
 
         temporal_mapping.brain_regions = derived_regions  # Store the derived set
 
@@ -1279,9 +1209,7 @@ def _add_temporal_sequence(self, sequence):
     self.temporal_sequences[sequence.name] = sequence
 
 
-def _add_neurotransmitter_connection(
-    self, source, target, connection_type, strength, delay_hours
-):
+def _add_neurotransmitter_connection(self, source, target, connection_type, strength, delay_hours):
     """Record a neurotransmitter connection for cascade simulations."""
     if not hasattr(self, "neurotransmitter_connections"):
         self.neurotransmitter_connections = []
@@ -1296,9 +1224,7 @@ def _add_neurotransmitter_connection(
     )
 
 
-def _calculate_receptor_response(
-    self, brain_region, neurotransmitter, time_point, sequence_name
-):
+def _calculate_receptor_response(self, brain_region, neurotransmitter, time_point, sequence_name):
     """Calculate receptor response at a given time point from a named sequence."""
     seq = self.temporal_sequences.get(sequence_name)
     if seq is None:
@@ -1318,9 +1244,7 @@ def _calculate_receptor_response(
     return {"activation_level": activation_level, "clinical_significance": significance}
 
 
-def _simulate_cascade_effects(
-    self, sequence_name, simulation_duration_hours, time_step_hours
-):
+def _simulate_cascade_effects(self, sequence_name, simulation_duration_hours, time_step_hours):
     """Simulate cascade effects for a named sequence over time."""
     seq = self.temporal_sequences.get(sequence_name)
     if seq is None:
@@ -1363,10 +1287,6 @@ def _simulate_cascade_effects(
 
 # Attach missing methods to TemporalNeurotransmitterMapping
 TemporalNeurotransmitterMapping.add_temporal_sequence = _add_temporal_sequence
-TemporalNeurotransmitterMapping.add_neurotransmitter_connection = (
-    _add_neurotransmitter_connection
-)
-TemporalNeurotransmitterMapping.calculate_receptor_response = (
-    _calculate_receptor_response
-)
+TemporalNeurotransmitterMapping.add_neurotransmitter_connection = _add_neurotransmitter_connection
+TemporalNeurotransmitterMapping.calculate_receptor_response = _calculate_receptor_response
 TemporalNeurotransmitterMapping.simulate_cascade_effects = _simulate_cascade_effects

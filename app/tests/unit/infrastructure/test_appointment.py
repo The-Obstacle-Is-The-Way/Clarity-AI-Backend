@@ -83,9 +83,7 @@ class TestAppointment:
         assert appointment.provider_id == valid_appointment_data["provider_id"]
         assert appointment.start_time == valid_appointment_data["start_time"]
         assert appointment.end_time == valid_appointment_data["end_time"]
-        assert (
-            appointment.appointment_type == valid_appointment_data["appointment_type"]
-        )
+        assert appointment.appointment_type == valid_appointment_data["appointment_type"]
         assert appointment.status == valid_appointment_data["status"]
         # assert appointment.priority == valid_appointment_data["priority"] # Removed
         assert appointment.location == valid_appointment_data["location"]
@@ -272,9 +270,7 @@ class TestAppointment:
     def test_cannot_complete_cancelled_appointment(self, valid_appointment):
         """Test that a cancelled appointment cannot be completed."""
         cancelled_by_user = str(uuid.uuid4())
-        valid_appointment.cancel(
-            cancelled_by=cancelled_by_user, reason="Patient request"
-        )
+        valid_appointment.cancel(cancelled_by=cancelled_by_user, reason="Patient request")
 
         with pytest.raises(InvalidAppointmentStateError):
             # Call complete() without the notes argument
@@ -291,9 +287,7 @@ class TestAppointment:
     def test_cannot_no_show_cancelled_appointment(self, valid_appointment):
         """Test that a cancelled appointment cannot be marked as no-show."""
         cancelled_by_user = str(uuid.uuid4())
-        valid_appointment.cancel(
-            cancelled_by=cancelled_by_user, reason="Patient request"
-        )
+        valid_appointment.cancel(cancelled_by=cancelled_by_user, reason="Patient request")
 
         with pytest.raises(InvalidAppointmentStateError):
             # Use the correct method name: mark_no_show()
@@ -329,10 +323,7 @@ class TestAppointment:
         assert appointment_dict["id"] == str(valid_appointment.id)
         assert appointment_dict["patient_id"] == str(valid_appointment.patient_id)
         assert appointment_dict["provider_id"] == str(valid_appointment.provider_id)
-        assert (
-            appointment_dict["appointment_type"]
-            == valid_appointment.appointment_type.value
-        )
+        assert appointment_dict["appointment_type"] == valid_appointment.appointment_type.value
         assert appointment_dict["status"] == valid_appointment.status.value
         assert appointment_dict["priority"] == valid_appointment.priority.value
         assert appointment_dict["location"] == valid_appointment.location
@@ -393,26 +384,12 @@ class TestAppointment:
 
         # Using tolerance for datetime comparisons
         time_tolerance = timedelta(seconds=1)
-        assert (
-            abs(recreated_appointment.start_time - valid_appointment.start_time)
-            < time_tolerance
-        )
-        assert (
-            abs(recreated_appointment.end_time - valid_appointment.end_time)
-            < time_tolerance
-        )
-        assert (
-            abs(recreated_appointment.created_at - valid_appointment.created_at)
-            < time_tolerance
-        )
-        assert (
-            abs(recreated_appointment.updated_at - valid_appointment.updated_at)
-            < time_tolerance
-        )
+        assert abs(recreated_appointment.start_time - valid_appointment.start_time) < time_tolerance
+        assert abs(recreated_appointment.end_time - valid_appointment.end_time) < time_tolerance
+        assert abs(recreated_appointment.created_at - valid_appointment.created_at) < time_tolerance
+        assert abs(recreated_appointment.updated_at - valid_appointment.updated_at) < time_tolerance
 
-        assert (
-            recreated_appointment.appointment_type == valid_appointment.appointment_type
-        )
+        assert recreated_appointment.appointment_type == valid_appointment.appointment_type
         assert recreated_appointment.status == valid_appointment.status
         assert recreated_appointment.location == valid_appointment.location
         assert recreated_appointment.notes == valid_appointment.notes

@@ -217,9 +217,7 @@ class TokenPayload(BaseModel):
             return current_timestamp > self.exp
         except Exception as e:
             # Fallback method in case of any issues
-            logger.warning(
-                f"Error in is_expired check: {e!s}. Using fallback method."
-            )
+            logger.warning(f"Error in is_expired check: {e!s}. Using fallback method.")
             try:
                 # Additional fallback using direct integer comparison
                 return int(datetime.now(timezone.utc).timestamp()) > int(self.exp)
@@ -270,9 +268,7 @@ class JWTService(IJwtService):
         # Get secret key from parameters or settings
         if secret_key:
             self.secret_key = secret_key
-        elif (
-            settings and hasattr(settings, "JWT_SECRET_KEY") and settings.JWT_SECRET_KEY
-        ):
+        elif settings and hasattr(settings, "JWT_SECRET_KEY") and settings.JWT_SECRET_KEY:
             # Extract string value from SecretStr if needed
             if hasattr(settings.JWT_SECRET_KEY, "get_secret_value"):
                 self.secret_key = settings.JWT_SECRET_KEY.get_secret_value()
@@ -280,11 +276,7 @@ class JWTService(IJwtService):
                 self.secret_key = str(settings.JWT_SECRET_KEY)
         else:
             # Use a default for testing if in test environment
-            if (
-                settings
-                and hasattr(settings, "ENVIRONMENT")
-                and settings.ENVIRONMENT == "test"
-            ):
+            if settings and hasattr(settings, "ENVIRONMENT") and settings.ENVIRONMENT == "test":
                 self.secret_key = "testsecretkeythatisverylong"
             else:
                 raise ValueError("JWT_SECRET_KEY is required in settings")
@@ -524,9 +516,7 @@ class JWTService(IJwtService):
         # Remove any PHI fields from token claims
         for field in phi_fields:
             if field in to_encode:
-                logger.warning(
-                    f"PHI field '{field}' detected in token data and will be removed"
-                )
+                logger.warning(f"PHI field '{field}' detected in token data and will be removed")
                 to_encode.pop(field)
 
         # Get fixed timestamps for testing
@@ -538,9 +528,7 @@ class JWTService(IJwtService):
             # Fixed expirations for consistent test results
             if is_refresh_token:
                 # Add days * seconds_per_day
-                expire_timestamp = now_timestamp + (
-                    self.refresh_token_expire_days * 24 * 3600
-                )
+                expire_timestamp = now_timestamp + (self.refresh_token_expire_days * 24 * 3600)
             else:
                 # Default to exactly 30 minutes (1800 seconds) for tests
                 expire_timestamp = now_timestamp + 1800
@@ -576,15 +564,11 @@ class JWTService(IJwtService):
                     )
                 elif is_refresh_token:
                     expire_timestamp = int(
-                        (
-                            now + timedelta(days=self.refresh_token_expire_days)
-                        ).timestamp()
+                        (now + timedelta(days=self.refresh_token_expire_days)).timestamp()
                     )
                 else:
                     expire_timestamp = int(
-                        (
-                            now + timedelta(minutes=self.access_token_expire_minutes)
-                        ).timestamp()
+                        (now + timedelta(minutes=self.access_token_expire_minutes)).timestamp()
                     )
             except (TypeError, AttributeError) as e:
                 # Fallback for any issues with datetime
@@ -596,9 +580,7 @@ class JWTService(IJwtService):
                         self.refresh_token_expire_days * 24 * 60 * 60
                     )
                 else:
-                    expire_timestamp = now_timestamp + (
-                        self.access_token_expire_minutes * 60
-                    )
+                    expire_timestamp = now_timestamp + (self.access_token_expire_minutes * 60)
 
                 if expires_delta_minutes is not None:
                     if expires_delta_minutes < 0:
@@ -737,9 +719,7 @@ class JWTService(IJwtService):
         # Handle different parameter naming in different JWT libraries
         # Some use 'algorithm' (singular) others use 'algorithms' (plural)
         try:
-            return jwt_decode(
-                token, key, algorithms=algorithms, options=options, **kwargs
-            )
+            return jwt_decode(token, key, algorithms=algorithms, options=options, **kwargs)
         except ExpiredSignatureError:
             # Let this pass through for dedicated handling in the caller
             raise
@@ -755,9 +735,7 @@ class JWTService(IJwtService):
         except TypeError as e:
             # If the error suggests a parameter mismatch, try with 'algorithm' (singular)
             if "unexpected keyword argument" in str(e) and "algorithms" in str(e):
-                logger.warning(
-                    "JWT decode failed with 'algorithms', trying with 'algorithm'"
-                )
+                logger.warning("JWT decode failed with 'algorithms', trying with 'algorithm'")
                 try:
                     return jwt_decode(
                         token, key, algorithm=algorithms[0], options=options, **kwargs
@@ -766,9 +744,7 @@ class JWTService(IJwtService):
                     # Let this pass through for dedicated handling in the caller
                     raise
                 except Exception as inner_e:
-                    logger.error(
-                        f"Error in _decode_jwt with algorithm fallback: {inner_e}"
-                    )
+                    logger.error(f"Error in _decode_jwt with algorithm fallback: {inner_e}")
                     raise InvalidTokenException(f"Invalid token: {inner_e}")
             else:
                 logger.error(f"TypeError in _decode_jwt: {e}")
@@ -917,9 +893,7 @@ class JWTService(IJwtService):
         # Check if user repository is configured
         if not self.user_repository:
             logger.error("User repository not configured for JWTService")
-            raise AuthenticationError(
-                "Cannot retrieve user data - repository not configured"
-            )
+            raise AuthenticationError("Cannot retrieve user data - repository not configured")
 
         # Decode and verify the token
         payload = self.decode_token(token)
@@ -1094,9 +1068,7 @@ class JWTService(IJwtService):
                 if not hasattr(self, "_token_blacklist"):
                     self._token_blacklist = {}
                 self._token_blacklist[jti] = expires_at
-                logger.info(
-                    f"Token with JTI {jti} added to in-memory blacklist until {expires_at}"
-                )
+                logger.info(f"Token with JTI {jti} added to in-memory blacklist until {expires_at}")
 
         except Exception as e:
             logger.error(f"Error revoking token: {e}")
@@ -1145,9 +1117,7 @@ class JWTService(IJwtService):
             # Extract token from request
             token = self.extract_token_from_request(request)
             if not token:
-                logger.warning(
-                    "No token found in request when checking resource access"
-                )
+                logger.warning("No token found in request when checking resource access")
                 return False
 
             # Decode the token
@@ -1368,15 +1338,11 @@ def get_jwt_service(
         if algorithm not in ["HS256", "HS384", "HS512"]:
             raise ValueError(f"Unsupported JWT algorithm: {algorithm}")
 
-        access_token_expire_minutes = int(
-            getattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 30)
-        )
+        access_token_expire_minutes = int(getattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 30))
         if access_token_expire_minutes < 1:
             raise ValueError("ACCESS_TOKEN_EXPIRE_MINUTES must be positive")
 
-        refresh_token_expire_days = int(
-            getattr(settings, "JWT_REFRESH_TOKEN_EXPIRE_DAYS", 7)
-        )
+        refresh_token_expire_days = int(getattr(settings, "JWT_REFRESH_TOKEN_EXPIRE_DAYS", 7))
         if refresh_token_expire_days < 1:
             raise ValueError("JWT_REFRESH_TOKEN_EXPIRE_DAYS must be positive")
 

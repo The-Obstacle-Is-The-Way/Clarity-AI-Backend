@@ -143,9 +143,7 @@ class AuditLogService(IAuditLogger):
 
         # Log to standard logger at appropriate level
         log_method = getattr(logger, severity.lower(), logger.info)
-        log_method(
-            f"AUDIT: {event_type} - {action} by {actor_id} on {target_resource}:{target_id}"
-        )
+        log_method(f"AUDIT: {event_type} - {action} by {actor_id} on {target_resource}:{target_id}")
 
         return log_id
 
@@ -175,9 +173,7 @@ class AuditLogService(IAuditLogger):
         # Map to a standard event type
         if "login" in description.lower():
             event_type = (
-                AuditEventType.LOGIN
-                if status == "success"
-                else AuditEventType.LOGIN_FAILED
+                AuditEventType.LOGIN if status == "success" else AuditEventType.LOGIN_FAILED
             )
         elif "logout" in description.lower():
             event_type = AuditEventType.LOGOUT
@@ -347,9 +343,7 @@ class AuditLogService(IAuditLogger):
         start_time = end_time - timedelta(days=days)
 
         # Get statistics
-        stats = await self._repository.get_statistics(
-            start_time=start_time, end_time=end_time
-        )
+        stats = await self._repository.get_statistics(start_time=start_time, end_time=end_time)
 
         # Get recent security events
         security_filters = {
@@ -547,9 +541,7 @@ class AuditLogService(IAuditLogger):
             str: Hash chain value
         """
         # Combine previous hash with current log data
-        data = (
-            f"{self._previous_hash}:{log_id}:{timestamp}:{user_id or 'system'}:{action}"
-        )
+        data = f"{self._previous_hash}:{log_id}:{timestamp}:{user_id or 'system'}:{action}"
 
         # Calculate new hash
         return hashlib.sha256(data.encode()).hexdigest()
@@ -580,16 +572,12 @@ class AuditLogService(IAuditLogger):
 
         # Keep only recent history (last 1 hour)
         self._user_access_history[user_id] = [
-            t
-            for t in self._user_access_history[user_id]
-            if now - t < timedelta(hours=1)
+            t for t in self._user_access_history[user_id] if now - t < timedelta(hours=1)
         ]
 
         # Check for rapid access velocity (more than 10 accesses in 1 minute)
         recent_accesses = [
-            t
-            for t in self._user_access_history[user_id]
-            if now - t < timedelta(minutes=1)
+            t for t in self._user_access_history[user_id] if now - t < timedelta(minutes=1)
         ]
 
         if len(recent_accesses) >= 10:

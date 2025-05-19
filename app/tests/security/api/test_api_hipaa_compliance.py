@@ -152,14 +152,10 @@ class TestAPIHIPAACompliance:
                 elif token_str == "valid-doctor-token":  # Check against credential only
                     user_id = "doctor-user-id"  # Use MOCK_USERS key
                     roles = ["doctor"]
-                elif (
-                    token_str == "valid-patient-token"
-                ):  # Check against credential only
+                elif token_str == "valid-patient-token":  # Check against credential only
                     user_id = "P12345"  # Use MOCK_USERS key
                     roles = ["patient"]
-                elif (
-                    token_str == "valid-other-patient-token"
-                ):  # Check against credential only
+                elif token_str == "valid-other-patient-token":  # Check against credential only
                     user_id = "P_OTHER"  # Use MOCK_USERS key
                     roles = ["patient"]
 
@@ -203,14 +199,10 @@ class TestAPIHIPAACompliance:
             # Override get_current_user (assuming it uses decode_token and get_user)
             async def override_get_current_user(
                 request: Request,
-                token: str = Depends(
-                    OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
-                ),
+                token: str = Depends(OAuth2PasswordBearer(tokenUrl="token", auto_error=False)),
             ):
                 # DEBUG: Log the received token
-                logger.info(
-                    f"---> override_get_current_user: Received token parameter: {token!r}"
-                )
+                logger.info(f"---> override_get_current_user: Received token parameter: {token!r}")
                 if not token:
                     # Simulate auto_error=False behavior if no token provided
                     logger.warning(
@@ -220,9 +212,7 @@ class TestAPIHIPAACompliance:
                 try:
                     payload = mock_decode_token_internal(token)
                     # DEBUG: Log payload
-                    logger.info(
-                        f"---> override_get_current_user: Decoded payload: {payload}"
-                    )
+                    logger.info(f"---> override_get_current_user: Decoded payload: {payload}")
 
                     # The original get_current_user returns the payload directly.
                     # Our override should mimic this behavior.
@@ -290,12 +280,8 @@ class TestAPIHIPAACompliance:
             # Apply Overrides
             app.dependency_overrides[get_settings] = lambda: test_settings
             app.dependency_overrides[get_db_session] = override_get_db_session
-            app.dependency_overrides[
-                get_encryption_service
-            ] = override_get_encryption_service
-            app.dependency_overrides[
-                get_patient_repository
-            ] = override_get_patient_repository
+            app.dependency_overrides[get_encryption_service] = override_get_encryption_service
+            app.dependency_overrides[get_patient_repository] = override_get_patient_repository
             # Correctly override get_current_user from the actual dependencies module
             app.dependency_overrides[get_current_user] = override_get_current_user
 
@@ -313,9 +299,7 @@ class TestAPIHIPAACompliance:
                 response.headers["X-Content-Type-Options"] = "nosniff"
                 return response
 
-            app.add_middleware(
-                BaseHTTPMiddleware, dispatch=security_headers_middleware_local
-            )
+            app.add_middleware(BaseHTTPMiddleware, dispatch=security_headers_middleware_local)
 
             # --- Mock Routes ---
             # We're implementing specialized minimal routes that perfectly simulate HIPAA scenarios
@@ -373,9 +357,7 @@ class TestAPIHIPAACompliance:
 
                 # Implement authorization checks for patient data access
                 # Patient can only access their own data
-                if user["roles"] == ["patient"] and patient_id not in user.get(
-                    "patient_ids", []
-                ):
+                if user["roles"] == ["patient"] and patient_id not in user.get("patient_ids", []):
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="Access forbidden to requested patient data",
@@ -467,9 +449,7 @@ class TestAPIHIPAACompliance:
                         "updated_at": now,
                     }
 
-                    return JSONResponse(
-                        status_code=status.HTTP_201_CREATED, content=response_data
-                    )
+                    return JSONResponse(status_code=status.HTTP_201_CREATED, content=response_data)
                 except Exception as e:
                     return JSONResponse(
                         status_code=status.HTTP_400_BAD_REQUEST,
@@ -477,9 +457,7 @@ class TestAPIHIPAACompliance:
                     )
 
             # Include our test router instead of the actual patients_router
-            app.include_router(
-                test_router, prefix=test_settings.API_V1_STR + "/patients"
-            )
+            app.include_router(test_router, prefix=test_settings.API_V1_STR + "/patients")
 
             # Return the app instance *after* the patch context exits (if setup needs to persist)
             return app
@@ -514,9 +492,7 @@ class TestAPIHIPAACompliance:
         """Return a valid token for a different patient."""
         return "Bearer valid-other-patient-token"
 
-    def test_patient_data_isolation(
-        self, client, api_prefix, patient_token, other_patient_token
-    ):
+    def test_patient_data_isolation(self, client, api_prefix, patient_token, other_patient_token):
         """Test that patients can only access their own data."""
         # Patient can access their own data
         response = client.get(
@@ -563,9 +539,7 @@ class TestAPIHIPAACompliance:
         # Check that the response contains sanitized fields
         # The exact format may vary, so we check for patterns indicating sanitization
         for field in data.values():
-            if isinstance(field, str) and (
-                "[REDACTED" in field or "[PHI SANITIZED" in field
-            ):
+            if isinstance(field, str) and ("[REDACTED" in field or "[PHI SANITIZED" in field):
                 # Found at least one sanitized field, test passes
                 break
         else:
@@ -663,9 +637,7 @@ class TestAPIHIPAACompliance:
             gender=patient_data_for_create["gender"],
             email=patient_data_for_create["email"],
             phone=patient_data_for_create["phone"],  # Include fields from create data
-            address=patient_data_for_create[
-                "address"
-            ],  # Include fields from create data
+            address=patient_data_for_create["address"],  # Include fields from create data
             insurance_number=patient_data_for_create[
                 "insurance_number"
             ],  # Include fields from create data

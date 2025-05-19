@@ -79,9 +79,7 @@ class RedisService(IRedisService):
             xx = set_if_exists if set_if_exists is not None else False
 
             result = await self._redis.set(name, value, ex=expire, nx=nx, xx=xx)
-            return (
-                result is not None
-            )  # Redis returns None if NX/XX conditions aren't met
+            return result is not None  # Redis returns None if NX/XX conditions aren't met
         except Exception as e:
             logger.error(f"Redis set error for key '{name}': {e!s}")
             return None

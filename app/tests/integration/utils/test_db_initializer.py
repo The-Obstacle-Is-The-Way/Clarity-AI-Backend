@@ -70,9 +70,7 @@ async def create_test_users(session: AsyncSession) -> None:
         existing_ids = [str(row[0]) for row in result.fetchall()]
 
         current_time = datetime.now(timezone.utc).isoformat()
-        password_hash = (
-            "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC"  # 'password'
-        )
+        password_hash = "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC"  # 'password'
         inserted_users = []
 
         # Create test patient user if not exists using direct SQL
@@ -305,9 +303,7 @@ async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
                 async with engine.begin() as conn:
                     # Define the sync function
                     def validate_models_sync(sync_session_arg_not_used):
-                        logger.info(
-                            "Validating models (sync context inside get_test_db_session)"
-                        )
+                        logger.info("Validating models (sync context inside get_test_db_session)")
                         # validate_models()
 
                     # Run validation in sync context
@@ -414,7 +410,5 @@ async def verify_table_exists(session: AsyncSession, table_name: str) -> bool:
         return True
     except Exception as e:
         # Catching broad exception as specific DB errors vary (e.g., NoSuchTableError, OperationalError)
-        logger.warning(
-            f"Table '{table_name}' does not seem to exist or query failed: {e}"
-        )
+        logger.warning(f"Table '{table_name}' does not seem to exist or query failed: {e}")
         return False

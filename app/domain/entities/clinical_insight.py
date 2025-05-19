@@ -82,9 +82,7 @@ class ClinicalInsight:
         # These properties are for compatibility with existing code
         self.temporal_context = {
             "timestamp": self.timestamp.isoformat(),
-            "relative_time_reference": metadata.get(
-                "relative_time_reference", "current"
-            )
+            "relative_time_reference": metadata.get("relative_time_reference", "current")
             if metadata
             else "current",
         }
@@ -164,6 +162,4 @@ class ClinicalInsight:
 
     def __str__(self) -> str:
         """String representation of the insight."""
-        return (
-            f"ClinicalInsight({self.category.name}, {self.severity.name}): {self.text}"
-        )
+        return f"ClinicalInsight({self.category.name}, {self.severity.name}): {self.text}"

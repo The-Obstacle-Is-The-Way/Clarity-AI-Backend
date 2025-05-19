@@ -181,8 +181,7 @@ class DistributedRateLimiter:
                         "reset_at": window_start_time + config.period_seconds,
                         "last_request": now,
                     },
-                    expiration=config.period_seconds
-                    * 2,  # Use expiration instead of ttl
+                    expiration=config.period_seconds * 2,  # Use expiration instead of ttl
                 )
 
                 # Not rate limited
@@ -299,9 +298,7 @@ class DistributedRateLimiter:
         """
         # Add standard rate limit headers
         response.headers["X-RateLimit-Limit"] = str(rate_limit_info.get("limit", 0))
-        response.headers["X-RateLimit-Remaining"] = str(
-            rate_limit_info.get("remaining", 0)
-        )
+        response.headers["X-RateLimit-Remaining"] = str(rate_limit_info.get("remaining", 0))
 
         # Add reset header if available
         if "reset_at" in rate_limit_info:

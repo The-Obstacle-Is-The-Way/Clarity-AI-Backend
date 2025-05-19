@@ -44,9 +44,7 @@ class ContactInfo:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary, excluding None values."""
         return {
-            k: v
-            for k, v in {"email": self.email, "phone": self.phone}.items()
-            if v is not None
+            k: v for k, v in {"email": self.email, "phone": self.phone}.items() if v is not None
         }
 
     def to_json(self) -> str:
@@ -91,9 +89,7 @@ class PatientContactInfoDescriptor:
             # Just ignore this case - it's handled in __get__
             pass
         else:
-            raise TypeError(
-                f"Expected ContactInfo, dict, or None; got {type(value).__name__}"
-            )
+            raise TypeError(f"Expected ContactInfo, dict, or None; got {type(value).__name__}")
 
 
 @dataclass
@@ -161,9 +157,7 @@ class Patient:
     _contact_info: Any = field(default=None, repr=False, compare=False)
 
     # Encryption service - lazy loaded
-    _encryption_service: Any = field(
-        default=None, repr=False, compare=False, init=False
-    )
+    _encryption_service: Any = field(default=None, repr=False, compare=False, init=False)
 
     def __post_init__(self):
         """Initialize the object after dataclass initialization."""
@@ -204,9 +198,7 @@ class Patient:
                 import logging
 
                 logging = logging.getLogger(__name__)
-                logging.warning(
-                    f"PHI field '{name}' accessed but audit_logger unavailable"
-                )
+                logging.warning(f"PHI field '{name}' accessed but audit_logger unavailable")
 
         # Return the attribute normally
         return object.__getattribute__(self, name)
@@ -226,9 +218,7 @@ class Patient:
                 import logging
 
                 logger = logging.getLogger(__name__)
-                logger.warning(
-                    "Encryption service not available - PHI will not be encrypted"
-                )
+                logger.warning("Encryption service not available - PHI will not be encrypted")
                 self._encryption_service = None
         return self._encryption_service
 
@@ -333,9 +323,7 @@ class Patient:
         self.treatment_notes.append(entry)
         self.updated_at = datetime.now()
 
-    def model_copy(
-        self, *, update: dict = None, deep: bool = False, **kwargs
-    ) -> Patient:
+    def model_copy(self, *, update: dict = None, deep: bool = False, **kwargs) -> Patient:
         """Compatibility method similar to Pydantic v1's copy() but for dataclasses."""
         from copy import copy, deepcopy
 
@@ -403,9 +391,7 @@ class Patient:
         # Exclude PHI fields from serialization by default (HIPAA compliance)
         # Users must explicitly ask for these fields if they want them
         if not include_phi:
-            phi_fields_to_exclude = self.phi_fields - set(
-                data.get("_phi_fields_to_include", [])
-            )
+            phi_fields_to_exclude = self.phi_fields - set(data.get("_phi_fields_to_include", []))
             for field in phi_fields_to_exclude:
                 if field in data:
                     data[field] = "[REDACTED PHI]"

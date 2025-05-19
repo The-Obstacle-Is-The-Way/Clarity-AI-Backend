@@ -204,16 +204,12 @@ class TestSqlAlchemyEventRepository:
         # Mock the query results
         mock_result = MagicMock()
         mock_result.scalars = MagicMock(return_value=mock_result)
-        mock_result.all = MagicMock(
-            return_value=[mock_event_model, mock_child_event_model]
-        )
+        mock_result.all = MagicMock(return_value=[mock_event_model, mock_child_event_model])
 
         mock_session.execute.return_value = mock_result
 
         # Execute
-        results = await repo.get_events_by_correlation_id(
-            mock_event_model.correlation_id
-        )
+        results = await repo.get_events_by_correlation_id(mock_event_model.correlation_id)
 
         # Verify
         assert len(results) == 2
@@ -223,9 +219,7 @@ class TestSqlAlchemyEventRepository:
         mock_session.execute.assert_called_once()
 
     @pytest.mark.asyncio()
-    async def test_get_event_chain(
-        self, mock_session, mock_event_model, mock_child_event_model
-    ):
+    async def test_get_event_chain(self, mock_session, mock_event_model, mock_child_event_model):
         """Test getting an event chain by correlation ID."""
         # Setup
         repo = SqlAlchemyEventRepository(session=mock_session)
@@ -247,9 +241,7 @@ class TestSqlAlchemyEventRepository:
             assert len(chain.events) == 2
 
             # Verify the hierarchy was set up correctly (root event has child)
-            root_event = next(
-                (e for e in chain.events if e.parent_event_id is None), None
-            )
+            root_event = next((e for e in chain.events if e.parent_event_id is None), None)
             assert root_event is not None
 
             # In a real implementation, rebuild_hierarchy would link events properly
@@ -259,9 +251,7 @@ class TestSqlAlchemyEventRepository:
             )
 
     @pytest.mark.asyncio()
-    async def test_get_patient_events(
-        self, mock_session, mock_event_model, mock_child_event_model
-    ):
+    async def test_get_patient_events(self, mock_session, mock_event_model, mock_child_event_model):
         """Test getting events associated with a patient."""
         # Setup
         repo = SqlAlchemyEventRepository(session=mock_session)
@@ -269,9 +259,7 @@ class TestSqlAlchemyEventRepository:
         # Mock the query results
         mock_result = MagicMock()
         mock_result.scalars = MagicMock(return_value=mock_result)
-        mock_result.all = MagicMock(
-            return_value=[mock_event_model, mock_child_event_model]
-        )
+        mock_result.all = MagicMock(return_value=[mock_event_model, mock_child_event_model])
 
         mock_session.execute.return_value = mock_result
 

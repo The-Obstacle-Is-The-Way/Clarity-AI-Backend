@@ -95,9 +95,7 @@ async def db_session(setup_database) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def override_get_session(
-    db_session: AsyncSession, dependency_overrides: dict
-) -> None:
+async def override_get_session(db_session: AsyncSession, dependency_overrides: dict) -> None:
     """
     Overrides the 'get_session' dependency for the FastAPI app using the
     standard dependency_overrides mechanism.

@@ -96,9 +96,7 @@ class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
     notes = Column(Text, nullable=True)
 
     patient = relationship("Patient")  # Add backref in Patient model if needed
-    rule = relationship(
-        "BiometricRuleModel"
-    )  # Add backref in BiometricRuleModel if needed
+    rule = relationship("BiometricRuleModel")  # Add backref in BiometricRuleModel if needed
     acknowledged_by_user = relationship("User", foreign_keys=[acknowledged_by_user_id])
     resolved_by_user = relationship("User", foreign_keys=[resolved_by_user_id])
 

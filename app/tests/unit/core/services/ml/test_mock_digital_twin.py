@@ -58,9 +58,7 @@ def mock_dt_service(request):
     request.instance.service = service
     request.instance.patient_data = patient_data
     request.instance.twin_id = create_twin_result["twin_id"]
-    request.instance.sample_message = (
-        "I've been feeling anxious in social situations lately."
-    )
+    request.instance.sample_message = "I've been feeling anxious in social situations lately."
 
     yield service  # Provide the service to the test function
 
@@ -70,9 +68,7 @@ def mock_dt_service(request):
 
 
 # Remove BaseUnitTest inheritance
-@pytest.mark.usefixtures(
-    "mock_dt_service"
-)  # Apply the fixture to all methods in the class
+@pytest.mark.usefixtures("mock_dt_service")  # Apply the fixture to all methods in the class
 @pytest.mark.db_required()  # Keep existing marker
 class TestMockDigitalTwinService:
     """
@@ -122,9 +118,7 @@ class TestMockDigitalTwinService:
         # Test with different session types
         for session_type in ["therapy", "assessment", "medication_review"]:
             # Access instance variables set by fixture
-            result = self.service.create_session(
-                twin_id=self.twin_id, session_type=session_type
-            )
+            result = self.service.create_session(twin_id=self.twin_id, session_type=session_type)
 
             # Verify result structure
             assert "session_id" in result  # Converted assertion
@@ -139,22 +133,16 @@ class TestMockDigitalTwinService:
             assert result["status"] == "active"  # Converted assertion
 
             # Check that start_time is a recent timestamp
-            start_time = datetime.fromisoformat(
-                result["start_time"].replace("Z", "+00:00")
-            )
+            start_time = datetime.fromisoformat(result["start_time"].replace("Z", "+00:00"))
             # Ensure timestamp is timezone-aware for comparison
             if start_time.tzinfo is None:
                 start_time = start_time.replace(tzinfo=UTC)
-            assert (
-                datetime.now(UTC) - start_time
-            ).total_seconds() < 10  # Converted assertion
+            assert (datetime.now(UTC) - start_time).total_seconds() < 10  # Converted assertion
 
     def test_get_session(self) -> None:  # Uses instance variables
         """Test retrieving a digital twin therapy session."""
         # Create a session
-        create_result = self.service.create_session(
-            twin_id=self.twin_id, session_type="therapy"
-        )
+        create_result = self.service.create_session(twin_id=self.twin_id, session_type="therapy")
         session_id = create_result["session_id"]
 
         # Get the session
@@ -174,9 +162,7 @@ class TestMockDigitalTwinService:
     def test_send_message(self) -> None:  # Uses instance variables
         """Test sending a message to a digital twin therapy session."""
         # Create a session
-        create_result = self.service.create_session(
-            twin_id=self.twin_id, session_type="therapy"
-        )
+        create_result = self.service.create_session(twin_id=self.twin_id, session_type="therapy")
         session_id = create_result["session_id"]
 
         # Send a message
@@ -207,9 +193,7 @@ class TestMockDigitalTwinService:
     def test_message_response_types(self) -> None:  # Uses instance variables
         """Test different types of responses based on message content."""
         # Create a session
-        create_result = self.service.create_session(
-            twin_id=self.twin_id, session_type="therapy"
-        )
+        create_result = self.service.create_session(twin_id=self.twin_id, session_type="therapy")
         session_id = create_result["session_id"]
 
         # Test different message types
@@ -235,9 +219,7 @@ class TestMockDigitalTwinService:
     def test_end_session(self) -> None:  # Uses instance variables
         """Test ending a digital twin therapy session."""
         # Create a session
-        create_result = self.service.create_session(
-            twin_id=self.twin_id, session_type="therapy"
-        )
+        create_result = self.service.create_session(twin_id=self.twin_id, session_type="therapy")
         session_id = create_result["session_id"]
 
         # Send a message to have some content
@@ -268,15 +250,11 @@ class TestMockDigitalTwinService:
         assert "twin_id" in result  # Converted assertion
         assert "insights" in result  # Converted assertion
         assert isinstance(result["insights"], dict)  # Converted assertion
-        assert (
-            "summary" in result["insights"]
-        )  # Basic check for general insight structure
+        assert "summary" in result["insights"]  # Basic check for general insight structure
 
         # Test requesting specific insight types
         insight_types = ["mood", "activity", "sleep", "medication", "treatment"]
-        result = self.service.get_insights(
-            twin_id=self.twin_id, insight_types=insight_types
-        )
+        result = self.service.get_insights(twin_id=self.twin_id, insight_types=insight_types)
         assert isinstance(result["insights"], dict)  # Converted assertion
         # Check if requested insights are present
         for insight_type in insight_types:
@@ -317,17 +295,13 @@ class TestMockDigitalTwinService:
 
     def test_activity_insights(self) -> None:  # Uses instance variables
         """Test activity insights generation."""
-        result = self.service.get_insights(
-            twin_id=self.twin_id, insight_types=["activity"]
-        )
+        result = self.service.get_insights(twin_id=self.twin_id, insight_types=["activity"])
         assert "activity" in result["insights"]  # Converted assertion
         # Add more specific assertions based on expected activity insight structure
 
     def test_sleep_insights(self) -> None:  # Uses instance variables
         """Test sleep insights generation."""
-        result = self.service.get_insights(
-            twin_id=self.twin_id, insight_types=["sleep"]
-        )
+        result = self.service.get_insights(twin_id=self.twin_id, insight_types=["sleep"])
         assert "sleep" in result["insights"]  # Converted assertion
         sleep_insights = result["insights"]["sleep"]
         assert "average_duration" in sleep_insights  # Converted assertion
@@ -336,9 +310,7 @@ class TestMockDigitalTwinService:
 
     def test_medication_insights(self) -> None:  # Uses instance variables
         """Test medication insights generation."""
-        result = self.service.get_insights(
-            twin_id=self.twin_id, insight_types=["medication"]
-        )
+        result = self.service.get_insights(twin_id=self.twin_id, insight_types=["medication"])
         assert "medication" in result["insights"]  # Converted assertion
         med_insights = result["insights"]["medication"]
         assert "adherence_estimate" in med_insights  # Converted assertion
@@ -346,9 +318,7 @@ class TestMockDigitalTwinService:
 
     def test_treatment_insights(self) -> None:  # Uses instance variables
         """Test treatment insights generation."""
-        result = self.service.get_insights(
-            twin_id=self.twin_id, insight_types=["treatment"]
-        )
+        result = self.service.get_insights(twin_id=self.twin_id, insight_types=["treatment"])
         assert "treatment" in result["insights"]  # Converted assertion
         treat_insights = result["insights"]["treatment"]
         assert "effectiveness_assessment" in treat_insights  # Converted assertion

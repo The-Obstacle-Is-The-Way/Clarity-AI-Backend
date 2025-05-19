@@ -138,9 +138,7 @@ async def test_preprocess_patient_data(forecasting_service, patient_data):
     patient_id = uuid4()
 
     # Preprocess data
-    preprocessed_data = await forecasting_service.preprocess_patient_data(
-        patient_id, patient_data
-    )
+    preprocessed_data = await forecasting_service.preprocess_patient_data(patient_id, patient_data)
 
     # Verify shape and type
     assert isinstance(preprocessed_data, np.ndarray)
@@ -227,9 +225,7 @@ async def test_forecast_symptoms_with_insufficient_data(forecasting_service):
 
     # Verify that validation error is raised
     with pytest.raises(Exception):
-        await forecasting_service.forecast_symptoms(
-            patient_id, insufficient_data, horizon=5
-        )
+        await forecasting_service.forecast_symptoms(patient_id, insufficient_data, horizon=5)
 
 
 @pytest.mark.asyncio()
@@ -238,9 +234,7 @@ async def test_analyze_symptom_patterns(forecasting_service, patient_data):
     patient_id = uuid4()
 
     # Analyze symptom patterns
-    patterns = await forecasting_service.analyze_symptom_patterns(
-        patient_id, patient_data
-    )
+    patterns = await forecasting_service.analyze_symptom_patterns(patient_id, patient_data)
 
     # Verify patterns structure
     assert "symptom_patterns" in patterns
@@ -261,9 +255,7 @@ async def test_identify_risk_periods(forecasting_service, patient_data):
     patient_id = uuid4()
 
     # First generate a forecast
-    forecast = await forecasting_service.forecast_symptoms(
-        patient_id, patient_data, horizon=14
-    )
+    forecast = await forecasting_service.forecast_symptoms(patient_id, patient_data, horizon=14)
 
     # Identify risk periods
     risk_periods = await forecasting_service.identify_risk_periods(patient_id, forecast)
@@ -341,15 +333,11 @@ async def test_model_failure_handling(forecasting_service, patient_data):
     patient_id = uuid4()
 
     # Make transformer model fail
-    forecasting_service.transformer_model.predict.side_effect = Exception(
-        "Model failure"
-    )
+    forecasting_service.transformer_model.predict.side_effect = Exception("Model failure")
 
     # Verify that service handles the failure gracefully
     with pytest.raises(Exception):
-        await forecasting_service.forecast_symptoms(
-            patient_id, patient_data, use_ensemble=True
-        )
+        await forecasting_service.forecast_symptoms(patient_id, patient_data, use_ensemble=True)
 
     # Reset transformer model and make XGBoost model fail
     forecasting_service.transformer_model.predict.side_effect = None

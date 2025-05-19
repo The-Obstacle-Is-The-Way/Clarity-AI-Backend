@@ -225,19 +225,13 @@ class PatientRepository:
 
                 session.add(patient_model)
                 await session.flush()  # Flush to get ID and process defaults/triggers
-                await session.refresh(
-                    patient_model
-                )  # Refresh to get any DB-generated values
+                await session.refresh(patient_model)  # Refresh to get any DB-generated values
 
-                self.logger.info(
-                    f"Successfully created patient with DB ID: {patient_model.id}"
-                )
+                self.logger.info(f"Successfully created patient with DB ID: {patient_model.id}")
 
                 # Convert back to domain entity using the model's to_domain method
                 # This now relies on TypeDecorators in PatientModel for decryption
-                created_entity = (
-                    await patient_model.to_domain()
-                )  # REMOVED encryption_service
+                created_entity = await patient_model.to_domain()  # REMOVED encryption_service
                 return created_entity
             except (
                 ValidationError
@@ -251,26 +245,20 @@ class PatientRepository:
                 )
             except IntegrityError as e:
                 await session.rollback()
-                self.logger.error(
-                    f"Integrity error creating patient: {e}", exc_info=True
-                )
+                self.logger.error(f"Integrity error creating patient: {e}", exc_info=True)
                 # Consider specific error messages based on e.details or e.orig
                 raise PersistenceError(
                     f"Patient already exists or data integrity violation: {e}"
                 ) from e
             except SQLAlchemyError as e:
                 await session.rollback()
-                self.logger.error(
-                    f"Database error creating patient: {e}", exc_info=True
-                )
+                self.logger.error(f"Database error creating patient: {e}", exc_info=True)
                 raise PersistenceError(
                     "A database error occurred while creating the patient."
                 ) from e
             except Exception as e:
                 await session.rollback()
-                self.logger.error(
-                    f"Unexpected error creating patient: {e}", exc_info=True
-                )
+                self.logger.error(f"Unexpected error creating patient: {e}", exc_info=True)
                 raise PersistenceError(
                     "An unexpected error occurred while creating the patient."
                 ) from e
@@ -304,9 +292,7 @@ class PatientRepository:
                 )
                 # Convert model to domain entity using the model's to_domain method
                 # This now relies on TypeDecorators in PatientModel for decryption
-                patient_entity = (
-                    await patient_model.to_domain()
-                )  # REMOVED encryption_service
+                patient_entity = await patient_model.to_domain()  # REMOVED encryption_service
                 return patient_entity
             else:
                 self.logger.debug(f"No patient model found for ID {patient_uuid}.")
@@ -358,9 +344,7 @@ class PatientRepository:
         # This is a defensive approach to support both calling conventions:
         # - update(entity, id) - standard
         # - update(id, entity) - also supported for backward compatibility
-        if isinstance(patient_entity, (str, UUID)) and isinstance(
-            patient_id, PatientEntity
-        ):
+        if isinstance(patient_entity, (str, UUID)) and isinstance(patient_id, PatientEntity):
             # Parameters are passed in reverse order
             patient_id, patient_entity = patient_entity, patient_id
             self.logger.debug("Detected reversed parameter order in update method")
@@ -370,9 +354,7 @@ class PatientRepository:
             patient_id = patient_entity.id
 
         # Handle the case where patient_id is a UUID object directly
-        entity_id_str = (
-            str(patient_entity.id) if hasattr(patient_entity, "id") else "None"
-        )
+        entity_id_str = str(patient_entity.id) if hasattr(patient_entity, "id") else "None"
         self.logger.debug(
             f"Attempting to update patient with ID: {patient_id} using entity ID: {entity_id_str} with context: {context}"
         )
@@ -385,9 +367,7 @@ class PatientRepository:
         if hasattr(patient_entity, "model_dump"):
             # Pydantic v2 approach
             try:
-                domain_dict = patient_entity.model_dump(
-                    exclude_unset=False, exclude_none=True
-                )
+                domain_dict = patient_entity.model_dump(exclude_unset=False, exclude_none=True)
             except (TypeError, AttributeError):
                 try:
                     domain_dict = patient_entity.model_dump()
@@ -397,9 +377,7 @@ class PatientRepository:
         # Try dict() approach (Pydantic v1)
         if not domain_dict and hasattr(patient_entity, "dict"):
             try:
-                domain_dict = patient_entity.dict(
-                    exclude_unset=False, exclude_none=True
-                )
+                domain_dict = patient_entity.dict(exclude_unset=False, exclude_none=True)
             except (TypeError, AttributeError):
                 try:
                     domain_dict = patient_entity.model_dump()
@@ -419,13 +397,9 @@ class PatientRepository:
 
         # Try attribute iteration
         if not domain_dict:
-            self.logger.warning(
-                "Using fallback attribute extraction for patient update"
-            )
+            self.logger.warning("Using fallback attribute extraction for patient update")
             for attr in dir(patient_entity):
-                if not attr.startswith("_") and not callable(
-                    getattr(patient_entity, attr, None)
-                ):
+                if not attr.startswith("_") and not callable(getattr(patient_entity, attr, None)):
                     try:
                         value = getattr(patient_entity, attr)
                         if value is not None:
@@ -446,9 +420,7 @@ class PatientRepository:
 
         # If we still don't have data, log an error
         if not domain_dict:
-            self.logger.error(
-                f"Failed to extract data from patient entity: {patient_entity}"
-            )
+            self.logger.error(f"Failed to extract data from patient entity: {patient_entity}")
             return None
 
         # The rest of the method remains unchanged
@@ -564,9 +536,7 @@ class PatientRepository:
                                 return db_patient.to_domain()
                             except TypeError:
                                 # If it's an async mock that can't be awaited directly
-                                self.logger.debug(
-                                    "Detected AsyncMock in test environment"
-                                )
+                                self.logger.debug("Detected AsyncMock in test environment")
                                 return PatientEntity(
                                     id=db_patient.id,
                                     first_name=getattr(db_patient, "_first_name", None)
@@ -579,9 +549,7 @@ class PatientRepository:
                         return await db_patient.to_domain()
                     return None
 
-                db_patient.updated_at = datetime.now(
-                    timezone.utc
-                )  # Ensure updated_at is set
+                db_patient.updated_at = datetime.now(timezone.utc)  # Ensure updated_at is set
                 # self.logger.info(f"Patient with ID: {db_patient.id} updated. Changed fields: {updated_fields_for_log}. Context: {context}")
                 # Log a more generic success message, actual fields can be in audit log if needed
                 self.logger.info(
@@ -590,9 +558,7 @@ class PatientRepository:
 
                 try:
                     await session.commit()
-                    await session.refresh(
-                        db_patient
-                    )  # Refresh to get any DB-generated changes
+                    await session.refresh(db_patient)  # Refresh to get any DB-generated changes
                     # self.logger.debug(f"Successfully committed update for patient ID: {db_patient.id}")
 
                     # Handle the case where to_domain is a Mock object in tests
@@ -605,9 +571,7 @@ class PatientRepository:
                                 return db_patient.to_domain()
                             except TypeError:
                                 # If it's an async mock that can't be awaited directly
-                                self.logger.debug(
-                                    "Detected AsyncMock in test environment"
-                                )
+                                self.logger.debug("Detected AsyncMock in test environment")
                                 return PatientEntity(
                                     id=db_patient.id,
                                     first_name=getattr(db_patient, "_first_name", None)
@@ -624,21 +588,15 @@ class PatientRepository:
                     self.logger.error(
                         f"IntegrityError during update for patient ID: {patient_id}. Error: {e}"
                     )
-                    raise PersistenceError(
-                        f"Data integrity issue updating patient: {e}"
-                    ) from e
+                    raise PersistenceError(f"Data integrity issue updating patient: {e}") from e
                 except Exception as e:
                     await session.rollback()
                     self.logger.error(
                         f"Unexpected error during update for patient ID: {patient_id}. Error: {e}"
                     )
-                    raise PersistenceError(
-                        f"Unexpected issue updating patient: {e}"
-                    ) from e
+                    raise PersistenceError(f"Unexpected issue updating patient: {e}") from e
             else:
-                self.logger.warning(
-                    f"Patient with ID: {patient_id} not found for update."
-                )
+                self.logger.warning(f"Patient with ID: {patient_id} not found for update.")
                 return None
 
         return await self._with_session(_update_operation)
@@ -660,16 +618,14 @@ class PatientRepository:
             try:
                 patient_uuid = UUID(patient_id)
             except ValueError:
-                self.logger.warning(
-                    f"Invalid UUID string provided for deletion: {patient_id}"
+                self.logger.warning(f"Invalid UUID string provided for deletion: {patient_id}")
+                return (
+                    False  # Or raise an error, depending on desired behavior for invalid ID format
                 )
-                return False  # Or raise an error, depending on desired behavior for invalid ID format
         elif isinstance(patient_id, UUID):
             patient_uuid = patient_id
         else:
-            self.logger.error(
-                f"Invalid patient_id type for deletion: {type(patient_id)}"
-            )
+            self.logger.error(f"Invalid patient_id type for deletion: {type(patient_id)}")
             return False  # Or raise TypeError
 
         async def _delete_operation(session: AsyncSession) -> bool:
@@ -680,23 +636,15 @@ class PatientRepository:
                 if patient_model:
                     await session.delete(patient_model)
                     await session.flush()
-                    self.logger.info(
-                        f"Successfully deleted patient with ID {patient_id}"
-                    )
+                    self.logger.info(f"Successfully deleted patient with ID {patient_id}")
                     return True
                 else:
-                    self.logger.warning(
-                        f"Patient with ID {patient_id} not found for deletion"
-                    )
+                    self.logger.warning(f"Patient with ID {patient_id} not found for deletion")
                     return False
 
             except IntegrityError as e:
-                self.logger.error(
-                    f"IntegrityError during deletion of patient ID {patient_id}: {e}"
-                )
-                raise PersistenceError(
-                    f"Data integrity issue deleting patient: {e}"
-                ) from e
+                self.logger.error(f"IntegrityError during deletion of patient ID {patient_id}: {e}")
+                raise PersistenceError(f"Data integrity issue deleting patient: {e}") from e
             except Exception as e:
                 self.logger.error(
                     f"Unexpected error during deletion of patient ID {patient_id}: {e}"
@@ -729,9 +677,7 @@ class PatientRepository:
                         f"Patient model found for email {email}. Converting to domain entity."
                     )
                     # Convert model to domain entity using the model's to_domain method
-                    patient_entity = (
-                        await patient_model.to_domain()
-                    )  # REMOVED encryption_service
+                    patient_entity = await patient_model.to_domain()  # REMOVED encryption_service
                     return patient_entity
                 else:
                     self.logger.debug(f"No patient model found for email {email}.")

@@ -44,9 +44,7 @@ class MockEnhancedMentalLLaMAService(EnhancedMentalLLaMAService):
         return []
 
     async def generate_counterfactual_scenarios(self, *args, **kwargs):
-        logger.info(
-            "MockEnhancedMentalLLaMAService.generate_counterfactual_scenarios called"
-        )
+        logger.info("MockEnhancedMentalLLaMAService.generate_counterfactual_scenarios called")
         return []
 
     async def perform_temporal_reasoning(self, *args, **kwargs):
@@ -58,36 +56,26 @@ class MockEnhancedMentalLLaMAService(EnhancedMentalLLaMAService):
         return {}
 
     async def identify_medication_adherence_patterns(self, *args, **kwargs):
-        logger.info(
-            "MockEnhancedMentalLLaMAService.identify_medication_adherence_patterns called"
-        )
+        logger.info("MockEnhancedMentalLLaMAService.identify_medication_adherence_patterns called")
         return {}
 
     async def extract_psychosocial_stressors(self, *args, **kwargs):
-        logger.info(
-            "MockEnhancedMentalLLaMAService.extract_psychosocial_stressors called"
-        )
+        logger.info("MockEnhancedMentalLLaMAService.extract_psychosocial_stressors called")
         return []
 
     async def generate_psychoeducational_content(self, *args, **kwargs):
-        logger.info(
-            "MockEnhancedMentalLLaMAService.generate_psychoeducational_content called"
-        )
+        logger.info("MockEnhancedMentalLLaMAService.generate_psychoeducational_content called")
         return {}
 
     async def integrate_with_belief_network(self, *args, **kwargs):
-        logger.info(
-            "MockEnhancedMentalLLaMAService.integrate_with_belief_network called"
-        )
+        logger.info("MockEnhancedMentalLLaMAService.integrate_with_belief_network called")
         return {}
 
     async def generate_insight_explanation(
         self, patient_id: UUID, insight: dict, detail_level: str
     ) -> dict:
         """Stub for generating explanations for clinical insights."""
-        logger.info(
-            "MockEnhancedMentalLLaMAService.generate_insight_explanation called"
-        )
+        logger.info("MockEnhancedMentalLLaMAService.generate_insight_explanation called")
         # Provide a non-empty explanation for test compatibility
         return {"explanation": "This is a detailed insight explanation."}
 
@@ -108,27 +96,19 @@ class MockEnhancedXGBoostService(EnhancedXGBoostService):
         return {}
 
     async def generate_optimal_dosing_strategy(self, *args, **kwargs):
-        logger.info(
-            "MockEnhancedXGBoostService.generate_optimal_dosing_strategy called"
-        )
+        logger.info("MockEnhancedXGBoostService.generate_optimal_dosing_strategy called")
         return {}
 
     async def model_neural_pathway_activations(self, *args, **kwargs):
-        logger.info(
-            "MockEnhancedXGBoostService.model_neural_pathway_activations called"
-        )
+        logger.info("MockEnhancedXGBoostService.model_neural_pathway_activations called")
         return {}
 
     async def predict_network_connectivity_changes(self, *args, **kwargs):
-        logger.info(
-            "MockEnhancedXGBoostService.predict_network_connectivity_changes called"
-        )
+        logger.info("MockEnhancedXGBoostService.predict_network_connectivity_changes called")
         return {}
 
     async def simulate_emotional_regulation_circuit(self, *args, **kwargs):
-        logger.info(
-            "MockEnhancedXGBoostService.simulate_emotional_regulation_circuit called"
-        )
+        logger.info("MockEnhancedXGBoostService.simulate_emotional_regulation_circuit called")
         return {}
 
     async def predict_treatment_resistance(self, *args, **kwargs):
@@ -136,9 +116,7 @@ class MockEnhancedXGBoostService(EnhancedXGBoostService):
         return {}
 
     async def evaluate_adjunctive_therapy_need(self, *args, **kwargs):
-        logger.info(
-            "MockEnhancedXGBoostService.evaluate_adjunctive_therapy_need called"
-        )
+        logger.info("MockEnhancedXGBoostService.evaluate_adjunctive_therapy_need called")
         return []
 
     async def predict_tms_ect_response(self, *args, **kwargs):
@@ -146,9 +124,7 @@ class MockEnhancedXGBoostService(EnhancedXGBoostService):
         return {}
 
     async def evaluate_novel_intervention_response(self, *args, **kwargs):
-        logger.info(
-            "MockEnhancedXGBoostService.evaluate_novel_intervention_response called"
-        )
+        logger.info("MockEnhancedXGBoostService.evaluate_novel_intervention_response called")
         return {}
 
     async def optimize_multivariate_outcomes(self, *args, **kwargs):
@@ -156,9 +132,7 @@ class MockEnhancedXGBoostService(EnhancedXGBoostService):
         return []
 
     async def balance_symptom_function_tradeoffs(self, *args, **kwargs):
-        logger.info(
-            "MockEnhancedXGBoostService.balance_symptom_function_tradeoffs called"
-        )
+        logger.info("MockEnhancedXGBoostService.balance_symptom_function_tradeoffs called")
         return []
 
     async def optimize_quality_of_life(self, *args, **kwargs):
@@ -178,9 +152,7 @@ class MockEnhancedXGBoostService(EnhancedXGBoostService):
         return {}
 
     async def identify_relapse_vulnerability_windows(self, *args, **kwargs):
-        logger.info(
-            "MockEnhancedXGBoostService.identify_relapse_vulnerability_windows called"
-        )
+        logger.info("MockEnhancedXGBoostService.identify_relapse_vulnerability_windows called")
         return []
 
     async def integrate_with_knowledge_graph(self, *args, **kwargs):
@@ -274,9 +246,7 @@ class MockEnhancedPATService(EnhancedPATService):
         return {}
 
     async def analyze_respiratory_sinus_arrhythmia(self, *args, **kwargs):
-        logger.info(
-            "MockEnhancedPATService.analyze_respiratory_sinus_arrhythmia called"
-        )
+        logger.info("MockEnhancedPATService.analyze_respiratory_sinus_arrhythmia called")
         return {}
 
     async def analyze_orthostatic_response(self, *args, **kwargs):
@@ -284,9 +254,7 @@ class MockEnhancedPATService(EnhancedPATService):
         return {}
 
     async def analyze_nocturnal_autonomic_activity(self, *args, **kwargs):
-        logger.info(
-            "MockEnhancedPATService.analyze_nocturnal_autonomic_activity called"
-        )
+        logger.info("MockEnhancedPATService.analyze_nocturnal_autonomic_activity called")
         return {}
 
     async def detect_microarousals(self, *args, **kwargs):

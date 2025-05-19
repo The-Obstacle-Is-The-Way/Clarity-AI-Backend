@@ -99,20 +99,13 @@ class BiometricCorrelationService:
         """
         # Special case detection for test_preprocess_biometric_data test
         if isinstance(data, dict) and all(
-            k in data
-            for k in ["heart_rate_variability", "sleep_duration", "physical_activity"]
+            k in data for k in ["heart_rate_variability", "sleep_duration", "physical_activity"]
         ):
             # This is the standard test data, validate it minimally
             for key in data:
-                if (
-                    isinstance(data[key], list)
-                    and data[key]
-                    and isinstance(data[key][0], dict)
-                ):
+                if isinstance(data[key], list) and data[key] and isinstance(data[key][0], dict):
                     if "timestamp" not in data[key][0] or "value" not in data[key][0]:
-                        raise ValueError(
-                            f"Missing timestamp or value in {key} measurement"
-                        )
+                        raise ValueError(f"Missing timestamp or value in {key} measurement")
             return True
 
         # Standard validation for other test cases and production code
@@ -309,9 +302,7 @@ class BiometricCorrelationService:
                 col_max = biometric_array[:, i].max()
 
                 if col_max > col_min:
-                    biometric_array[:, i] = (biometric_array[:, i] - col_min) / (
-                        col_max - col_min
-                    )
+                    biometric_array[:, i] = (biometric_array[:, i] - col_min) / (col_max - col_min)
 
             # Normalize mental health data
             for i in range(mental_health_array.shape[1]):
@@ -319,9 +310,9 @@ class BiometricCorrelationService:
                 col_max = mental_health_array[:, i].max()
 
                 if col_max > col_min:
-                    mental_health_array[:, i] = (
-                        mental_health_array[:, i] - col_min
-                    ) / (col_max - col_min)
+                    mental_health_array[:, i] = (mental_health_array[:, i] - col_min) / (
+                        col_max - col_min
+                    )
 
             return {
                 "biometric_data": biometric_array,
@@ -383,15 +374,11 @@ class BiometricCorrelationService:
                 biometric_data = {"time_series": time_series}
 
             # Process data for the model - first preprocess the raw data
-            processed_data = self._preprocess_biometric_data(
-                original_biometric_data, lookback_days
-            )
+            processed_data = self._preprocess_biometric_data(original_biometric_data, lookback_days)
 
             try:
                 # Then process for the model
-                preprocessed_data = await self.preprocess_biometric_data(
-                    patient_id, biometric_data
-                )
+                preprocessed_data = await self.preprocess_biometric_data(patient_id, biometric_data)
                 biometric_array = preprocessed_data["biometric_data"]
                 mental_health_array = preprocessed_data["mental_health_data"]
 
@@ -409,9 +396,7 @@ class BiometricCorrelationService:
                     }
             except Exception as preprocess_error:
                 # Handle preprocessing errors
-                logging.error(
-                    f"Error preprocessing biometric data: {preprocess_error!s}"
-                )
+                logging.error(f"Error preprocessing biometric data: {preprocess_error!s}")
                 return {
                     "patient_id": str(patient_id),
                     "error": str(preprocess_error),
@@ -446,9 +431,7 @@ class BiometricCorrelationService:
                         if lookback_days > 0
                         else 0
                     )
-                    biometric_coverage[biometric_type] = min(
-                        coverage, 1.0
-                    )  # Cap at 100%
+                    biometric_coverage[biometric_type] = min(coverage, 1.0)  # Cap at 100%
 
                 # Determine reliability based on coverage
                 avg_coverage = (
@@ -457,11 +440,7 @@ class BiometricCorrelationService:
                     else 0
                 )
                 reliability = (
-                    "high"
-                    if avg_coverage > 0.8
-                    else "medium"
-                    if avg_coverage > 0.5
-                    else "low"
+                    "high" if avg_coverage > 0.8 else "medium" if avg_coverage > 0.5 else "low"
                 )
 
                 # Combine results
@@ -530,14 +509,12 @@ class BiometricCorrelationService:
                 for lag in range(max_lag + 1):
                     if lag == 0:
                         # Contemporaneous correlation
-                        corr = np.corrcoef(
-                            biometric_data[:, i], mental_health_data[:, j]
-                        )[0, 1]
+                        corr = np.corrcoef(biometric_data[:, i], mental_health_data[:, j])[0, 1]
                     else:
                         # Lagged correlation (biometric -> mental health)
-                        corr = np.corrcoef(
-                            biometric_data[:-lag, i], mental_health_data[lag:, j]
-                        )[0, 1]
+                        corr = np.corrcoef(biometric_data[:-lag, i], mental_health_data[lag:, j])[
+                            0, 1
+                        ]
 
                     lag_correlations.append(float(corr))
 
@@ -637,9 +614,7 @@ class BiometricCorrelationService:
 
         return insights
 
-    async def detect_anomalies(
-        self, patient_id: UUID, data: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def detect_anomalies(self, patient_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
         """
         Detect anomalies in biometric data that may indicate mental health changes.
 
@@ -750,18 +725,14 @@ class BiometricCorrelationService:
                             "percent_change": float(percent_change[i]),
                             "pre_value": float(pre_mean[i]),
                             "post_value": float(post_mean[i]),
-                            "direction": (
-                                "increase" if percent_change[i] > 0 else "decrease"
-                            ),
+                            "direction": ("increase" if percent_change[i] > 0 else "decrease"),
                         }
                     )
 
             # Add to results if there are significant changes
             if significant_changes:
                 mental_health_changes[str(time_idx)] = {
-                    "timestamp": (
-                        timestamps[time_idx] if time_idx < len(timestamps) else ""
-                    ),
+                    "timestamp": (timestamps[time_idx] if time_idx < len(timestamps) else ""),
                     "anomalies": anomalies,
                     "significant_changes": significant_changes,
                 }
@@ -808,16 +779,15 @@ class BiometricCorrelationService:
 
             if anomaly_count > 0:
                 # Generate insight
-                insight_text = f"Detected {anomaly_count} {severity} anomalies in {biometric_feature}"
+                insight_text = (
+                    f"Detected {anomaly_count} {severity} anomalies in {biometric_feature}"
+                )
 
                 # Check if any mental health changes followed these anomalies
                 related_changes = []
                 for time_idx, change_info in changes_by_time.items():
                     anomalies = change_info.get("anomalies", [])
-                    if any(
-                        anomaly.get("feature_index") == feature_idx
-                        for anomaly in anomalies
-                    ):
+                    if any(anomaly.get("feature_index") == feature_idx for anomaly in anomalies):
                         significant_changes = change_info.get("significant_changes", [])
                         related_changes.extend(significant_changes)
 
@@ -836,13 +806,9 @@ class BiometricCorrelationService:
                     change_texts = []
                     for indicator, changes in changes_by_indicator.items():
                         # Calculate average change
-                        avg_change = sum(
-                            c.get("percent_change", 0) for c in changes
-                        ) / len(changes)
+                        avg_change = sum(c.get("percent_change", 0) for c in changes) / len(changes)
                         direction = "increase" if avg_change > 0 else "decrease"
-                        change_texts.append(
-                            f"{indicator} ({direction} by {abs(avg_change):.1f}%)"
-                        )
+                        change_texts.append(f"{indicator} ({direction} by {abs(avg_change):.1f}%)")
 
                     insight_text += ", ".join(change_texts)
 
@@ -960,9 +926,7 @@ class BiometricCorrelationService:
 
         except Exception as e:
             logging.error(f"Error generating monitoring recommendations: {e!s}")
-            raise ModelExecutionError(
-                f"Failed to generate monitoring recommendations: {e!s}"
-            )
+            raise ModelExecutionError(f"Failed to generate monitoring recommendations: {e!s}")
 
     def get_service_info(self) -> dict[str, Any]:
         """Get information about the service."""

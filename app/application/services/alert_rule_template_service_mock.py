@@ -130,14 +130,10 @@ class MockAlertRuleTemplateService(AlertRuleTemplateServiceInterface):
         rule = {
             "id": UUID("00000000-0000-0000-0000-000000000001"),  # Mock ID
             "name": customization.get("name", template.get("name")),
-            "description": customization.get(
-                "description", template.get("description")
-            ),
+            "description": customization.get("description", template.get("description")),
             "patient_id": patient_id,
             "is_active": customization.get("is_active", True),
-            "priority": customization.get(
-                "priority", template.get("default_priority", "medium")
-            ),
+            "priority": customization.get("priority", template.get("default_priority", "medium")),
             "logical_operator": customization.get(
                 "logical_operator", template.get("logical_operator", "and")
             ),

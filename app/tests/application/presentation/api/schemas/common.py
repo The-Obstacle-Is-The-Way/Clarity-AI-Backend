@@ -17,12 +17,8 @@ class PaginationInfo(BaseModel):
     total_pages: int = Field(..., description="Total number of pages.")
     current_page: int = Field(..., description="The current page number (1-based).")
     page_size: int = Field(..., description="Number of items per page.")
-    next_page: int | None = Field(
-        None, description="Number of the next page, if available."
-    )
-    prev_page: int | None = Field(
-        None, description="Number of the previous page, if available."
-    )
+    next_page: int | None = Field(None, description="Number of the next page, if available.")
+    prev_page: int | None = Field(None, description="Number of the previous page, if available.")
 
 
 class PaginatedResponseSchema(BaseModel, Generic[T]):

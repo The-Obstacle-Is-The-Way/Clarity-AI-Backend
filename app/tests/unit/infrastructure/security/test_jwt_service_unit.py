@@ -95,9 +95,7 @@ class TestJWTService:
     """Test suite for the JWT service."""
 
     @pytest.mark.asyncio
-    async def test_create_access_token(
-        self, jwt_service: JWTService, user_claims: dict[str, Any]
-    ):
+    async def test_create_access_token(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test creating an access token with user claims."""
         # Pass necessary data directly to create_access_token
         access_token = jwt_service.create_access_token(data=user_claims)
@@ -118,9 +116,7 @@ class TestJWTService:
         assert payload.type == "access"
 
     @pytest.mark.asyncio
-    async def test_create_refresh_token(
-        self, jwt_service: JWTService, user_claims: dict[str, Any]
-    ):
+    async def test_create_refresh_token(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test creating a refresh token with user claims."""
         # Pass necessary data directly to create_refresh_token
         refresh_token = jwt_service.create_refresh_token(
@@ -141,9 +137,7 @@ class TestJWTService:
         assert payload.type == "refresh"
 
     @pytest.mark.asyncio
-    async def test_decode_token_valid(
-        self, jwt_service: JWTService, user_claims: dict[str, Any]
-    ):
+    async def test_decode_token_valid(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test validation of a valid token."""
         token = jwt_service.create_access_token(data=user_claims)
 
@@ -155,9 +149,7 @@ class TestJWTService:
 
     @freeze_time("2025-03-27 12:00:00")
     @pytest.mark.asyncio
-    async def test_decode_token_expired(
-        self, jwt_service: JWTService, user_claims: dict[str, Any]
-    ):
+    async def test_decode_token_expired(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test validation of an expired token."""
         # Create a token that is already expired
         expired_token = jwt_service.create_access_token(
@@ -181,9 +173,9 @@ class TestJWTService:
 
         with pytest.raises(InvalidTokenException) as exc_info:
             jwt_service.decode_token(tampered_token)
-        assert "Signature verification failed" in str(
+        assert "Signature verification failed" in str(exc_info.value) or "Invalid signature" in str(
             exc_info.value
-        ) or "Invalid signature" in str(exc_info.value)
+        )
 
     @pytest.mark.asyncio
     async def test_decode_token_invalid_format(self, jwt_service: JWTService):
@@ -192,15 +184,13 @@ class TestJWTService:
 
         with pytest.raises(InvalidTokenException) as exc_info:
             jwt_service.decode_token(invalid_token)
-        assert "Invalid header string" in str(
+        assert "Invalid header string" in str(exc_info.value) or "Not enough segments" in str(
             exc_info.value
-        ) or "Not enough segments" in str(exc_info.value)
+        )
 
     @freeze_time("2025-03-27 12:00:00")
     @pytest.mark.asyncio
-    async def test_token_expiry_time(
-        self, jwt_service: JWTService, user_claims: dict[str, Any]
-    ):
+    async def test_token_expiry_time(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test that the token expiry time matches the expected duration."""
         token = jwt_service.create_access_token(data=user_claims)
 
@@ -209,8 +199,7 @@ class TestJWTService:
 
         # Calculate expected expiry timestamp
         expected_expiry_ts = (
-            datetime.datetime.now(UTC)
-            + datetime.timedelta(minutes=TEST_ACCESS_EXPIRE_MINUTES)
+            datetime.datetime.now(UTC) + datetime.timedelta(minutes=TEST_ACCESS_EXPIRE_MINUTES)
         ).timestamp()
 
         # Allow for a small delta (e.g., 1 second) due to processing time
@@ -252,8 +241,7 @@ class TestJWTService:
             jwt_service.decode_token(token_wrong_aud)
 
         assert (
-            "Invalid audience" in str(exc_info.value)
-            or "audience" in str(exc_info.value).lower()
+            "Invalid audience" in str(exc_info.value) or "audience" in str(exc_info.value).lower()
         )
 
     @pytest.mark.asyncio
@@ -278,9 +266,7 @@ class TestJWTService:
     # Add more tests as needed, e.g., for blacklisting, etc.
 
     @pytest.mark.asyncio
-    async def test_refresh_token_family(
-        self, jwt_service: JWTService, user_claims: dict[str, Any]
-    ):
+    async def test_refresh_token_family(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test refresh token family functionality."""
         # Arrange
         user_id = "user123"

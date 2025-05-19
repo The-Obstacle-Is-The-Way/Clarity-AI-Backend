@@ -64,9 +64,7 @@ class MockCurrentUser:
         return self.user
 
 
-def get_mock_current_user(
-    user: User | None = None, raise_error: bool = False
-) -> Callable:
+def get_mock_current_user(user: User | None = None, raise_error: bool = False) -> Callable:
     """
     Get a mock current user dependency.
 
@@ -80,9 +78,7 @@ def get_mock_current_user(
     return MockCurrentUser(user=user, raise_error=raise_error)
 
 
-def get_mock_current_active_user(
-    user: User | None = None, raise_error: bool = False
-) -> Callable:
+def get_mock_current_active_user(user: User | None = None, raise_error: bool = False) -> Callable:
     """
     Get a mock current active user dependency.
 
@@ -103,9 +99,7 @@ def get_mock_current_active_user(
     return MockCurrentUser(user=user, raise_error=raise_error)
 
 
-def get_mock_current_admin_user(
-    user: User | None = None, raise_error: bool = False
-) -> Callable:
+def get_mock_current_admin_user(user: User | None = None, raise_error: bool = False) -> Callable:
     """
     Get a mock current admin user dependency.
 

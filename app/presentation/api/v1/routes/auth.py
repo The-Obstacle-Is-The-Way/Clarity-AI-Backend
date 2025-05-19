@@ -37,9 +37,7 @@ router = APIRouter(
 )
 
 
-@router.post(
-    "/login", response_model=TokenResponseSchema, status_code=status.HTTP_200_OK
-)
+@router.post("/login", response_model=TokenResponseSchema, status_code=status.HTTP_200_OK)
 async def login(
     login_data: LoginRequestSchema,
     response: Response,
@@ -60,9 +58,7 @@ async def login(
         )
 
         # Extract expiration time from token data or use default
-        expires_in = token_data.get(
-            "expires_in", 3600
-        )  # Default to 3600 seconds if not present
+        expires_in = token_data.get("expires_in", 3600)  # Default to 3600 seconds if not present
 
         # Extract user_id and roles from token data
         user_id = token_data.get("user_id", None)
@@ -79,13 +75,9 @@ async def login(
         }
 
     except InvalidCredentialsException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e)) from e
     except AccountDisabledException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -82,9 +82,7 @@ class DataPointSchema(BaseModel):
     )
     value: float = Field(..., description="Value of the biometric measurement")
     timestamp: datetime = Field(..., description="When the measurement was taken")
-    source: str = Field(
-        ..., description="Source of the measurement (e.g., apple_watch, fitbit)"
-    )
+    source: str = Field(..., description="Source of the measurement (e.g., apple_watch, fitbit)")
     metadata: dict[str, Any] | None = Field(
         default=None, description="Additional context about the measurement"
     )
@@ -107,9 +105,7 @@ class BiometricAlertCreateSchema(BaseModel):
     data_points: list[dict[str, Any]] = Field(
         ..., description="Biometric data points that triggered the alert"
     )
-    rule_id: UUID = Field(
-        ..., description="ID of the clinical rule that generated this alert"
-    )
+    rule_id: UUID = Field(..., description="ID of the clinical rule that generated this alert")
     metadata: dict[str, Any] | None = Field(
         default=None, description="Additional contextual information"
     )
@@ -123,24 +119,16 @@ class BiometricAlertResponseSchema(BaseModel):
     rule_name: str = Field(..., description="Name of the rule that triggered the alert")
     message: str = Field(..., description="Human-readable message describing the alert")
     priority: DomainAlertPriority = Field(..., description="Urgency level of the alert")
-    status: DomainAlertStatusEnum = Field(
-        ..., description="Current status of the alert"
-    )
-    created_at: datetime = Field(
-        ..., description="When the alert was triggered/created"
-    )
+    status: DomainAlertStatusEnum = Field(..., description="Current status of the alert")
+    created_at: datetime = Field(..., description="When the alert was triggered/created")
     updated_at: datetime = Field(..., description="When the alert was last updated")
     data_point: DataPointSchema = Field(
         ..., description="The biometric data point that triggered the alert"
     )
-    rule_id: UUID = Field(
-        ..., description="ID of the clinical rule that generated this alert"
-    )
+    rule_id: UUID = Field(..., description="ID of the clinical rule that generated this alert")
 
     # State flags matching the entity
-    acknowledged: bool = Field(
-        ..., description="Whether the alert has been acknowledged"
-    )
+    acknowledged: bool = Field(..., description="Whether the alert has been acknowledged")
     resolved: bool = Field(..., description="Whether the alert has been resolved")
 
     # Acknowledgment and resolution fields
@@ -156,9 +144,7 @@ class BiometricAlertResponseSchema(BaseModel):
     resolved_by: UUID | None = Field(
         default=None, description="ID of the provider who resolved the alert"
     )
-    resolved_at: datetime | None = Field(
-        default=None, description="When the alert was resolved"
-    )
+    resolved_at: datetime | None = Field(default=None, description="When the alert was resolved")
     resolved_notes: str | None = Field(
         default=None, description="Notes on how the alert was resolved"
     )
@@ -176,17 +162,13 @@ class AlertStatusUpdateSchema(BaseModel):
     """Schema for updating the status of a biometric alert."""
 
     status: DomainAlertStatusEnum = Field(..., description="New status for the alert")
-    notes: str | None = Field(
-        default=None, description="Optional notes about the status update"
-    )
+    notes: str | None = Field(default=None, description="Optional notes about the status update")
 
 
 class AlertListResponseSchema(BaseModel):
     """Schema for paginated list of biometric alerts."""
 
-    items: list[BiometricAlertResponseSchema] = Field(
-        ..., description="List of biometric alerts"
-    )
+    items: list[BiometricAlertResponseSchema] = Field(..., description="List of biometric alerts")
     total: int = Field(..., description="Total number of alerts matching the criteria")
     page: int = Field(..., description="Current page number")
     page_size: int = Field(..., description="Number of items per page")
@@ -199,9 +181,7 @@ class AlertListResponseSchema(BaseModel):
 class RuleConditionSchema(BaseModel):
     """Schema for a condition in an alert rule."""
 
-    metric: str = Field(
-        ..., description="Name of the metric to check (e.g., heart_rate)"
-    )
+    metric: str = Field(..., description="Name of the metric to check (e.g., heart_rate)")
     operator: str = Field(..., description="Comparison operator (e.g., gt, lt, eq)")
     threshold: float = Field(..., description="Threshold value for the condition")
     duration_minutes: int | None = Field(
@@ -226,9 +206,7 @@ class AlertRuleCustomizationSchema(BaseModel):
     """Schema for customizing a rule template."""
 
     name: str | None = Field(default=None, description="Custom name for the rule")
-    description: str | None = Field(
-        default=None, description="Custom description for the rule"
-    )
+    description: str | None = Field(default=None, description="Custom description for the rule")
     threshold_modifications: dict[str, float] | None = Field(
         default=None, description="Modifications to threshold values"
     )
@@ -248,9 +226,7 @@ class AlertRuleCreateSchema(BaseModel):
         default=None,
         description="ID of the patient this rule is for (None for global rules)",
     )
-    template_id: UUID | None = Field(
-        default=None, description="ID of the template to create from"
-    )
+    template_id: UUID | None = Field(default=None, description="ID of the template to create from")
     customization: AlertRuleCustomizationSchema | None = Field(
         default=None, description="Customization for the template"
     )
@@ -276,9 +252,7 @@ class AlertRuleCreateSchema(BaseModel):
         if isinstance(data, dict):
             if data.get("template_id") is None:
                 if not (data.get("name") and data.get("conditions")):
-                    raise ValueError(
-                        "Either template_id or (name and conditions) must be provided"
-                    )
+                    raise ValueError("Either template_id or (name and conditions) must be provided")
         return data
 
 
@@ -286,9 +260,7 @@ class AlertRuleUpdateSchema(BaseModel):
     """Schema for updating an existing alert rule."""
 
     name: str | None = Field(default=None, description="New name for the rule")
-    description: str | None = Field(
-        default=None, description="New description for the rule"
-    )
+    description: str | None = Field(default=None, description="New description for the rule")
     conditions: list[RuleConditionSchema] | None = Field(
         default=None, description="New conditions for the rule"
     )
@@ -298,9 +270,7 @@ class AlertRuleUpdateSchema(BaseModel):
     priority: AlertPriorityEnum | None = Field(
         default=None, description="New priority level for alerts generated by this rule"
     )
-    is_active: bool | None = Field(
-        default=None, description="Whether the rule is active"
-    )
+    is_active: bool | None = Field(default=None, description="Whether the rule is active")
     metadata: dict[str, Any] | None = Field(
         default=None, description="New additional metadata for the rule"
     )
@@ -324,14 +294,10 @@ class AlertRuleResponseSchema(BaseModel):
     logical_operator: str = Field(
         ..., description="Logical operator to combine conditions (AND/OR)"
     )
-    priority: str = Field(
-        ..., description="Priority level for alerts generated by this rule"
-    )
+    priority: str = Field(..., description="Priority level for alerts generated by this rule")
     is_active: bool = Field(..., description="Whether the rule is active")
     created_at: datetime = Field(..., description="When the rule was created")
-    updated_at: datetime | None = Field(
-        default=None, description="When the rule was last updated"
-    )
+    updated_at: datetime | None = Field(default=None, description="When the rule was last updated")
     provider_id: UUID | None = Field(
         default=None, description="ID of the provider who created or owns this rule"
     )
@@ -359,9 +325,7 @@ class AlertRuleTemplateResponseSchema(BaseModel):
     template_id: UUID = Field(..., description="Unique identifier for this template")
     name: str = Field(..., description="Name of the template")
     description: str = Field(..., description="Description of the template")
-    category: str = Field(
-        ..., description="Category of the template (e.g., cardiac, sleep)"
-    )
+    category: str = Field(..., description="Category of the template (e.g., cardiac, sleep)")
     conditions: list[RuleConditionSchema] = Field(
         ..., description="Default conditions for the template"
     )
@@ -383,15 +347,11 @@ class PatientAlertSummarySchema(BaseModel):
     """Schema for a summary of patient alerts."""
 
     patient_id: UUID = Field(..., description="ID of the patient")
-    total_alerts: int = Field(
-        ..., description="Total number of alerts for this patient"
-    )
+    total_alerts: int = Field(..., description="Total number of alerts for this patient")
     new_alerts: int = Field(..., description="Number of new (unacknowledged) alerts")
     urgent_alerts: int = Field(..., description="Number of urgent priority alerts")
     warning_alerts: int = Field(..., description="Number of warning priority alerts")
-    informational_alerts: int = Field(
-        ..., description="Number of informational priority alerts"
-    )
+    informational_alerts: int = Field(..., description="Number of informational priority alerts")
     last_alert_timestamp: datetime | None = Field(
         default=None, description="Timestamp of the most recent alert"
     )
@@ -415,9 +375,7 @@ class AlertResponseSchema(BaseModel):
     data_points: list[dict[str, Any]] = Field(
         ..., description="Biometric data points that triggered the alert"
     )
-    rule_id: UUID = Field(
-        ..., description="ID of the clinical rule that generated this alert"
-    )
+    rule_id: UUID = Field(..., description="ID of the clinical rule that generated this alert")
 
     # Acknowledgment and resolution fields
     acknowledged_by: UUID | None = Field(
@@ -429,9 +387,7 @@ class AlertResponseSchema(BaseModel):
     resolved_by: UUID | None = Field(
         default=None, description="ID of the provider who resolved the alert"
     )
-    resolved_at: datetime | None = Field(
-        default=None, description="When the alert was resolved"
-    )
+    resolved_at: datetime | None = Field(default=None, description="When the alert was resolved")
     resolution_notes: str | None = Field(
         default=None, description="Notes on how the alert was resolved"
     )

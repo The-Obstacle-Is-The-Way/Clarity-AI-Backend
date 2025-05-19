@@ -271,9 +271,7 @@ class MockDigitalTwinCoreService:
             "summary": "Mock session ended successfully",
         }
 
-    async def process_treatment_event(
-        self, patient_id: UUID, event_data: dict[str, Any]
-    ) -> Any:
+    async def process_treatment_event(self, patient_id: UUID, event_data: dict[str, Any]) -> Any:
         """
         Process a treatment event and update the digital twin state.
 
@@ -287,9 +285,7 @@ class MockDigitalTwinCoreService:
         # Get the latest state
         current_state = None
         if self._digital_twin_repository:
-            current_state = await self._digital_twin_repository.get_latest_state(
-                patient_id
-            )
+            current_state = await self._digital_twin_repository.get_latest_state(patient_id)
 
         if not current_state:
             current_state = await self.initialize_digital_twin(patient_id)

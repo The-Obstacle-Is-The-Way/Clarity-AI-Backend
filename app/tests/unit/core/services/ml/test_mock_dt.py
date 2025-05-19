@@ -174,9 +174,7 @@ class TestMockDigitalTwinService:
 
         # Test medication questions
         for med_term in ["medication", "meds", "pills", "prescription"]:
-            result = mock_service.send_message(
-                session_id, f"Question about my {med_term}"
-            )
+            result = mock_service.send_message(session_id, f"Question about my {med_term}")
             assert "medication" in result["response"].lower()
 
         # Test appointment questions
@@ -191,17 +189,13 @@ class TestMockDigitalTwinService:
         for symptom_term in ["symptom", "feeling", "pain", "hurt", "sick"]:
             result = mock_service.send_message(session_id, f"I'm {symptom_term}")
             assert (
-                "symptom" in result["response"].lower()
-                or "feeling" in result["response"].lower()
+                "symptom" in result["response"].lower() or "feeling" in result["response"].lower()
             )
 
         # Test wellness questions
         for wellness_term in ["wellness", "exercise", "diet", "sleep", "stress"]:
             result = mock_service.send_message(session_id, f"About my {wellness_term}")
-            assert (
-                "wellness" in result["response"].lower()
-                or "sleep" in result["response"].lower()
-            )
+            assert "wellness" in result["response"].lower() or "sleep" in result["response"].lower()
 
         # Test therapy questions
         for therapy_term in ["therapy", "therapist", "counseling", "counselor"]:
@@ -261,9 +255,7 @@ class TestMockDigitalTwinService:
 
         # Test specific insight types
         for insight_type in ["mood", "activity", "sleep", "medication", "treatment"]:
-            result = mock_service.get_insights(
-                sample_patient_id, insight_type=insight_type
-            )
+            result = mock_service.get_insights(sample_patient_id, insight_type=insight_type)
             assert result["insight_type"] == insight_type
             assert "data" in result["insights"]
 

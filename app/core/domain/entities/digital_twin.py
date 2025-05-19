@@ -166,9 +166,7 @@ class DigitalTwin:
         """
         # Convert string enum values to enum instances
         twin_type = (
-            TwinType(data["twin_type"])
-            if isinstance(data["twin_type"], str)
-            else data["twin_type"]
+            TwinType(data["twin_type"]) if isinstance(data["twin_type"], str) else data["twin_type"]
         )
 
         # Parse timestamps

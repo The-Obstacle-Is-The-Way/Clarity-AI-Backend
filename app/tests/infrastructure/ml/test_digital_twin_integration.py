@@ -205,9 +205,7 @@ def integration_service(
 
 
 @pytest.mark.asyncio
-async def test_generate_comprehensive_patient_insights(
-    integration_service, patient_data
-):
+async def test_generate_comprehensive_patient_insights(integration_service, patient_data):
     """Test generating comprehensive patient insights."""
     patient_id = uuid4()
 
@@ -290,9 +288,7 @@ async def test_handle_microservice_failure(integration_service, patient_data):
         assert "integrated_recommendations" in insights
     finally:
         # Restore the original method
-        integration_service.symptom_forecasting_service.forecast_symptoms = (
-            original_method
-        )
+        integration_service.symptom_forecasting_service.forecast_symptoms = original_method
 
 
 @pytest.mark.asyncio

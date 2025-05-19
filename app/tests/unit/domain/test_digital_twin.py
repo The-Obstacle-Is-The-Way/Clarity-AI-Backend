@@ -279,13 +279,9 @@ class TestDigitalTwinService:
         assert digital_twin.medication_sensitivity == 1.0
         assert digital_twin.therapy_sensitivity == 0.8
 
-    def test_predict_medication_response(
-        self, twin_service, digital_twin, sample_medication
-    ):
+    def test_predict_medication_response(self, twin_service, digital_twin, sample_medication):
         """Test predicting medication response."""
-        response = twin_service.predict_medication_response(
-            digital_twin, sample_medication
-        )
+        response = twin_service.predict_medication_response(digital_twin, sample_medication)
 
         # Check that we get expected prediction metrics
         assert "depression_improvement" in response

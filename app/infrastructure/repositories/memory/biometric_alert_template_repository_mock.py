@@ -111,15 +111,9 @@ class MockBiometricAlertTemplateRepository(BiometricAlertTemplateRepository):
         Returns:
             List of template definitions in the category
         """
-        return [
-            t
-            for t in self._templates
-            if t.get("category", "").lower() == category.lower()
-        ]
+        return [t for t in self._templates if t.get("category", "").lower() == category.lower()]
 
-    async def get_templates_by_metric_type(
-        self, metric_type: str
-    ) -> list[dict[str, Any]]:
+    async def get_templates_by_metric_type(self, metric_type: str) -> list[dict[str, Any]]:
         """
         Retrieve templates filtered by metric type.
 

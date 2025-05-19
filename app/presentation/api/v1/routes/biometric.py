@@ -29,9 +29,7 @@ class BiometricDataPoint(BaseModel):
     value: float = Field(..., description="Recorded value of the measurement")
     unit: str = Field(..., description="Unit of measurement")
     timestamp: datetime = Field(..., description="When the measurement was taken")
-    source: str = Field(
-        ..., description="Source of the measurement (device, manual, etc.)"
-    )
+    source: str = Field(..., description="Source of the measurement (device, manual, etc.)")
     metadata: dict[str, Any] = Field(default={}, description="Additional metadata")
 
 

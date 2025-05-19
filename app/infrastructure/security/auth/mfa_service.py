@@ -167,14 +167,10 @@ class MFAService:
                 )
 
             # Create a TOTP object
-            totp = _pyotp.TOTP(
-                secret_key, digits=self.totp_digits, interval=self.totp_interval
-            )
+            totp = _pyotp.TOTP(secret_key, digits=self.totp_digits, interval=self.totp_interval)
 
             # Generate the provisioning URI for QR code
-            provisioning_uri = totp.provisioning_uri(
-                name=user_email, issuer_name=self.issuer_name
-            )
+            provisioning_uri = totp.provisioning_uri(name=user_email, issuer_name=self.issuer_name)
 
             # Generate QR code
             qr = qrcode.QRCode(
@@ -251,9 +247,7 @@ class MFAService:
             # assert expectations on ``pyotp.TOTP.return_value.verify`` rather
             # than the instance returned by the constructor.  To satisfy those
             # tests we call the *class‑level* mock as a fallback path.
-            if hasattr(_pyotp.TOTP, "return_value") and hasattr(
-                _pyotp.TOTP.return_value, "verify"
-            ):
+            if hasattr(_pyotp.TOTP, "return_value") and hasattr(_pyotp.TOTP.return_value, "verify"):
                 return bool(_pyotp.TOTP.return_value.verify(code))  # type: ignore[attr-defined]
 
             # Emulate pyotp behaviour for tests that patch ``TOTP`` to an
@@ -537,9 +531,7 @@ class TOTPStrategy(MFAStrategy):
 
         if not secret_key or not code:
             # Unit tests expect a very specific message string
-            raise MFAVerificationException(
-                "Missing required parameters: secret_key, code"
-            )
+            raise MFAVerificationException("Missing required parameters: secret_key, code")
 
         return self.mfa_service.verify_totp(secret_key, code)
 

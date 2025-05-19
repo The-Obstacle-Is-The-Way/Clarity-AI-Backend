@@ -30,9 +30,7 @@ def get_digital_twin_service() -> DigitalTwinServiceInterface:
 
 
 # Type alias for cleaner dependency annotations
-DigitalTwinServiceDep = Annotated[
-    DigitalTwinServiceInterface, Depends(get_digital_twin_service)
-]
+DigitalTwinServiceDep = Annotated[DigitalTwinServiceInterface, Depends(get_digital_twin_service)]
 
 
 # Add this function to provide the MentaLLaMA service

@@ -66,9 +66,7 @@ class TestAWSComprehendMedicalPHIDetection:
         mock_comprehend_service = MagicMock()
 
         # Configure the factory to return the mock service
-        mock_factory.get_comprehend_medical_service.return_value = (
-            mock_comprehend_service
-        )
+        mock_factory.get_comprehend_medical_service.return_value = mock_comprehend_service
 
         # Create the service with the mock factory
         service = AWSComprehendMedicalPHIDetection(aws_service_factory=mock_factory)
@@ -83,9 +81,7 @@ class TestAWSComprehendMedicalPHIDetection:
         # Create mock factory and service
         mock_factory = MagicMock()
         mock_comprehend_service = MagicMock()
-        mock_factory.get_comprehend_medical_service.return_value = (
-            mock_comprehend_service
-        )
+        mock_factory.get_comprehend_medical_service.return_value = mock_comprehend_service
 
         # Create and initialize the service
         service = AWSComprehendMedicalPHIDetection(aws_service_factory=mock_factory)
@@ -119,9 +115,7 @@ class TestAWSComprehendMedicalPHIDetection:
 
         assert not service.is_healthy()
 
-    def test_detect_phi_with_phi(
-        self, phi_detection_service, mock_comprehend_response_with_phi
-    ):
+    def test_detect_phi_with_phi(self, phi_detection_service, mock_comprehend_response_with_phi):
         """Test PHI detection with text containing PHI."""
         # Configure the mock service to return the sample response
         phi_detection_service._comprehend_medical_service.detect_phi.return_value = (
@@ -129,9 +123,7 @@ class TestAWSComprehendMedicalPHIDetection:
         )
 
         # Call the method
-        result = phi_detection_service.detect_phi(
-            "Patient is John Doe with phone 555-123-4567"
-        )
+        result = phi_detection_service.detect_phi("Patient is John Doe with phone 555-123-4567")
 
         # Verify results
         assert len(result) == 2
@@ -176,20 +168,16 @@ class TestAWSComprehendMedicalPHIDetection:
     def test_detect_phi_aws_error(self, phi_detection_service):
         """Test PHI detection with AWS Comprehend Medical error."""
         # Configure the mock service to raise an error
-        phi_detection_service._comprehend_medical_service.detect_phi.side_effect = (
-            ClientError(
-                {"Error": {"Code": "InternalServerError", "Message": "Internal error"}},
-                "DetectPHI",
-            )
+        phi_detection_service._comprehend_medical_service.detect_phi.side_effect = ClientError(
+            {"Error": {"Code": "InternalServerError", "Message": "Internal error"}},
+            "DetectPHI",
         )
 
         # Verify the error is properly handled
         with pytest.raises(ServiceUnavailableError):
             phi_detection_service.detect_phi("Patient is John Doe")
 
-    def test_redact_phi_with_phi(
-        self, phi_detection_service, mock_comprehend_response_with_phi
-    ):
+    def test_redact_phi_with_phi(self, phi_detection_service, mock_comprehend_response_with_phi):
         """Test PHI redaction with text containing PHI."""
         # Configure the mock service to return the sample response
         phi_detection_service._comprehend_medical_service.detect_phi.return_value = (
@@ -240,9 +228,7 @@ class TestAWSComprehendMedicalPHIDetection:
         with pytest.raises(ServiceUnavailableError):
             service.redact_phi("Patient is John Doe")
 
-    def test_contains_phi(
-        self, phi_detection_service, mock_comprehend_response_with_phi
-    ):
+    def test_contains_phi(self, phi_detection_service, mock_comprehend_response_with_phi):
         """Test contains_phi method with text containing PHI."""
         # Configure the mock service to return the sample response
         phi_detection_service._comprehend_medical_service.detect_phi.return_value = (
@@ -250,9 +236,7 @@ class TestAWSComprehendMedicalPHIDetection:
         )
 
         # Call the method
-        result = phi_detection_service.contains_phi(
-            "Patient is John Doe with phone 555-123-4567"
-        )
+        result = phi_detection_service.contains_phi("Patient is John Doe with phone 555-123-4567")
 
         # Verify results
         assert result is True
@@ -270,9 +254,7 @@ class TestAWSComprehendMedicalPHIDetection:
         )
 
         # Call the method
-        result = phi_detection_service.contains_phi(
-            "The patient is feeling better today"
-        )
+        result = phi_detection_service.contains_phi("The patient is feeling better today")
 
         # Verify results
         assert result is False

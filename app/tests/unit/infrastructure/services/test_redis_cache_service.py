@@ -107,9 +107,7 @@ async def test_set_with_ttl(redis_cache_service, mock_redis_client):
     result = await redis_cache_service.set(key, value, ttl)
 
     # Assert
-    mock_redis_client.setex.assert_called_once_with(
-        "test:ttl-key", ttl, json.dumps(value)
-    )
+    mock_redis_client.setex.assert_called_once_with("test:ttl-key", ttl, json.dumps(value))
     assert result is True
 
 

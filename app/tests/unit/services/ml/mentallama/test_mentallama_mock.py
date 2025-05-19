@@ -150,7 +150,9 @@ def test_risk_assessment_low(mock_service):
 def test_sentiment_analysis_positive(mock_service):
     """Test sentiment analysis with positive sentiment."""
     # Arrange
-    text = "I feel happy and excited about the progress I'm making. I'm grateful for all the support."
+    text = (
+        "I feel happy and excited about the progress I'm making. I'm grateful for all the support."
+    )
 
     # Act
     result = mock_service.sentiment_analysis(text=text)

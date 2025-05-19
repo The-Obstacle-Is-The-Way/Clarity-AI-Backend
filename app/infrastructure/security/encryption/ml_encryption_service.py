@@ -179,9 +179,7 @@ class MLEncryptionService(BaseEncryptionService):
                     return self._previous_cipher.decrypt(encrypted_bytes)
                 except Exception as e2:
                     # Both keys failed - include both errors in the message
-                    logger.error(
-                        f"Decryption failed with current and previous keys: {e!s}, {e2!s}"
-                    )
+                    logger.error(f"Decryption failed with current and previous keys: {e!s}, {e2!s}")
                     raise ValueError("Decryption failed with all available keys")
             else:
                 # No previous key available
@@ -205,18 +203,14 @@ class MLEncryptionService(BaseEncryptionService):
 
         # Check for valid embedding - strings must raise ValueError
         if isinstance(embedding, str):
-            raise ValueError(
-                f"Embedding must be a NumPy array, got string: {embedding[:20]}..."
-            )
+            raise ValueError(f"Embedding must be a NumPy array, got string: {embedding[:20]}...")
 
         # Check for valid embedding
         if not isinstance(embedding, np.ndarray):
             try:
                 # For test_handle_invalid_embedding, raise ValueError for non-convertible types
                 if embedding == [] or embedding == {} or embedding == "":
-                    raise ValueError(
-                        "Embedding must be a NumPy array or non-empty value"
-                    )
+                    raise ValueError("Embedding must be a NumPy array or non-empty value")
                 embedding = np.array(embedding)
             except Exception as e:
                 raise ValueError(f"Embedding must be a NumPy array: {e!s}")
@@ -285,16 +279,12 @@ class MLEncryptionService(BaseEncryptionService):
                 result[key] = None
             else:
                 # Convert tensor to list for serialization
-                tensor_list = (
-                    tensor.tolist() if isinstance(tensor, np.ndarray) else tensor
-                )
+                tensor_list = tensor.tolist() if isinstance(tensor, np.ndarray) else tensor
                 result[key] = self.encrypt_string(json.dumps(tensor_list))
 
         return result
 
-    def decrypt_tensors(
-        self, encrypted_tensors: dict[str, str]
-    ) -> dict[str, np.ndarray]:
+    def decrypt_tensors(self, encrypted_tensors: dict[str, str]) -> dict[str, np.ndarray]:
         """
         Decrypt a dictionary of encrypted tensors.
 
@@ -383,9 +373,7 @@ class MLEncryptionService(BaseEncryptionService):
                 # Metadata might contain mixed sensitive/non-sensitive info
                 if isinstance(value, dict):
                     result[key] = {
-                        k: self.encrypt_string(v)
-                        if k in ["author", "department", "notes"]
-                        else v
+                        k: self.encrypt_string(v) if k in ["author", "department", "notes"] else v
                         for k, v in value.items()
                     }
                 else:
@@ -395,9 +383,7 @@ class MLEncryptionService(BaseEncryptionService):
             elif key == "embeddings":
                 if isinstance(value, dict):
                     # For dictionary of embeddings, encrypt each one
-                    result[key] = {
-                        k: self.encrypt_embeddings(v) for k, v in value.items()
-                    }
+                    result[key] = {k: self.encrypt_embeddings(v) for k, v in value.items()}
                 else:
                     # For single embedding value
                     result[key] = self.encrypt_embeddings(value)
@@ -447,9 +433,7 @@ class MLEncryptionService(BaseEncryptionService):
                 if key == "embeddings":
                     result[key] = {
                         k: np.array(json.loads(self.decrypt_string(v)))
-                        if v
-                        and isinstance(v, str)
-                        and v.startswith(self.VERSION_PREFIX)
+                        if v and isinstance(v, str) and v.startswith(self.VERSION_PREFIX)
                         else v
                         for k, v in value.items()
                     }
@@ -457,9 +441,7 @@ class MLEncryptionService(BaseEncryptionService):
                     # Metadata may have encrypted fields
                     result[key] = {
                         k: self.decrypt_string(v)
-                        if v
-                        and isinstance(v, str)
-                        and v.startswith(self.VERSION_PREFIX)
+                        if v and isinstance(v, str) and v.startswith(self.VERSION_PREFIX)
                         else v
                         for k, v in value.items()
                     }
@@ -467,9 +449,7 @@ class MLEncryptionService(BaseEncryptionService):
                     # Patient data is fully encrypted
                     result[key] = {
                         k: self.decrypt_string(v)
-                        if v
-                        and isinstance(v, str)
-                        and v.startswith(self.VERSION_PREFIX)
+                        if v and isinstance(v, str) and v.startswith(self.VERSION_PREFIX)
                         else v
                         for k, v in value.items()
                     }
@@ -538,9 +518,7 @@ class MLEncryptionService(BaseEncryptionService):
 
         try:
             # Read the model file in chunks for memory efficiency
-            with open(model_file_path, "rb") as src_file, open(
-                encrypted_path, "wb"
-            ) as dst_file:
+            with open(model_file_path, "rb") as src_file, open(encrypted_path, "wb") as dst_file:
                 # Write version prefix
                 dst_file.write(f"{self.VERSION_PREFIX}".encode())
 
@@ -614,9 +592,7 @@ class MLEncryptionService(BaseEncryptionService):
                     # Read and decrypt chunk
                     encrypted_chunk = src_file.read(chunk_size)
                     if not encrypted_chunk or len(encrypted_chunk) < chunk_size:
-                        raise ValueError(
-                            "Corrupt encrypted file: unexpected end of data"
-                        )
+                        raise ValueError("Corrupt encrypted file: unexpected end of data")
 
                     try:
                         decrypted_chunk = self.cipher.decrypt(encrypted_chunk)
@@ -699,9 +675,7 @@ class MLEncryptionService(BaseEncryptionService):
                     ]
                 else:
                     # Simple list - encrypt whole thing if PHI field
-                    result[key] = (
-                        self.encrypt_string(json.dumps(value)) if is_phi else value
-                    )
+                    result[key] = self.encrypt_string(json.dumps(value)) if is_phi else value
             # Handle numpy array values - always encrypt
             elif isinstance(value, np.ndarray):
                 result[key] = self.encrypt_embedding(value)
@@ -740,8 +714,7 @@ class MLEncryptionService(BaseEncryptionService):
                         self.decrypt_phi_safe_data(item)
                         if isinstance(item, dict)
                         else self.decrypt_string(item)
-                        if isinstance(item, str)
-                        and item.startswith(self.VERSION_PREFIX)
+                        if isinstance(item, str) and item.startswith(self.VERSION_PREFIX)
                         else item
                         for item in value
                     ]
@@ -953,9 +926,7 @@ class MLEncryptionService(BaseEncryptionService):
             # Verify checksum
             calculated_checksum = hashlib.sha256(model_bytes).hexdigest()
             if calculated_checksum != metadata["checksum"]:
-                raise ValueError(
-                    "Model checksum verification failed. Model may be corrupted."
-                )
+                raise ValueError("Model checksum verification failed. Model may be corrupted.")
 
             return model_bytes, metadata
         except json.JSONDecodeError:
@@ -984,9 +955,7 @@ class MLEncryptionService(BaseEncryptionService):
 
             # Validate the tensor is a valid data type for serialization
             if not isinstance(tensor_list, (list, tuple, dict)):
-                raise ValueError(
-                    f"Cannot serialize tensor of type {type(tensor_list).__name__}"
-                )
+                raise ValueError(f"Cannot serialize tensor of type {type(tensor_list).__name__}")
 
             # Encrypt the serialized tensor
             return self.encrypt_string(json.dumps(tensor_list))
@@ -994,9 +963,7 @@ class MLEncryptionService(BaseEncryptionService):
             logger.error(f"Tensor encryption failed: {e!s}")
             raise ValueError(f"Failed to encrypt tensor: {e!s}")
 
-    def encrypt_dict(
-        self, data: dict, legacy_mode: bool = True
-    ) -> dict[str, Any] | str | None:
+    def encrypt_dict(self, data: dict, legacy_mode: bool = True) -> dict[str, Any] | str | None:
         """
         Encrypt a dictionary, using legacy mode by default for ML operations.
 
@@ -1057,9 +1024,7 @@ class MLEncryptionService(BaseEncryptionService):
                     return np.array(tensor_list)
                 except Exception as inner_e:
                     # Both keys failed
-                    logger.error(
-                        f"Failed to decrypt tensor with previous key: {inner_e!s}"
-                    )
+                    logger.error(f"Failed to decrypt tensor with previous key: {inner_e!s}")
 
             # Re-raise with better error message
             raise ValueError(f"Failed to decrypt tensor: {e!s}")

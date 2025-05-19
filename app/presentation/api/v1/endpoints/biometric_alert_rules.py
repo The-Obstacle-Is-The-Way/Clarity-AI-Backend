@@ -54,9 +54,7 @@ def get_rule_service(
     db_session=Depends(get_db_session),
 ) -> BiometricAlertRuleService:
     """Get alert rule service with proper repositories."""
-    template_repo = get_repository_instance(
-        BiometricAlertTemplateRepository, db_session
-    )
+    template_repo = get_repository_instance(BiometricAlertTemplateRepository, db_session)
     return BiometricAlertRuleService(rule_repo, template_repo)
 
 
@@ -65,9 +63,7 @@ async def get_alert_rules(
     patient_id: UUID | None = Query(None, description="Filter by patient ID"),
     is_active: bool | None = Query(None, description="Filter by active status"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(
-        100, ge=1, le=100, description="Maximum number of records to return"
-    ),
+    limit: int = Query(100, ge=1, le=100, description="Maximum number of records to return"),
     current_user: CurrentUserDep = None,
     rule_service: BiometricAlertRuleService = Depends(get_rule_service),
 ) -> list[AlertRuleResponse]:
@@ -161,9 +157,7 @@ async def get_rule_templates(
     category: str | None = Query(None, description="Filter templates by category"),
     metric: str | None = Query(None, description="Filter templates by metric type"),
     current_user: CurrentUserDep = None,
-    template_service: AlertRuleTemplateServiceInterface = Depends(
-        get_alert_rule_template_service
-    ),
+    template_service: AlertRuleTemplateServiceInterface = Depends(get_alert_rule_template_service),
 ) -> list[AlertRuleTemplateResponse]:
     """
     Get available alert rule templates.
@@ -186,11 +180,7 @@ async def get_rule_templates(
         # Apply optional filters client-side for now
         # In the future, consider implementing filtering in the repository/service
         if category:
-            templates = [
-                t
-                for t in templates
-                if t.get("category", "").lower() == category.lower()
-            ]
+            templates = [t for t in templates if t.get("category", "").lower() == category.lower()]
 
         if metric:
             templates = [
@@ -334,9 +324,7 @@ async def create_alert_rule_from_template(
     template_data: RuleFromTemplateCreate,
     current_user: CurrentUserDep = None,
     rule_service: BiometricAlertRuleService = Depends(get_rule_service),
-    template_service: AlertRuleTemplateServiceInterface = Depends(
-        get_alert_rule_template_service
-    ),
+    template_service: AlertRuleTemplateServiceInterface = Depends(get_alert_rule_template_service),
 ) -> AlertRuleResponse:
     """
     Create a new alert rule from a template.
@@ -550,9 +538,7 @@ async def update_rule_active_status(
 async def create_alert_rule_template(
     request: Request,
     current_user: CurrentUserDep = None,
-    template_service: AlertRuleTemplateServiceInterface = Depends(
-        get_alert_rule_template_service
-    ),
+    template_service: AlertRuleTemplateServiceInterface = Depends(get_alert_rule_template_service),
 ) -> AlertRuleTemplateResponse:
     """
     Create a new alert rule template.

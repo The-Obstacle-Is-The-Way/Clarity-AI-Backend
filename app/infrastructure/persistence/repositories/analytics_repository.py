@@ -287,9 +287,7 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
 
             # Build the query for different aggregate types
             if aggregate_type.lower() == "count":
-                return await self._get_count_aggregates(
-                    dimensions, filters, start_time, end_time
-                )
+                return await self._get_count_aggregates(dimensions, filters, start_time, end_time)
             elif aggregate_type.lower() in ["sum", "avg"]:
                 # These would require specific field to aggregate
                 # For now, we'll implement count only

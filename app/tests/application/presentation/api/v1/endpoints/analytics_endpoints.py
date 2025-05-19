@@ -74,15 +74,11 @@ def get_analytics_service_dependency():
     return get_service("app.domain.services.analytics_service.AnalyticsService")
 
 
-@_v1_router.get(
-    "/patient/{patient_id}/treatment-outcomes", response_model=dict[str, Any]
-)
+@_v1_router.get("/patient/{patient_id}/treatment-outcomes", response_model=dict[str, Any])
 async def get_patient_treatment_outcomes(
     patient_id: UUID,
     background_tasks: BackgroundTasks,
-    start_date: datetime = Query(
-        default=datetime.now(timezone.utc) - timedelta(days=90)
-    ),
+    start_date: datetime = Query(default=datetime.now(timezone.utc) - timedelta(days=90)),
     end_date: datetime | None = Query(default=None),
     analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
@@ -178,8 +174,7 @@ async def _process_treatment_outcomes(
         await cache_service.set(
             key=status_key,
             value={"status": "completed", "data": results},
-            ttl=CACHE_TTL["patient_treatment_outcomes"]
-            + 60 * 10,  # Add 10 minutes to status TTL
+            ttl=CACHE_TTL["patient_treatment_outcomes"] + 60 * 10,  # Add 10 minutes to status TTL
         )
     except Exception as e:
         # Store error in status
@@ -218,9 +213,7 @@ async def get_analytics_job_status(
 @_v1_router.get("/practice-metrics", response_model=dict[str, Any])
 async def get_practice_metrics(
     background_tasks: BackgroundTasks,
-    start_date: datetime = Query(
-        default=datetime.now(timezone.utc) - timedelta(days=30)
-    ),
+    start_date: datetime = Query(default=datetime.now(timezone.utc) - timedelta(days=30)),
     end_date: datetime | None = Query(default=None),
     provider_id: UUID | None = Query(default=None),
     metric_type: str | None = Query(default=None),
@@ -308,9 +301,7 @@ async def _process_practice_metrics(
         )
 
         # Store in cache
-        await cache_service.set(
-            key=cache_key, value=results, ttl=CACHE_TTL["practice_metrics"]
-        )
+        await cache_service.set(key=cache_key, value=results, ttl=CACHE_TTL["practice_metrics"])
 
         # Also store as status
         status_key = f"status:{cache_key}"
@@ -367,16 +358,12 @@ async def get_diagnosis_distribution(
     )
 
     # Store in cache
-    await cache_service.set(
-        key=cache_key, value=results, ttl=CACHE_TTL["diagnosis_distribution"]
-    )
+    await cache_service.set(key=cache_key, value=results, ttl=CACHE_TTL["diagnosis_distribution"])
 
     return results
 
 
-@_v1_router.get(
-    "/medications/{medication_name}/effectiveness", response_model=dict[str, Any]
-)
+@_v1_router.get("/medications/{medication_name}/effectiveness", response_model=dict[str, Any])
 async def get_medication_effectiveness(
     medication_name: str,
     background_tasks: BackgroundTasks,
@@ -410,7 +397,9 @@ async def get_medication_effectiveness(
     diagnosis_part = diagnosis_code or "all"
     start_part = start_date.isoformat() if start_date else "default"
     end_part = end_date.isoformat() if end_date else "now"
-    cache_key = f"medication_effectiveness:{normalized_medication}:{diagnosis_part}:{start_part}:{end_part}"
+    cache_key = (
+        f"medication_effectiveness:{normalized_medication}:{diagnosis_part}:{start_part}:{end_part}"
+    )
 
     # Try to get from cache
     cached_data = await cache_service.get(cache_key)
@@ -484,8 +473,7 @@ async def _process_medication_effectiveness(
         await cache_service.set(
             key=status_key,
             value={"status": "completed", "data": results},
-            ttl=CACHE_TTL["medication_effectiveness"]
-            + 60 * 10,  # Add 10 minutes to status TTL
+            ttl=CACHE_TTL["medication_effectiveness"] + 60 * 10,  # Add 10 minutes to status TTL
         )
     except Exception as e:
         # Store error in status
@@ -525,9 +513,7 @@ async def get_treatment_comparison(
         Dict[str, Any]: Treatment comparison analytics
     """
     # Generate cache key
-    treatments_part = "-".join(
-        sorted([t.lower().replace(" ", "_") for t in treatments])
-    )
+    treatments_part = "-".join(sorted([t.lower().replace(" ", "_") for t in treatments]))
     start_part = start_date.isoformat() if start_date else "default"
     end_part = end_date.isoformat() if end_date else "now"
     cache_key = f"treatment_comparison:{diagnosis_code}:{treatments_part}:{start_part}:{end_part}"
@@ -591,17 +577,14 @@ async def _process_treatment_comparison(
         )
 
         # Store in cache
-        await cache_service.set(
-            key=cache_key, value=results, ttl=CACHE_TTL["treatment_comparison"]
-        )
+        await cache_service.set(key=cache_key, value=results, ttl=CACHE_TTL["treatment_comparison"])
 
         # Also store as status
         status_key = f"status:{cache_key}"
         await cache_service.set(
             key=status_key,
             value={"status": "completed", "data": results},
-            ttl=CACHE_TTL["treatment_comparison"]
-            + 60 * 10,  # Add 10 minutes to status TTL
+            ttl=CACHE_TTL["treatment_comparison"] + 60 * 10,  # Add 10 minutes to status TTL
         )
     except Exception as e:
         # Store error in status
@@ -686,9 +669,7 @@ async def record_analytics_event(
         raise HTTPException(status_code=400, detail="Missing event_type")
 
     timestamp = (
-        datetime.fromisoformat(timestamp_str)
-        if timestamp_str
-        else datetime.now(timezone.utc)
+        datetime.fromisoformat(timestamp_str) if timestamp_str else datetime.now(timezone.utc)
     )
 
     # Resolve use case manually

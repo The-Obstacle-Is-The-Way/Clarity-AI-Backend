@@ -56,16 +56,12 @@ class TestAuditDecorators:
     def test_audit_phi_access_decorator(self):
         """Test the audit_phi_access decorator."""
         # Mock the audit logger
-        with patch(
-            "app.infrastructure.logging.audit.get_audit_logger"
-        ) as mock_get_logger:
+        with patch("app.infrastructure.logging.audit.get_audit_logger") as mock_get_logger:
             mock_audit_logger = MagicMock()
             mock_get_logger.return_value = mock_audit_logger
 
             # Define a test function with the decorator
-            @audit_phi_access(
-                resource_type="patient", action="view", phi_fields=["name", "dob"]
-            )
+            @audit_phi_access(resource_type="patient", action="view", phi_fields=["name", "dob"])
             def get_patient_data(patient_id, *args, **kwargs):
                 return {"id": patient_id, "name": "Test Patient", "dob": "1980-01-01"}
 
@@ -82,9 +78,7 @@ class TestAuditDecorators:
             assert mock_audit_logger.log_data_modification.call_count == 2
 
             # Check first call (initiated)
-            init_call_args = mock_audit_logger.log_data_modification.call_args_list[0][
-                1
-            ]
+            init_call_args = mock_audit_logger.log_data_modification.call_args_list[0][1]
             assert init_call_args["user_id"] == "doctor_smith"
             assert init_call_args["action"] == "view"
             assert init_call_args["entity_type"] == "patient"
@@ -93,18 +87,14 @@ class TestAuditDecorators:
             assert init_call_args["phi_fields"] == ["name", "dob"]
 
             # Check second call (success)
-            success_call_args = mock_audit_logger.log_data_modification.call_args_list[
-                1
-            ][1]
+            success_call_args = mock_audit_logger.log_data_modification.call_args_list[1][1]
             assert success_call_args["user_id"] == "doctor_smith"
             assert success_call_args["status"] == "success"
 
     def test_audit_phi_access_with_exception(self):
         """Test the audit_phi_access decorator when the function raises an exception."""
         # Mock the audit logger
-        with patch(
-            "app.infrastructure.logging.audit.get_audit_logger"
-        ) as mock_get_logger:
+        with patch("app.infrastructure.logging.audit.get_audit_logger") as mock_get_logger:
             mock_audit_logger = MagicMock()
             mock_get_logger.return_value = mock_audit_logger
 
@@ -124,24 +114,18 @@ class TestAuditDecorators:
             assert mock_audit_logger.log_data_modification.call_count == 2
 
             # Check first call (initiated)
-            init_call_args = mock_audit_logger.log_data_modification.call_args_list[0][
-                1
-            ]
+            init_call_args = mock_audit_logger.log_data_modification.call_args_list[0][1]
             assert init_call_args["status"] == "initiated"
 
             # Check second call (failed)
-            failed_call_args = mock_audit_logger.log_data_modification.call_args_list[
-                1
-            ][1]
+            failed_call_args = mock_audit_logger.log_data_modification.call_args_list[1][1]
             assert failed_call_args["status"] == "failed"
             assert "Test error" in failed_call_args["details"]
 
     def test_audit_phi_access_without_user_context(self):
         """Test the audit_phi_access decorator when no user context is set."""
         # Mock the audit logger
-        with patch(
-            "app.infrastructure.logging.audit.get_audit_logger"
-        ) as mock_get_logger:
+        with patch("app.infrastructure.logging.audit.get_audit_logger") as mock_get_logger:
             mock_audit_logger = MagicMock()
             mock_get_logger.return_value = mock_audit_logger
 
@@ -164,9 +148,7 @@ class TestAuditDecorators:
             assert mock_audit_logger.log_data_modification.call_count == 2
 
             # Check first call
-            init_call_args = mock_audit_logger.log_data_modification.call_args_list[0][
-                1
-            ]
+            init_call_args = mock_audit_logger.log_data_modification.call_args_list[0][1]
             assert init_call_args["user_id"] == "anonymous"
             assert init_call_args["action"] == "view"
             assert "system_operation" in init_call_args["details"]
@@ -175,9 +157,7 @@ class TestAuditDecorators:
     async def test_audit_async_phi_access_decorator(self):
         """Test the audit_async_phi_access decorator."""
         # Mock the audit logger
-        with patch(
-            "app.infrastructure.logging.audit.get_audit_logger"
-        ) as mock_get_logger:
+        with patch("app.infrastructure.logging.audit.get_audit_logger") as mock_get_logger:
             mock_audit_logger = MagicMock()
             mock_get_logger.return_value = mock_audit_logger
 
@@ -191,9 +171,7 @@ class TestAuditDecorators:
             set_current_user("doctor_jones", "treatment")
 
             # Call the decorated function
-            result = await update_medical_record(
-                "record123", {"notes": "Patient improving"}
-            )
+            result = await update_medical_record("record123", {"notes": "Patient improving"})
 
             # Verify the function worked
             assert result["id"] == "record123"
@@ -203,9 +181,7 @@ class TestAuditDecorators:
             assert mock_audit_logger.log_data_modification.call_count == 2
 
             # Check first call (initiated)
-            init_call_args = mock_audit_logger.log_data_modification.call_args_list[0][
-                1
-            ]
+            init_call_args = mock_audit_logger.log_data_modification.call_args_list[0][1]
             assert init_call_args["user_id"] == "doctor_jones"
             assert init_call_args["action"] == "update"
             assert init_call_args["entity_type"] == "medical_record"
@@ -213,18 +189,14 @@ class TestAuditDecorators:
             assert init_call_args["status"] == "initiated"
 
             # Check second call (success)
-            success_call_args = mock_audit_logger.log_data_modification.call_args_list[
-                1
-            ][1]
+            success_call_args = mock_audit_logger.log_data_modification.call_args_list[1][1]
             assert success_call_args["status"] == "success"
 
     @pytest.mark.asyncio
     async def test_audit_async_phi_access_with_exception(self):
         """Test the audit_async_phi_access decorator when the function raises an exception."""
         # Mock the audit logger
-        with patch(
-            "app.infrastructure.logging.audit.get_audit_logger"
-        ) as mock_get_logger:
+        with patch("app.infrastructure.logging.audit.get_audit_logger") as mock_get_logger:
             mock_audit_logger = MagicMock()
             mock_get_logger.return_value = mock_audit_logger
 
@@ -245,14 +217,10 @@ class TestAuditDecorators:
             assert mock_audit_logger.log_data_modification.call_count == 2
 
             # Check first call (initiated)
-            init_call_args = mock_audit_logger.log_data_modification.call_args_list[0][
-                1
-            ]
+            init_call_args = mock_audit_logger.log_data_modification.call_args_list[0][1]
             assert init_call_args["status"] == "initiated"
 
             # Check second call (failed)
-            failed_call_args = mock_audit_logger.log_data_modification.call_args_list[
-                1
-            ][1]
+            failed_call_args = mock_audit_logger.log_data_modification.call_args_list[1][1]
             assert failed_call_args["status"] == "failed"
             assert "Async test error" in failed_call_args["details"]

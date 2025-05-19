@@ -45,9 +45,7 @@ async def get_audit_logs(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     audit_service: IAuditLogger = Depends(get_audit_logger),
-    current_user: User = Depends(
-        get_current_user_with_permission(["admin", "security_officer"])
-    ),
+    current_user: User = Depends(get_current_user_with_permission(["admin", "security_officer"])),
 ) -> list[dict[str, Any]]:
     """
     Get audit logs with optional filtering.
@@ -107,9 +105,7 @@ async def get_audit_logs(
 async def search_audit_logs(
     search_request: AuditSearchRequest,
     audit_service: IAuditLogger = Depends(get_audit_logger),
-    current_user: User = Depends(
-        get_current_user_with_permission(["admin", "security_officer"])
-    ),
+    current_user: User = Depends(get_current_user_with_permission(["admin", "security_officer"])),
 ) -> list[dict[str, Any]]:
     """
     Search audit logs with advanced filtering.
@@ -136,9 +132,7 @@ async def search_audit_logs(
             "start_date": search_request.start_date.isoformat()
             if search_request.start_date
             else None,
-            "end_date": search_request.end_date.isoformat()
-            if search_request.end_date
-            else None,
+            "end_date": search_request.end_date.isoformat() if search_request.end_date else None,
             "limit": search_request.limit,
             "offset": search_request.offset,
             "results_count": len(logs),
@@ -157,9 +151,7 @@ async def search_audit_logs(
 async def get_security_dashboard(
     days: int = Query(7, ge=1, le=90),
     audit_service: AuditLogService = Depends(get_audit_logger),
-    current_user: User = Depends(
-        get_current_user_with_permission(["admin", "security_officer"])
-    ),
+    current_user: User = Depends(get_current_user_with_permission(["admin", "security_officer"])),
 ) -> dict[str, Any]:
     """
     Get data for the security dashboard.
@@ -217,9 +209,7 @@ async def export_audit_logs(
         severity=AuditSeverity.HIGH,
         details={
             "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-            if end_date
-            else datetime.now().isoformat(),
+            "end_date": end_date.isoformat() if end_date else datetime.now().isoformat(),
             "format": format,
             "file_path": file_path,
         },

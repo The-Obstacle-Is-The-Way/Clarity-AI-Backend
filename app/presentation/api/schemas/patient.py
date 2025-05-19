@@ -30,9 +30,7 @@ class PatientRead(PatientBase):
         ..., description="Unique identifier for the patient"
     )  # Changed to uuid.UUID
     # Inherits first_name, last_name, dob, email, phone_number from PatientBase
-    created_at: datetime | None = Field(
-        None, description="When the patient record was created"
-    )
+    created_at: datetime | None = Field(None, description="When the patient record was created")
     updated_at: datetime | None = Field(
         None, description="When the patient record was last updated"
     )
@@ -53,9 +51,5 @@ class PatientCreateResponse(PatientRead):
     """Response model for patient creation endpoint."""
 
     created_at: datetime = Field(..., description="When the patient record was created")
-    updated_at: datetime = Field(
-        ..., description="When the patient record was last updated"
-    )
-    created_by: uuid.UUID = Field(
-        ..., description="ID of the user who created the patient record"
-    )
+    updated_at: datetime = Field(..., description="When the patient record was last updated")
+    created_by: uuid.UUID = Field(..., description="ID of the user who created the patient record")

@@ -176,10 +176,8 @@ async def list_clinical_sessions(
     appointment_id: UUID | None = Query(None, description="Filter by appointment ID"),
     start_date: datetime
     | None = Query(None, description="Filter by session start date (inclusive)"),
-    end_date: datetime
-    | None = Query(None, description="Filter by session end date (exclusive)"),
-    session_type: SessionType
-    | None = Query(None, description="Filter by session type"),
+    end_date: datetime | None = Query(None, description="Filter by session end date (exclusive)"),
+    session_type: SessionType | None = Query(None, description="Filter by session type"),
     limit: int = Query(50, ge=1, le=200, description="Maximum sessions to return"),
     offset: int = Query(0, ge=0, description="Number of sessions to skip"),
     current_user: User = Depends(get_current_user),

@@ -251,9 +251,7 @@ class MentaLLaMA(MentaLLaMAInterface):
             "options_used": options,
         }
 
-    def detect_depression(
-        self, text: str, options: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def detect_depression(self, text: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Detect depression signals in text.
 
@@ -314,8 +312,7 @@ class MentaLLaMA(MentaLLaMAInterface):
 
         # Calculate weighted score
         total_weight = sum(
-            depression_keywords[keyword] * count
-            for keyword, count in keyword_counts.items()
+            depression_keywords[keyword] * count for keyword, count in keyword_counts.items()
         )
         max_possible_weight = sum(
             weight * 2 for weight in depression_keywords.values()
@@ -471,17 +468,13 @@ class MentaLLaMA(MentaLLaMAInterface):
                 keyword_counts[keyword] = count
 
         # Calculate weighted score
-        total_weight = sum(
-            keywords[keyword] * count for keyword, count in keyword_counts.items()
-        )
+        total_weight = sum(keywords[keyword] * count for keyword, count in keyword_counts.items())
         max_possible_weight = sum(
             weight * 2 for weight in keywords.values()
         )  # Assuming max 2 occurrences
 
         # Scale to 0-100
-        risk_score = (
-            (total_weight / max_possible_weight * 100) if max_possible_weight > 0 else 0
-        )
+        risk_score = (total_weight / max_possible_weight * 100) if max_possible_weight > 0 else 0
         risk_score = min(100, risk_score)
 
         # Determine risk level
@@ -535,9 +528,7 @@ class MentaLLaMA(MentaLLaMAInterface):
             "options_used": options,
         }
 
-    def analyze_sentiment(
-        self, text: str, options: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def analyze_sentiment(self, text: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Analyze sentiment in text.
 
@@ -713,17 +704,13 @@ class MentaLLaMA(MentaLLaMAInterface):
         max_possible = sum(
             max(positive_words.values()) for _ in range(len(words) // 3)
         )  # Estimating 1/3 of words could be sentiment words
-        min_possible = -sum(
-            max(negative_words.values()) for _ in range(len(words) // 3)
-        )
+        min_possible = -sum(max(negative_words.values()) for _ in range(len(words) // 3))
 
         # Scale to -1 to 1
         if total_sentiment > 0:
             sentiment_score = total_sentiment / max_possible if max_possible > 0 else 0
         else:
-            sentiment_score = (
-                total_sentiment / abs(min_possible) if min_possible < 0 else 0
-            )
+            sentiment_score = total_sentiment / abs(min_possible) if min_possible < 0 else 0
 
         # Detect emotions
         emotion_counts = {}
@@ -734,9 +721,7 @@ class MentaLLaMA(MentaLLaMAInterface):
 
         # Determine primary emotion
         primary_emotion = (
-            max(emotion_counts.items(), key=lambda x: x[1])[0]
-            if emotion_counts
-            else "neutral"
+            max(emotion_counts.items(), key=lambda x: x[1])[0] if emotion_counts else "neutral"
         )
 
         return {
@@ -763,9 +748,7 @@ class MentaLLaMA(MentaLLaMAInterface):
                 else 0,
             },
             "language_stats": {
-                "avg_word_length": sum(len(word) for word in words) / len(words)
-                if words
-                else 0,
+                "avg_word_length": sum(len(word) for word in words) / len(words) if words else 0,
                 "sentence_count": text.count(".") + text.count("!") + text.count("?"),
             },
             "options_used": options,
@@ -1000,27 +983,19 @@ class MentaLLaMA(MentaLLaMAInterface):
             keyword_diversity = len(counts)
 
             # Combined score based on frequency and diversity
-            score = (total_count * 0.7 + keyword_diversity * 0.3) / (
-                len(keywords) * 0.5
-            )
+            score = (total_count * 0.7 + keyword_diversity * 0.3) / (len(keywords) * 0.5)
             score = min(1.0, score)  # Cap at 1.0
 
             # Determine sentiment for this dimension
             positive_count = sum(
                 1
                 for keyword in counts
-                if any(
-                    pos in keyword
-                    for pos in ["good", "great", "positive", "happy", "enjoy"]
-                )
+                if any(pos in keyword for pos in ["good", "great", "positive", "happy", "enjoy"])
             )
             negative_count = sum(
                 1
                 for keyword in counts
-                if any(
-                    neg in keyword
-                    for neg in ["bad", "negative", "poor", "issue", "problem"]
-                )
+                if any(neg in keyword for neg in ["bad", "negative", "poor", "issue", "problem"])
             )
 
             sentiment = "neutral"
@@ -1058,9 +1033,7 @@ class MentaLLaMA(MentaLLaMAInterface):
             "dimensions_analyzed": dimensions,
             "dimensions_results": dimension_results,
             "primary_dimensions": primary_dimensions,
-            "overall_wellness_focus": primary_dimensions[0]
-            if primary_dimensions
-            else "balanced",
+            "overall_wellness_focus": primary_dimensions[0] if primary_dimensions else "balanced",
             "options_used": options,
         }
 
@@ -1321,9 +1294,7 @@ class MentaLLaMA(MentaLLaMAInterface):
 
         if not session_id or not message:
             logger.error("Invalid request: session_id and message are required")
-            raise InvalidRequestError(
-                "Invalid request: session_id and message are required"
-            )
+            raise InvalidRequestError("Invalid request: session_id and message are required")
 
         sender_type = sender_type or "user"
         message_params = message_params or {}
@@ -1426,9 +1397,7 @@ class MentaLLaMA(MentaLLaMAInterface):
 
         end_reason = end_reason or "user_requested"
 
-        logger.info(
-            "Ending digital twin session: %s, reason: %s", session_id, end_reason
-        )
+        logger.info("Ending digital twin session: %s, reason: %s", session_id, end_reason)
 
         # Update session status
         session["status"] = "ended"
@@ -1518,9 +1487,7 @@ class MentaLLaMA(MentaLLaMAInterface):
             "generated_at": datetime.datetime.now(timezone.utc).isoformat(),
         }
 
-    def _generate_digital_twin_response(
-        self, message: str, session: dict[str, Any]
-    ) -> str:
+    def _generate_digital_twin_response(self, message: str, session: dict[str, Any]) -> str:
         """
         Generate a response from the Digital Twin based on the message and session context.
 
@@ -1648,12 +1615,8 @@ class MentaLLaMA(MentaLLaMAInterface):
         # and generate comprehensive insights
 
         message_count = len(session["messages"])
-        user_messages = [
-            m for m in session["messages"] if m["sender_type"] != "digital_twin"
-        ]
-        system_messages = [
-            m for m in session["messages"] if m["sender_type"] == "digital_twin"
-        ]
+        user_messages = [m for m in session["messages"] if m["sender_type"] != "digital_twin"]
+        system_messages = [m for m in session["messages"] if m["sender_type"] == "digital_twin"]
 
         # Duration calculation
         start_time = datetime.datetime.fromisoformat(session["created_at"])
@@ -1790,9 +1753,7 @@ class MentaLLaMA(MentaLLaMAInterface):
 
         # Calculate theme relevance scores
         max_count = max(theme_counts.values()) if theme_counts.values() else 1
-        theme_scores = {
-            theme: count / max_count for theme, count in theme_counts.items()
-        }
+        theme_scores = {theme: count / max_count for theme, count in theme_counts.items()}
 
         # Identify primary themes
         primary_themes = [theme for theme, score in theme_scores.items() if score > 0.5]
@@ -1803,9 +1764,7 @@ class MentaLLaMA(MentaLLaMAInterface):
             "theme_counts": theme_counts,
         }
 
-    def _analyze_sentiment_progression(
-        self, messages: list[dict[str, Any]]
-    ) -> dict[str, Any]:
+    def _analyze_sentiment_progression(self, messages: list[dict[str, Any]]) -> dict[str, Any]:
         """
         Analyze sentiment progression throughout a list of messages.
 
@@ -1871,9 +1830,7 @@ class MentaLLaMA(MentaLLaMAInterface):
         Returns:
             Session insights
         """
-        user_messages = [
-            m for m in session["messages"] if m["sender_type"] != "digital_twin"
-        ]
+        user_messages = [m for m in session["messages"] if m["sender_type"] != "digital_twin"]
 
         # Combine all user messages for analysis
         combined_text = " ".join(m["content"] for m in user_messages)
@@ -1910,9 +1867,7 @@ class MentaLLaMA(MentaLLaMAInterface):
             "wellness_dimensions": wellness_analysis["dimensions_results"],
             "primary_dimensions": wellness_analysis.get("primary_dimensions", []),
             "themes": self._detect_message_themes(user_messages),
-            "interaction_patterns": self._analyze_interaction_patterns(
-                session["messages"]
-            ),
+            "interaction_patterns": self._analyze_interaction_patterns(session["messages"]),
             "summary": self._generate_session_summary(session),
         }
 
@@ -1921,9 +1876,7 @@ class MentaLLaMA(MentaLLaMAInterface):
 
         return insights
 
-    def _analyze_interaction_patterns(
-        self, messages: list[dict[str, Any]]
-    ) -> dict[str, Any]:
+    def _analyze_interaction_patterns(self, messages: list[dict[str, Any]]) -> dict[str, Any]:
         """
         Analyze interaction patterns in a list of messages.
 
@@ -1950,9 +1903,7 @@ class MentaLLaMA(MentaLLaMAInterface):
                 response_time = (time2 - time1).total_seconds()
                 response_times.append(response_time)
 
-        avg_response_time = (
-            sum(response_times) / len(response_times) if response_times else 0
-        )
+        avg_response_time = sum(response_times) / len(response_times) if response_times else 0
 
         # Analyze conversation flow
         user_messages = [m for m in messages if m["sender_type"] != "digital_twin"]
@@ -1987,9 +1938,7 @@ class MentaLLaMA(MentaLLaMAInterface):
             "message_length": avg_message_length,
         }
 
-    def _generate_clinical_recommendations(
-        self, insights: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _generate_clinical_recommendations(self, insights: dict[str, Any]) -> dict[str, Any]:
         """
         Generate clinical recommendations based on insights.
 
@@ -2028,9 +1977,7 @@ class MentaLLaMA(MentaLLaMAInterface):
 
         if "emotional" in wellness:
             recommendations["clinical_focus"].append("emotional_regulation")
-            recommendations["therapeutic_approaches"].append(
-                "cognitive_behavioral_therapy"
-            )
+            recommendations["therapeutic_approaches"].append("cognitive_behavioral_therapy")
 
         if "physical" in wellness:
             recommendations["clinical_focus"].append("lifestyle_factors")

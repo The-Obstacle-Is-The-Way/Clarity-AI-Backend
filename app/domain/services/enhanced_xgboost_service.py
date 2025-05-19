@@ -181,9 +181,7 @@ class EnhancedXGBoostService:
         response = min(1.0, max(0.1, response))
 
         # Calculate confidence (higher with positive effects, lower with negative)
-        confidence = (
-            0.6 + (0.2 * (1 if treatment_effect > 0 else -1)) + (0.1 * region_factor)
-        )
+        confidence = 0.6 + (0.2 * (1 if treatment_effect > 0 else -1)) + (0.1 * region_factor)
         confidence = min(0.95, max(0.5, confidence))
 
         # Timeframe depends on neurotransmitter and treatment magnitude
@@ -366,9 +364,7 @@ class EnhancedXGBoostService:
                 effect = self._sigmoid(t / onset_days) * 0.3
             elif t < peak_days:
                 # Ramp-up phase (sigmoid curve)
-                effect = 0.3 + (
-                    0.7 * self._sigmoid((t - onset_days) / (peak_days - onset_days))
-                )
+                effect = 0.3 + (0.7 * self._sigmoid((t - onset_days) / (peak_days - onset_days)))
             elif t <= duration_days:
                 # Stable phase with slight tolerance development
                 time_stable = t - peak_days
@@ -384,9 +380,7 @@ class EnhancedXGBoostService:
             if t > duration_days:
                 time_since_stop = t - duration_days
                 # Withdrawal peaks at 1-2 days after stopping, then gradually subsides
-                withdrawal = (
-                    0.5 * time_since_stop * math.exp(-time_since_stop / 2)
-                ) * decay_rate
+                withdrawal = (0.5 * time_since_stop * math.exp(-time_since_stop / 2)) * decay_rate
 
             # Calculate side effect intensity
             # Side effects develop quickly, may decrease with tolerance, increase with dose
@@ -397,9 +391,7 @@ class EnhancedXGBoostService:
                 side_effect = 0.8 - (0.3 * self._sigmoid((t - onset_days) / peak_days))
             else:
                 # Stable with slight further adaptation
-                side_effect = 0.5 - (
-                    0.1 * self._sigmoid((t - peak_days * 2) / peak_days)
-                )
+                side_effect = 0.5 - (0.1 * self._sigmoid((t - peak_days * 2) / peak_days))
 
             # Adjust side effects for dose
             side_effect *= dose_factor
@@ -445,9 +437,7 @@ class EnhancedXGBoostService:
             return result
 
         # Get primary neurotransmitter's interaction coefficients
-        primary_interactions = self._interaction_matrices.get(
-            primary_neurotransmitter, {}
-        )
+        primary_interactions = self._interaction_matrices.get(primary_neurotransmitter, {})
 
         # Calculate total net interaction score
         total_interaction = 0.0
@@ -541,9 +531,7 @@ class EnhancedXGBoostService:
             Dictionary mapping side effects to probabilities
         """
         if treatment_class not in self.side_effect_models:
-            raise ValueError(
-                f"No side effect model available for {treatment_class.value}"
-            )
+            raise ValueError(f"No side effect model available for {treatment_class.value}")
 
         # Get base side effect model
         base_side_effects = self.side_effect_models[treatment_class]
@@ -726,14 +714,10 @@ class EnhancedXGBoostService:
             side_effects = self.predict_side_effects(treatment, patient_features)
 
             # Calculate efficacy score
-            efficacy_score = self._calculate_efficacy_score(
-                response, target_neurotransmitters
-            )
+            efficacy_score = self._calculate_efficacy_score(response, target_neurotransmitters)
 
             # Calculate side effect score
-            side_effect_score = self._calculate_side_effect_score(
-                side_effects, side_effect_weights
-            )
+            side_effect_score = self._calculate_side_effect_score(side_effects, side_effect_weights)
 
             # Calculate overall score (higher is better)
             overall_score = efficacy_score - side_effect_score
@@ -858,9 +842,7 @@ class EnhancedXGBoostService:
             avg_effect = sum(effects) / len(effects)
             max_effect = max(effects, key=abs)
             max_region = next(
-                region
-                for region, effect in regions.items()
-                if abs(effect) == abs(max_effect)
+                region for region, effect in regions.items() if abs(effect) == abs(max_effect)
             )
 
             summary[nt.value] = {
@@ -941,13 +923,9 @@ def _simulate_treatment_cascade(
 ) -> dict[str, Any]:
     """Simple cascade simulation for treatment effects."""
     # Direct effects by adding treatment effect to each baseline
-    direct_effects = {
-        nt: level + treatment_effect for nt, level in baseline_data.items()
-    }
+    direct_effects = {nt: level + treatment_effect for nt, level in baseline_data.items()}
     # One example indirect effect
-    indirect_effects = [
-        {"pathway": "example", "effect_magnitude": 0.1, "timeframe_days": 7}
-    ]
+    indirect_effects = [{"pathway": "example", "effect_magnitude": 0.1, "timeframe_days": 7}]
     # Simple temporal progression over days
     temporal_progression = [
         {
@@ -974,9 +952,7 @@ def _analyze_temporal_response(
 ) -> dict[str, Any]:
     """Simple temporal response analysis."""
     # Build a response curve peaking in the middle for shape analysis
-    response_curve = [
-        {"day": i, "response_level": 0.1 * min(i, 4 - i)} for i in range(5)
-    ]
+    response_curve = [{"day": i, "response_level": 0.1 * min(i, 4 - i)} for i in range(5)]
     peak_day = max(response_curve, key=lambda x: x["response_level"])["day"]
     # Stabilization assumed at peak response day
     stabilization_day = peak_day

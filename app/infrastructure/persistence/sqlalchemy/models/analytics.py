@@ -117,6 +117,4 @@ class AnalyticsJobModel(Base, TimestampMixin):
 
     def __repr__(self) -> str:
         """Return string representation of the model."""
-        return (
-            f"<AnalyticsJob(id={self.id}, type={self.job_type}, status={self.status})>"
-        )
+        return f"<AnalyticsJob(id={self.id}, type={self.job_type}, status={self.status})>"

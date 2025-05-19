@@ -194,9 +194,7 @@ class TestTreatmentResponseModel:
             mock_exists.assert_any_call("test_model_path")
             mock_exists.assert_any_call("test_medication_path")
             mock_joblib.load.assert_called_once_with("test_model_path")
-            mock_open.assert_called_once_with(
-                "test_medication_path", "r", encoding="utf-8"
-            )
+            mock_open.assert_called_once_with("test_medication_path", "r", encoding="utf-8")
             mock_json.load.assert_called_once()  # Called within the 'with open(...)' context
             assert model.is_initialized
             assert model._efficacy_model is mock_efficacy_model
@@ -264,9 +262,7 @@ class TestTreatmentResponseModel:
         assert (
             fluoxetine["efficacy"]["score"] > 0
         )  # Added closing parenthesis if needed, assuming it's a value comparison
-        assert (
-            len(fluoxetine["side_effects"]) > 0
-        )  # Added closing parenthesis if needed
+        assert len(fluoxetine["side_effects"]) > 0  # Added closing parenthesis if needed
 
         # Check comparative analysis # Corrected indentation
         assert "comparative_analysis" in result
@@ -311,9 +307,7 @@ class TestTreatmentResponseModel:
         assert result["comparative_analysis"] == {}  # Added indentation for block
 
     @pytest.mark.asyncio
-    async def test_preprocess_patient_data(  # Added colon
-        self, model, sample_patient_data
-    ):
+    async def test_preprocess_patient_data(self, model, sample_patient_data):  # Added colon
         """Test patient data preprocessing."""
         # Execute # Corrected indentation
         features = model._preprocess_patient_data(sample_patient_data)
@@ -342,9 +336,7 @@ class TestTreatmentResponseModel:
         assert 0 <= result["percentile"] <= 100  # Added indentation for block
 
     @pytest.mark.asyncio
-    async def test_format_side_effects_result(
-        self, model
-    ):  # Added colon, corrected indentation
+    async def test_format_side_effects_result(self, model):  # Added colon, corrected indentation
         """Test side effects result formatting."""
         # Setup # Corrected indentation
         medication = "fluoxetine"

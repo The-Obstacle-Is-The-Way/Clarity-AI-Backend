@@ -341,9 +341,7 @@ async def mentallama_test_client(
     client, app = client_app_tuple_func_scoped
 
     # Log app type for debugging
-    logging.info(
-        f"MENTALLAMA_TEST_CLIENT: Received app_from_fixture of type: {type(app)}"
-    )
+    logging.info(f"MENTALLAMA_TEST_CLIENT: Received app_from_fixture of type: {type(app)}")
 
     if not isinstance(app, FastAPI):
         logging.warning(
@@ -356,12 +354,8 @@ async def mentallama_test_client(
         )
 
     # Override MentaLLaMA service
-    app.dependency_overrides[
-        get_mentallama_service
-    ] = lambda: mock_mentallama_service_instance
-    logging.info(
-        f"MENTALLAMA_TEST_CLIENT: Overrode MentaLLaMAInterface on app {id(app)}"
-    )
+    app.dependency_overrides[get_mentallama_service] = lambda: mock_mentallama_service_instance
+    logging.info(f"MENTALLAMA_TEST_CLIENT: Overrode MentaLLaMAInterface on app {id(app)}")
 
     # Override JWT service
     app.dependency_overrides[get_jwt_service] = lambda: global_mock_jwt_service
@@ -376,9 +370,7 @@ async def mentallama_test_client(
     # Override audit log service with our mock
     mock_audit_service = MockAuditLogService()
     app.dependency_overrides[get_audit_log_service] = lambda: mock_audit_service
-    logging.info(
-        "MENTALLAMA_TEST_CLIENT: Overrode AuditLogService with MockAuditLogService"
-    )
+    logging.info("MENTALLAMA_TEST_CLIENT: Overrode AuditLogService with MockAuditLogService")
 
     # Set the mock audit logger on app.state to use in middleware
     app.state.audit_logger = mock_audit_service
@@ -413,9 +405,7 @@ async def mentallama_test_client(
 
     # Clear dependency overrides after test
     app.dependency_overrides.clear()
-    logging.info(
-        f"MENTALLAMA_TEST_CLIENT: Cleared dependency_overrides on app {id(app)}"
-    )
+    logging.info(f"MENTALLAMA_TEST_CLIENT: Cleared dependency_overrides on app {id(app)}")
 
 
 # --- Test Functions (Updated to use mentallama_test_client) --- #
@@ -447,10 +437,7 @@ async def test_process_endpoint(
     # Check response matches our mock implementation
     response_json = response.json()
     assert response_json["success"] is True
-    assert (
-        response_json["generated_text"]
-        == f"Response for {TEST_PROMPT} using {TEST_MODEL}"
-    )
+    assert response_json["generated_text"] == f"Response for {TEST_PROMPT} using {TEST_MODEL}"
     assert response_json["model_used"] == TEST_MODEL
     assert "processing_time" in response_json
 
@@ -572,9 +559,7 @@ async def test_service_unavailable(
 
 
 @pytest_asyncio.fixture(scope="function")
-async def client_app_tuple_func_scoped() -> AsyncGenerator[
-    tuple[AsyncClient, FastAPI], None
-]:
+async def client_app_tuple_func_scoped() -> AsyncGenerator[tuple[AsyncClient, FastAPI], None]:
     """
     Provides a tuple of (AsyncClient, FastAPI) for testing with proper database engine setup
     and middleware skipping.

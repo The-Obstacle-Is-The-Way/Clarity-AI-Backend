@@ -47,10 +47,7 @@ class AlertPriority(Enum):
             # Case-insensitive matching
             value_lower = value.lower()
             for member in cls:
-                if (
-                    isinstance(member.value, str)
-                    and member.value.lower() == value_lower
-                ):
+                if isinstance(member.value, str) and member.value.lower() == value_lower:
                     return member
         return None
 
@@ -307,9 +304,7 @@ class BiometricAlertRule:
     patient_id: UUID | None = None  # If None, considered a template or global rule
     provider_id: UUID | None = None  # Provider who created the rule
     is_active: bool = True
-    is_template: bool = (
-        False  # Whether this rule is a template for creating other rules
-    )
+    is_template: bool = False  # Whether this rule is a template for creating other rules
     created_at: datetime = field(default_factory=datetime.now(UTC))
     updated_at: datetime | None = None
     version: int = 1

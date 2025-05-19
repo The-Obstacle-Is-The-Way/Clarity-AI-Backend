@@ -49,9 +49,7 @@ class IPATService:
 class MockPATService(IPATService):
     """Temporary mock service for PAT analysis to make tests pass."""
 
-    async def analyze_actigraphy(
-        self, data: ActigraphyAnalysisRequest
-    ) -> dict[str, Any]:
+    async def analyze_actigraphy(self, data: ActigraphyAnalysisRequest) -> dict[str, Any]:
         """Mock implementation of actigraphy analysis. Now returns a dict matching AnalyzeActigraphyResponse structure."""
         now = utcnow()
         mock_analysis_id = uuid.uuid4()
@@ -247,9 +245,7 @@ async def get_model_info(
     status_code=status.HTTP_201_CREATED,
     summary="Upload Actigraphy Data (Stub for tests)",
 )
-async def upload_actigraphy_data_stub(
-    current_user: CurrentUserDep, file: UploadFile = File(...)
-):
+async def upload_actigraphy_data_stub(current_user: CurrentUserDep, file: UploadFile = File(...)):
     filename = file.filename
     return ActigraphyUploadResponse(
         message="File upload stub successful from routes/actigraphy.py",
@@ -335,9 +331,7 @@ async def get_patient_actigraphy_data(
         str(current_user.id),
         str(patient_id),
         "get_patient_actigraphy_data",
-        details={
-            "date_range": {"start": start_date.isoformat(), "end": end_date.isoformat()}
-        },
+        details={"date_range": {"start": start_date.isoformat(), "end": end_date.isoformat()}},
     )
 
     # Return mock data

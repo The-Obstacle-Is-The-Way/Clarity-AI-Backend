@@ -89,9 +89,7 @@ async def integration_db_session():  # Removed encryption_service_fixture depend
     # original_esi = getattr(patient_module_for_esi, 'encryption_service_instance', None) # No longer needed
     # patient_module_for_esi.encryption_service_instance = encryption_service_fixture # No longer needed
 
-    logger.info(
-        f"[Integration Fixture] Setting up test database: {settings.DATABASE_URL}"
-    )
+    logger.info(f"[Integration Fixture] Setting up test database: {settings.DATABASE_URL}")
     logger.info(
         f"[Integration Fixture] Using global encryption_service_instance: {id(encryption_service_instance)}"
     )
@@ -112,14 +110,10 @@ async def integration_db_session():  # Removed encryption_service_fixture depend
     # async_session_factory = db_instance.session_factory # Not using factory directly
 
     patient_audit_log_id_for_yield: uuid.UUID | None = None
-    user_for_patient_audit_id: uuid.UUID | None = (
-        None  # Keep for logging clarity if needed
-    )
+    user_for_patient_audit_id: uuid.UUID | None = None  # Keep for logging clarity if needed
 
     async with engine.connect() as conn:  # Single connection for DDL and test session
-        logger.info(
-            "[Integration Fixture] Performing DDL operations on shared connection."
-        )
+        logger.info("[Integration Fixture] Performing DDL operations on shared connection.")
         await conn.run_sync(Base.metadata.drop_all)
         logger.info("[Integration Fixture] Dropped all tables.")
         await conn.run_sync(Base.metadata.create_all)
@@ -175,9 +169,7 @@ async def integration_db_session():  # Removed encryption_service_fixture depend
                 # 3. Update user_creation_audit_log with the actual user_id.
                 user_creation_audit_log.user_id = test_user.id
                 user_creation_audit_log.action = "CREATE"
-                user_creation_audit_log.details = (
-                    f"User {test_user.id} created successfully."
-                )
+                user_creation_audit_log.details = f"User {test_user.id} created successfully."
                 # async_session.add(user_creation_audit_log) # Already in session, modification will be picked up.
                 logger.info(
                     f"[Integration Fixture] Updated user_creation_audit_log {user_creation_audit_log.id} with user_id {test_user.id}."
@@ -219,9 +211,7 @@ async def integration_db_session():  # Removed encryption_service_fixture depend
             # Rollback is implicitly handled by 'async with async_session.begin()' on exception
             raise
         finally:
-            logger.info(
-                "[Integration Fixture] Tearing down test database session (fixture end)."
-            )
+            logger.info("[Integration Fixture] Tearing down test database session (fixture end).")
             await async_session.close()  # Close the session
             # Connection 'conn' is automatically closed by 'async with engine.connect()'
             # patient_module_for_esi.encryption_service_instance = original_esi # No longer needed
@@ -359,9 +349,7 @@ class TestPatientEncryptionIntegration:
         )
         domain_patient.audit_id = patient_audit_log_id  # Set audit_id for creation
 
-        repo = PatientRepository(
-            session, encryption_service_instance
-        )  # Use global instance
+        repo = PatientRepository(session, encryption_service_instance)  # Use global instance
 
         try:
             await repo.create(domain_patient)
@@ -392,9 +380,7 @@ class TestPatientEncryptionIntegration:
         raw_patient_data = result.fetchone()
         await session.commit()  # Commit select if needed, or just close session after read
 
-        assert (
-            raw_patient_data is not None
-        ), "Patient not found in DB for raw data check."
+        assert raw_patient_data is not None, "Patient not found in DB for raw data check."
 
         # Check that sensitive fields are not plain text and appear encrypted (e.g., start with "v1:")
         # This uses the VERSION_PREFIX from setup_method
@@ -406,12 +392,8 @@ class TestPatientEncryptionIntegration:
         assert raw_patient_data.last_name.startswith(
             version_prefix
         ), "Raw last_name should be encrypted."
-        assert raw_patient_data.email.startswith(
-            version_prefix
-        ), "Raw email should be encrypted."
-        assert raw_patient_data.ssn.startswith(
-            version_prefix
-        ), "Raw ssn should be encrypted."
+        assert raw_patient_data.email.startswith(version_prefix), "Raw email should be encrypted."
+        assert raw_patient_data.ssn.startswith(version_prefix), "Raw ssn should be encrypted."
 
         # For JSON fields, the raw data in DB is a string, which itself should be encrypted.
         assert isinstance(
@@ -430,9 +412,7 @@ class TestPatientEncryptionIntegration:
 
         # Decrypt one field manually to double-check the key consistency (optional sanity check)
         try:
-            decrypted_fn = encryption_service_instance.decrypt_string(
-                raw_patient_data.first_name
-            )
+            decrypted_fn = encryption_service_instance.decrypt_string(raw_patient_data.first_name)
             assert (
                 decrypted_fn == domain_patient.first_name
             ), "Manual decryption check failed for first_name"
@@ -453,9 +433,7 @@ class TestPatientEncryptionIntegration:
         )
         original_patient_domain.audit_id = patient_audit_log_id  # Set audit_id
 
-        repo = PatientRepository(
-            session, encryption_service_instance
-        )  # Use global instance
+        repo = PatientRepository(session, encryption_service_instance)  # Use global instance
 
         try:
             await repo.create(original_patient_domain)
@@ -466,9 +444,7 @@ class TestPatientEncryptionIntegration:
                 f"Error during patient creation in test_phi_decrypted_in_repository: {e}",
                 exc_info=True,
             )
-            raise PersistenceError(
-                f"Failed to create patient for decryption test: {e}"
-            ) from e
+            raise PersistenceError(f"Failed to create patient for decryption test: {e}") from e
 
         retrieved_patient = None
         try:
@@ -493,9 +469,7 @@ class TestPatientEncryptionIntegration:
         assert (
             retrieved_patient.last_name == original_patient_domain.last_name
         ), "Decrypted last_name mismatch."
-        assert (
-            retrieved_patient.email == original_patient_domain.email
-        ), "Decrypted email mismatch."
+        assert retrieved_patient.email == original_patient_domain.email, "Decrypted email mismatch."
         assert (
             retrieved_patient.date_of_birth == original_patient_domain.date_of_birth
         ), "Decrypted date_of_birth mismatch."
@@ -508,8 +482,7 @@ class TestPatientEncryptionIntegration:
             retrieved_patient.address == original_patient_domain.address
         ), "Decrypted address mismatch."
         assert (
-            retrieved_patient.emergency_contact
-            == original_patient_domain.emergency_contact
+            retrieved_patient.emergency_contact == original_patient_domain.emergency_contact
         ), "Decrypted emergency_contact mismatch."
 
         # For list/JSON fields that are stored as encrypted strings
@@ -543,9 +516,7 @@ class TestPatientEncryptionIntegration:
         service = encryption_service_instance
 
         # Ensure the service is not None before proceeding
-        assert (
-            service is not None
-        ), "encryption_service_instance is not initialized properly"
+        assert service is not None, "encryption_service_instance is not initialized properly"
 
         original_text = "This is highly sensitive data!"
         encrypted_text = service.encrypt(original_text)
@@ -554,9 +525,7 @@ class TestPatientEncryptionIntegration:
         # Tamper with the encrypted text
         tampered_text = encrypted_text[:-5] + "XXXXX"  # Corrupt the end
 
-        with pytest.raises(
-            ValueError, match="Decryption failed: Invalid token"
-        ) as excinfo_token:
+        with pytest.raises(ValueError, match="Decryption failed: Invalid token") as excinfo_token:
             service.decrypt(tampered_text)  # decrypt directly takes string or bytes
         logger.debug(f"Caught expected InvalidToken error: {excinfo_token.value}")
 
@@ -571,15 +540,11 @@ class TestPatientEncryptionIntegration:
             service.decrypt("someRandomDataWithoutPrefix")
             pytest.fail("Should have raised an error for missing prefix")
         except ValueError as e:
-            assert "Invalid" in str(
-                e
-            ), f"Expected 'Invalid' in error message, got: {e!s}"
+            assert "Invalid" in str(e), f"Expected 'Invalid' in error message, got: {e!s}"
         logger.debug("Caught expected missing prefix error for string.")
 
         # Test decryption of prefixed but invalid (non-base64) data
-        with pytest.raises(
-            ValueError, match="Decryption failed: Invalid base64 encoding"
-        ):
+        with pytest.raises(ValueError, match="Decryption failed: Invalid base64 encoding"):
             service.decrypt(f"{service.VERSION_PREFIX}NotValidBase64")
         logger.debug("Caught expected error for prefixed but invalid base64.")
 
@@ -593,6 +558,4 @@ class TestPatientEncryptionIntegration:
 
         with pytest.raises(ValueError, match="Decryption failed: Invalid token"):
             other_service.decrypt(encrypted_with_main_key)
-        logger.debug(
-            "Caught expected InvalidToken error when decrypting with wrong key."
-        )
+        logger.debug("Caught expected InvalidToken error when decrypting with wrong key.")

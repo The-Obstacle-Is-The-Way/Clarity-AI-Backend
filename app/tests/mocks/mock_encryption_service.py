@@ -205,15 +205,12 @@ class MockEncryptionService(BaseEncryptionService):
                         self.decrypt_dict(item)
                         if isinstance(item, dict)
                         else self.decrypt(item)
-                        if isinstance(item, (str, bytes))
-                        and self._looks_encrypted(item)
+                        if isinstance(item, (str, bytes)) and self._looks_encrypted(item)
                         else item
                         for item in result[key]
                     ]
                 # Handle simple values - decrypt if it looks encrypted
-                elif isinstance(result[key], (str, bytes)) and self._looks_encrypted(
-                    result[key]
-                ):
+                elif isinstance(result[key], (str, bytes)) and self._looks_encrypted(result[key]):
                     try:
                         decrypted = self.decrypt(result[key])
                         # Try to parse as JSON if it looks like a serialized object

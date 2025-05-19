@@ -213,9 +213,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         )
 
         # Map data points to entities
-        data_points = [
-            self._map_data_point_to_entity(dp_model) for dp_model in data_point_models
-        ]
+        data_points = [self._map_data_point_to_entity(dp_model) for dp_model in data_point_models]
 
         # Create the BiometricTwin entity
         return BiometricTwinState(
@@ -225,9 +223,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
             created_at=model.created_at,
             updated_at=model.updated_at,
             baseline_established=model.baseline_established,
-            connected_devices=set(model.connected_devices)
-            if model.connected_devices
-            else set(),
+            connected_devices=set(model.connected_devices) if model.connected_devices else set(),
         )
 
     def _map_to_model(self, entity: BiometricTwinState) -> BiometricTwinModel:
@@ -246,14 +242,10 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
             created_at=entity.created_at,
             updated_at=entity.updated_at,
             baseline_established=entity.baseline_established,
-            connected_devices=list(entity.connected_devices)
-            if entity.connected_devices
-            else [],
+            connected_devices=list(entity.connected_devices) if entity.connected_devices else [],
         )
 
-    def _update_model(
-        self, model: BiometricTwinModel, entity: BiometricTwinState
-    ) -> None:
+    def _update_model(self, model: BiometricTwinModel, entity: BiometricTwinState) -> None:
         """
         Update a BiometricTwinModel with values from a BiometricTwin entity.
 
@@ -263,13 +255,9 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         """
         model.updated_at = entity.updated_at
         model.baseline_established = entity.baseline_established
-        model.connected_devices = (
-            list(entity.connected_devices) if entity.connected_devices else []
-        )
+        model.connected_devices = list(entity.connected_devices) if entity.connected_devices else []
 
-    def _map_data_point_to_entity(
-        self, model: BiometricDataPointModel
-    ) -> BiometricDataPoint:
+    def _map_data_point_to_entity(self, model: BiometricDataPointModel) -> BiometricDataPoint:
         """
         Map a BiometricDataPointModel to a BiometricDataPoint entity.
 
@@ -340,9 +328,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
                 existing_data_point_ids.remove(data_point_id)
             else:
                 # New data point, add to database
-                data_point_model = self._map_data_point_to_model(
-                    data_point, entity.twin_id
-                )
+                data_point_model = self._map_data_point_to_model(data_point, entity.twin_id)
                 self.session.add(data_point_model)
 
         # Any remaining IDs in the set are data points that were removed from the entity
@@ -370,9 +356,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
             # Convert to string as fallback
             return str(value), "string"
 
-    def _deserialize_value(
-        self, value: str, value_type: str
-    ) -> str | float | int | dict:
+    def _deserialize_value(self, value: str, value_type: str) -> str | float | int | dict:
         """
         Deserialize a value from the database.
 

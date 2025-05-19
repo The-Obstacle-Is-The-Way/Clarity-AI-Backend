@@ -71,19 +71,11 @@ class MultiHeadAttention(nn.Module):
 
         # Linear projections and reshape for multi-head attention
         query = (
-            self.query(query)
-            .view(batch_size, -1, self.num_heads, self.head_dim)
-            .transpose(1, 2)
+            self.query(query).view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
         )
-        key = (
-            self.key(key)
-            .view(batch_size, -1, self.num_heads, self.head_dim)
-            .transpose(1, 2)
-        )
+        key = self.key(key).view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
         value = (
-            self.value(value)
-            .view(batch_size, -1, self.num_heads, self.head_dim)
-            .transpose(1, 2)
+            self.value(value).view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
         )
 
         # Scaled dot-product attention
@@ -103,9 +95,7 @@ class MultiHeadAttention(nn.Module):
 
         # Reshape and project back
         attention_output = (
-            attention_output.transpose(1, 2)
-            .contiguous()
-            .view(batch_size, -1, self.d_model)
+            attention_output.transpose(1, 2).contiguous().view(batch_size, -1, self.d_model)
         )
         return self.out(attention_output)
 
@@ -132,9 +122,7 @@ class TransformerEncoderLayer(nn.Module):
         self.norm2 = nn.LayerNorm(d_model)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(
-        self, x: torch.Tensor, mask: torch.Tensor | None = None
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
         """
         Forward pass for transformer encoder layer.
 
@@ -204,9 +192,7 @@ class TransformerDecoderLayer(nn.Module):
         x = self.norm1(x + self.dropout(self_attn_output))
 
         # Cross-attention with residual connection and layer normalization
-        cross_attn_output = self.cross_attention(
-            x, encoder_output, encoder_output, src_mask
-        )
+        cross_attn_output = self.cross_attention(x, encoder_output, encoder_output, src_mask)
         x = self.norm2(x + self.dropout(cross_attn_output))
 
         # Feed-forward with residual connection and layer normalization
@@ -338,26 +324,18 @@ class MultiHorizonTransformer(nn.Module):
         Returns:
             Source mask and target mask
         """
-        src_mask = torch.ones(
-            (src_seq.shape[0], 1, 1, src_seq.shape[1]), device=src_seq.device
-        )
+        src_mask = torch.ones((src_seq.shape[0], 1, 1, src_seq.shape[1]), device=src_seq.device)
 
         # Create target mask (for autoregressive property)
         tgt_seq_len = tgt_seq.shape[1]
-        tgt_mask = torch.tril(
-            torch.ones((tgt_seq_len, tgt_seq_len), device=tgt_seq.device)
-        )
+        tgt_mask = torch.tril(torch.ones((tgt_seq_len, tgt_seq_len), device=tgt_seq.device))
         tgt_mask = (
-            tgt_mask.unsqueeze(0)
-            .unsqueeze(1)
-            .expand(tgt_seq.shape[0], 1, tgt_seq_len, tgt_seq_len)
+            tgt_mask.unsqueeze(0).unsqueeze(1).expand(tgt_seq.shape[0], 1, tgt_seq_len, tgt_seq_len)
         )
 
         return src_mask, tgt_mask
 
-    def encode(
-        self, src: torch.Tensor, src_mask: torch.Tensor | None = None
-    ) -> torch.Tensor:
+    def encode(self, src: torch.Tensor, src_mask: torch.Tensor | None = None) -> torch.Tensor:
         """
         Encode the source sequence.
 
@@ -493,8 +471,7 @@ class MultiHorizonTransformer(nn.Module):
                     "values": median_forecast,
                     "intervals": {"lower": lower_bound, "upper": upper_bound},
                     "all_quantiles": {
-                        q: all_preds[:, :, :, i].cpu().numpy()
-                        for i, q in enumerate(self.quantiles)
+                        q: all_preds[:, :, :, i].cpu().numpy() for i, q in enumerate(self.quantiles)
                     },
                     "model_type": "transformer",
                 }

@@ -120,9 +120,7 @@ class BatchProcessAnalyticsUseCase:
 
         return batch
 
-    async def _process_chunk(
-        self, events: list[dict[str, Any]]
-    ) -> list[AnalyticsEvent | None]:
+    async def _process_chunk(self, events: list[dict[str, Any]]) -> list[AnalyticsEvent | None]:
         """
         Process a chunk of events concurrently.
 

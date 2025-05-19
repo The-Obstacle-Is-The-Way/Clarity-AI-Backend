@@ -73,9 +73,7 @@ class NeurotransmitterStateAdapter:
 
     def __post_init__(self):
         """Ensure proper enum conversion after initialization."""
-        self.neurotransmitter = ensure_enum_value(
-            self.neurotransmitter, Neurotransmitter
-        )
+        self.neurotransmitter = ensure_enum_value(self.neurotransmitter, Neurotransmitter)
         self.clinical_significance = ensure_enum_value(
             self.clinical_significance, ClinicalSignificance
         )
@@ -152,9 +150,7 @@ class DigitalTwinStateAdapter:
 
     patient_id: UUID
     timestamp: datetime
-    brain_regions: dict[BrainRegion, BrainRegionStateAdapter] = field(
-        default_factory=dict
-    )
+    brain_regions: dict[BrainRegion, BrainRegionStateAdapter] = field(default_factory=dict)
     neurotransmitters: dict[Neurotransmitter, NeurotransmitterStateAdapter] = field(
         default_factory=dict
     )
@@ -236,9 +232,7 @@ class DigitalTwinStateAdapter:
             neurotransmitters_copy[nt] = state.create_copy()
 
         # Copy neural connections
-        neural_connections_copy = [
-            conn.create_copy() for conn in self.neural_connections
-        ]
+        neural_connections_copy = [conn.create_copy() for conn in self.neural_connections]
 
         # Copy temporal patterns
         temporal_patterns_copy = []

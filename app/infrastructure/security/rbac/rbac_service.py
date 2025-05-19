@@ -43,9 +43,7 @@ class RBACService:
         # Roles and permissions are loaded directly from the imported roles module
         pass
 
-    def check_permission(
-        self, user_roles: list[Role], required_permission: str
-    ) -> bool:
+    def check_permission(self, user_roles: list[Role], required_permission: str) -> bool:
         """
         Check if a user with the given roles has a specific permission.
 
@@ -60,9 +58,7 @@ class RBACService:
             return False
 
         # Check against the ROLE_PERMISSIONS mapping, allowing dynamic overrides
-        has_perm = any(
-            required_permission in ROLE_PERMISSIONS.get(role, []) for role in user_roles
-        )
+        has_perm = any(required_permission in ROLE_PERMISSIONS.get(role, []) for role in user_roles)
 
         # Future: Implement context-aware checks here if needed
         # (e.g., checking resource ownership for 'own_' permissions)

@@ -54,9 +54,7 @@ class ClinicalNoteLocked(ClinicalDocumentationEvent):
     """Event raised when a clinical note is locked"""
 
     locking_reason: str | None = None
-    auto_locked: bool = (
-        False  # Whether the note was automatically locked (e.g., after 24 hours)
-    )
+    auto_locked: bool = False  # Whether the note was automatically locked (e.g., after 24 hours)
 
 
 @dataclass

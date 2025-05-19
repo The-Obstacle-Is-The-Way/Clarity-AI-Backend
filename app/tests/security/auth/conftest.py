@@ -159,7 +159,6 @@ def jwt_service_patch(test_settings) -> Generator:
 def middleware_patch(test_settings, authenticated_user):
     """Patch the authentication middleware to use test tokens."""
 
-
     from app.presentation.middleware.authentication import AuthenticationMiddleware
 
     # Store the original dispatch method
@@ -293,8 +292,7 @@ async def app_instance(
     app.dependency_overrides[get_optional_user] = lambda: {
         "sub": authenticated_user.id,
         "roles": [
-            role.value if hasattr(role, "value") else str(role)
-            for role in authenticated_user.roles
+            role.value if hasattr(role, "value") else str(role) for role in authenticated_user.roles
         ],
         "exp": int((datetime.now(timezone.utc) + timedelta(minutes=15)).timestamp()),
     }
@@ -326,7 +324,6 @@ async def app_instance(
 
     from fastapi import Request, Response
     from fastapi.routing import APIRoute
-
 
     # Create a custom login route handler that bypasses validation
     async def patched_login_route(request: Request, response: Response):
@@ -378,9 +375,7 @@ async def app_instance(
 
         try:
             # Use the mock auth service directly
-            tokens = await mock_auth_service.refresh_access_token(
-                refresh_token_str=refresh_token
-            )
+            tokens = await mock_auth_service.refresh_access_token(refresh_token_str=refresh_token)
 
             # Return the tokens without validation
             return {

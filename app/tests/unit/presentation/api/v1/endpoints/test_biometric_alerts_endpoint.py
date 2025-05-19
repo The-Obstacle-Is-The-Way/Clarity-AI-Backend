@@ -436,24 +436,14 @@ async def test_app(
         return BiometricAlertRuleService(rule_repo, mock_template_repository)
 
     # Add dependency overrides
-    app.dependency_overrides[
-        get_jwt_service_dependency
-    ] = lambda: global_mock_jwt_service
+    app.dependency_overrides[get_jwt_service_dependency] = lambda: global_mock_jwt_service
     app.dependency_overrides[get_auth_service_dependency] = lambda: mock_auth_service
     app.dependency_overrides[get_alert_service_dependency] = lambda: mock_alert_service
-    app.dependency_overrides[
-        get_alert_repository
-    ] = lambda: mock_biometric_alert_repository
-    app.dependency_overrides[
-        get_rule_repository
-    ] = lambda: mock_biometric_rule_repository
-    app.dependency_overrides[
-        get_biometric_rule_repository
-    ] = lambda: mock_biometric_rule_repository
+    app.dependency_overrides[get_alert_repository] = lambda: mock_biometric_alert_repository
+    app.dependency_overrides[get_rule_repository] = lambda: mock_biometric_rule_repository
+    app.dependency_overrides[get_biometric_rule_repository] = lambda: mock_biometric_rule_repository
     app.dependency_overrides[get_template_repository] = lambda: mock_template_repository
-    app.dependency_overrides[
-        get_event_processor
-    ] = lambda: mock_biometric_event_processor
+    app.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
     # For tests with authentication, use the mock user
     app.dependency_overrides[get_current_user] = lambda: mock_current_user
     app.dependency_overrides[get_current_active_user] = lambda: mock_current_user
@@ -480,9 +470,7 @@ async def test_app(
         )
 
     # Create test client with ASGI app - UPDATED to use ASGITransport
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         # This uses the lifespan manager to properly initialize the app context
         async with LifespanManager(app):
             # Return both app and client as a tuple
@@ -598,10 +586,7 @@ class TestBiometricAlertsEndpoints:
             call_args["customization"]["threshold_value"]
             == payload["customization"]["threshold_value"]
         )
-        assert (
-            call_args["customization"]["priority"]
-            == payload["customization"]["priority"]
-        )
+        assert call_args["customization"]["priority"] == payload["customization"]["priority"]
         # pytest.skip("Skipping test until AlertRuleService is implemented") # Original position
 
     @pytest.mark.asyncio
@@ -800,9 +785,7 @@ class TestBiometricAlertsEndpoints:
         # Make request to get rule by ID
         headers = get_valid_provider_auth_headers
         rule_id_str = str(rule_id)
-        response = await client.get(
-            f"/api/v1/biometric-alert-rules/{rule_id_str}", headers=headers
-        )
+        response = await client.get(f"/api/v1/biometric-alert-rules/{rule_id_str}", headers=headers)
 
         # Debug info if needed
         if response.status_code != 200:
@@ -941,9 +924,7 @@ class TestBiometricAlertsEndpoints:
         # Create a mock for the BiometricAlertRuleService
         rule_id = uuid.uuid4()
         rule_service_mock = MagicMock(spec=AlertRuleServiceInterface)
-        rule_service_mock.delete_rule = AsyncMock(
-            return_value=True
-        )  # Successful deletion
+        rule_service_mock.delete_rule = AsyncMock(return_value=True)  # Successful deletion
 
         # Override dependencies
         from app.presentation.api.v1.endpoints.biometric_alert_rules import (
@@ -979,9 +960,7 @@ class TestBiometricAlertsEndpoints:
         # Remove skip decorator
         # pytest.skip("Skipping test until AlertRuleTemplateService is implemented") # MOVED TO TOP
         headers = get_valid_provider_auth_headers
-        response = await client.get(
-            "/api/v1/biometric-alert-rules/templates", headers=headers
-        )
+        response = await client.get("/api/v1/biometric-alert-rules/templates", headers=headers)
         # Print response details for debugging
         print(f"Response status: {response.status_code}")
         print(f"Response headers: {response.headers}")
@@ -1029,9 +1008,7 @@ class TestBiometricAlertsEndpoints:
         # Ensure mock returns a list, not a tuple
         mock_alert_service.get_alerts.return_value = []
 
-        response = await client.get(
-            "/api/v1/biometric-alerts", headers=headers, params=params
-        )
+        response = await client.get("/api/v1/biometric-alerts", headers=headers, params=params)
         assert response.status_code == 200  # Updated to expect success response
         assert response.json() == []  # Assert empty list response
         mock_alert_service.get_alerts.assert_called_once()  # Service should be called
@@ -1056,9 +1033,7 @@ class TestBiometricAlertsEndpoints:
 
         # Override dependency - use the app from test_app
         app, _ = test_app  # Extract app from test_app fixture
-        app.dependency_overrides[
-            get_alert_service_dependency
-        ] = lambda: alert_service_mock
+        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
 
         # Attempt to acknowledge alert - wrap with "update_request" key for Body(...) parameter
         response = await client.patch(
@@ -1110,9 +1085,7 @@ class TestBiometricAlertsEndpoints:
 
         # Override dependency - use the app from test_app
         app, _ = test_app  # Extract app from test_app fixture
-        app.dependency_overrides[
-            get_alert_service_dependency
-        ] = lambda: alert_service_mock
+        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
 
         # Attempt to resolve alert - wrap with "update_request" key for Body(...) parameter
         response = await client.patch(
@@ -1165,9 +1138,7 @@ class TestBiometricAlertsEndpoints:
         # Create a fresh mock for this test
         alert_service_mock = AsyncMock(spec=AlertServiceInterface)
         # Setup the mock to return a "not found" response
-        alert_service_mock.update_alert_status = AsyncMock(
-            return_value=(False, "Alert not found")
-        )
+        alert_service_mock.update_alert_status = AsyncMock(return_value=(False, "Alert not found"))
         alert_service_mock.validate_access = AsyncMock(return_value=True)
 
         # Add missing abstract methods
@@ -1181,12 +1152,8 @@ class TestBiometricAlertsEndpoints:
         app, _ = test_app
 
         # Override the alert service dependency
-        app.dependency_overrides[
-            get_alert_service_dependency
-        ] = lambda: alert_service_mock
-        app.dependency_overrides[get_current_active_user] = lambda: Mock(
-            id=uuid.uuid4()
-        )
+        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
+        app.dependency_overrides[get_current_active_user] = lambda: Mock(id=uuid.uuid4())
 
         headers = get_valid_provider_auth_headers
         non_existent_alert_id = str(uuid.uuid4())
@@ -1270,9 +1237,7 @@ class TestBiometricAlertsEndpoints:
         ]
 
         rule_service_mock = MagicMock(spec=AlertRuleServiceInterface)
-        rule_service_mock.get_rules_by_patient_id = AsyncMock(
-            return_value=expected_results
-        )
+        rule_service_mock.get_rules_by_patient_id = AsyncMock(return_value=expected_results)
 
         # Override dependencies
         from app.presentation.api.v1.endpoints.biometric_alert_rules import (
@@ -1299,9 +1264,7 @@ class TestBiometricAlertsEndpoints:
         assert len(response_data) == 2
 
         # Verify service was called with correct patient ID
-        rule_service_mock.get_rules_by_patient_id.assert_called_once_with(
-            sample_patient_id
-        )
+        rule_service_mock.get_rules_by_patient_id.assert_called_once_with(sample_patient_id)
 
         # Verify returned data
         assert response_data[0]["id"] == str(rule_id1)
@@ -1362,9 +1325,7 @@ class TestBiometricAlertsEndpoints:
 
         # Override dependency - use the app from test_app
         app, _ = test_app
-        app.dependency_overrides[
-            get_alert_service_dependency
-        ] = lambda: alert_service_mock
+        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
 
         # Request alert summary
         response = await client.get(
@@ -1429,9 +1390,7 @@ class TestBiometricAlertsEndpoints:
 
         # Apply the mock to the dependency
         app, _ = test_app
-        app.dependency_overrides[
-            get_alert_service_dependency
-        ] = lambda: alert_service_mock
+        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
 
         # Make the request
         headers = get_valid_provider_auth_headers
@@ -1501,9 +1460,7 @@ class TestBiometricAlertsEndpoints:
         # Instead of completely clearing dependencies, just override the auth dependency
         # while keeping the alert service mock in place
         app.dependency_overrides = {}
-        app.dependency_overrides[
-            get_alert_service_dependency
-        ] = lambda: alert_service_mock
+        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
 
         # We'll use fastapi's real get_current_active_user dependency that will enforce auth
         # Create a custom client for this test only - UPDATED to use ASGITransport
@@ -1633,9 +1590,7 @@ class TestBiometricAlertsEndpoints:
         # Use an invalid UUID format to potentially trigger error messages
         # that should NOT contain the original PHI data
         invalid_id = "not-a-valid-uuid-contains-phi-12345"
-        response = await client.get(
-            f"/api/v1/biometric-alerts/rules/{invalid_id}", headers=headers
-        )
+        response = await client.get(f"/api/v1/biometric-alerts/rules/{invalid_id}", headers=headers)
         assert response.status_code in [
             status.HTTP_400_BAD_REQUEST,
             status.HTTP_404_NOT_FOUND,
@@ -1665,15 +1620,11 @@ class TestBiometricAlertsEndpoints:
         # Mock response for create_alert - use AsyncMock for both methods
         alert_service_mock = MagicMock()
         alert_service_mock.validate_access = AsyncMock(return_value=True)
-        alert_service_mock.create_alert = AsyncMock(
-            return_value=(True, mock_alert_id, None)
-        )
+        alert_service_mock.create_alert = AsyncMock(return_value=(True, mock_alert_id, None))
 
         # Override dependency - use the app from test_app
         app, _ = test_app  # Extract app from test_app fixture
-        app.dependency_overrides[
-            get_alert_service_dependency
-        ] = lambda: alert_service_mock
+        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
 
         # Request to trigger alert - wrap with "alert_data" key for Body(...) parameter
         alert_data = {
@@ -1731,9 +1682,7 @@ async def app_with_mock_template_service(
     original_get_template_service = get_alert_rule_template_service
 
     # Replace with mock
-    app.dependency_overrides[
-        get_alert_rule_template_service
-    ] = lambda: mock_template_service
+    app.dependency_overrides[get_alert_rule_template_service] = lambda: mock_template_service
 
     yield
 

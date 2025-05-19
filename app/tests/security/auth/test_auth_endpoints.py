@@ -173,9 +173,7 @@ async def test_login_inactive_account(mock_auth_service: AsyncMock) -> None:
     app = FastAPI()
 
     # Configure mock to raise AccountDisabledException
-    mock_auth_service.login.side_effect = AccountDisabledException(
-        "Account is inactive"
-    )
+    mock_auth_service.login.side_effect = AccountDisabledException("Account is inactive")
 
     # Define the custom login endpoint that works directly with the request body
     @app.post("/api/v1/auth/login")
@@ -255,9 +253,7 @@ async def test_refresh_token_success(mock_auth_service: AsyncMock) -> None:
         refresh_token = data.get("refresh_token")
 
         # Call the mock auth service
-        return await mock_auth_service.refresh_access_token(
-            refresh_token_str=refresh_token
-        )
+        return await mock_auth_service.refresh_access_token(refresh_token_str=refresh_token)
 
     # Create an HTTPX AsyncClient for our app
     async with AsyncClient(
@@ -577,9 +573,7 @@ async def test_session_info_not_authenticated(
         permissions=None,
         exp=None,
     )
-    mock_auth_service.get_current_session_info.side_effect = (
-        None  # Ensure no exceptions
-    )
+    mock_auth_service.get_current_session_info.side_effect = None  # Ensure no exceptions
 
     # Act
     response = await client.get("/api/v1/auth/session-info")

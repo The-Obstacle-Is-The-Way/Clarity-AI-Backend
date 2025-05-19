@@ -60,15 +60,11 @@ def client():
     async def mock_risk_prediction(request: RiskPredictionRequest):
         return await mock_xgboost_service.predict_risk(request)
 
-    @mock_router.post(
-        "/xgboost/treatment-response", response_model=TreatmentResponseResponse
-    )
+    @mock_router.post("/xgboost/treatment-response", response_model=TreatmentResponseResponse)
     async def mock_treatment_response(request: TreatmentResponseRequest):
         return await mock_xgboost_service.predict_treatment_response(request)
 
-    @mock_router.post(
-        "/xgboost/outcome-prediction", response_model=OutcomePredictionResponse
-    )
+    @mock_router.post("/xgboost/outcome-prediction", response_model=OutcomePredictionResponse)
     async def mock_outcome_prediction(request: OutcomePredictionRequest):
         return await mock_xgboost_service.predict_outcome(request)
 
@@ -173,15 +169,9 @@ def mock_model_info():
                         domain=OutcomeDomain.DEPRESSION,
                         outcome_type=OutcomeType.SYMPTOM_REDUCTION,
                         trajectory=[
-                            OutcomeTrajectoryPoint(
-                                time_point=datetime.now(), predicted_value=0.1
-                            ),
-                            OutcomeTrajectoryPoint(
-                                time_point=datetime.now(), predicted_value=0.2
-                            ),
-                            OutcomeTrajectoryPoint(
-                                time_point=datetime.now(), predicted_value=0.3
-                            ),
+                            OutcomeTrajectoryPoint(time_point=datetime.now(), predicted_value=0.1),
+                            OutcomeTrajectoryPoint(time_point=datetime.now(), predicted_value=0.2),
+                            OutcomeTrajectoryPoint(time_point=datetime.now(), predicted_value=0.3),
                         ],
                     )
                 ],
@@ -224,15 +214,9 @@ def mock_model_info():
                     domain=OutcomeDomain.DEPRESSION,
                     outcome_type=OutcomeType.SYMPTOM_REDUCTION,
                     trajectory=[
-                        OutcomeTrajectoryPoint(
-                            time_point=datetime.now(), predicted_value=0.1
-                        ),
-                        OutcomeTrajectoryPoint(
-                            time_point=datetime.now(), predicted_value=0.2
-                        ),
-                        OutcomeTrajectoryPoint(
-                            time_point=datetime.now(), predicted_value=0.3
-                        ),
+                        OutcomeTrajectoryPoint(time_point=datetime.now(), predicted_value=0.1),
+                        OutcomeTrajectoryPoint(time_point=datetime.now(), predicted_value=0.2),
+                        OutcomeTrajectoryPoint(time_point=datetime.now(), predicted_value=0.3),
                     ],
                 ),
                 expected_outcomes=[

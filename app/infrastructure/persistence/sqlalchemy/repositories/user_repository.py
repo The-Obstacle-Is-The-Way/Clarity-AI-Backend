@@ -215,9 +215,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
                     return UserMapper.to_domain(user_model)
                 return None
             except SQLAlchemyError as e:
-                logger.error(
-                    f"Database error when retrieving user by username {username}: {e}"
-                )
+                logger.error(f"Database error when retrieving user by username {username}: {e}")
                 raise
 
     async def get_by_email(self, email: str) -> DomainUser | None:
@@ -245,9 +243,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
                     return UserMapper.to_domain(user_model)
                 return None
             except SQLAlchemyError as e:
-                logger.error(
-                    f"Database error when retrieving user by email {email}: {e}"
-                )
+                logger.error(f"Database error when retrieving user by email {email}: {e}")
                 raise
 
     async def update(self, user: DomainUser) -> DomainUser:
@@ -278,9 +274,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
                     raise ValueError(f"User with ID {user.id} not found")
 
                 # Apply updates using the mapper's update method
-                updated_model = UserMapper.update_persistence_model(
-                    existing_model, user
-                )
+                updated_model = UserMapper.update_persistence_model(existing_model, user)
                 updated_model.updated_at = now_utc()
 
                 # Persist changes
@@ -365,9 +359,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
         """Alias for list_all to maintain backward compatibility."""
         return await self.list_all(skip, limit)
 
-    async def get_by_role(
-        self, role: str, skip: int = 0, limit: int = 100
-    ) -> list[DomainUser]:
+    async def get_by_role(self, role: str, skip: int = 0, limit: int = 100) -> list[DomainUser]:
         """
         Get users by role.
 
@@ -404,9 +396,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
                 # Convert to domain entities using the mapper for consistency
                 return [UserMapper.to_domain(model) for model in user_models]
             except SQLAlchemyError as e:
-                logger.error(
-                    f"Database error when retrieving users by role {role}: {e}"
-                )
+                logger.error(f"Database error when retrieving users by role {role}: {e}")
                 raise
 
     async def count(self) -> int:
@@ -449,9 +439,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
                 count = result.scalar_one_or_none()
                 return (count if count is not None else 0) > 0
             except SQLAlchemyError as e:
-                logger.error(
-                    f"Database error when checking if user exists by ID {user_id}: {e}"
-                )
+                logger.error(f"Database error when checking if user exists by ID {user_id}: {e}")
                 raise
 
     async def exists_by_email(self, email: str) -> bool:
@@ -474,9 +462,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
                 count = result.scalar_one_or_none()
                 return (count if count is not None else 0) > 0
             except SQLAlchemyError as e:
-                logger.error(
-                    f"Database error when checking if user exists by email {email}: {e}"
-                )
+                logger.error(f"Database error when checking if user exists by email {email}: {e}")
                 raise
 
     async def _to_model(self, user: DomainUser) -> UserModel:
@@ -494,9 +480,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
         return UserMapper.to_persistence(user)
 
 
-def get_user_repository(
-    session_factory=None, db_session=None
-) -> SQLAlchemyUserRepository:
+def get_user_repository(session_factory=None, db_session=None) -> SQLAlchemyUserRepository:
     """
     Factory function to create a properly configured SQLAlchemyUserRepository.
 

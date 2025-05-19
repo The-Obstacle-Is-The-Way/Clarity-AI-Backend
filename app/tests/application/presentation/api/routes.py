@@ -59,9 +59,7 @@ def get_v1_router(module_name: str) -> APIRouter:
             print(f"Note: Using 'auth_router' from {module_path}")
             return module.auth_router  # Handle specific case for auth naming
         else:
-            raise AttributeError(
-                f"Could not find a suitable router attribute in {module_path}"
-            )
+            raise AttributeError(f"Could not find a suitable router attribute in {module_path}")
 
     except ModuleNotFoundError:
         # Optionally log this or raise a more specific configuration error

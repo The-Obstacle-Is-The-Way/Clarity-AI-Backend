@@ -119,9 +119,7 @@ class EventRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_events_by_correlation_id(
-        self, correlation_id: UUID
-    ) -> list[CorrelatedEvent]:
+    async def get_events_by_correlation_id(self, correlation_id: UUID) -> list[CorrelatedEvent]:
         """
         Get all events with the specified correlation ID.
 

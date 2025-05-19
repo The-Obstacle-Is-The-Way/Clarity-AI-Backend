@@ -63,9 +63,7 @@ class AlertUpdateRequest(BaseModelConfig):
         # In v2, we need to access the data differently
         values = info.data
         if v and values.get("status") != AlertStatus.RESOLVED:
-            raise ValueError(
-                "Resolved timestamp can only be set when status is RESOLVED"
-            )
+            raise ValueError("Resolved timestamp can only be set when status is RESOLVED")
         return v
 
 
@@ -95,9 +93,7 @@ class AlertsFilterParams(BaseModelConfig):
 class RuleConditionSchema(BaseModelConfig):
     """Schema representing a single condition within a biometric rule."""
 
-    metric_name: str = Field(
-        ..., description="The metric being evaluated, e.g., 'heart_rate'"
-    )
+    metric_name: str = Field(..., description="The metric being evaluated, e.g., 'heart_rate'")
     operator: RuleOperator = Field(..., description="The comparison operator")
     threshold_value: Any = Field(..., description="The value to compare against")
     time_window_hours: int | None = Field(
@@ -145,9 +141,7 @@ class AlertRuleTemplateCustomization(BaseModelConfig):
     description: str | None = Field(
         None, max_length=500, description="Custom description for the rule"
     )
-    priority: RuleAlertPriority | None = Field(
-        None, description="Custom priority level"
-    )
+    priority: RuleAlertPriority | None = Field(None, description="Custom priority level")
     threshold_value: Any | None = Field(None, description="Custom threshold value")
     is_active: bool | None = Field(None, description="Custom active status")
 

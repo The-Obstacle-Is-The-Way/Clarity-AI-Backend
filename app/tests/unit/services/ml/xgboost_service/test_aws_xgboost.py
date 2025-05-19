@@ -63,13 +63,9 @@ class TestAwsXGBoostMinimal:
             side_effect=lambda x: fake_validate_impl(x),
         ):
             # Patch _notify_observers to do nothing
-            with patch.object(
-                AWSXGBoostService, "_notify_observers", return_value=None
-            ):
+            with patch.object(AWSXGBoostService, "_notify_observers", return_value=None):
                 # Patch _validate_aws_resources to do nothing
-                with patch.object(
-                    AWSXGBoostService, "_validate_aws_resources", return_value=None
-                ):
+                with patch.object(AWSXGBoostService, "_validate_aws_resources", return_value=None):
                     # Initialize the service
                     await service.initialize(config)
 
@@ -99,9 +95,7 @@ class TestAwsXGBoostMinimal:
         with patch.object(
             AWSXGBoostService,
             "_validate_aws_config",
-            side_effect=ConfigurationError(
-                "Missing required AWS parameter: region_name"
-            ),
+            side_effect=ConfigurationError("Missing required AWS parameter: region_name"),
         ):
             # Attempt to initialize
             with pytest.raises(

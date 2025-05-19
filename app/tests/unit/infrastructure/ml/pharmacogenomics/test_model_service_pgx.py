@@ -217,20 +217,16 @@ class TestPharmacogenomicsService:
 
         # Verify model arguments
         # Corrected argument access
-        gene_model_call_args = (
-            mock_gene_medication_model.predict_medication_interactions.call_args[0]
-        )
+        gene_model_call_args = mock_gene_medication_model.predict_medication_interactions.call_args[
+            0
+        ]
         assert gene_model_call_args[0] == sample_genetic_data
         assert gene_model_call_args[1] == medications
 
-        treatment_model_call_args = (
-            mock_treatment_model.predict_treatment_response.call_args[0]
-        )
+        treatment_model_call_args = mock_treatment_model.predict_treatment_response.call_args[0]
         assert treatment_model_call_args[0] == sample_patient_data
         assert treatment_model_call_args[1] == medications
-        assert (
-            "metabolizer_status" in treatment_model_call_args[2]
-        )  # Status passed as third arg
+        assert "metabolizer_status" in treatment_model_call_args[2]  # Status passed as third arg
 
     @pytest.mark.asyncio
     async def test_predict_medication_response_no_genetic_data(
@@ -302,8 +298,8 @@ class TestPharmacogenomicsService:
         # Setup
         medications = ["fluoxetine", "sertraline"]
         # Corrected side_effect assignment
-        mock_gene_medication_model.predict_medication_interactions.side_effect = (
-            Exception("Model error")
+        mock_gene_medication_model.predict_medication_interactions.side_effect = Exception(
+            "Model error"
         )
 
         # Execute/Assert
@@ -407,9 +403,7 @@ class TestPharmacogenomicsService:
         assert await service.is_model_healthy() is True
 
     @pytest.mark.asyncio  # Add async
-    async def test_get_model_info(
-        self, service, mock_gene_medication_model, mock_treatment_model
-    ):
+    async def test_get_model_info(self, service, mock_gene_medication_model, mock_treatment_model):
         """Test the get_model_info method."""
         # Setup mock responses
         # Corrected return value structure
@@ -635,9 +629,7 @@ class TestPharmacogenomicsService:
         patient_data = {"age": 30, "sex": "Female", "genetic_markers": {}}
 
         with pytest.raises(ModelExecutionError, match="Model prediction failed"):
-            await pharmacogenomics_service.predict_treatment_response(
-                test_patient.id, patient_data
-            )
+            await pharmacogenomics_service.predict_treatment_response(test_patient.id, patient_data)
 
     @pytest.mark.asyncio
     async def test_pharmacogenomics_service_handles_validation_error(
@@ -660,9 +652,7 @@ class TestPharmacogenomicsService:
         # Provide invalid patient data (e.g., missing genetic_markers for analysis)
         invalid_patient_data = {"age": 30, "sex": "Female"}
 
-        with pytest.raises(
-            ValidationError, match="Patient data must include genetic markers"
-        ):
+        with pytest.raises(ValidationError, match="Patient data must include genetic markers"):
             await pharmacogenomics_service.analyze_gene_medication_interactions(
                 test_patient.id, invalid_patient_data
             )

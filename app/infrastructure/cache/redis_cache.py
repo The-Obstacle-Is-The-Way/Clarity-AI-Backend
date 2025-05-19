@@ -104,9 +104,7 @@ class RedisCache(CacheService):
         settings = get_settings()
         # Use explicit fallback for testing
         default_redis_url = "redis://localhost:6379/1"
-        self.redis_url = connection_url or getattr(
-            settings, "REDIS_URL", default_redis_url
-        )
+        self.redis_url = connection_url or getattr(settings, "REDIS_URL", default_redis_url)
 
         # Initialize client as None, will be lazily created
         self.redis_client = None
@@ -119,9 +117,7 @@ class RedisCache(CacheService):
                 )
                 logger.info(f"Connected to Redis at {self.redis_url}")
         except Exception as e:
-            logger.warning(
-                f"Failed to connect to Redis: {e}. Cache operations will fail safely."
-            )
+            logger.warning(f"Failed to connect to Redis: {e}. Cache operations will fail safely.")
             self.redis_client = None
 
     async def get(self, key: str) -> Any:
@@ -437,9 +433,7 @@ class InMemoryFallback:
                 logger.error(
                     f"InMemoryFallback: Cannot increment non-integer value for key '{key}'"
                 )
-                return (
-                    0  # Or raise ValueError("value is not an integer or out of range")
-                )
+                return 0  # Or raise ValueError("value is not an integer or out of range")
 
         new_value = current_value + 1
         self._cache[key] = new_value
@@ -514,9 +508,7 @@ async def initialize_redis_pool(redis_url: str | None = None) -> None:
 
     # Get Redis connection settings
     settings = get_settings()
-    effective_redis_url = redis_url or getattr(
-        settings, "REDIS_URL", "redis://localhost:6379/1"
-    )
+    effective_redis_url = redis_url or getattr(settings, "REDIS_URL", "redis://localhost:6379/1")
 
     try:
         # Prepare connection options with reasonable defaults
@@ -526,9 +518,7 @@ async def initialize_redis_pool(redis_url: str | None = None) -> None:
             redis_connection_options["ssl"] = True
 
         # Connect to Redis using the prepared options
-        _redis_pool = await aioredis.from_url(
-            effective_redis_url, **redis_connection_options
-        )
+        _redis_pool = await aioredis.from_url(effective_redis_url, **redis_connection_options)
 
         logger.info(f"Global Redis pool initialized at {effective_redis_url}")
 

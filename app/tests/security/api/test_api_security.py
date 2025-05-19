@@ -51,9 +51,7 @@ class TestAuthentication:
         """Test that structurally invalid tokens are rejected."""
         client, _ = client_app_tuple_func_scoped
         headers = {"Authorization": "Bearer invalid.token.format"}
-        response = await client.get(
-            f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers
-        )
+        response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         # Be less strict about the exact error message
         detail = response.json().get("detail", "")
@@ -76,9 +74,7 @@ class TestAuthentication:
             data=user_data, expires_delta=timedelta(minutes=-5)
         )
         headers = {"Authorization": f"Bearer {expired_token}"}
-        response = await client.get(
-            f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers
-        )
+        response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         # Be less strict about the exact error message
         detail = response.json().get("detail", "")
@@ -97,9 +93,7 @@ class TestAuthentication:
         valid_token = await global_mock_jwt_service.create_access_token(data=user_data)
         tampered_token = valid_token + "tamper"
         headers = {"Authorization": f"Bearer {tampered_token}"}
-        response = await client.get(
-            f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers
-        )
+        response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         # Be less strict about the exact error message
         detail = response.json().get("detail", "")
@@ -120,9 +114,7 @@ class TestAuthentication:
         test_logger.info(
             f"TestAuth.test_valid_token_access: Using token for user ID: {authenticated_user.id}, username: {authenticated_user.username}"
         )
-        test_logger.info(
-            f"TestAuth.test_valid_token_access: Headers being used: {headers}"
-        )
+        test_logger.info(f"TestAuth.test_valid_token_access: Headers being used: {headers}")
 
         response = await client.get("/api/v1/auth/me", headers=headers)
 
@@ -133,12 +125,9 @@ class TestAuthentication:
 
         # Look for the clinician role
         roles_lower = [
-            r.lower() if isinstance(r, str) else str(r).lower()
-            for r in response_data["roles"]
+            r.lower() if isinstance(r, str) else str(r).lower() for r in response_data["roles"]
         ]
-        assert (
-            "clinician" in roles_lower
-        ), f"Expected clinician role in {response_data['roles']}"
+        assert "clinician" in roles_lower, f"Expected clinician role in {response_data['roles']}"
 
 
 class TestAuthorization:
@@ -210,9 +199,7 @@ class TestAuthorization:
             "testing": True,
         }
 
-        patient_token = await global_mock_jwt_service.create_access_token(
-            data=patient_token_data
-        )
+        patient_token = await global_mock_jwt_service.create_access_token(data=patient_token_data)
         patient_headers = {"Authorization": f"Bearer {patient_token}"}
 
         # Store token in token store for later verification
@@ -248,9 +235,7 @@ class TestAuthorization:
                     first_name="Test",
                     last_name="Patient",
                     full_name=f"{username} Full Name",
-                    roles=[
-                        UserRole.PATIENT
-                    ],  # Using PATIENT role to match the endpoint check
+                    roles=[UserRole.PATIENT],  # Using PATIENT role to match the endpoint check
                     status=UserStatus.ACTIVE,
                     password_hash="hashed_password_example",
                     created_at=datetime.now(timezone.utc),
@@ -269,9 +254,7 @@ class TestAuthorization:
                     email = token_data.email
                 else:
                     # Fallback for dictionaries or other types
-                    email = token_data.get(
-                        "email", f"user-{accessing_user_id}@example.com"
-                    )
+                    email = token_data.get("email", f"user-{accessing_user_id}@example.com")
 
                 return CorePatient(
                     id=str(accessing_user_id),
@@ -298,13 +281,8 @@ class TestAuthorization:
 
         if get_user_repository_dependency in current_fastapi_app.dependency_overrides:
             del current_fastapi_app.dependency_overrides[get_user_repository_dependency]
-        if (
-            get_patient_repository_dependency
-            in current_fastapi_app.dependency_overrides
-        ):
-            del current_fastapi_app.dependency_overrides[
-                get_patient_repository_dependency
-            ]
+        if get_patient_repository_dependency in current_fastapi_app.dependency_overrides:
+            del current_fastapi_app.dependency_overrides[get_patient_repository_dependency]
 
         assert response.status_code == status.HTTP_200_OK, response.text
         response_data = response.json()
@@ -328,13 +306,9 @@ class TestAuthorization:
             "username": "patient1",
             "email": "patient1@example.com",
         }
-        user1_token = await global_mock_jwt_service.create_access_token(
-            data=user1_token_data
-        )
+        user1_token = await global_mock_jwt_service.create_access_token(data=user1_token_data)
         headers_user1 = {"Authorization": f"Bearer {user1_token}"}
-        user2_patient_id = uuid.UUID(
-            OTHER_PATIENT_ID
-        )  # Use defined OTHER_PATIENT_ID for clarity
+        user2_patient_id = uuid.UUID(OTHER_PATIENT_ID)  # Use defined OTHER_PATIENT_ID for clarity
 
         mock_user_repo = AsyncMock(spec=IUserRepository)
 
@@ -380,19 +354,12 @@ class TestAuthorization:
             get_patient_repository_dependency
         ] = lambda: mock_patient_repo
 
-        response = await client.get(
-            f"/api/v1/patients/{user2_patient_id}", headers=headers_user1
-        )
+        response = await client.get(f"/api/v1/patients/{user2_patient_id}", headers=headers_user1)
 
         if get_user_repository_dependency in current_fastapi_app.dependency_overrides:
             del current_fastapi_app.dependency_overrides[get_user_repository_dependency]
-        if (
-            get_patient_repository_dependency
-            in current_fastapi_app.dependency_overrides
-        ):
-            del current_fastapi_app.dependency_overrides[
-                get_patient_repository_dependency
-            ]
+        if get_patient_repository_dependency in current_fastapi_app.dependency_overrides:
+            del current_fastapi_app.dependency_overrides[get_patient_repository_dependency]
 
         assert response.status_code == status.HTTP_403_FORBIDDEN, response.text
 
@@ -430,9 +397,7 @@ class TestAuthorization:
                     )
                 else:
                     # Fallback for dictionaries or other types
-                    username = token_data.get(
-                        "username", f"provider-{provider_user_id}"
-                    )
+                    username = token_data.get("username", f"provider-{provider_user_id}")
                     email = token_data.get("email", f"{username}@example.com")
 
                 return User(
@@ -475,19 +440,12 @@ class TestAuthorization:
             get_patient_repository_dependency
         ] = lambda: mock_patient_repo
 
-        response = await client.get(
-            f"/api/v1/patients/{patient_to_access_id}", headers=headers
-        )
+        response = await client.get(f"/api/v1/patients/{patient_to_access_id}", headers=headers)
 
         if get_user_repository_dependency in current_fastapi_app.dependency_overrides:
             del current_fastapi_app.dependency_overrides[get_user_repository_dependency]
-        if (
-            get_patient_repository_dependency
-            in current_fastapi_app.dependency_overrides
-        ):
-            del current_fastapi_app.dependency_overrides[
-                get_patient_repository_dependency
-            ]
+        if get_patient_repository_dependency in current_fastapi_app.dependency_overrides:
+            del current_fastapi_app.dependency_overrides[get_patient_repository_dependency]
 
         assert response.status_code == status.HTTP_200_OK, response.text
         response_data = response.json()
@@ -555,9 +513,7 @@ class TestInputValidation:
             "email": "test@example.com",
             "phone_number": "123-456-7890",
         }
-        response = await client.post(
-            "/api/v1/patients/", headers=headers, json=invalid_payload
-        )
+        response = await client.post("/api/v1/patients/", headers=headers, json=invalid_payload)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.asyncio
@@ -582,9 +538,7 @@ class TestInputValidation:
         }
 
         # For this test, just verify the API rejects the input with malicious content
-        response = await client.post(
-            "/api/v1/patients/", headers=headers, json=xss_payload
-        )
+        response = await client.post("/api/v1/patients/", headers=headers, json=xss_payload)
 
         # Verify response - we expect a 422 (Unprocessable Entity) for input with XSS script tags
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -668,14 +622,10 @@ class TestSecureHeaders:
                 break
 
         # Verify CORS middleware is configured
-        assert (
-            found_cors_middleware
-        ), "CORSMiddleware should be configured in the application"
+        assert found_cors_middleware, "CORSMiddleware should be configured in the application"
 
         # Verify the settings contain expected CORS configuration
-        assert (
-            current_fastapi_app.state.settings.CORS_ORIGINS
-        ), "CORS_ORIGINS should not be empty"
+        assert current_fastapi_app.state.settings.CORS_ORIGINS, "CORS_ORIGINS should not be empty"
         assert (
             current_fastapi_app.state.settings.CORS_ALLOW_METHODS
         ), "CORS_ALLOW_METHODS should not be empty"
@@ -700,16 +650,12 @@ class TestErrorHandling:
         # Generate a unique, non-existent path
         non_existent_path = f"/api/v1/this/path/does/not/exist/{uuid.uuid4()}"
 
-        test_logger.info(
-            f"Testing non-existent path: {non_existent_path} with auth headers"
-        )
+        test_logger.info(f"Testing non-existent path: {non_existent_path} with auth headers")
         response = await client.get(
             non_existent_path, headers=get_valid_auth_headers
         )  # Added auth headers
 
-        test_logger.info(
-            f"Response Status: {response.status_code}, Response Body: {response.text}"
-        )
+        test_logger.info(f"Response Status: {response.status_code}, Response Body: {response.text}")
 
         assert (
             response.status_code == status.HTTP_404_NOT_FOUND
@@ -768,9 +714,7 @@ async def test_access_patient_phi_data_success_provider(
     headers = get_valid_provider_auth_headers
 
     # Make request to access patient's PHI
-    response = await client.get(
-        f"/api/v1/test-api/phi-access/{target_patient_id}", headers=headers
-    )
+    response = await client.get(f"/api/v1/test-api/phi-access/{target_patient_id}", headers=headers)
 
     # Verify the response
     assert response.status_code == status.HTTP_200_OK, response.text
@@ -788,9 +732,7 @@ async def test_access_patient_phi_data_unauthorized_patient(
     """A patient cannot access PHI data of another patient."""
     client, _ = client_app_tuple_func_scoped
     patient_a_id = uuid.uuid4()
-    patient_b_id = uuid.UUID(
-        OTHER_PATIENT_ID
-    )  # Ensure this is different from patient_a_id
+    patient_b_id = uuid.UUID(OTHER_PATIENT_ID)  # Ensure this is different from patient_a_id
 
     # Create token data for patient A (the requester)
     token_data_a = {
@@ -860,9 +802,7 @@ async def test_authenticated_but_unknown_role(
     # global_mock_jwt_service.create_access_token = AsyncMock(return_value="mocked.unknown.role.token")
     # token_unknown_role = "mocked.unknown.role.token"
     # OR, if create_access_token is flexible enough:
-    token_unknown_role = await global_mock_jwt_service.create_access_token(
-        data=token_data_unknown
-    )
+    token_unknown_role = await global_mock_jwt_service.create_access_token(data=token_data_unknown)
 
     headers_unknown_role = {"Authorization": f"Bearer {token_unknown_role}"}
 
@@ -909,9 +849,7 @@ async def test_authenticated_but_unknown_role(
         test_logger.warning(
             "Test test_authenticated_but_unknown_role: /users/me succeeded with potentially unknown role. Verify behavior."
         )
-        assert (
-            response.json()["username"] == "ceo_user"
-        )  # If User object used "ceo_user"
+        assert response.json()["username"] == "ceo_user"  # If User object used "ceo_user"
     else:
         # Expecting some form of unauthorized or error if role validation is strict in get_current_user
         assert response.status_code in [

@@ -57,7 +57,9 @@ class DIContainer:
         """
         self._services[interface] = implementation
 
-        register_msg = f"Registered {'MOCK' if self._is_mock else ''} {interface.__name__} in DI container."
+        register_msg = (
+            f"Registered {'MOCK' if self._is_mock else ''} {interface.__name__} in DI container."
+        )
         if self._is_mock:
             logger.info(register_msg)
         else:
@@ -75,9 +77,7 @@ class DIContainer:
         """
         self.register(interface, instance)
 
-    def register_singleton(
-        self, interface: type[T], implementation_type: type[T]
-    ) -> None:
+    def register_singleton(self, interface: type[T], implementation_type: type[T]) -> None:
         """
         Register a singleton implementation for an interface.
 
@@ -260,9 +260,7 @@ class DIContainer:
 
         # Register repository factories
         self.register_repository_factory(IUserRepository, get_user_repository)
-        self.register_repository_factory(
-            IBiometricRuleRepository, get_biometric_rule_repository
-        )
+        self.register_repository_factory(IBiometricRuleRepository, get_biometric_rule_repository)
 
         # Import services and their interfaces
         from app.application.services.biometric_alert_service import (
@@ -301,14 +299,10 @@ class DIContainer:
                 get_biometric_event_processor,
             )
 
-            self.register_factory(
-                IBiometricEventProcessor, get_biometric_event_processor
-            )
+            self.register_factory(IBiometricEventProcessor, get_biometric_event_processor)
             logger.info("Registered BiometricEventProcessor factory in DI container.")
         except ImportError:
-            logger.warning(
-                "Could not register BiometricEventProcessor (missing files?)"
-            )
+            logger.warning("Could not register BiometricEventProcessor (missing files?)")
 
         # Register additional services
         try:
@@ -322,9 +316,7 @@ class DIContainer:
             self.register(AnalyticsServiceInterface, analytics_service)
             logger.info("Registered AnalyticsService in DI container.")
         except ImportError:
-            logger.warning(
-                "Could not register AnalyticsService (missing implementation)"
-            )
+            logger.warning("Could not register AnalyticsService (missing implementation)")
 
 
 def get_container(use_mock: bool = False) -> DIContainer:
@@ -393,12 +385,8 @@ def configure_container() -> DIContainer:
     container.register_instance(JWTConfig, JWTConfig())
     container.register_singleton(AuthServiceInterface, AuthService)
     container.register_singleton(JWTServiceInterface, JWTService)
-    container.register_singleton(
-        TokenEncryptionServiceInterface, TokenEncryptionService
-    )
-    container.register_singleton(
-        PasswordHashingServiceInterface, BcryptPasswordHashingService
-    )
+    container.register_singleton(TokenEncryptionServiceInterface, TokenEncryptionService)
+    container.register_singleton(PasswordHashingServiceInterface, BcryptPasswordHashingService)
     container.register_singleton(UserRepositoryInterface, UserRepository)
     container.register_singleton(
         TokenBlacklistRepositoryInterface, InMemoryTokenBlacklistRepository

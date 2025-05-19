@@ -191,9 +191,7 @@ class TestGeneMedicationModel:
             mock_logging.warning.assert_called()
             # Check that warnings were logged for both missing files
             assert mock_logging.warning.call_count >= 2
-            assert (
-                model_instance.is_initialized
-            )  # Should still initialize with defaults/empty
+            assert model_instance.is_initialized  # Should still initialize with defaults/empty
             assert model_instance._model is None  # Model should be None if load fails
             assert model_instance._knowledge_base == {
                 "gene_variants": {},
@@ -202,9 +200,7 @@ class TestGeneMedicationModel:
             }  # KB should be empty
 
     @pytest.mark.asyncio  # Add async
-    async def test_predict_medication_interactions_success(
-        self, model, sample_genetic_data
-    ):
+    async def test_predict_medication_interactions_success(self, model, sample_genetic_data):
         """Test that predict_medication_interactions correctly processes genetic data and returns interactions."""
         # Setup
         medications = [
@@ -214,9 +210,7 @@ class TestGeneMedicationModel:
         ]  # bupropion not in mock KB interactions
 
         # Execute
-        result = await model.predict_medication_interactions(
-            sample_genetic_data, medications
-        )
+        result = await model.predict_medication_interactions(sample_genetic_data, medications)
 
         # Verify
         assert "gene_medication_interactions" in result
@@ -253,9 +247,7 @@ class TestGeneMedicationModel:
                 found_fluoxetine_predicted = True
                 assert "confidence" in interaction  # Predicted should have confidence
             if interaction["medication"] == "sertraline":
-                found_sertraline = (
-                    True  # Should not have known interaction based on mock KB
-                )
+                found_sertraline = True  # Should not have known interaction based on mock KB
 
         # Assert based on mock KB and mocked prediction (predicts interaction for first med)
         # assert found_fluoxetine_known # This depends on the metabolizer status derived
@@ -294,9 +286,7 @@ class TestGeneMedicationModel:
 
         # Execute and verify exception is raised
         with pytest.raises(ValueError) as excinfo:
-            await model.predict_medication_interactions(
-                sample_genetic_data, empty_medications
-            )
+            await model.predict_medication_interactions(sample_genetic_data, empty_medications)
 
         assert "No medications specified" in str(excinfo.value)
 
@@ -326,13 +316,9 @@ class TestGeneMedicationModel:
         }
         # Add expected functions to mock KB if not present
         if "CYP1A2" not in model._knowledge_base["gene_variants"]:
-            model._knowledge_base["gene_variants"]["CYP1A2"] = {
-                "*1F/*1F": {"function": "rapid"}
-            }
+            model._knowledge_base["gene_variants"]["CYP1A2"] = {"*1F/*1F": {"function": "rapid"}}
         if "DPYD" not in model._knowledge_base["gene_variants"]:
-            model._knowledge_base["gene_variants"]["DPYD"] = {
-                "*2A/*2A": {"function": "poor"}
-            }
+            model._knowledge_base["gene_variants"]["DPYD"] = {"*2A/*2A": {"function": "poor"}}
 
         # Execute
         status = model._determine_metabolizer_status(gene_variants)
@@ -375,12 +361,10 @@ class TestGeneMedicationModel:
     def test_predict_novel_interactions(self, model):
         """Test _predict_novel_interactions correctly predicts interactions."""
         # Setup
-        gene_features = (
-            {  # Example features, structure depends on actual feature engineering
-                "CYP2D6_*1/*1": 1,
-                "CYP2C19_*1/*2": 1,
-            }
-        )
+        gene_features = {  # Example features, structure depends on actual feature engineering
+            "CYP2D6_*1/*1": 1,
+            "CYP2C19_*1/*2": 1,
+        }
         medications = ["fluoxetine", "sertraline", "bupropion"]
 
         # Mock the feature preparation and model prediction

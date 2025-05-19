@@ -32,9 +32,7 @@ def valid_patient_data(mock_encryption_service):
         "date_of_birth": date(1990, 1, 1),
         "email": "john.doe@example.com",
         "phone": "123-456-7890",
-        "address": Address(
-            street="123 Main St", city="Anytown", state="NY", zip_code="12345"
-        ),
+        "address": Address(street="123 Main St", city="Anytown", state="NY", zip_code="12345"),
     }
 
 

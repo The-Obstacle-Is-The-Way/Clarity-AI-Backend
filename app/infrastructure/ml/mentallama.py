@@ -142,9 +142,7 @@ class MentaLLaMAService:
                 }
             )
 
-    @backoff.on_exception(
-        backoff.expo, (aiohttp.ClientError, asyncio.TimeoutError), max_tries=3
-    )
+    @backoff.on_exception(backoff.expo, (aiohttp.ClientError, asyncio.TimeoutError), max_tries=3)
     async def analyze_text(
         self, text: str, analysis_type: str = "general", anonymize_phi: bool = True
     ) -> MentaLLaMAResult:

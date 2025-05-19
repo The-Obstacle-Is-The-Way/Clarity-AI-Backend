@@ -63,22 +63,16 @@ class MockDigitalTwinService(DigitalTwinInterface):
         if "session_duration_minutes" in config and not isinstance(
             config["session_duration_minutes"], (int, float)
         ):
-            raise InvalidConfigurationError(
-                "session_duration_minutes must be a number."
-            )
+            raise InvalidConfigurationError("session_duration_minutes must be a number.")
 
         try:
             self._config = config
             self._initialized = True
             logger.info("[REDACTED NAME] Twin service initialized.")
         except Exception as e:
-            logger.error(
-                f"Failed to initialize mock Digital Twin service: {e}", exc_info=True
-            )
+            logger.error(f"Failed to initialize mock Digital Twin service: {e}", exc_info=True)
             self._initialized = False
-            raise InvalidConfigurationError(
-                f"Failed to initialize mock Digital Twin service: {e}"
-            )
+            raise InvalidConfigurationError(f"Failed to initialize mock Digital Twin service: {e}")
 
     def is_healthy(self) -> bool:
         """Check if the service is healthy."""
@@ -103,9 +97,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
             A dictionary containing the status and ID of the created twin.
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "Mock Digital Twin service is not initialized."
-            )
+            raise ServiceUnavailableError("Mock Digital Twin service is not initialized.")
 
         # Extract patient_id from the patient_data dictionary
         patient_id = patient_data.get("patient_id")
@@ -124,9 +116,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
             "interaction_history": [],
         }
         self._patient_twins[patient_id] = twin_id
-        logger.info(
-            f"Mock digital twin created for patient {patient_id} with ID {twin_id}"
-        )
+        logger.info(f"Mock digital twin created for patient {patient_id} with ID {twin_id}")
         return {"twin_id": twin_id, "status": "created"}
 
     def get_twin_status(self, twin_id: str) -> dict[str, Any]:
@@ -140,15 +130,11 @@ class MockDigitalTwinService(DigitalTwinInterface):
             A dictionary containing the status information.
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "Mock Digital Twin service is not initialized."
-            )
+            raise ServiceUnavailableError("Mock Digital Twin service is not initialized.")
 
         twin = self._twins.get(twin_id)
         if not twin:
-            raise ResourceNotFoundError(
-                f"Mock digital twin with ID {twin_id} not found."
-            )
+            raise ResourceNotFoundError(f"Mock digital twin with ID {twin_id} not found.")
 
         return {
             "twin_id": twin_id,
@@ -168,17 +154,13 @@ class MockDigitalTwinService(DigitalTwinInterface):
             A dictionary confirming the update status.
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "Mock Digital Twin service is not initialized."
-            )
+            raise ServiceUnavailableError("Mock Digital Twin service is not initialized.")
         if not data:
             raise InvalidRequestError("Update data cannot be empty.")
 
         twin = self._twins.get(twin_id)
         if not twin:
-            raise ResourceNotFoundError(
-                f"Mock digital twin with ID {twin_id} not found."
-            )
+            raise ResourceNotFoundError(f"Mock digital twin with ID {twin_id} not found.")
 
         twin["data"].update(data)
         # Invalidate cache on update
@@ -208,15 +190,11 @@ class MockDigitalTwinService(DigitalTwinInterface):
             ResourceNotFoundError: If twin not found
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "Mock Digital Twin service is not initialized."
-            )
+            raise ServiceUnavailableError("Mock Digital Twin service is not initialized.")
 
         # Auto-create twin when needed by tests
         if twin_id not in self._twins and twin_id.startswith("test-patient-"):
-            logger.info(
-                f"Auto-creating mock digital twin for test patient ID {twin_id}"
-            )
+            logger.info(f"Auto-creating mock digital twin for test patient ID {twin_id}")
             # Use twin_id as patient_id to satisfy test expectations
             patient_id = twin_id
             self._twins[twin_id] = {
@@ -231,9 +209,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
         # Find the twin and get patient ID
         twin = self._twins.get(twin_id)
         if not twin:
-            raise ResourceNotFoundError(
-                f"Mock digital twin with ID {twin_id} not found."
-            )
+            raise ResourceNotFoundError(f"Mock digital twin with ID {twin_id} not found.")
 
         patient_id = twin["patient_id"]
 
@@ -288,9 +264,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
             ResourceNotFoundError: If session not found
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "Mock Digital Twin service is not initialized."
-            )
+            raise ServiceUnavailableError("Mock Digital Twin service is not initialized.")
 
         # If session exists, return it
         if session_id in self._sessions:
@@ -315,9 +289,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
             ResourceNotFoundError: If session not found
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "Mock Digital Twin service is not initialized."
-            )
+            raise ServiceUnavailableError("Mock Digital Twin service is not initialized.")
 
         # If session doesn't exist, raise ResourceNotFoundError
         if session_id not in self._sessions:
@@ -380,16 +352,10 @@ class MockDigitalTwinService(DigitalTwinInterface):
             elif "how are you" in msg_lower:
                 response_text = "I'm here to support you. How are you feeling today?"
                 topic = "well-being"
-            elif any(
-                term in msg_lower
-                for term in ["medication", "meds", "pills", "prescription"]
-            ):
+            elif any(term in msg_lower for term in ["medication", "meds", "pills", "prescription"]):
                 response_text = "I understand you're asking about medication. What specific information about your medication do you need?"
                 topic = "medication"
-            elif any(
-                term in msg_lower
-                for term in ["appointment", "schedule", "visit", "doctor"]
-            ):
+            elif any(term in msg_lower for term in ["appointment", "schedule", "visit", "doctor"]):
                 # Include a random date for appointment-related questions
                 weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
                 months = [
@@ -426,28 +392,21 @@ class MockDigitalTwinService(DigitalTwinInterface):
             ):
                 response_text = "I understand you're experiencing anxiety. Let's explore what might be triggering these feelings."
                 topic = "anxiety"
-            elif any(
-                term in msg_lower
-                for term in ["symptom", "feeling", "pain", "hurt", "sick"]
-            ):
+            elif any(term in msg_lower for term in ["symptom", "feeling", "pain", "hurt", "sick"]):
                 response_text = "I understand you're sharing how you're feeling. Can you tell me more about your symptoms and when they started?"
                 topic = "symptom"
             elif any(
-                term in msg_lower
-                for term in ["wellness", "diet", "stress", "walking", "exercise"]
+                term in msg_lower for term in ["wellness", "diet", "stress", "walking", "exercise"]
             ):
                 response_text = "Wellness is an important part of your recovery. Let's talk about your daily routines and stress management."
                 topic = "wellness"
             elif any(
-                term in msg_lower
-                for term in ["therapy", "therapist", "counseling", "counselor"]
+                term in msg_lower for term in ["therapy", "therapist", "counseling", "counselor"]
             ):
                 response_text = "Therapy is a key component of your treatment plan. How are you finding your therapy sessions so far?"
                 topic = "therapy"
             else:
-                response_text = (
-                    "I understand you're sharing. How can I help you with this today?"
-                )
+                response_text = "I understand you're sharing. How can I help you with this today?"
                 topic = "general"
 
         # Append twin response
@@ -489,9 +448,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
             InvalidRequestError: If session already ended
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "Mock Digital Twin service is not initialized."
-            )
+            raise ServiceUnavailableError("Mock Digital Twin service is not initialized.")
 
         if session_id not in self._sessions:
             # Test explicitly expects ResourceNotFoundError for non-existent sessions
@@ -557,15 +514,11 @@ class MockDigitalTwinService(DigitalTwinInterface):
             ResourceNotFoundError: If twin not found
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "Mock Digital Twin service is not initialized."
-            )
+            raise ServiceUnavailableError("Mock Digital Twin service is not initialized.")
 
         # Auto-create twin when needed by tests
         if twin_id not in self._twins and twin_id.startswith("test-patient-"):
-            logger.info(
-                f"Auto-creating mock digital twin for test patient ID {twin_id}"
-            )
+            logger.info(f"Auto-creating mock digital twin for test patient ID {twin_id}")
             # Use twin_id as patient_id to satisfy test expectations
             patient_id = twin_id
             self._twins[twin_id] = {
@@ -580,9 +533,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
         # Get the twin and patient ID
         twin = self._twins.get(twin_id)
         if not twin:
-            raise ResourceNotFoundError(
-                f"Mock digital twin with ID {twin_id} not found."
-            )
+            raise ResourceNotFoundError(f"Mock digital twin with ID {twin_id} not found.")
 
         patient_id = twin["patient_id"]
 
@@ -616,9 +567,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
 
         # If a specific insight type is requested, return detailed data for that type
         if insight_type and insight_type != "all":
-            insights_data = self._generate_specific_insight(
-                insight_type, daily_values, time_period
-            )
+            insights_data = self._generate_specific_insight(insight_type, daily_values, time_period)
             return {
                 "patient_id": patient_id,
                 "twin_id": twin_id,
@@ -639,9 +588,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
             "mood": {
                 "overall_mood": random.choice(["positive", "neutral", "negative"]),
                 "mood_trend": random.choice(["improving", "stable", "worsening"]),
-                "key_factors": random.sample(
-                    ["stress", "sleep", "social", "exercise", "diet"], 2
-                ),
+                "key_factors": random.sample(["stress", "sleep", "social", "exercise", "diet"], 2),
                 "timeframe": time_period,
             },
             "activity": {
@@ -655,9 +602,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
             },
             "sleep": {
                 "average_duration": round(random.uniform(5.0, 9.0), 1),
-                "sleep_quality_trend": random.choice(
-                    ["improving", "stable", "worsening"]
-                ),
+                "sleep_quality_trend": random.choice(["improving", "stable", "worsening"]),
                 "disruptions": random.randint(0, 5),
                 "recommendations": random.sample(
                     [
@@ -702,9 +647,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
                 "timeframe": time_period,
             },
             "summary": {
-                "overall_status": random.choice(
-                    ["improving", "stable", "needs attention"]
-                ),
+                "overall_status": random.choice(["improving", "stable", "needs attention"]),
                 "key_observations": [
                     "Sleep quality correlates with mood improvement",
                     "Medication adherence is a positive factor",
@@ -804,9 +747,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
 
             data = {
                 "engagement_score": round(random.uniform(0.5, 0.95), 2),
-                "engagement_label": random.choice(
-                    ["excellent", "good", "fair", "poor"]
-                ),
+                "engagement_label": random.choice(["excellent", "good", "fair", "poor"]),
                 "appointments": appointments,
                 "completed_tasks": random.randint(2, 8),
                 "upcoming_tasks": random.randint(1, 5),
@@ -835,22 +776,16 @@ class MockDigitalTwinService(DigitalTwinInterface):
             A dictionary containing the mock result of the interaction.
         """
         if not self._initialized:
-            raise ServiceUnavailableError(
-                "Mock Digital Twin service is not initialized."
-            )
+            raise ServiceUnavailableError("Mock Digital Twin service is not initialized.")
         if not query:
             raise InvalidRequestError("Query cannot be empty.")
 
         twin = self._twins.get(twin_id)
         if not twin:
-            raise ResourceNotFoundError(
-                f"Mock digital twin with ID {twin_id} not found."
-            )
+            raise ResourceNotFoundError(f"Mock digital twin with ID {twin_id} not found.")
 
         # Generate a simple mock response based on the query
-        response_text = (
-            f"Mock response to query: '{query}'. Context provided: {bool(context)}"
-        )
+        response_text = f"Mock response to query: '{query}'. Context provided: {bool(context)}"
         mock_result = {
             "response": response_text,
             "confidence": 0.95,

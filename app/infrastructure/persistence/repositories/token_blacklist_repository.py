@@ -174,9 +174,7 @@ class TokenBlacklistRepository(ITokenRepository):
         try:
             now = datetime.now(datetime.UTC)
             expired_tokens = [
-                token
-                for token, expires_at in self._token_blacklist.items()
-                if expires_at < now
+                token for token, expires_at in self._token_blacklist.items() if expires_at < now
             ]
 
             # Remove expired tokens
@@ -195,9 +193,7 @@ class TokenBlacklistRepository(ITokenRepository):
 
             # Log cleanup results
             if expired_tokens:
-                logger.debug(
-                    f"Removed {len(expired_tokens)} expired tokens from blacklist"
-                )
+                logger.debug(f"Removed {len(expired_tokens)} expired tokens from blacklist")
 
             return len(expired_tokens)
 

@@ -72,9 +72,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         logger.info("SecurityHeadersMiddleware initialized")
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """
         Process the request and add security headers to the response.
 

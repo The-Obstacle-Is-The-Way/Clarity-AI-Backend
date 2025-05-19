@@ -192,17 +192,15 @@ class NeurotransmitterMapping:
         self.receptor_profiles: list[ReceptorProfile] = []
 
         # Maps BrainRegion to dict of Neurotransmitter -> ReceptorProfile
-        self.receptor_map: dict[
-            BrainRegion, dict[Neurotransmitter, ReceptorProfile]
-        ] = {}
+        self.receptor_map: dict[BrainRegion, dict[Neurotransmitter, ReceptorProfile]] = {}
 
         # Maps BrainRegion to list of Neurotransmitters it produces
         self.production_map: dict[BrainRegion, set[Neurotransmitter]] = {}
 
         # Maps BrainRegion to dict of BrainRegion -> connectivity strength
-        self.brain_region_connectivity: dict[
-            BrainRegion, dict[BrainRegion, float]
-        ] = defaultdict(lambda: defaultdict(float))
+        self.brain_region_connectivity: dict[BrainRegion, dict[BrainRegion, float]] = defaultdict(
+            lambda: defaultdict(float)
+        )
 
     def add_receptor_profile(self, profile: ReceptorProfile) -> None:
         """
@@ -356,9 +354,7 @@ class NeurotransmitterMapping:
         # Add the neurotransmitter to the set for that brain region
         self.production_map[brain_region].add(neurotransmitter)
 
-    def get_producing_regions(
-        self, neurotransmitter: Neurotransmitter
-    ) -> list[BrainRegion]:
+    def get_producing_regions(self, neurotransmitter: Neurotransmitter) -> list[BrainRegion]:
         """
         Get all brain regions that produce a given neurotransmitter.
 
@@ -373,16 +369,11 @@ class NeurotransmitterMapping:
 
         regions = []
         for region, neurotransmitters in self.production_map.items():
-            if (
-                isinstance(region, BrainRegion)
-                and neurotransmitter in neurotransmitters
-            ):
+            if isinstance(region, BrainRegion) and neurotransmitter in neurotransmitters:
                 regions.append(region)
         return regions
 
-    def get_affected_regions(
-        self, neurotransmitter: Neurotransmitter
-    ) -> list[BrainRegion]:
+    def get_affected_regions(self, neurotransmitter: Neurotransmitter) -> list[BrainRegion]:
         """
         Get all brain regions affected by a given neurotransmitter.
 
@@ -561,12 +552,8 @@ def create_default_neurotransmitter_mapping(
     # Add default production sites
     mapping.add_production_site(Neurotransmitter.SEROTONIN, BrainRegion.RAPHE_NUCLEI)
     mapping.add_production_site(Neurotransmitter.DOPAMINE, BrainRegion.SUBSTANTIA_NIGRA)
-    mapping.add_production_site(
-        Neurotransmitter.DOPAMINE, BrainRegion.VENTRAL_TEGMENTAL_AREA
-    )
-    mapping.add_production_site(
-        Neurotransmitter.NOREPINEPHRINE, BrainRegion.LOCUS_COERULEUS
-    )
+    mapping.add_production_site(Neurotransmitter.DOPAMINE, BrainRegion.VENTRAL_TEGMENTAL_AREA)
+    mapping.add_production_site(Neurotransmitter.NOREPINEPHRINE, BrainRegion.LOCUS_COERULEUS)
     mapping.add_production_site(
         Neurotransmitter.GABA, BrainRegion.STRIATUM
     )  # For test compatibility

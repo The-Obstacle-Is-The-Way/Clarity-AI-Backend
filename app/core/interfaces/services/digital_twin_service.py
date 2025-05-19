@@ -12,9 +12,7 @@ class IDigitalTwinIntegrationService(abc.ABC):
     """Interface for digital twin integration services."""
 
     @abc.abstractmethod
-    async def get_digital_twin_status(
-        self, patient_id: UUID
-    ) -> DigitalTwinStatusResponse | None:
+    async def get_digital_twin_status(self, patient_id: UUID) -> DigitalTwinStatusResponse | None:
         """Retrieve the status of the digital twin for a given patient."""
         raise NotImplementedError
 

@@ -30,9 +30,7 @@ class IDigitalTwinRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_digital_twin(
-        self, twin_id: str | UUID
-    ) -> dict[str, Any] | None:
+    async def get_digital_twin(self, twin_id: str | UUID) -> dict[str, Any] | None:
         """
         Get a digital twin by ID.
 
@@ -74,9 +72,7 @@ class IDigitalTwinRepository(ABC):
         pass
 
     @abstractmethod
-    async def list_digital_twins(
-        self, user_id: str | UUID | None = None
-    ) -> list[dict[str, Any]]:
+    async def list_digital_twins(self, user_id: str | UUID | None = None) -> list[dict[str, Any]]:
         """
         List all digital twins, optionally filtered by user ID.
 
@@ -105,9 +101,7 @@ class IDigitalTwinRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_session(
-        self, session_id: str | UUID
-    ) -> dict[str, Any] | None:
+    async def get_session(self, session_id: str | UUID) -> dict[str, Any] | None:
         """
         Get a session by ID.
 
@@ -152,9 +146,7 @@ class IDigitalTwinRepository(ABC):
         pass
 
     @abstractmethod
-    async def end_session(
-        self, session_id: str | UUID
-    ) -> dict[str, Any] | None:
+    async def end_session(self, session_id: str | UUID) -> dict[str, Any] | None:
         """
         End a session.
 

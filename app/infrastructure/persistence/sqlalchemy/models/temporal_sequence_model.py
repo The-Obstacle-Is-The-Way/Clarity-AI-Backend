@@ -33,9 +33,7 @@ class TemporalSequenceModel(Base):
 
     # Audit fields
     created_at = sa.Column(sa.DateTime, default=now_utc, nullable=False)
-    updated_at = sa.Column(
-        sa.DateTime, default=now_utc, onupdate=now_utc, nullable=False
-    )
+    updated_at = sa.Column(sa.DateTime, default=now_utc, onupdate=now_utc, nullable=False)
 
     # Relationships
     data_points = sa.orm.relationship(
@@ -71,9 +69,7 @@ class TemporalDataPointModel(Base):
 
     # Composite primary key
     id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
-    sequence_id = sa.Column(
-        GUID, sa.ForeignKey("temporal_sequences.sequence_id"), nullable=False
-    )
+    sequence_id = sa.Column(GUID, sa.ForeignKey("temporal_sequences.sequence_id"), nullable=False)
     position = sa.Column(sa.Integer, nullable=False)
 
     # Data point values
@@ -81,16 +77,12 @@ class TemporalDataPointModel(Base):
     values = sa.Column(JSONEncodedDict, nullable=False)
 
     # Relationships
-    sequence = sa.orm.relationship(
-        "TemporalSequenceModel", back_populates="data_points"
-    )
+    sequence = sa.orm.relationship("TemporalSequenceModel", back_populates="data_points")
 
     # Indexes for common query patterns
     __table_args__ = (
         sa.Index("idx_temporal_data_points_sequence", "sequence_id", "position"),
-        sa.UniqueConstraint(
-            "sequence_id", "position", name="uq_temporal_data_points_position"
-        ),
+        sa.UniqueConstraint("sequence_id", "position", name="uq_temporal_data_points_position"),
     )
 
 
@@ -107,9 +99,7 @@ class EventModel(Base):
     # Primary key and relations
     id = sa.Column(GUID, primary_key=True)
     correlation_id = sa.Column(GUID, nullable=False, index=True)
-    parent_event_id = sa.Column(
-        GUID, sa.ForeignKey("temporal_events.id"), nullable=True
-    )
+    parent_event_id = sa.Column(GUID, sa.ForeignKey("temporal_events.id"), nullable=True)
 
     # Patient relation for HIPAA compliance
     patient_id = sa.Column(GUID, nullable=True, index=True)

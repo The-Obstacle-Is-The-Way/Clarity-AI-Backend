@@ -91,9 +91,7 @@ class TestDatabaseBase:
         engine = get_engine()
         # Create just this table
         async with engine.begin() as conn:
-            await conn.run_sync(
-                lambda schema: TestModel.__table__.create(schema, checkfirst=True)
-            )
+            await conn.run_sync(lambda schema: TestModel.__table__.create(schema, checkfirst=True))
 
         # Verify the table exists by querying it
         async with get_session() as session:
@@ -106,6 +104,4 @@ class TestDatabaseBase:
 
         # Clean up - drop the table
         async with engine.begin() as conn:
-            await conn.run_sync(
-                lambda schema: TestModel.__table__.drop(schema, checkfirst=True)
-            )
+            await conn.run_sync(lambda schema: TestModel.__table__.drop(schema, checkfirst=True))

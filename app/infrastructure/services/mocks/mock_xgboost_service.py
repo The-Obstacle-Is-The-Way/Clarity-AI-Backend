@@ -152,13 +152,9 @@ class MockXGBoostService(XGBoostInterface):
             "efficacy_score": round(random.uniform(0.2, 0.9), 2),
             "response_likelihood": random.choice(["low", "moderate", "high"]),
             "expected_outcome": {
-                "symptom_improvement": random.choice(
-                    ["minimal", "moderate", "significant"]
-                ),
+                "symptom_improvement": random.choice(["minimal", "moderate", "significant"]),
                 "time_to_response": f"{random.randint(2, 8)} weeks",
-                "functional_improvement": random.choice(
-                    ["minimal", "moderate", "significant"]
-                ),
+                "functional_improvement": random.choice(["minimal", "moderate", "significant"]),
             },
             "confidence": round(random.uniform(0.7, 0.9), 2),
             "side_effect_risk": {
@@ -222,21 +218,15 @@ class MockXGBoostService(XGBoostInterface):
                 "visualization_type": "line_chart",
             },
             "outcome_details": {
-                "overall_improvement": random.choice(
-                    ["minimal", "moderate", "significant"]
-                ),
+                "overall_improvement": random.choice(["minimal", "moderate", "significant"]),
                 "domains": [
                     {
                         "name": "Mood",
-                        "improvement": random.choice(
-                            ["minimal", "moderate", "significant"]
-                        ),
+                        "improvement": random.choice(["minimal", "moderate", "significant"]),
                     },
                     {
                         "name": "Anxiety",
-                        "improvement": random.choice(
-                            ["minimal", "moderate", "significant"]
-                        ),
+                        "improvement": random.choice(["minimal", "moderate", "significant"]),
                     },
                 ],
             },
@@ -315,9 +305,7 @@ class MockXGBoostService(XGBoostInterface):
 
         # Check if prediction exists
         if prediction_id not in self._predictions:
-            raise ResourceNotFoundError(
-                f"Prediction with ID '{prediction_id}' not found"
-            )
+            raise ResourceNotFoundError(f"Prediction with ID '{prediction_id}' not found")
 
         # Return mock feature importance
         return {
@@ -370,9 +358,7 @@ class MockXGBoostService(XGBoostInterface):
 
         # Check if prediction exists
         if prediction_id not in self._predictions:
-            raise ResourceNotFoundError(
-                f"Prediction with ID '{prediction_id}' not found"
-            )
+            raise ResourceNotFoundError(f"Prediction with ID '{prediction_id}' not found")
 
         # Return mock integration result
         return {

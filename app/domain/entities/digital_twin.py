@@ -41,9 +41,7 @@ class DigitalTwinState:
     last_sync_time: datetime | None = None
     overall_risk_level: str | None = None  # e.g., 'low', 'moderate', 'high'
     dominant_symptoms: list[str] = field(default_factory=list)
-    current_treatment_effectiveness: str | None = (
-        None  # e.g., 'improving', 'stable', 'worsening'
-    )
+    current_treatment_effectiveness: str | None = None  # e.g., 'improving', 'stable', 'worsening'
     # Add other relevant state indicators like predicted trajectory, adherence scores etc.
     predicted_phq9_trajectory: list[
         dict[str, Any]
@@ -68,16 +66,12 @@ class DigitalTwin:
     therapy_sensitivity: float = 0.8
     # Define other fields, including ID with default
     id: UUID = field(default_factory=uuid4)  # Keep default factory
-    configuration: DigitalTwinConfiguration = field(
-        default_factory=DigitalTwinConfiguration
-    )
+    configuration: DigitalTwinConfiguration = field(default_factory=DigitalTwinConfiguration)
     state: DigitalTwinState = field(default_factory=DigitalTwinState)
     created_at: datetime = field(default_factory=now_utc)
     last_updated: datetime = field(default_factory=now_utc)
     version: int = 1
-    integration_summary: str | None = field(
-        default=None
-    )  # Added integration summary field
+    integration_summary: str | None = field(default=None)  # Added integration summary field
 
     def __post_init__(self):
         """Ensure created_at and last_updated are the same reference when first created."""

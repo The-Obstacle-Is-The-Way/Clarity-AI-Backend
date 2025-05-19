@@ -233,9 +233,7 @@ class MockDigitalTwinService(DigitalTwinInterface):  # Corrected base class
 
         # Add to history
         timestamp = datetime.now(UTC).isoformat() + "Z"
-        session["history"].append(
-            {"role": "user", "content": message, "timestamp": timestamp}
-        )
+        session["history"].append({"role": "user", "content": message, "timestamp": timestamp})
         session["history"].append(
             {"role": "assistant", "content": response, "timestamp": timestamp}
         )
@@ -254,9 +252,7 @@ class MockDigitalTwinService(DigitalTwinInterface):  # Corrected base class
             "metadata": {
                 "provider": "mock",
                 "confidence": random.uniform(0.7, 0.95),
-                "mood": random.choice(
-                    ["neutral", "positive", "concerned", "professional"]
-                ),
+                "mood": random.choice(["neutral", "positive", "concerned", "professional"]),
                 "mock": True,
             },
         }
@@ -286,45 +282,32 @@ class MockDigitalTwinService(DigitalTwinInterface):  # Corrected base class
 
         # How are you
         elif "how are you" in message_lower:
-            return (
-                "I'm here to support you. More importantly, how are you feeling today?"
-            )
+            return "I'm here to support you. More importantly, how are you feeling today?"
 
         # Medication
-        elif any(
-            word in message_lower
-            for word in ["medication", "meds", "pills", "prescription"]
-        ):
+        elif any(word in message_lower for word in ["medication", "meds", "pills", "prescription"]):
             return "I understand you have a question about medication. It's important to follow your prescribed regimen. Have you been experiencing any side effects we should discuss with your doctor?"
 
         # Appointment
-        elif any(
-            word in message_lower
-            for word in ["appointment", "schedule", "visit", "doctor"]
-        ):
-            next_date = (
-                datetime.now() + timedelta(days=random.randint(3, 14))
-            ).strftime("%A, %B %d")
+        elif any(word in message_lower for word in ["appointment", "schedule", "visit", "doctor"]):
+            next_date = (datetime.now() + timedelta(days=random.randint(3, 14))).strftime(
+                "%A, %B %d"
+            )
             return f"Your next appointment is scheduled for {next_date} at 2:00 PM. Would you like me to remind you the day before?"
 
         # Symptoms
-        elif any(
-            word in message_lower
-            for word in ["symptom", "feeling", "pain", "hurt", "sick"]
-        ):
+        elif any(word in message_lower for word in ["symptom", "feeling", "pain", "hurt", "sick"]):
             return "I'm sorry to hear you're not feeling well. Can you tell me more about your symptoms so I can help better?"
 
         # Wellness
         elif any(
-            word in message_lower
-            for word in ["wellness", "exercise", "diet", "sleep", "stress"]
+            word in message_lower for word in ["wellness", "exercise", "diet", "sleep", "stress"]
         ):
             return "Maintaining overall wellness is important for mental health. Have you been able to maintain your sleep schedule and exercise routine lately?"
 
         # Therapy
         elif any(
-            word in message_lower
-            for word in ["therapy", "therapist", "counseling", "counselor"]
+            word in message_lower for word in ["therapy", "therapist", "counseling", "counselor"]
         ):
             return "Therapy can be a valuable part of your treatment plan. How have your recent therapy sessions been going?"
 
@@ -470,20 +453,12 @@ class MockDigitalTwinService(DigitalTwinInterface):  # Corrected base class
         """
         return {
             "mood": self._generate_mood_insights(patient_id, time_period)["data"],
-            "activity": self._generate_activity_insights(patient_id, time_period)[
-                "data"
-            ],
+            "activity": self._generate_activity_insights(patient_id, time_period)["data"],
             "sleep": self._generate_sleep_insights(patient_id, time_period)["data"],
-            "medication": self._generate_medication_insights(patient_id, time_period)[
-                "data"
-            ],
-            "treatment": self._generate_treatment_insights(patient_id, time_period)[
-                "data"
-            ],
+            "medication": self._generate_medication_insights(patient_id, time_period)["data"],
+            "treatment": self._generate_treatment_insights(patient_id, time_period)["data"],
             "summary": {
-                "overall_status": random.choice(
-                    ["stable", "improving", "needs_attention"]
-                ),
+                "overall_status": random.choice(["stable", "improving", "needs_attention"]),
                 "key_observations": [
                     "Patient shows consistent engagement with treatment plan",
                     "Sleep patterns have been improving over the past two weeks",
@@ -540,15 +515,9 @@ class MockDigitalTwinService(DigitalTwinInterface):  # Corrected base class
             "type": "mood",
             "data": {
                 "daily_values": mood_data,
-                "average": round(
-                    sum(item["value"] for item in mood_data) / len(mood_data), 2
-                ),
+                "average": round(sum(item["value"] for item in mood_data) / len(mood_data), 2),
                 "trend": {
-                    "direction": "up"
-                    if change > 0.05
-                    else "down"
-                    if change < -0.05
-                    else "stable",
+                    "direction": "up" if change > 0.05 else "down" if change < -0.05 else "stable",
                     "change_percentage": round(change * 100, 1),
                 },
                 "observations": [
@@ -604,9 +573,7 @@ class MockDigitalTwinService(DigitalTwinInterface):  # Corrected base class
             value = max(0, base_value + random.uniform(-15, 15))
             base_value = value  # Slight correlation between days
 
-            activity_data.append(
-                {"date": date, "value": round(value), "unit": "minutes"}
-            )
+            activity_data.append({"date": date, "value": round(value), "unit": "minutes"})
 
         # Calculate trends
         current_week_avg = sum(item["value"] for item in activity_data[-7:]) / 7
@@ -621,11 +588,7 @@ class MockDigitalTwinService(DigitalTwinInterface):  # Corrected base class
                     sum(item["value"] for item in activity_data) / len(activity_data), 2
                 ),
                 "trend": {
-                    "direction": "up"
-                    if change > 5
-                    else "down"
-                    if change < -5
-                    else "stable",
+                    "direction": "up" if change > 5 else "down" if change < -5 else "stable",
                     "change_percentage": round(
                         (change / prev_week_avg) * 100 if prev_week_avg > 0 else 0, 1
                     ),
@@ -697,11 +660,7 @@ class MockDigitalTwinService(DigitalTwinInterface):  # Corrected base class
                     sum(item["quality"] for item in sleep_data) / len(sleep_data), 2
                 ),
                 "trend": {
-                    "direction": "up"
-                    if change > 0.5
-                    else "down"
-                    if change < -0.5
-                    else "stable",
+                    "direction": "up" if change > 0.5 else "down" if change < -0.5 else "stable",
                     "change_hours": change,
                 },
                 "observations": [
@@ -740,9 +699,7 @@ class MockDigitalTwinService(DigitalTwinInterface):  # Corrected base class
                 adherence = random.random() > 0.1  # 90% adherence rate
                 day_data["medications"][med] = {
                     "taken": adherence,
-                    "scheduled_time": "08:00 AM"
-                    if med == "Medication A"
-                    else "08:00 PM",
+                    "scheduled_time": "08:00 AM" if med == "Medication A" else "08:00 PM",
                     "actual_time": "08:15 AM"
                     if adherence and med == "Medication A"
                     else "08:10 PM"
@@ -755,10 +712,7 @@ class MockDigitalTwinService(DigitalTwinInterface):  # Corrected base class
         # Calculate overall adherence
         total_doses = len(medications) * days
         taken_doses = sum(
-            1
-            for day in adherence_data
-            for med, data in day["medications"].items()
-            if data["taken"]
+            1 for day in adherence_data for med, data in day["medications"].items() if data["taken"]
         )
         adherence_rate = round((taken_doses / total_doses) * 100, 1)
 
@@ -812,23 +766,17 @@ class MockDigitalTwinService(DigitalTwinInterface):  # Corrected base class
                 "total_tasks": 12,
                 "appointments": [
                     {
-                        "date": (datetime.now() - timedelta(days=14)).strftime(
-                            "%Y-%m-%d"
-                        ),
+                        "date": (datetime.now() - timedelta(days=14)).strftime("%Y-%m-%d"),
                         "type": "Psychiatrist",
                         "attended": True,
                     },
                     {
-                        "date": (datetime.now() - timedelta(days=7)).strftime(
-                            "%Y-%m-%d"
-                        ),
+                        "date": (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d"),
                         "type": "Therapist",
                         "attended": True,
                     },
                     {
-                        "date": (datetime.now() + timedelta(days=7)).strftime(
-                            "%Y-%m-%d"
-                        ),
+                        "date": (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d"),
                         "type": "Psychiatrist",
                         "attended": None,
                     },
@@ -862,9 +810,7 @@ class MockDigitalTwinService(DigitalTwinInterface):  # Corrected base class
         """
         return {
             "summary": {
-                "overall_status": random.choice(
-                    ["stable", "improving", "needs_attention"]
-                ),
+                "overall_status": random.choice(["stable", "improving", "needs_attention"]),
                 "observations": [
                     "Patient shows consistent engagement with treatment plan",
                     "Regular attendance at scheduled appointments",

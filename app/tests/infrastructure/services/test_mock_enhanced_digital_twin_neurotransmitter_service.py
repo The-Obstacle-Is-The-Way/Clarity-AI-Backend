@@ -47,9 +47,7 @@ async def test_patient_id(mock_service) -> UUID:
         initial_data={
             "diagnoses": ["Major Depressive Disorder"],
             "symptoms": ["fatigue", "insomnia"],
-            "medications": [
-                {"name": "Escitalopram", "dosage": "10mg", "frequency": "daily"}
-            ],
+            "medications": [{"name": "Escitalopram", "dosage": "10mg", "frequency": "daily"}],
         },
     )
 
@@ -69,9 +67,7 @@ async def test_initialize_neurotransmitter_mapping_patient_not_found(mock_servic
 
 
 @pytest.mark.asyncio
-async def test_initialize_neurotransmitter_mapping_with_default(
-    mock_service, test_patient_id
-):
+async def test_initialize_neurotransmitter_mapping_with_default(mock_service, test_patient_id):
     """Test initializing a neurotransmitter mapping with default values."""
     # Initialize with default mapping
     mapping = await mock_service.initialize_neurotransmitter_mapping(
@@ -89,9 +85,7 @@ async def test_initialize_neurotransmitter_mapping_with_default(
 
 
 @pytest.mark.asyncio
-async def test_initialize_neurotransmitter_mapping_with_custom(
-    mock_service, test_patient_id
-):
+async def test_initialize_neurotransmitter_mapping_with_custom(mock_service, test_patient_id):
     """Test initializing a neurotransmitter mapping with a custom mapping."""
     # Create a custom mapping
     custom_mapping = NeurotransmitterMapping()
@@ -141,9 +135,7 @@ async def test_initialize_neurotransmitter_mapping_without_default_or_custom(
 
 
 @pytest.mark.asyncio
-async def test_update_receptor_profiles_creates_mapping_if_needed(
-    mock_service, test_patient_id
-):
+async def test_update_receptor_profiles_creates_mapping_if_needed(mock_service, test_patient_id):
     """Test that update_receptor_profiles creates a mapping if one doesn't exist."""
     # Define a profile
     profile = ReceptorProfile(
@@ -169,9 +161,7 @@ async def test_update_receptor_profiles_creates_mapping_if_needed(
 
 
 @pytest.mark.asyncio
-async def test_update_receptor_profiles_updates_existing_mapping(
-    mock_service, test_patient_id
-):
+async def test_update_receptor_profiles_updates_existing_mapping(mock_service, test_patient_id):
     """Test that update_receptor_profiles updates an existing mapping."""
     # Initialize a mapping first
     await mock_service.initialize_neurotransmitter_mapping(
@@ -277,9 +267,7 @@ async def test_get_neurotransmitter_effects_with_regions(mock_service, test_pati
 
 
 @pytest.mark.asyncio
-async def test_get_neurotransmitter_effects_without_regions(
-    mock_service, test_patient_id
-):
+async def test_get_neurotransmitter_effects_without_regions(mock_service, test_patient_id):
     """Test getting neurotransmitter effects for all brain regions."""
     # Initialize mapping first
     await mock_service.initialize_neurotransmitter_mapping(
@@ -393,9 +381,7 @@ async def test_simulate_neurotransmitter_cascade_creates_mapping_if_needed(
 
 
 @pytest.mark.asyncio
-async def test_simulate_neurotransmitter_cascade_with_parameters(
-    mock_service, test_patient_id
-):
+async def test_simulate_neurotransmitter_cascade_with_parameters(mock_service, test_patient_id):
     """Test simulating neurotransmitter cascade with various parameters."""
     # Initialize mapping first
     await mock_service.initialize_neurotransmitter_mapping(
@@ -477,8 +463,7 @@ async def test_analyze_treatment_neurotransmitter_effects_with_parameters(
     # Define test parameters
     treatment_id = uuid.uuid4()
     time_points = [
-        datetime.now(UTC) + timedelta(days=i * 7)
-        for i in range(5)  # 0, 7, 14, 21, 28 days
+        datetime.now(UTC) + timedelta(days=i * 7) for i in range(5)  # 0, 7, 14, 21, 28 days
     ]
 
     neurotransmitters = [
@@ -560,9 +545,7 @@ async def test_events_are_published(mock_service, test_patient_id):
 
     # Check event types
     assert events_received[0]["event_type"] == "neurotransmitter_mapping.initialized"
-    assert (
-        events_received[1]["event_type"] == "neurotransmitter_mapping.profiles_updated"
-    )
+    assert events_received[1]["event_type"] == "neurotransmitter_mapping.profiles_updated"
 
     # Check event data
     assert "patient_id" in events_received[0]["event_data"]

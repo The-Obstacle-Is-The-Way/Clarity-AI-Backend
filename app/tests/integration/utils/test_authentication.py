@@ -85,9 +85,7 @@ class TestAuthenticationMiddleware(BaseHTTPMiddleware):
                 # Convert the role string to UserRole
                 user_role = role_mapping.get(role_value.lower())
                 if not user_role:
-                    logger.error(
-                        f"TestAuthMiddleware: Invalid role value: {role_value}"
-                    )
+                    logger.error(f"TestAuthMiddleware: Invalid role value: {role_value}")
                     return JSONResponse(
                         {
                             "detail": f"Invalid test authentication role: {role_value}. Valid roles are: {list(role_mapping.keys())}"
@@ -118,9 +116,7 @@ class TestAuthenticationMiddleware(BaseHTTPMiddleware):
                 # Attach user and credentials to the request
                 request.scope["user"] = user
                 request.scope["auth"] = AuthCredentials(["authenticated"])
-                logger.debug(
-                    f"TestAuthMiddleware: Authenticated test user with role: {user_role}"
-                )
+                logger.debug(f"TestAuthMiddleware: Authenticated test user with role: {user_role}")
 
             except Exception as e:
                 logger.error(f"TestAuthMiddleware: Authentication error: {e!s}")
@@ -135,9 +131,7 @@ class TestAuthenticationMiddleware(BaseHTTPMiddleware):
                     {"detail": "Not authenticated"}, status_code=HTTP_401_UNAUTHORIZED
                 )
             # For public paths, attach unauthenticated user
-            logger.debug(
-                f"TestAuthMiddleware: Public path accessed: {request.url.path}"
-            )
+            logger.debug(f"TestAuthMiddleware: Public path accessed: {request.url.path}")
             request.scope["user"] = None  # No user for public paths
             request.scope["auth"] = AuthCredentials([])
 

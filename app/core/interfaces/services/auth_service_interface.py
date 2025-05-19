@@ -30,9 +30,7 @@ class AuthServiceInterface(ABC):
     """
 
     @abstractmethod
-    async def authenticate_user(
-        self, username_or_email: str, password: str
-    ) -> User | None:
+    async def authenticate_user(self, username_or_email: str, password: str) -> User | None:
         """
         Authenticate a user with username/email and password.
 
@@ -157,9 +155,7 @@ class AuthServiceInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def login(
-        self, username: str, password: str, remember_me: bool
-    ) -> TokenResponseSchema:
+    async def login(self, username: str, password: str, remember_me: bool) -> TokenResponseSchema:
         """
         Authenticate a user and return access and refresh tokens.
 

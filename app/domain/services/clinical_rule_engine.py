@@ -111,9 +111,7 @@ class ClinicalRuleEngine:
                     AlertPriority.WARNING: BiometricAlertPriority.WARNING,
                     AlertPriority.INFORMATIONAL: BiometricAlertPriority.INFORMATIONAL,
                 }
-                priority = priority_map.get(
-                    alert_priority, BiometricAlertPriority.MEDIUM
-                )
+                priority = priority_map.get(alert_priority, BiometricAlertPriority.MEDIUM)
             else:
                 # Already correct type
                 priority = alert_priority
@@ -195,17 +193,13 @@ class ClinicalRuleEngine:
 
         # Only validate if we have no parent context data_type
         if not has_identifier and not hasattr(self, "_current_rule_data_type"):
-            raise ValidationError(
-                "Missing required field in condition: data_type or metric_name"
-            )
+            raise ValidationError("Missing required field in condition: data_type or metric_name")
 
         if "operator" not in condition_data:
             raise ValidationError("Missing required field in condition: operator")
 
         if "threshold_value" not in condition_data and "value" not in condition_data:
-            raise ValidationError(
-                "Missing required field in condition: threshold_value or value"
-            )
+            raise ValidationError("Missing required field in condition: threshold_value or value")
 
         # Parse operator with QUANTUM COMPATIBILITY across representations
         operator_val = condition_data["operator"]
@@ -276,9 +270,7 @@ class ClinicalRuleEngine:
         name: str | None = None,
         description: str | None = None,
         conditions: list[dict[str, Any]] | None = None,
-        logical_operator: str
-        | LogicalOperator
-        | None = None,  # Support direct enum values
+        logical_operator: str | LogicalOperator | None = None,  # Support direct enum values
         alert_priority: str | AlertPriority | None = None,  # Support direct enum values
         is_active: bool | None = None,
         metadata: dict[str, Any] | None = None,
@@ -329,9 +321,7 @@ class ClinicalRuleEngine:
                 rule_conditions.append(condition)
 
             # Use the domain model's update_conditions method
-            rule.update_conditions(
-                rule_conditions, logical_operator if logical_operator else None
-            )
+            rule.update_conditions(rule_conditions, logical_operator if logical_operator else None)
         elif logical_operator is not None:
             # If logical_operator is provided without conditions, update it directly
             try:
@@ -495,9 +485,7 @@ class ClinicalRuleEngine:
 
         return created_rules
 
-    async def get_active_rules_for_patient(
-        self, patient_id: UUID
-    ) -> list[BiometricRule]:
+    async def get_active_rules_for_patient(self, patient_id: UUID) -> list[BiometricRule]:
         """
         Get all active rules that apply to a specific patient.
 

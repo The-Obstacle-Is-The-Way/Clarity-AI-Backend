@@ -204,9 +204,7 @@ class PharmacogenomicsModel:
             categorical_data = []
 
             for feature in categorical_features:
-                categorical_data.append(
-                    str(data.get("patient_features", {}).get(feature, ""))
-                )
+                categorical_data.append(str(data.get("patient_features", {}).get(feature, "")))
 
             categorical_array = np.array(categorical_data).reshape(1, -1)
 
@@ -227,31 +225,21 @@ class PharmacogenomicsModel:
             for condition in comorbidity_list:
                 comorbidity_data.append(1 if condition in comorbidities else 0)
 
-            comorbidity_array = np.array(comorbidity_data, dtype=np.float32).reshape(
-                1, -1
-            )
+            comorbidity_array = np.array(comorbidity_data, dtype=np.float32).reshape(1, -1)
 
             # Apply preprocessing
             if is_training:
                 # Fit and transform
-                genetic_processed = self.genetic_preprocessor.fit_transform(
-                    genetic_array
-                )
-                numerical_processed = self.numeric_preprocessor.fit_transform(
-                    numerical_array
-                )
+                genetic_processed = self.genetic_preprocessor.fit_transform(genetic_array)
+                numerical_processed = self.numeric_preprocessor.fit_transform(numerical_array)
                 categorical_processed = self.categorical_preprocessor.fit_transform(
                     categorical_array
                 )
             else:
                 # Transform only
                 genetic_processed = self.genetic_preprocessor.transform(genetic_array)
-                numerical_processed = self.numeric_preprocessor.transform(
-                    numerical_array
-                )
-                categorical_processed = self.categorical_preprocessor.transform(
-                    categorical_array
-                )
+                numerical_processed = self.numeric_preprocessor.transform(numerical_array)
+                categorical_processed = self.categorical_preprocessor.transform(categorical_array)
 
             # Combine all features
             combined_features = np.hstack(
@@ -313,9 +301,7 @@ class PharmacogenomicsModel:
                         medication_data[medication]["X"].append(
                             preprocessed["combined_features"][0]
                         )
-                        medication_data[medication]["y"].append(
-                            response.get("effectiveness", 0)
-                        )
+                        medication_data[medication]["y"].append(response.get("effectiveness", 0))
 
             # Train a model for each medication with sufficient data
             training_results = {}
@@ -334,9 +320,7 @@ class PharmacogenomicsModel:
                     )
 
                     # Cross-validation
-                    cv_scores = cross_val_score(
-                        model, X, y, cv=5, scoring="neg_mean_squared_error"
-                    )
+                    cv_scores = cross_val_score(model, X, y, cv=5, scoring="neg_mean_squared_error")
 
                     # Train on full dataset
                     model.fit(X, y)
@@ -415,9 +399,7 @@ class PharmacogenomicsModel:
 
                     # Predict effectiveness
                     effectiveness_model = model_data["effectiveness_model"]
-                    effectiveness_score = float(
-                        effectiveness_model.predict(features)[0]
-                    )
+                    effectiveness_score = float(effectiveness_model.predict(features)[0])
 
                     # Calculate confidence based on training samples
                     training_samples = model_data["training_samples"]
@@ -428,9 +410,7 @@ class PharmacogenomicsModel:
                         "effectiveness_score": effectiveness_score,
                         "confidence": confidence,
                         "training_samples": training_samples,
-                        "predicted_category": self._categorize_effectiveness(
-                            effectiveness_score
-                        ),
+                        "predicted_category": self._categorize_effectiveness(effectiveness_score),
                     }
 
             # Sort medications by predicted effectiveness
@@ -443,9 +423,7 @@ class PharmacogenomicsModel:
             return {
                 "patient_id": str(patient_id),
                 "medication_predictions": predictions,
-                "recommended_medications": sorted_medications[
-                    :3
-                ],  # Top 3 recommendations
+                "recommended_medications": sorted_medications[:3],  # Top 3 recommendations
                 "prediction_generated_at": datetime.now(UTC).isoformat(),
             }
 
@@ -556,9 +534,7 @@ class PharmacogenomicsModel:
 
         except Exception as e:
             logging.error(f"Error analyzing gene-medication interactions: {e!s}")
-            raise ModelExecutionError(
-                f"Failed to analyze gene-medication interactions: {e!s}"
-            )
+            raise ModelExecutionError(f"Failed to analyze gene-medication interactions: {e!s}")
 
     async def predict_side_effects(
         self, patient_id: UUID, patient_data: dict[str, Any], medication: str
@@ -576,9 +552,7 @@ class PharmacogenomicsModel:
         """
         try:
             if medication not in self.medications:
-                raise ValidationError(
-                    f"Medication {medication} not supported by the model"
-                )
+                raise ValidationError(f"Medication {medication} not supported by the model")
 
             # Define known medication side effects and associated genetic markers
             # This is a simplified version - in practice, this would be a more comprehensive database
@@ -747,9 +721,7 @@ class PharmacogenomicsModel:
                 for i, gene in enumerate(data["genes"]):
                     if gene in genetic_markers:
                         patient_variant = genetic_markers.get(gene)
-                        target_variant = (
-                            data["variants"][i] if i < len(data["variants"]) else None
-                        )
+                        target_variant = data["variants"][i] if i < len(data["variants"]) else None
 
                         if patient_variant == target_variant:
                             # Increase probability if genetic marker matches
@@ -797,9 +769,7 @@ class PharmacogenomicsModel:
                 "patient_id": str(patient_id),
                 "medication": medication,
                 "side_effects": side_effects,
-                "high_risk_effects": [
-                    e for e in side_effects if e["probability"] > 0.3
-                ],
+                "high_risk_effects": [e for e in side_effects if e["probability"] > 0.3],
                 "prediction_generated_at": datetime.now(UTC).isoformat(),
             }
 

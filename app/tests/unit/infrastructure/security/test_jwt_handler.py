@@ -82,9 +82,7 @@ class TestJWTService:
 
     # --- Initialization Tests (implicitly tested by fixture) ---
     @pytest.mark.asyncio
-    async def test_init_with_valid_settings(
-        self, jwt_service: JWTService, test_settings
-    ):
+    async def test_init_with_valid_settings(self, jwt_service: JWTService, test_settings):
         """Test initialization uses the injected mock settings."""
         # The jwt_service fixture should inject mock_settings.
         # We verify that the service instance is indeed using the mock settings object.
@@ -139,9 +137,7 @@ class TestJWTService:
 
     # --- Token Decoding and Validation ---
     @pytest.mark.asyncio
-    async def test_decode_valid_access_token(
-        self, jwt_service: JWTService, sample_user_data: dict
-    ):
+    async def test_decode_valid_access_token(self, jwt_service: JWTService, sample_user_data: dict):
         """Test decoding a valid access token returns correct payload."""
         token = jwt_service.create_access_token(data=sample_user_data)
 
@@ -150,9 +146,7 @@ class TestJWTService:
         import jose.jwt
 
         print(f"\nDEBUG: Type of jose.jwt.decode is: {type(jose.jwt.decode)}\n")
-        assert not isinstance(
-            jose.jwt.decode, MagicMock
-        ), "jose.jwt.decode appears to be mocked!"
+        assert not isinstance(jose.jwt.decode, MagicMock), "jose.jwt.decode appears to be mocked!"
         # --- End Debug Assertion ---
 
         payload = jwt_service.decode_token(token)
@@ -171,13 +165,9 @@ class TestJWTService:
         assert payload.type == TokenType.REFRESH
 
     @pytest.mark.asyncio
-    async def test_decode_expired_token(
-        self, jwt_service: JWTService, sample_user_data: dict
-    ):
+    async def test_decode_expired_token(self, jwt_service: JWTService, sample_user_data: dict):
         """Test decoding an expired token raises TokenExpiredException."""
-        token = jwt_service.create_access_token(
-            data=sample_user_data, expires_delta_minutes=-1
-        )
+        token = jwt_service.create_access_token(data=sample_user_data, expires_delta_minutes=-1)
         await asyncio.sleep(0.1)
         with pytest.raises(TokenExpiredException):
             jwt_service.decode_token(token)
@@ -205,9 +195,7 @@ class TestJWTService:
         # Assert error contains the original error information
         assert "Invalid token:" in str(exc_info.value)
         # Accept either error message since the exact error might depend on the JWT implementation
-        assert "Invalid header string" in str(
-            exc_info.value
-        ) or "Not enough segments" in str(
+        assert "Invalid header string" in str(exc_info.value) or "Not enough segments" in str(
             exc_info.value
         ), f"Expected error message not found in: {exc_info.value!s}"
 
@@ -250,9 +238,7 @@ class TestJWTService:
         )
 
     @pytest.mark.asyncio
-    async def test_decode_token_wrong_type(
-        self, jwt_service: JWTService, sample_user_data: dict
-    ):
+    async def test_decode_token_wrong_type(self, jwt_service: JWTService, sample_user_data: dict):
         """Test decoding works regardless of scope, but scope is preserved."""
         # Create an access token
         access_token = jwt_service.create_access_token(data=sample_user_data)
@@ -279,31 +265,18 @@ class TestJWTService:
         now_ts = int(datetime.now(timezone.utc).timestamp())
         expected_access_exp_delta_seconds = jwt_service.access_token_expire_minutes * 60
 
+        assert access_payload.iat <= now_ts < access_payload.iat + 5  # Allow 5 sec creation skew
         assert (
-            access_payload.iat <= now_ts < access_payload.iat + 5
-        )  # Allow 5 sec creation skew
-        assert (
-            abs(
-                access_payload.exp
-                - (access_payload.iat + expected_access_exp_delta_seconds)
-            )
-            <= 1
+            abs(access_payload.exp - (access_payload.iat + expected_access_exp_delta_seconds)) <= 1
         )
 
         refresh_token = jwt_service.create_refresh_token(data=user_data)
         refresh_payload = jwt_service.decode_token(refresh_token)
-        expected_refresh_exp_delta_seconds = (
-            jwt_service.refresh_token_expire_days * 24 * 60 * 60
-        )
+        expected_refresh_exp_delta_seconds = jwt_service.refresh_token_expire_days * 24 * 60 * 60
 
+        assert refresh_payload.iat <= now_ts < refresh_payload.iat + 5  # Allow 5 sec creation skew
         assert (
-            refresh_payload.iat <= now_ts < refresh_payload.iat + 5
-        )  # Allow 5 sec creation skew
-        assert (
-            abs(
-                refresh_payload.exp
-                - (refresh_payload.iat + expected_refresh_exp_delta_seconds)
-            )
+            abs(refresh_payload.exp - (refresh_payload.iat + expected_refresh_exp_delta_seconds))
             <= 1
         )
 
@@ -342,9 +315,7 @@ class TestJWTService:
         jti_uuid = uuid4()
 
         # Act - Use the custom jti parameter
-        access_token = jwt_service.create_access_token(
-            {"sub": user_id}, jti=str(jti_uuid)
-        )
+        access_token = jwt_service.create_access_token({"sub": user_id}, jti=str(jti_uuid))
         access_payload = jwt_service.decode_token(access_token)
 
         # Assert

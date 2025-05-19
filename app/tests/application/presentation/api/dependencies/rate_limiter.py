@@ -57,9 +57,7 @@ class RateLimitDependency:
             self.__class__._default_limiter = limiter
         # Use provided limiter, or class-level default, or a new RateLimiter stub
         self.limiter = (
-            limiter
-            if limiter is not None
-            else (self.__class__._default_limiter or RateLimiter())
+            limiter if limiter is not None else (self.__class__._default_limiter or RateLimiter())
         )
         self.scope_key = scope_key
         self.error_message = error_message

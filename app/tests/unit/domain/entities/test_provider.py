@@ -31,9 +31,7 @@ def valid_provider_data():
             "zip": "12345",
         },
         "bio": "Board-certified psychiatrist with 10 years of experience.",
-        "education": [
-            {"institution": "Medical University", "degree": "M.D.", "year": 2010}
-        ],
+        "education": [{"institution": "Medical University", "degree": "M.D.", "year": 2010}],
         "certifications": [
             {
                 "name": "Board Certification in Psychiatry",
@@ -90,10 +88,7 @@ class TestProvider:
         assert provider.status == valid_provider_data["status"]
         assert provider.availability == valid_provider_data["availability"]
         assert provider.max_patients == valid_provider_data["max_patients"]
-        assert (
-            provider.current_patient_count
-            == valid_provider_data["current_patient_count"]
-        )
+        assert provider.current_patient_count == valid_provider_data["current_patient_count"]
 
     def test_create_provider_with_string_enums(self, valid_provider_data):
         data = valid_provider_data.copy()

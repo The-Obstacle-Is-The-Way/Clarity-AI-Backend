@@ -77,9 +77,7 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
         """
         # Session is created on __enter__ for the top-level context
         if self._session is None:
-            raise RepositoryError(
-                "Session is not active. Use 'with unit_of_work:' context."
-            )
+            raise RepositoryError("Session is not active. Use 'with unit_of_work:' context.")
         return self._session
 
     def __enter__(self) -> "SQLAlchemyUnitOfWork":
@@ -89,21 +87,15 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
             # Top-level context: create session and begin transaction
             self._session = self.session_factory()
             self._session.begin()
-            self._is_read_only_stack.append(
-                False
-            )  # Default non-read-only for top level
+            self._is_read_only_stack.append(False)  # Default non-read-only for top level
             logger.debug("Started UoW context: Session created, transaction begun.")
         else:
             # Nested context: begin nested transaction (savepoint)
             if self._session is None:  # Safety check
-                raise RepositoryError(
-                    "Cannot start nested transaction without active session."
-                )
+                raise RepositoryError("Cannot start nested transaction without active session.")
             self._session.begin_nested()  # Creates a savepoint
             # Inherit read-only status from the current top of the stack
-            current_read_only = (
-                self._is_read_only_stack[-1] if self._is_read_only_stack else False
-            )
+            current_read_only = self._is_read_only_stack[-1] if self._is_read_only_stack else False
             self._is_read_only_stack.append(current_read_only)
             logger.debug("Started nested transaction (savepoint).")
 
@@ -134,9 +126,7 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
             if exc_type:
                 # --- Exception Occurred ---
                 log_level = "main" if is_top_level else "nested"
-                logger.warning(
-                    f"Rolling back {log_level} transaction due to exception: {exc_val}"
-                )
+                logger.warning(f"Rolling back {log_level} transaction due to exception: {exc_val}")
                 self._session.rollback()  # Rolls back to savepoint or start
 
                 # Log the failed transaction for audit purposes if top-level
@@ -149,9 +139,7 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
                     logger.debug(f"Rolling back {log_level} transaction.")
                     self._session.rollback()  # Always rollback read-only
                 elif self._committed:
-                    log_level = (
-                        "main" if is_top_level else "nested (releasing savepoint)"
-                    )
+                    log_level = "main" if is_top_level else "nested (releasing savepoint)"
                     logger.debug(f"Committing {log_level} transaction.")
                     # Add audit logic here if needed
                     if is_top_level and self._metadata and self._audit_enabled:
@@ -181,9 +169,7 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
                         self._session.rollback()  # Rolls back savepoint changes
 
         except SQLAlchemyError as e:
-            logger.error(
-                f"SQLAlchemyError during transaction cleanup: {e}. Force rolling back."
-            )
+            logger.error(f"SQLAlchemyError during transaction cleanup: {e}. Force rolling back.")
             # Attempt to rollback the entire transaction if possible
             if is_top_level and self._session:
                 try:
@@ -196,9 +182,7 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
                     logger.error(f"Error during final rollback attempt: {final_rb_err}")
             raise RepositoryError(f"Error during transaction cleanup: {e!s}") from e
         except Exception as e:
-            logger.error(
-                f"Unexpected error during transaction cleanup: {e}. Force rolling back."
-            )
+            logger.error(f"Unexpected error during transaction cleanup: {e}. Force rolling back.")
             if is_top_level and self._session:
                 try:
                     self._session.rollback()
@@ -228,9 +212,7 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
                 self._current_user_id = None
                 self._current_access_reason = None
             elif self._transaction_level > 0:
-                logger.debug(
-                    f"Exited nested context. Level now: {self._transaction_level}"
-                )
+                logger.debug(f"Exited nested context. Level now: {self._transaction_level}")
             else:  # Should not happen
                 logger.warning("Transaction level became negative during cleanup.")
 
@@ -265,19 +247,13 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
         if not self._session:
             raise RepositoryError("No active session to roll back.")
 
-        logger.debug(
-            f"Explicit rollback called for transaction level {self._transaction_level}."
-        )
+        logger.debug(f"Explicit rollback called for transaction level {self._transaction_level}.")
         self._session.rollback()  # Rollback immediately
-        self._committed = (
-            False  # Ensure commit doesn't happen in __exit__ for this level
-        )
+        self._committed = False  # Ensure commit doesn't happen in __exit__ for this level
 
         # If we rolled back the top-level transaction and have metadata, log it for audit
         if self._transaction_level == 1 and self._metadata and self._audit_enabled:
-            self._log_transaction_failure(
-                "Explicit rollback requested by application code"
-            )
+            self._log_transaction_failure("Explicit rollback requested by application code")
 
         # If nested, this rolls back the savepoint. If top-level, rolls back the entire transaction.
 
@@ -419,9 +395,7 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
         justification violates HIPAA requirements.
         """
         self._audit_enabled = False
-        logger.warning(
-            "AUDIT LOGGING DISABLED for this Unit of Work - ensure this is justified"
-        )
+        logger.warning("AUDIT LOGGING DISABLED for this Unit of Work - ensure this is justified")
 
     def enable_audit_logging(self) -> None:
         """Re-enable audit logging if it was previously disabled."""
@@ -459,9 +433,7 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
 
             # Commit changes
             self._session.commit()
-            logger.info(
-                f"Transaction committed successfully with metadata: {self._metadata}"
-            )
+            logger.info(f"Transaction committed successfully with metadata: {self._metadata}")
 
         except Exception as e:
             # Log failure but don't swallow the exception
@@ -477,9 +449,7 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
                         details=f"Transaction failed: {e}",
                     )
                 except Exception as audit_err:
-                    logger.error(
-                        f"Failed to log transaction failure in audit: {audit_err}"
-                    )
+                    logger.error(f"Failed to log transaction failure in audit: {audit_err}")
 
             # Re-raise the original exception
             raise
@@ -541,9 +511,7 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
             except Exception as e:
                 logger.error(f"Failed to instantiate repository {repo_name}: {e}")
                 # Propagate error to signal failure in UoW setup/usage
-                raise RepositoryError(
-                    f"Could not instantiate repository {repo_name}."
-                ) from e
+                raise RepositoryError(f"Could not instantiate repository {repo_name}.") from e
 
         # Return the cached or newly created instance
         return self._repositories[repo_name]  # type: ignore[return-value]

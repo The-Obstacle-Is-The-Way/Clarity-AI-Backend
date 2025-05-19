@@ -104,9 +104,7 @@ class DataAnonymizer:
             # Generate a consistent shift based on the date itself using SHA-256
             date_str = date_obj.strftime("%Y%m%d")
             hash_obj = hashlib.sha256(date_str.encode())
-            hash_int = int(
-                hash_obj.hexdigest()[:8], 16
-            )  # Use first 8 chars for reasonable integer
+            hash_int = int(hash_obj.hexdigest()[:8], 16)  # Use first 8 chars for reasonable integer
             shift_days = (hash_int % 30) - 15  # -15 to +14 days
 
         # Shift the date
@@ -182,9 +180,7 @@ class DataAnonymizer:
                 anonymized[key] = self.anonymize_date(value)
             elif isinstance(value, dict):
                 # Recursively anonymize nested dictionaries
-                anonymized[key] = self.anonymize_dict(
-                    value, phi_fields, id_fields, date_fields
-                )
+                anonymized[key] = self.anonymize_dict(value, phi_fields, id_fields, date_fields)
             elif isinstance(value, list):
                 # Handle lists - anonymize dictionaries in lists
                 anonymized[key] = [
@@ -286,13 +282,9 @@ class DataNormalizer:
 
         # Apply normalization to each column
         for col in columns:
-            if col in normalized_df.columns and pd.api.types.is_numeric_dtype(
-                normalized_df[col]
-            ):
+            if col in normalized_df.columns and pd.api.types.is_numeric_dtype(normalized_df[col]):
                 if method == "z-score":
-                    normalized_df[col] = DataNormalizer.z_score_normalize(
-                        normalized_df[col].values
-                    )
+                    normalized_df[col] = DataNormalizer.z_score_normalize(normalized_df[col].values)
                 elif method == "min-max":
                     normalized_df[col] = DataNormalizer.min_max_normalize(
                         normalized_df[col].values, feature_range
@@ -355,9 +347,7 @@ class MissingValueImputer:
         data_array = np.array(data)
 
         # Find most frequent non-NaN value
-        unique_values, counts = np.unique(
-            data_array[~pd.isna(data_array)], return_counts=True
-        )
+        unique_values, counts = np.unique(data_array[~pd.isna(data_array)], return_counts=True)
 
         if len(counts) > 0:
             mode_value = unique_values[np.argmax(counts)]
@@ -400,30 +390,18 @@ class MissingValueImputer:
 
         # Apply imputation to numeric columns
         for col in columns:
-            if col in imputed_df.columns and pd.api.types.is_numeric_dtype(
-                imputed_df[col]
-            ):
+            if col in imputed_df.columns and pd.api.types.is_numeric_dtype(imputed_df[col]):
                 if method == "mean":
-                    imputed_df[col] = MissingValueImputer.mean_imputation(
-                        imputed_df[col].values
-                    )
+                    imputed_df[col] = MissingValueImputer.mean_imputation(imputed_df[col].values)
                 elif method == "median":
-                    imputed_df[col] = MissingValueImputer.median_imputation(
-                        imputed_df[col].values
-                    )
+                    imputed_df[col] = MissingValueImputer.median_imputation(imputed_df[col].values)
                 elif method == "mode":
-                    imputed_df[col] = MissingValueImputer.mode_imputation(
-                        imputed_df[col].values
-                    )
+                    imputed_df[col] = MissingValueImputer.mode_imputation(imputed_df[col].values)
 
         # Apply mode imputation to categorical columns
         for col in categorical_columns:
-            if col in imputed_df.columns and not pd.api.types.is_numeric_dtype(
-                imputed_df[col]
-            ):
-                imputed_df[col] = MissingValueImputer.mode_imputation(
-                    imputed_df[col].values
-                )
+            if col in imputed_df.columns and not pd.api.types.is_numeric_dtype(imputed_df[col]):
+                imputed_df[col] = MissingValueImputer.mode_imputation(imputed_df[col].values)
 
         return imputed_df
 
@@ -636,9 +614,7 @@ class FeatureEngineer:
         return np.hstack(all_features)
 
     @staticmethod
-    def one_hot_encode(
-        data: np.ndarray, categories: list[list[Any]] | None = None
-    ) -> np.ndarray:
+    def one_hot_encode(data: np.ndarray, categories: list[list[Any]] | None = None) -> np.ndarray:
         """
         One-hot encode categorical features.
 

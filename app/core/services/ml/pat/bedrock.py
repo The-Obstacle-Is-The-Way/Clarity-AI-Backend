@@ -80,9 +80,7 @@ class BedrockPAT(PATInterface):
         self.bedrock_runtime = (
             None  # Directly used by tests - used instead of _bedrock_runtime_service
         )
-        self.dynamodb_client = (
-            None  # Directly used by tests - used instead of _dynamodb_service
-        )
+        self.dynamodb_client = None  # Directly used by tests - used instead of _dynamodb_service
         self.s3_client = None  # Directly used by tests - used instead of _s3_service
 
         # Configuration
@@ -205,9 +203,7 @@ class BedrockPAT(PATInterface):
             # Initialize AWS services
             self._s3_service = self._aws_factory.get_s3_service()
             self._dynamodb_service = self._aws_factory.get_dynamodb_service()
-            self._bedrock_runtime_service = (
-                self._aws_factory.get_bedrock_runtime_service()
-            )
+            self._bedrock_runtime_service = self._aws_factory.get_bedrock_runtime_service()
             self._bedrock_service = self._aws_factory.get_bedrock_service()
             self._session_service = self._aws_factory.get_session_service()
 
@@ -444,9 +440,7 @@ class BedrockPAT(PATInterface):
 
             # Convert datetime objects in readings to ISO strings for JSON serialization
             for reading in payload.get("readings", []):
-                if "timestamp" in reading and hasattr(
-                    reading["timestamp"], "isoformat"
-                ):
+                if "timestamp" in reading and hasattr(reading["timestamp"], "isoformat"):
                     reading["timestamp"] = reading["timestamp"].isoformat()
 
             # Construct payload
@@ -480,9 +474,7 @@ class BedrockPAT(PATInterface):
 
             except Exception as e:
                 # If parsing fails, use default test values
-                logger.warning(
-                    f"Error parsing Bedrock response: {e!s}. Using default values."
-                )
+                logger.warning(f"Error parsing Bedrock response: {e!s}. Using default values.")
                 model_output = {
                     "sleep_metrics": {
                         "sleep_efficiency": 0.85,
@@ -677,9 +669,7 @@ class BedrockPAT(PATInterface):
             # Check if any results were found
             items = query_response.get("Items", [])
             if not items:
-                raise ResourceNotFoundError(
-                    f"No analyses found for patient {patient_hash}"
-                )
+                raise ResourceNotFoundError(f"No analyses found for patient {patient_hash}")
 
             # Extract analysis IDs based on response format
             # Important: Support both DynamoDB standard format and test mock format
@@ -764,9 +754,7 @@ class BedrockPAT(PATInterface):
 
             # Return analyses or raise if none were processed successfully
             if not analyses:
-                error_msg = (
-                    f"Could not retrieve any valid analyses for patient {patient_hash}"
-                )
+                error_msg = f"Could not retrieve any valid analyses for patient {patient_hash}"
                 logger.error(error_msg)
                 raise ResourceNotFoundError(error_msg)
 
@@ -790,9 +778,7 @@ class BedrockPAT(PATInterface):
             raise ConfigurationError("DynamoDB service not initialized.")
 
         # Ensure the return value matches the updated type hint
-        updated_profile = await self._fetch_or_update_twin_profile(
-            patient_id, analysis_result
-        )
+        updated_profile = await self._fetch_or_update_twin_profile(patient_id, analysis_result)
         return updated_profile
 
     async def _fetch_or_update_twin_profile(
@@ -815,18 +801,14 @@ class BedrockPAT(PATInterface):
         )
         from app.domain.utils.datetime_utils import now_utc
 
-        logger.info(
-            f"Fetching or updating digital twin profile for patient {patient_id}"
-        )
+        logger.info(f"Fetching or updating digital twin profile for patient {patient_id}")
 
         # Placeholder: Create a basic DigitalTwin instance.
         # In reality, this would involve fetching from or creating in the repository.
         try:
             patient_uuid = UUID(patient_id)
         except ValueError:
-            logger.error(
-                f"Invalid patient_id format: {patient_id}. Cannot create UUID."
-            )
+            logger.error(f"Invalid patient_id format: {patient_id}. Cannot create UUID.")
             # Handle error appropriately, maybe raise an exception or return a default/error state
             # Returning a placeholder with a dummy UUID for now to avoid crashing
             patient_uuid = UUID("00000000-0000-0000-0000-000000000000")
@@ -891,9 +873,7 @@ class BedrockPAT(PATInterface):
                     and "outputText" in response_body["results"][0]
                 ):
                     # Assuming the entire outputText is the summary for now
-                    placeholder_twin.integration_summary = response_body["results"][0][
-                        "outputText"
-                    ]
+                    placeholder_twin.integration_summary = response_body["results"][0]["outputText"]
                     logger.info(
                         "Successfully extracted integration summary from Bedrock Titan response."
                     )
@@ -905,9 +885,7 @@ class BedrockPAT(PATInterface):
                         "Integration summary not available from Titan response."
                     )
             else:
-                logger.warning(
-                    "Received empty or invalid response stream from Bedrock."
-                )
+                logger.warning("Received empty or invalid response stream from Bedrock.")
                 placeholder_twin.integration_summary = (
                     "Integration summary failed due to empty Bedrock response."
                 )
@@ -915,9 +893,7 @@ class BedrockPAT(PATInterface):
         except Exception as e:
             logger.error(f"Error during Bedrock integration: {e}", exc_info=True)
             # Handle error - perhaps set a specific summary or re-raise
-            placeholder_twin.integration_summary = (
-                "Integration summary failed due to an exception."
-            )
+            placeholder_twin.integration_summary = "Integration summary failed due to an exception."
 
         # Simple integration: add analysis ID to state (example)
         placeholder_twin.update_state(
@@ -931,9 +907,7 @@ class BedrockPAT(PATInterface):
 
         return placeholder_twin
 
-    async def get_actigraphy_embeddings(
-        self, patient_id: str, data: list[dict]
-    ) -> list[float]:
+    async def get_actigraphy_embeddings(self, patient_id: str, data: list[dict]) -> list[float]:
         """
         Placeholder for generating embeddings from actigraphy data using Bedrock.
         TODO: Implement actual Bedrock call for embeddings.
@@ -1010,9 +984,7 @@ class BedrockPAT(PATInterface):
 
         if not models_info:
             # Fallback if no models are configured (or add default known models)
-            logger.warning(
-                "No specific Bedrock models configured in BedrockPAT service."
-            )
+            logger.warning("No specific Bedrock models configured in BedrockPAT service.")
             models_info.append(
                 {
                     "model_id": "generic-fallback",
@@ -1068,9 +1040,7 @@ class BedrockPAT(PATInterface):
 
         if "ConfidenceScore" in item:
             try:
-                result["confidence_score"] = float(
-                    item["ConfidenceScore"].get("N", "0")
-                )
+                result["confidence_score"] = float(item["ConfidenceScore"].get("N", "0"))
             except (ValueError, TypeError):
                 result["confidence_score"] = 0.0
 

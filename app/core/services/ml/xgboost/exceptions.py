@@ -40,9 +40,7 @@ class XGBoostServiceError(Exception):
 class ValidationError(XGBoostServiceError):
     """Exception raised when request validation fails."""
 
-    def __init__(
-        self, message: str, field: str | None = None, value: Any = None, **kwargs
-    ):
+    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs):
         """
         Initialize a validation error.
 
@@ -120,9 +118,7 @@ class ResourceNotFoundError(XGBoostServiceError):
             resource_id: ID of the resource that was not found
             **kwargs: Additional error context
         """
-        super().__init__(
-            message, resource_type=resource_type, resource_id=resource_id, **kwargs
-        )
+        super().__init__(message, resource_type=resource_type, resource_id=resource_id, **kwargs)
 
 
 class ModelNotFoundError(ResourceNotFoundError):
@@ -203,9 +199,7 @@ class ServiceConnectionError(XGBoostServiceError):
 class ConfigurationError(XGBoostServiceError):
     """Exception raised when there is a configuration error."""
 
-    def __init__(
-        self, message: str, field: str | None = None, value: Any = None, **kwargs
-    ):
+    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs):
         """
         Initialize a configuration error.
 
@@ -237,9 +231,7 @@ class ServiceConfigurationError(XGBoostServiceError):
             config_key: The configuration key that has issues
             **kwargs: Additional error context
         """
-        super().__init__(
-            message, service_name=service_name, config_key=config_key, **kwargs
-        )
+        super().__init__(message, service_name=service_name, config_key=config_key, **kwargs)
 
 
 class ServiceUnavailableError(XGBoostServiceError):
@@ -261,9 +253,7 @@ class ServiceUnavailableError(XGBoostServiceError):
             retry_after: Suggested time (in seconds) to wait before retrying
             **kwargs: Additional error context
         """
-        super().__init__(
-            message, service_name=service_name, retry_after=retry_after, **kwargs
-        )
+        super().__init__(message, service_name=service_name, retry_after=retry_after, **kwargs)
 
 
 class ThrottlingError(XGBoostServiceError):
@@ -285,9 +275,7 @@ class ThrottlingError(XGBoostServiceError):
             retry_after: Suggested time (in seconds) to wait before retrying
             **kwargs: Additional error context
         """
-        super().__init__(
-            message, service_name=service_name, retry_after=retry_after, **kwargs
-        )
+        super().__init__(message, service_name=service_name, retry_after=retry_after, **kwargs)
 
 
 class FeatureValidationError(ValidationError):

@@ -68,9 +68,7 @@ class PatientApplicationService:
             # TODO: Implement check if clinician is assigned to this patient
             # This requires knowledge of clinician-patient relationships
             # For now, allow clinician access (replace with actual logic)
-            logger.warning(
-                f"Clinician access check for patient {patient_id} not implemented."
-            )
+            logger.warning(f"Clinician access check for patient {patient_id} not implemented.")
             return {"id": str(patient.id), "name": patient.name}
         else:
             logger.warning(
@@ -79,9 +77,7 @@ class PatientApplicationService:
             # Raise or return None based on policy
             raise PermissionError("User not authorized to access this patient data.")
 
-    async def update_patient(
-        self, patient_id: UUID, update_data: dict[str, Any]
-    ) -> Patient | None:
+    async def update_patient(self, patient_id: UUID, update_data: dict[str, Any]) -> Patient | None:
         """Updates an existing patient record."""
         logger.info(f"Updating patient {patient_id}")
         # TODO: Add authorization check
@@ -128,9 +124,7 @@ class PatientService:
             return None
         return {"id": patient_id, "name": "Placeholder from Service"}
 
-    async def create_patient(
-        self, patient_data: PatientCreateRequest
-    ) -> dict[str, str]:
+    async def create_patient(self, patient_data: PatientCreateRequest) -> dict[str, str]:
         """Creates a new patient.
 
         Placeholder implementation.

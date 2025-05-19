@@ -144,8 +144,7 @@ class AuthenticationService:
                 ip_address=ip_address,
                 user_agent=user_agent,
                 created_at=datetime.now(datetime.UTC),
-                expires_at=datetime.now(datetime.UTC)
-                + timedelta(minutes=self.session_timeout),
+                expires_at=datetime.now(datetime.UTC) + timedelta(minutes=self.session_timeout),
             )
 
             # Store session
@@ -193,9 +192,7 @@ class AuthenticationService:
             )
             raise AuthenticationError(f"Authentication failed: {e!s}")
 
-    async def logout(
-        self, user_id: str, session_id: str, all_sessions: bool = False
-    ) -> bool:
+    async def logout(self, user_id: str, session_id: str, all_sessions: bool = False) -> bool:
         """
         Log out a user by invalidating their session and/or tokens.
 
@@ -237,9 +234,7 @@ class AuthenticationService:
                             session_id=session_id,
                             details="Attempted to logout from another user's session",
                         )
-                        raise PermissionDeniedError(
-                            "Not authorized to end this session"
-                        )
+                        raise PermissionDeniedError("Not authorized to end this session")
 
                     # Remove session
                     del self._active_sessions[session_id]
@@ -345,8 +340,7 @@ class AuthenticationService:
                     ip_address=ip_address,
                     user_agent=user_agent,
                     created_at=datetime.now(datetime.UTC),
-                    expires_at=datetime.now(datetime.UTC)
-                    + timedelta(minutes=self.session_timeout),
+                    expires_at=datetime.now(datetime.UTC) + timedelta(minutes=self.session_timeout),
                 )
                 self._active_sessions[session_id] = session
 

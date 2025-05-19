@@ -47,14 +47,10 @@ class MockPATService(PATInterface):
         self._assessments = {}
         self._form_templates = {}
         self._analyses = {}  # Private storage for analyses
-        self._patients_analyses = (
-            {}
-        )  # Add patients_analyses dict for test compatibility
+        self._patients_analyses = {}  # Add patients_analyses dict for test compatibility
         self._embeddings = {}  # Add embeddings dict for test compatibility
         self._profiles = {}  # Add profiles dictionary for digital twin tests
-        self._integrations = (
-            {}
-        )  # Add _integrations dictionary to store integration results
+        self._integrations = {}  # Add _integrations dictionary to store integration results
 
         # Enable test mode for deterministic timestamps
         self._test_mode = True
@@ -176,9 +172,7 @@ class MockPATService(PATInterface):
         # We need to set this before the current time since it doesn't raise now but needs to next time
         if config and config.get("simulate_next_empty_init_error"):
             self._force_init_error = True
-            config.pop(
-                "simulate_next_empty_init_error"
-            )  # Remove so it doesn't stay in config
+            config.pop("simulate_next_empty_init_error")  # Remove so it doesn't stay in config
 
         # Store the configuration - use a fresh copy to avoid mutations
         self._config = {}
@@ -292,9 +286,7 @@ class MockPATService(PATInterface):
             "flags": assessment["flags"],
         }
 
-    def update_assessment(
-        self, assessment_id: str, data: dict[str, Any]
-    ) -> dict[str, Any]:
+    def update_assessment(self, assessment_id: str, data: dict[str, Any]) -> dict[str, Any]:
         """Update an assessment with new data."""
         if not self._initialized:
             raise Exception("Service not initialized")
@@ -311,9 +303,7 @@ class MockPATService(PATInterface):
 
         # Update data
         assessment["data"].update(data)
-        assessment["updated_at"] = datetime.datetime.now(
-            datetime.timezone.utc
-        ).isoformat()
+        assessment["updated_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
         # Check for simple completion
         if len(assessment["data"]) >= 3 and assessment["status"] == "created":
@@ -349,9 +339,7 @@ class MockPATService(PATInterface):
 
         # Mark as completed
         assessment["status"] = "completed"
-        assessment["completed_at"] = datetime.datetime.now(
-            datetime.timezone.utc
-        ).isoformat()
+        assessment["completed_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
         assessment["updated_at"] = assessment["completed_at"]
 
         # Generate mock scores
@@ -588,10 +576,7 @@ class MockPATService(PATInterface):
         report_type = report_type or "summary"
 
         # Check if assessment is completed for certain report types
-        if (
-            report_type in ["detailed", "clinical"]
-            and assessment["status"] != "completed"
-        ):
+        if report_type in ["detailed", "clinical"] and assessment["status"] != "completed":
             raise ValueError(f"Assessment not completed for report type: {report_type}")
 
         # Generate mock report
@@ -651,9 +636,7 @@ class MockPATService(PATInterface):
             "form_type": "depression",
             "fields": phq9_fields,
             "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "metadata": {
-                "description": "Patient Health Questionnaire-9 for depression screening"
-            },
+            "metadata": {"description": "Patient Health Questionnaire-9 for depression screening"},
         }
 
         # GAD-7 template
@@ -854,9 +837,7 @@ class MockPATService(PATInterface):
                 "efficiency": sleep_metrics.get("efficiency", 75),
                 "deep_sleep_percentage": sleep_metrics.get("deep_sleep_percentage", 20),
                 "rem_sleep_percentage": sleep_metrics.get("rem_sleep_percentage", 25),
-                "light_sleep_percentage": sleep_metrics.get(
-                    "light_sleep_percentage", 55
-                ),
+                "light_sleep_percentage": sleep_metrics.get("light_sleep_percentage", 55),
             },
             "activity_levels": activity_levels,
             "sleep_metrics": sleep_metrics,
@@ -949,9 +930,7 @@ class MockPATService(PATInterface):
         required_keys = ["manufacturer", "model"]  # Ensure these keys are present
         for key in required_keys:
             if key not in device_info:
-                raise ValidationError(
-                    f"Device info must contain required keys: {required_keys}"
-                )
+                raise ValidationError(f"Device info must contain required keys: {required_keys}")
 
         # Validate analysis types using the dedicated method
         self._validate_analysis_types(analysis_types)
@@ -1175,8 +1154,7 @@ class MockPATService(PATInterface):
 
             # Generate metrics based on analysis types
             if any(
-                atype in ["sleep", "sleep_quality", "sleep_analysis"]
-                for atype in analysis_types
+                atype in ["sleep", "sleep_quality", "sleep_analysis"] for atype in analysis_types
             ):
                 metrics["sleep"] = {
                     "sleep_onset_latency_minutes": 15.3,
@@ -1215,8 +1193,7 @@ class MockPATService(PATInterface):
 
             # Add general metrics regardless of analysis type
             metrics["general"] = {
-                "acceleration_magnitude_avg": (avg_x**2 + avg_y**2 + avg_z**2)
-                ** 0.5,
+                "acceleration_magnitude_avg": (avg_x**2 + avg_y**2 + avg_z**2) ** 0.5,
                 "acceleration_magnitude_max": max(
                     (x**2 + y**2 + z**2) ** 0.5
                     for x, y, z in zip(x_values, y_values, z_values, strict=False)
@@ -1469,9 +1446,7 @@ class MockPATService(PATInterface):
             # Get all analyses for this patient from the stored analyses
             # This ensures we're returning the exact same objects created by analyze_actigraphy
             analysis_ids = self._patients_analyses.get(patient_id, [])
-            all_analyses = [
-                self._analyses[aid] for aid in analysis_ids if aid in self._analyses
-            ]
+            all_analyses = [self._analyses[aid] for aid in analysis_ids if aid in self._analyses]
 
             # Apply filters if specified
             filtered_analyses = all_analyses
@@ -1479,9 +1454,7 @@ class MockPATService(PATInterface):
             # Apply analysis_type filter if specified
             if analysis_type:
                 filtered_analyses = [
-                    a
-                    for a in filtered_analyses
-                    if analysis_type in a.get("analysis_types", [])
+                    a for a in filtered_analyses if analysis_type in a.get("analysis_types", [])
                 ]
 
             # Apply date range filter if specified
@@ -1644,9 +1617,7 @@ class MockPATService(PATInterface):
         """
         # Sort analyses by timestamp in descending order (newest first)
         # This ensures consistent ordering in test responses
-        sorted_analyses = sorted(
-            analyses, key=lambda x: x.get("timestamp", ""), reverse=True
-        )
+        sorted_analyses = sorted(analyses, key=lambda x: x.get("timestamp", ""), reverse=True)
 
         return {
             "analyses": sorted_analyses,
@@ -1800,9 +1771,7 @@ class MockPATService(PATInterface):
 
         # Validate profile existence first
         if profile_id not in self._profiles:
-            raise ResourceNotFoundError(
-                f"Profile {profile_id} not found for integration."
-            )
+            raise ResourceNotFoundError(f"Profile {profile_id} not found for integration.")
 
         analysis_data_to_integrate = self._validate_integration_params(
             patient_id=patient_id,
@@ -2021,9 +1990,7 @@ class MockPATService(PATInterface):
             ]
 
             # Check if any provided integration types are not valid
-            invalid_types = [
-                t for t in integration_types if t not in valid_integration_types
-            ]
+            invalid_types = [t for t in integration_types if t not in valid_integration_types]
             if invalid_types:
                 raise ValidationError(
                     f"Invalid integration types: {', '.join(invalid_types)}. Valid types are: {', '.join(valid_integration_types)}"
@@ -2045,9 +2012,7 @@ class MockPATService(PATInterface):
             "stress": {"score": 0.68},
         }
 
-    def _generate_integration_recommendations(
-        self, integration_types: list[str] | None
-    ) -> dict:
+    def _generate_integration_recommendations(self, integration_types: list[str] | None) -> dict:
         """Generate mock recommendations based on integration types."""
         recommendations = {}
 
@@ -2074,9 +2039,7 @@ class MockPATService(PATInterface):
 
         return recommendations
 
-    def _generate_integration_insights(
-        self, analysis_data: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+    def _generate_integration_insights(self, analysis_data: dict[str, Any]) -> list[dict[str, Any]]:
         """Generate insights from analysis data.
 
         Args:
@@ -2157,17 +2120,12 @@ class MockPATService(PATInterface):
 
         return results
 
-    def _generate_mock_interpretation(
-        self, analysis_types: list[str]
-    ) -> dict[str, Any]:
+    def _generate_mock_interpretation(self, analysis_types: list[str]) -> dict[str, Any]:
         """Generate mock interpretation for actigraphy analysis."""
         interpretation = {"summary": "Mock interpretation of actigraphy data"}
 
         # Add analysis type-specific interpretations
-        if any(
-            atype in ["sleep", "sleep_quality", "sleep_analysis"]
-            for atype in analysis_types
-        ):
+        if any(atype in ["sleep", "sleep_quality", "sleep_analysis"] for atype in analysis_types):
             sleep_quality = ["poor", "fair", "good", "excellent"][uuid.uuid4().int % 4]
             interpretation["sleep"] = {
                 "quality": sleep_quality,
@@ -2180,9 +2138,7 @@ class MockPATService(PATInterface):
             atype in ["activity", "activity_levels", "activity_level_analysis"]
             for atype in analysis_types
         ):
-            activity_level = ["sedentary", "low", "moderate", "high"][
-                uuid.uuid4().int % 4
-            ]
+            activity_level = ["sedentary", "low", "moderate", "high"][uuid.uuid4().int % 4]
             interpretation["activity"] = {
                 "level": activity_level,
                 "meets_guidelines": activity_level in ["moderate", "high"],

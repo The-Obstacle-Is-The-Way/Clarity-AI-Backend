@@ -41,9 +41,7 @@ def mock_clinical_rule_engine():
             "name": "High Heart Rate",
             "description": "Alert when heart rate exceeds threshold",
             "category": "cardiac",
-            "conditions": [
-                {"metric_name": "heart_rate", "operator": ">", "threshold_value": 100}
-            ],
+            "conditions": [{"metric_name": "heart_rate", "operator": ">", "threshold_value": 100}],
             "logical_operator": "AND",
             "default_priority": "WARNING",
             "customizable_fields": ["threshold_value", "priority"],
@@ -53,9 +51,7 @@ def mock_clinical_rule_engine():
             "name": "Low Heart Rate",
             "description": "Alert when heart rate falls below threshold",
             "category": "cardiac",
-            "conditions": [
-                {"metric_name": "heart_rate", "operator": "<", "threshold_value": 50}
-            ],
+            "conditions": [{"metric_name": "heart_rate", "operator": "<", "threshold_value": 50}],
             "logical_operator": "AND",
             "default_priority": "URGENT",
             "customizable_fields": ["threshold_value", "priority"],

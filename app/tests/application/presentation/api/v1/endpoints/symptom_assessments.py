@@ -178,8 +178,7 @@ async def list_symptom_assessments(
     patient_id: UUID = Query(
         ..., description="ID of the patient whose assessments to list"
     ),  # Require patient_id for listing
-    assessment_type: AssessmentType
-    | None = Query(None, description="Filter by assessment type"),
+    assessment_type: AssessmentType | None = Query(None, description="Filter by assessment type"),
     start_date: datetime
     | None = Query(None, description="Filter by assessment start date (inclusive)"),
     end_date: datetime

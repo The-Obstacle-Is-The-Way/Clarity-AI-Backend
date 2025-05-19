@@ -52,15 +52,11 @@ class NeurotransmitterTwinModel:
         # Apply medication effects based on class
         if med_class == "SSRI":
             # Selective Serotonin Reuptake Inhibitors - increase serotonin
-            self.current_serotonin *= (
-                1 + 0.05 * days * self.digital_twin.medication_sensitivity
-            )
+            self.current_serotonin *= 1 + 0.05 * days * self.digital_twin.medication_sensitivity
 
         elif med_class == "SNRI":
             # Serotonin-Norepinephrine Reuptake Inhibitors - increase both
-            self.current_serotonin *= (
-                1 + 0.03 * days * self.digital_twin.medication_sensitivity
-            )
+            self.current_serotonin *= 1 + 0.03 * days * self.digital_twin.medication_sensitivity
             self.current_norepinephrine *= (
                 1 + 0.04 * days * self.digital_twin.medication_sensitivity
             )
@@ -70,36 +66,26 @@ class NeurotransmitterTwinModel:
             self.current_norepinephrine *= (
                 1 + 0.04 * days * self.digital_twin.medication_sensitivity
             )
-            self.current_dopamine *= (
-                1 + 0.04 * days * self.digital_twin.medication_sensitivity
-            )
+            self.current_dopamine *= 1 + 0.04 * days * self.digital_twin.medication_sensitivity
 
         elif med_class == "MAOI":
             # Monoamine Oxidase Inhibitors - increase all
-            self.current_serotonin *= (
-                1 + 0.02 * days * self.digital_twin.medication_sensitivity
-            )
-            self.current_dopamine *= (
-                1 + 0.02 * days * self.digital_twin.medication_sensitivity
-            )
+            self.current_serotonin *= 1 + 0.02 * days * self.digital_twin.medication_sensitivity
+            self.current_dopamine *= 1 + 0.02 * days * self.digital_twin.medication_sensitivity
             self.current_norepinephrine *= (
                 1 + 0.02 * days * self.digital_twin.medication_sensitivity
             )
 
         elif med_class == "TCA":
             # Tricyclic Antidepressants - complex effects
-            self.current_serotonin *= (
-                1 + 0.02 * days * self.digital_twin.medication_sensitivity
-            )
+            self.current_serotonin *= 1 + 0.02 * days * self.digital_twin.medication_sensitivity
             self.current_norepinephrine *= (
                 1 + 0.03 * days * self.digital_twin.medication_sensitivity
             )
 
         elif med_class == "BENZODIAZEPINE":
             # Increase GABA
-            self.current_gaba *= (
-                1 + 0.05 * days * self.digital_twin.medication_sensitivity
-            )
+            self.current_gaba *= 1 + 0.05 * days * self.digital_twin.medication_sensitivity
 
     def simulate_stress(self, stress_level: float, days: int = 1):
         """
@@ -110,9 +96,7 @@ class NeurotransmitterTwinModel:
             days: Number of days to simulate (default 1)
         """
         # Stress typically decreases serotonin and dopamine
-        stress_factor = (
-            stress_level * self.digital_twin.cortisol_sensitivity * days * 0.05
-        )
+        stress_factor = stress_level * self.digital_twin.cortisol_sensitivity * days * 0.05
 
         self.current_serotonin *= 1 - stress_factor
         self.current_dopamine *= 1 - stress_factor
@@ -157,12 +141,8 @@ class MentalStateModel:
         nm = self.neurotransmitter_model
 
         # Depression is associated with low serotonin and dopamine
-        serotonin_factor = 50 * (
-            2 - nm.current_serotonin
-        )  # Higher when serotonin is lower
-        dopamine_factor = 30 * (
-            2 - nm.current_dopamine
-        )  # Higher when dopamine is lower
+        serotonin_factor = 50 * (2 - nm.current_serotonin)  # Higher when serotonin is lower
+        dopamine_factor = 30 * (2 - nm.current_dopamine)  # Higher when dopamine is lower
         norepinephrine_factor = 20 * (2 - nm.current_norepinephrine)
 
         score = (serotonin_factor + dopamine_factor + norepinephrine_factor) / 3
@@ -185,9 +165,7 @@ class MentalStateModel:
 
         # Anxiety is associated with low GABA and serotonin, high norepinephrine
         gaba_factor = 40 * (2 - nm.current_gaba)  # Higher when GABA is lower
-        serotonin_factor = 30 * (
-            2 - nm.current_serotonin
-        )  # Higher when serotonin is lower
+        serotonin_factor = 30 * (2 - nm.current_serotonin)  # Higher when serotonin is lower
         norepinephrine_factor = 30 * (
             nm.current_norepinephrine
         )  # Higher when norepinephrine is higher
@@ -212,9 +190,7 @@ class MedicationResponseModel:
 
     neurotransmitter_model: NeurotransmitterTwinModel
 
-    def predict_response(
-        self, medication: Medication, days: int = 28
-    ) -> dict[str, float]:
+    def predict_response(self, medication: Medication, days: int = 28) -> dict[str, float]:
         """
         Predict how the patient would respond to a medication.
 
@@ -235,9 +211,7 @@ class MedicationResponseModel:
         self.neurotransmitter_model.simulate_medication_effect(medication, days)
 
         # Create mental state model to calculate scores
-        mental_state = MentalStateModel(
-            neurotransmitter_model=self.neurotransmitter_model
-        )
+        mental_state = MentalStateModel(neurotransmitter_model=self.neurotransmitter_model)
 
         # Get predicted scores
         pred_depression = mental_state.depression_score

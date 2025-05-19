@@ -73,9 +73,7 @@ class TestRedisTokenBlacklistRepository:
         reason = "test_logout"
 
         # Act
-        await token_blacklist_repo.add_to_blacklist(
-            mock_token, mock_jti, future_expiry, reason
-        )
+        await token_blacklist_repo.add_to_blacklist(mock_token, mock_jti, future_expiry, reason)
 
         # Assert
         # Should call set twice - once for token hash, once for JTI
@@ -119,9 +117,7 @@ class TestRedisTokenBlacklistRepository:
         mock_redis_service.get.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_is_blacklisted_found(
-        self, token_blacklist_repo, mock_redis_service, mock_token
-    ):
+    async def test_is_blacklisted_found(self, token_blacklist_repo, mock_redis_service, mock_token):
         """Test checking a token that is blacklisted."""
         # Arrange
         mock_redis_service.get.return_value = "mock_jti"
@@ -134,9 +130,7 @@ class TestRedisTokenBlacklistRepository:
         mock_redis_service.get.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_is_jti_blacklisted(
-        self, token_blacklist_repo, mock_redis_service, mock_jti
-    ):
+    async def test_is_jti_blacklisted(self, token_blacklist_repo, mock_redis_service, mock_jti):
         """Test checking if JTI is blacklisted."""
         # Arrange
         mock_redis_service.get.return_value = None

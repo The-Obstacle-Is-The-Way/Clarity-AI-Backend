@@ -118,9 +118,7 @@ class EnhancedDigitalTwinDemo:
         logger.info(
             f"Knowledge graph initialized with {len(knowledge_graph.nodes)} nodes and {len(knowledge_graph.edges)} edges"
         )
-        logger.info(
-            f"Belief network initialized with {len(belief_network.variables)} variables"
-        )
+        logger.info(f"Belief network initialized with {len(belief_network.variables)} variables")
 
     async def process_patient_data(self, patient_id: UUID):
         """Process multimodal patient data."""
@@ -266,34 +264,32 @@ class EnhancedDigitalTwinDemo:
 
         # 3.5 Generate predictive maintenance plan
         logger.info("3.5: Generating predictive maintenance plan")
-        maintenance_plan = (
-            await self.digital_twin_service.generate_predictive_maintenance_plan(
-                patient_id=patient_id,
-                risk_factors=[
-                    "sleep_disruption",
-                    "social_withdrawal",
-                    "medication_adherence",
-                ],
-                prediction_horizon=90,
-                intervention_options=[
-                    {
-                        "type": "medication_adjustment",
-                        "description": "Adjust medication dosage",
-                    },
-                    {
-                        "type": "therapy_session",
-                        "description": "Schedule therapy session",
-                    },
-                    {
-                        "type": "sleep_hygiene",
-                        "description": "Implement sleep hygiene protocol",
-                    },
-                    {
-                        "type": "social_activation",
-                        "description": "Structured social activation",
-                    },
-                ],
-            )
+        maintenance_plan = await self.digital_twin_service.generate_predictive_maintenance_plan(
+            patient_id=patient_id,
+            risk_factors=[
+                "sleep_disruption",
+                "social_withdrawal",
+                "medication_adherence",
+            ],
+            prediction_horizon=90,
+            intervention_options=[
+                {
+                    "type": "medication_adjustment",
+                    "description": "Adjust medication dosage",
+                },
+                {
+                    "type": "therapy_session",
+                    "description": "Schedule therapy session",
+                },
+                {
+                    "type": "sleep_hygiene",
+                    "description": "Implement sleep hygiene protocol",
+                },
+                {
+                    "type": "social_activation",
+                    "description": "Structured social activation",
+                },
+            ],
         )
 
         logger.info(
@@ -312,19 +308,15 @@ class EnhancedDigitalTwinDemo:
             parameters={"highlight_significant": True, "show_connections": True},
         )
 
-        logger.info(
-            f"Brain model visualization generated with {len(brain_viz['regions'])} regions"
-        )
+        logger.info(f"Brain model visualization generated with {len(brain_viz['regions'])} regions")
 
         # 4.2 Generate intervention response coupling visualization
         logger.info("4.2: Generating intervention response coupling")
-        response_coupling = (
-            await self.digital_twin_service.generate_intervention_response_coupling(
-                patient_id=patient_id,
-                intervention_type="medication_adjustment",
-                response_markers=["mood", "anxiety", "sleep_quality", "energy"],
-                time_window=(0, 60),  # 60-day window
-            )
+        response_coupling = await self.digital_twin_service.generate_intervention_response_coupling(
+            patient_id=patient_id,
+            intervention_type="medication_adjustment",
+            response_markers=["mood", "anxiety", "sleep_quality", "energy"],
+            time_window=(0, 60),  # 60-day window
         )
 
         logger.info(
@@ -386,25 +378,21 @@ class EnhancedDigitalTwinDemo:
         ]
 
         # Run the simulations
-        simulation_results = (
-            await self.digital_twin_service.perform_counterfactual_simulation(
-                patient_id=patient_id,
-                baseline_state_id=baseline_state_id,
-                intervention_scenarios=intervention_scenarios,
-                output_variables=[
-                    "mood",
-                    "anxiety",
-                    "sleep_quality",
-                    "energy",
-                    "side_effects",
-                ],
-                simulation_horizon=180,  # 180-day horizon
-            )
+        simulation_results = await self.digital_twin_service.perform_counterfactual_simulation(
+            patient_id=patient_id,
+            baseline_state_id=baseline_state_id,
+            intervention_scenarios=intervention_scenarios,
+            output_variables=[
+                "mood",
+                "anxiety",
+                "sleep_quality",
+                "energy",
+                "side_effects",
+            ],
+            simulation_horizon=180,  # 180-day horizon
         )
 
-        logger.info(
-            f"Counterfactual simulations completed for {len(simulation_results)} scenarios"
-        )
+        logger.info(f"Counterfactual simulations completed for {len(simulation_results)} scenarios")
 
         # Log the top-ranked scenario
         top_scenario = simulation_results[0]
@@ -427,9 +415,7 @@ class EnhancedDigitalTwinDemo:
             detail_level="comprehensive",
         )
 
-        logger.info(
-            f"Clinical summary generated with {len(summary['sections'])} sections"
-        )
+        logger.info(f"Clinical summary generated with {len(summary['sections'])} sections")
         logger.info(f"Generated at: {summary['metadata']['generated_at']}")
 
 

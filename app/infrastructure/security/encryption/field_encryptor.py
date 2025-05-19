@@ -30,9 +30,7 @@ class FieldEncryptor:
             encryption_service: Service instance for encrypting/decrypting values.
         """
         if not isinstance(encryption_service, BaseEncryptionService):
-            raise TypeError(
-                "encryption_service must be an instance of BaseEncryptionService"
-            )
+            raise TypeError("encryption_service must be an instance of BaseEncryptionService")
         self._encryption = encryption_service
 
     def encrypt_fields(
@@ -175,9 +173,7 @@ class FieldEncryptor:
                         value = data[index]
                         # Use a temporary dict wrapper for _encrypt_or_decrypt_value
                         temp_wrapper = {"value": value}
-                        self._encrypt_or_decrypt_value(
-                            temp_wrapper, "value", value, encrypt
-                        )
+                        self._encrypt_or_decrypt_value(temp_wrapper, "value", value, encrypt)
                         data[index] = temp_wrapper["value"]
             else:
                 # Apply the entire path to each element if the key is not an index
@@ -193,9 +189,7 @@ class FieldEncryptor:
                         # This is a primitive item in a list like medications or allergies
                         # that needs to be encrypted as a whole
                         temp_wrapper = {"value": item}
-                        self._encrypt_or_decrypt_value(
-                            temp_wrapper, "value", item, encrypt
-                        )
+                        self._encrypt_or_decrypt_value(temp_wrapper, "value", item, encrypt)
                         data[i] = temp_wrapper["value"]
 
         # else: data is not a dict or list, cannot navigate further
@@ -226,9 +220,7 @@ class FieldEncryptor:
                         encrypted_value = self._encryption.encrypt_string(value)
                         obj[field] = encrypted_value
                     else:
-                        logger.debug(
-                            f"Field '{field}' appears already encrypted, skipping"
-                        )
+                        logger.debug(f"Field '{field}' appears already encrypted, skipping")
                 elif isinstance(value, (dict, list)):
                     # For complex types, convert to string and encrypt
                     try:
@@ -250,9 +242,7 @@ class FieldEncryptor:
                                     if isinstance(v, str) and not v.startswith(
                                         self._encryption.VERSION_PREFIX
                                     ):
-                                        processed[k] = self._encryption.encrypt_string(
-                                            v
-                                        )
+                                        processed[k] = self._encryption.encrypt_string(v)
                                     else:
                                         processed[k] = v
                                 obj[field] = processed
@@ -278,9 +268,7 @@ class FieldEncryptor:
                         )
             else:
                 # Decryption - only attempt if it's a string with version prefix
-                if isinstance(value, str) and value.startswith(
-                    self._encryption.VERSION_PREFIX
-                ):
+                if isinstance(value, str) and value.startswith(self._encryption.VERSION_PREFIX):
                     try:
                         decrypted_value = self._encryption.decrypt_string(value)
                         # Try to parse as JSON in case it was a complex type
@@ -305,9 +293,7 @@ class FieldEncryptor:
                     # Decrypt each field in the nested structure
                     processed = {}
                     for k, v in value.items():
-                        if isinstance(v, str) and v.startswith(
-                            self._encryption.VERSION_PREFIX
-                        ):
+                        if isinstance(v, str) and v.startswith(self._encryption.VERSION_PREFIX):
                             try:
                                 processed[k] = self._encryption.decrypt_string(v)
                             except ValueError:
@@ -325,9 +311,7 @@ class FieldEncryptor:
             if not encrypt:
                 obj[field] = "[DECRYPTION ERROR]"
 
-    def encrypt_phi_fields(
-        self, data: dict[str, Any], phi_fields: set[str]
-    ) -> dict[str, Any]:
+    def encrypt_phi_fields(self, data: dict[str, Any], phi_fields: set[str]) -> dict[str, Any]:
         """Encrypt all PHI fields in a data structure.
 
         This is a convenience method for encrypting all PHI fields in a single call.
@@ -341,9 +325,7 @@ class FieldEncryptor:
         """
         return self.encrypt_fields(data, list(phi_fields))
 
-    def decrypt_phi_fields(
-        self, data: dict[str, Any], phi_fields: set[str]
-    ) -> dict[str, Any]:
+    def decrypt_phi_fields(self, data: dict[str, Any], phi_fields: set[str]) -> dict[str, Any]:
         """Decrypt all PHI fields in a data structure.
 
         This is a convenience method for decrypting all PHI fields in a single call.

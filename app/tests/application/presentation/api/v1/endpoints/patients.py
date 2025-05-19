@@ -285,24 +285,18 @@ async def get_patient_endpoint(patient_id: str) -> dict[str, Any]:
             _save_patient(stub)  # Cache for subsequent operations
             patient = stub
         else:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
 
     return patient
 
 
 @router.patch("/{patient_id}", status_code=status.HTTP_200_OK)
-async def update_patient_endpoint(
-    patient_id: str, update_data: dict[str, Any]
-) -> dict[str, Any]:
+async def update_patient_endpoint(patient_id: str, update_data: dict[str, Any]) -> dict[str, Any]:
     """Update an existing patient."""
 
     patient = _get_patient(patient_id)
     if not patient:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
 
     # We support both *dict* and *object* representations that originate from
     # different parts of the test‑suite.  This keeps the public behaviour
@@ -316,9 +310,7 @@ async def update_patient_endpoint(
             setattr(patient, key, value)
 
     _save_patient(
-        patient
-        if isinstance(patient, dict)
-        else {**vars(patient)}  # normalise for store
+        patient if isinstance(patient, dict) else {**vars(patient)}  # normalise for store
     )
 
     # FastAPI will serialise SimpleNamespace objects via our ``model_dump`` shim

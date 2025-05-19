@@ -52,8 +52,6 @@ class IClinicalSessionRepository(ABC):
         pass
 
     @abstractmethod
-    async def list_by_appointment_id(
-        self, appointment_id: UUID
-    ) -> list[ClinicalSession]:
+    async def list_by_appointment_id(self, appointment_id: UUID) -> list[ClinicalSession]:
         """List clinical sessions associated with a specific appointment ID."""
         pass

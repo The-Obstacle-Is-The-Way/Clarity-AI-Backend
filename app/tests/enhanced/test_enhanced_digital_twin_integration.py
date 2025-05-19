@@ -353,9 +353,7 @@ async def test_clinical_insight_generation(enhanced_services, patient_id, initia
 
 
 @pytest.mark.asyncio
-async def test_treatment_response_prediction(
-    enhanced_services, patient_id, initial_data
-):
+async def test_treatment_response_prediction(enhanced_services, patient_id, initial_data):
     """Test prediction of treatment response using the Digital Twin."""
     digital_twin_service, _, xgboost_service, _ = enhanced_services
 
@@ -399,9 +397,7 @@ async def test_treatment_response_prediction(
 
 
 @pytest.mark.asyncio
-async def test_digital_twin_event_processing(
-    enhanced_services, patient_id, initial_data
-):
+async def test_digital_twin_event_processing(enhanced_services, patient_id, initial_data):
     """Test event processing in the Digital Twin."""
     digital_twin_service, _, _, _ = enhanced_services
 
@@ -480,9 +476,7 @@ async def test_clinical_summary_generation(enhanced_services, patient_id, initia
 
 
 @pytest.mark.asyncio
-async def test_visualization_data_generation(
-    enhanced_services, patient_id, initial_data
-):
+async def test_visualization_data_generation(enhanced_services, patient_id, initial_data):
     """Test generation of visualization data."""
     digital_twin_service, _, _, _ = enhanced_services
 

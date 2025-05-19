@@ -15,9 +15,7 @@ from datetime import datetime
 from typing import Any
 
 # Add the root directory to Python path
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
-)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
 
 class DirectSecurityTestRunner:
@@ -129,20 +127,13 @@ class DirectSecurityTestRunner:
                 continue
 
             # Look for test result lines but handle safely
-            if (
-                " PASSED " in line
-                or " FAILED " in line
-                or " ERROR " in line
-                or " SKIPPED " in line
-            ):
+            if " PASSED " in line or " FAILED " in line or " ERROR " in line or " SKIPPED " in line:
                 try:
                     # Extract test name safely
                     parts = line.split("::")
                     if len(parts) >= 2:
                         # Handle full test path with class and method
-                        test_name = parts[-1].split()[
-                            0
-                        ]  # Get the last part and remove status
+                        test_name = parts[-1].split()[0]  # Get the last part and remove status
                     else:
                         # Simplified naming
                         test_name = line.split()[0]
@@ -175,18 +166,14 @@ class DirectSecurityTestRunner:
         # If we couldn't parse any tests, try the summary line
         if results["total"] == 0:
             # Look for the summary line (e.g., "5 passed, 2 failed in 0.23s")
-            summary_pattern = (
-                r"(\d+) passed(, (\d+) failed)?(, (\d+) error)?(, (\d+) skipped)? in"
-            )
+            summary_pattern = r"(\d+) passed(, (\d+) failed)?(, (\d+) error)?(, (\d+) skipped)? in"
             match = re.search(summary_pattern, output)
             if match:
                 try:
                     results["passed"] = int(match.group(1) or 0)
                     results["failed"] = int(match.group(3) or 0)
                     results["errors"] = int(match.group(5) or 0)
-                    results["total"] = (
-                        results["passed"] + results["failed"] + results["errors"]
-                    )
+                    results["total"] = results["passed"] + results["failed"] + results["errors"]
                 except (ValueError, IndexError):
                     # If summary parsing fails, keep zeros
                     pass
@@ -231,9 +218,7 @@ class DirectSecurityTestRunner:
         print(f"Duration: {self.results['duration_seconds']:.2f} seconds")
 
         # Save results to file
-        report_filename = (
-            f"security_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        )
+        report_filename = f"security_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         report_path = os.path.join(self.output_path, report_filename)
         with open(report_path, "w") as f:
             json.dump(self.results, f, indent=2)

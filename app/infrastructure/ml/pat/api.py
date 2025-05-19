@@ -115,14 +115,10 @@ async def analyze_actigraphy_data(
         # Create analysis result
         analysis_result = AnalysisResult(
             analysis_id=str(uuid.uuid4()),
-            patient_id=request.patient_metadata.patient_id
-            if request.patient_metadata
-            else None,
+            patient_id=request.patient_metadata.patient_id if request.patient_metadata else None,
             analysis_type=request.analysis_type,
             timestamp=datetime.now(),
-            model_version=results.get(
-                "model_version", f"PAT-{request.model_size.value.upper()}"
-            ),
+            model_version=results.get("model_version", f"PAT-{request.model_size.value.upper()}"),
             confidence_score=results.get("confidence_score", 0.0),
             metrics=results.get("metrics", {}),
             insights=results.get("insights", []),

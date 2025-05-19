@@ -29,9 +29,7 @@ class AlertRepository(IAlertRepository):
     HIPAA compliance, including data encryption and access controls.
     """
 
-    def __init__(
-        self, db_session: AsyncSession, encryption_service: IEncryptionService
-    ):
+    def __init__(self, db_session: AsyncSession, encryption_service: IEncryptionService):
         """
         Initialize the alert repository.
 
@@ -61,9 +59,7 @@ class AlertRepository(IAlertRepository):
             if isinstance(alert.alert_type, AlertType)
             else alert.alert_type,
             timestamp=alert.timestamp,
-            status=alert.status.value
-            if isinstance(alert.status, AlertStatus)
-            else alert.status,
+            status=alert.status.value if isinstance(alert.status, AlertStatus) else alert.status,
             priority=alert.priority.value
             if isinstance(alert.priority, AlertPriority)
             else alert.priority,
@@ -100,9 +96,7 @@ class AlertRepository(IAlertRepository):
             AuthenticationError: If user does not have permission to access this alert
         """
         # Query for alert
-        result = await self._db_session.execute(
-            select(AlertModel).where(AlertModel.id == alert_id)
-        )
+        result = await self._db_session.execute(select(AlertModel).where(AlertModel.id == alert_id))
         alert_model = result.scalars().first()
 
         if not alert_model:
@@ -138,9 +132,7 @@ class AlertRepository(IAlertRepository):
             raise ValueError("Alert ID is required for updates")
 
         # Query for existing alert
-        result = await self._db_session.execute(
-            select(AlertModel).where(AlertModel.id == alert.id)
-        )
+        result = await self._db_session.execute(select(AlertModel).where(AlertModel.id == alert.id))
         alert_model = result.scalars().first()
 
         if not alert_model:
@@ -148,14 +140,10 @@ class AlertRepository(IAlertRepository):
 
         # Update model fields
         alert_model.status = (
-            alert.status.value
-            if isinstance(alert.status, AlertStatus)
-            else alert.status
+            alert.status.value if isinstance(alert.status, AlertStatus) else alert.status
         )
         alert_model.priority = (
-            alert.priority.value
-            if isinstance(alert.priority, AlertPriority)
-            else alert.priority
+            alert.priority.value if isinstance(alert.priority, AlertPriority) else alert.priority
         )
         alert_model.message = self._encryption_service.encrypt(alert.message)
         alert_model.data = self._encryption_service.encrypt_json(alert.data)
@@ -182,9 +170,7 @@ class AlertRepository(IAlertRepository):
             True if deleted successfully, False otherwise
         """
         # Query for alert
-        result = await self._db_session.execute(
-            select(AlertModel).where(AlertModel.id == alert_id)
-        )
+        result = await self._db_session.execute(select(AlertModel).where(AlertModel.id == alert_id))
         alert_model = result.scalars().first()
 
         if not alert_model:
@@ -232,43 +218,27 @@ class AlertRepository(IAlertRepository):
             query = query.where(AlertModel.status == status_value)
 
         if priority:
-            priority_value = (
-                priority.value if isinstance(priority, AlertPriority) else priority
-            )
+            priority_value = priority.value if isinstance(priority, AlertPriority) else priority
             query = query.where(AlertModel.priority == priority_value)
 
         if alert_type:
-            alert_type_value = (
-                alert_type.value if isinstance(alert_type, AlertType) else alert_type
-            )
+            alert_type_value = alert_type.value if isinstance(alert_type, AlertType) else alert_type
             query = query.where(AlertModel.alert_type == alert_type_value)
 
         if start_date and end_date:
             # Parse dates if they're strings
             start = (
-                datetime.fromisoformat(start_date)
-                if isinstance(start_date, str)
-                else start_date
+                datetime.fromisoformat(start_date) if isinstance(start_date, str) else start_date
             )
-            end = (
-                datetime.fromisoformat(end_date)
-                if isinstance(end_date, str)
-                else end_date
-            )
+            end = datetime.fromisoformat(end_date) if isinstance(end_date, str) else end_date
             query = query.where(between(AlertModel.timestamp, start, end))
         elif start_date:
             start = (
-                datetime.fromisoformat(start_date)
-                if isinstance(start_date, str)
-                else start_date
+                datetime.fromisoformat(start_date) if isinstance(start_date, str) else start_date
             )
             query = query.where(AlertModel.timestamp >= start)
         elif end_date:
-            end = (
-                datetime.fromisoformat(end_date)
-                if isinstance(end_date, str)
-                else end_date
-            )
+            end = datetime.fromisoformat(end_date) if isinstance(end_date, str) else end_date
             query = query.where(AlertModel.timestamp <= end)
 
         # Order by timestamp descending (newest first)
@@ -303,9 +273,7 @@ class AlertRepository(IAlertRepository):
             return True
 
         # Check if user is a provider with access to this patient
-        result = await self._db_session.execute(
-            select(UserModel).where(UserModel.id == user_id)
-        )
+        result = await self._db_session.execute(select(UserModel).where(UserModel.id == user_id))
         user = result.scalars().first()
 
         if not user:
@@ -316,9 +284,7 @@ class AlertRepository(IAlertRepository):
         if user.role == "provider":
             return True
 
-        raise AuthenticationError(
-            f"User {user_id} does not have access to alerts for {subject_id}"
-        )
+        raise AuthenticationError(f"User {user_id} does not have access to alerts for {subject_id}")
 
     async def can_delete_alert(self, user_id: str, alert_id: str) -> bool:
         """
@@ -332,9 +298,7 @@ class AlertRepository(IAlertRepository):
             True if user can delete the alert, False otherwise
         """
         # Query for alert
-        result = await self._db_session.execute(
-            select(AlertModel).where(AlertModel.id == alert_id)
-        )
+        result = await self._db_session.execute(select(AlertModel).where(AlertModel.id == alert_id))
         alert_model = result.scalars().first()
 
         if not alert_model:
@@ -345,9 +309,7 @@ class AlertRepository(IAlertRepository):
             return True
 
         # Check if user is a provider with access to this patient
-        result = await self._db_session.execute(
-            select(UserModel).where(UserModel.id == user_id)
-        )
+        result = await self._db_session.execute(select(UserModel).where(UserModel.id == user_id))
         user = result.scalars().first()
 
         if not user:

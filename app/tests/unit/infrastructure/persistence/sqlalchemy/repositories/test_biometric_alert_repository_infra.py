@@ -410,9 +410,7 @@ class TestSQLAlchemyBiometricAlertRepository:
         assert repository.session == mock_session
 
     @pytest.mark.asyncio
-    async def test_save_new_alert(
-        self, mock_session: AsyncMock, sample_alert: BiometricAlert
-    ):
+    async def test_save_new_alert(self, mock_session: AsyncMock, sample_alert: BiometricAlert):
         """Test saving a new biometric alert."""
         # Arrange
         # Use patch to mock the internal implementation of the repository methods
@@ -514,9 +512,7 @@ class TestSQLAlchemyBiometricAlertRepository:
         # Use MagicMock instead of AsyncMock for the nested mock objects to avoid coroutine issues
         mock_result = AsyncMock()
         mock_scalars = MagicMock()  # Changed from AsyncMock to MagicMock
-        mock_scalars.all = MagicMock(
-            return_value=[sample_alert_model]
-        )  # Direct assignment
+        mock_scalars.all = MagicMock(return_value=[sample_alert_model])  # Direct assignment
         mock_result.scalars = MagicMock(return_value=mock_scalars)  # Direct assignment
         mock_session.execute.return_value = mock_result
 

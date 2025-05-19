@@ -108,9 +108,7 @@ class PatientModel(Base):
         """Convert PatientModel to domain Patient entity."""
         address_obj = Address(**self.address) if self.address else None
         emergency_contact_obj = (
-            EmergencyContact(**self.emergency_contact)
-            if self.emergency_contact
-            else None
+            EmergencyContact(**self.emergency_contact) if self.emergency_contact else None
         )
 
         return Patient(

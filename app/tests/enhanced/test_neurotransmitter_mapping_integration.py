@@ -97,9 +97,7 @@ async def test_neurotransmitter_mapping_initialization(
     (digital_twin_service,) = enhanced_services
 
     # Initialize the mapping
-    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(
-        patient_id=patient_id
-    )
+    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
 
     # Verify mapping was created
     assert mapping is not None
@@ -117,9 +115,7 @@ async def test_neurotransmitter_mapping_initialization(
     assert BrainRegion.PITUITARY in brain_regions  # Added as per memory record
 
     # Check that all major neurotransmitters are represented
-    neurotransmitters = {
-        profile.neurotransmitter for profile in mapping.receptor_profiles
-    }
+    neurotransmitters = {profile.neurotransmitter for profile in mapping.receptor_profiles}
     assert Neurotransmitter.SEROTONIN in neurotransmitters
     assert Neurotransmitter.DOPAMINE in neurotransmitters
     assert Neurotransmitter.GABA in neurotransmitters
@@ -136,9 +132,7 @@ async def test_add_custom_receptor_profile(
     (digital_twin_service,) = enhanced_services
 
     # Initialize the mapping
-    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(
-        patient_id=patient_id
-    )
+    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
 
     # Create a custom profile
     custom_profile = ReceptorProfile(
@@ -152,14 +146,10 @@ async def test_add_custom_receptor_profile(
     )
 
     # Add the custom profile
-    await digital_twin_service.add_receptor_profile(
-        patient_id=patient_id, profile=custom_profile
-    )
+    await digital_twin_service.add_receptor_profile(patient_id=patient_id, profile=custom_profile)
 
     # Get the updated mapping
-    updated_mapping = await digital_twin_service.get_neurotransmitter_mapping(
-        patient_id=patient_id
-    )
+    updated_mapping = await digital_twin_service.get_neurotransmitter_mapping(patient_id=patient_id)
 
     # Find the custom profile
     matching_profiles = [
@@ -189,9 +179,7 @@ async def test_simulate_neurotransmitter_cascade(
     (digital_twin_service,) = enhanced_services
 
     # Initialize mapping first
-    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(
-        patient_id=patient_id
-    )
+    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
 
     # Simulate medication effect
     initial_changes = {
@@ -243,9 +231,7 @@ async def test_analyze_neurotransmitter_interactions(
     (digital_twin_service,) = enhanced_services
 
     # Initialize mapping first
-    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(
-        patient_id=patient_id
-    )
+    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
 
     # Analyze interactions
     interactions = await digital_twin_service.analyze_neurotransmitter_interactions(
@@ -284,9 +270,7 @@ async def test_predict_medication_effects(
     (digital_twin_service,) = enhanced_services
 
     # Initialize mapping first
-    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(
-        patient_id=patient_id
-    )
+    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
 
     # Define medication data
     medication_data = {
@@ -338,9 +322,7 @@ async def test_analyze_treatment_response(
     (digital_twin_service,) = enhanced_services
 
     # Initialize mapping first
-    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(
-        patient_id=patient_id
-    )
+    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
 
     # Analyze temporal response
     temporal_analysis = await digital_twin_service.analyze_temporal_response(
@@ -375,9 +357,7 @@ async def test_analyze_treatment_response(
 
     # Verify peak and stabilization days are reasonable
     assert temporal_analysis["peak_response_day"] > 0
-    assert (
-        temporal_analysis["stabilization_day"] >= temporal_analysis["peak_response_day"]
-    )
+    assert temporal_analysis["stabilization_day"] >= temporal_analysis["peak_response_day"]
 
 
 @pytest.mark.asyncio
@@ -390,9 +370,7 @@ async def test_generate_clinical_insights(
     (digital_twin_service,) = enhanced_services
 
     # Initialize mapping first
-    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(
-        patient_id=patient_id
-    )
+    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
 
     # Generate clinical insights
     insights = await digital_twin_service.generate_clinical_insights(
@@ -435,9 +413,7 @@ async def test_analyze_regional_neurotransmitter_effects(
     (digital_twin_service,) = enhanced_services
 
     # Initialize mapping first
-    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(
-        patient_id=patient_id
-    )
+    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
 
     # Analyze regional effects
     analysis_results = await digital_twin_service.analyze_regional_effects(
@@ -487,9 +463,7 @@ async def test_integrated_neurotransmitter_mapping_with_visualization(
     (digital_twin_service,) = enhanced_services
 
     # Initialize mapping first
-    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(
-        patient_id=patient_id
-    )
+    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
 
     # Simulate medication effect
     initial_changes = {
@@ -516,15 +490,12 @@ async def test_integrated_neurotransmitter_mapping_with_visualization(
     assert "regions" in brain_viz
 
     # Check that there are activated regions
-    activated_regions = [
-        r for r in brain_viz["regions"] if r.get("activation", 0) > 0.5
-    ]
+    activated_regions = [r for r in brain_viz["regions"] if r.get("activation", 0) > 0.5]
     assert len(activated_regions) > 0
 
     # Check that neurotransmitter data is included
     assert "neurotransmitters" in brain_viz
     # Look for a neurotransmitter object with the correct id
     assert any(
-        nt["id"] == Neurotransmitter.SEROTONIN.value
-        for nt in brain_viz["neurotransmitters"]
+        nt["id"] == Neurotransmitter.SEROTONIN.value for nt in brain_viz["neurotransmitters"]
     )

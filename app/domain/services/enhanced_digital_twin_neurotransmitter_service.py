@@ -20,9 +20,7 @@ class EnhancedDigitalTwinNeurotransmitterService(ABC):
     """
 
     @abstractmethod
-    async def get_neurotransmitter_mapping(
-        self, patient_id: UUID
-    ) -> NeurotransmitterMapping:
+    async def get_neurotransmitter_mapping(self, patient_id: UUID) -> NeurotransmitterMapping:
         """
         Get the neurotransmitter mapping for a patient.
 

@@ -13,9 +13,7 @@ import uuid
 from datetime import UTC, datetime
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 # Add the backend directory to sys.path if needed
@@ -71,9 +69,7 @@ TEST_PASSWORD_HASH = "hashed_password_for_testing_only"
 async def verify_table_exists(session: AsyncSession, table_name: str) -> bool:
     """Verify that a table exists in the database."""
     try:
-        query = text(
-            f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'"
-        )
+        query = text(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'")
         result = await session.execute(query)
         exists = result.scalar() is not None
 
@@ -83,9 +79,7 @@ async def verify_table_exists(session: AsyncSession, table_name: str) -> bool:
             columns_result = await session.execute(columns_query)
             columns = columns_result.fetchall()
             column_names = [col[1] for col in columns]
-            logger.info(
-                f"Table {table_name} exists with {len(columns)} columns: {column_names}"
-            )
+            logger.info(f"Table {table_name} exists with {len(columns)} columns: {column_names}")
             return len(columns) > 0
         logger.error(f"Table {table_name} does not exist")
         return False

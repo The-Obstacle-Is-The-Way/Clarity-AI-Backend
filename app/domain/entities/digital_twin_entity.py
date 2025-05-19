@@ -115,9 +115,7 @@ class DigitalTwinState:
     patient_id: UUID
     timestamp: datetime
     brain_regions: dict[BrainRegion, BrainRegionState] = field(default_factory=dict)
-    neurotransmitters: dict[Neurotransmitter, NeurotransmitterState] = field(
-        default_factory=dict
-    )
+    neurotransmitters: dict[Neurotransmitter, NeurotransmitterState] = field(default_factory=dict)
     neural_connections: list[NeuralConnection] = field(default_factory=list)
     clinical_insights: list[ClinicalInsight] = field(default_factory=list)
     temporal_patterns: list[TemporalPattern] = field(default_factory=list)

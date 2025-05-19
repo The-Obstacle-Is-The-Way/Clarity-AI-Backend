@@ -50,9 +50,7 @@ class DiagnosisCode:
 
         # Validate DSM-5 format
         elif self.system == CodeSystem.DSM5:
-            if not self.code.startswith(
-                ("DSM-5-", "2", "3", "4", "5", "6", "7", "8", "9")
-            ):
+            if not self.code.startswith(("DSM-5-", "2", "3", "4", "5", "6", "7", "8", "9")):
                 raise ValueError(f"Invalid DSM-5 code format: {self.code}")
 
     @property

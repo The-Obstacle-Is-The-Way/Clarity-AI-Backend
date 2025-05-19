@@ -87,9 +87,7 @@ class TestMockPAT:
         assert pat.configured is True
         assert pat.delay_ms == 100
 
-    def test_analyze_actigraphy_success(
-        self, mock_pat, sample_readings, sample_device_info
-    ):
+    def test_analyze_actigraphy_success(self, mock_pat, sample_readings, sample_device_info):
         """Test successful actigraphy analysis."""
         result = mock_pat.analyze_actigraphy(
             patient_id="test-patient",
@@ -108,9 +106,7 @@ class TestMockPAT:
         assert "metrics" in result
         assert "general" in result["metrics"]
 
-    def test_analyze_actigraphy_with_all_types(
-        self, mock_pat, sample_readings, sample_device_info
-    ):
+    def test_analyze_actigraphy_with_all_types(self, mock_pat, sample_readings, sample_device_info):
         """Test actigraphy analysis with all analysis types."""
         result = mock_pat.analyze_actigraphy(
             patient_id="test-patient",
@@ -175,9 +171,7 @@ class TestMockPAT:
 
         excinfo.match(r"^Sampling rate must be positive")
 
-    def test_analyze_actigraphy_insufficient_readings(
-        self, mock_pat, sample_device_info
-    ):
+    def test_analyze_actigraphy_insufficient_readings(self, mock_pat, sample_device_info):
         """Test actigraphy analysis with insufficient readings."""
         # Create a list with only 5 readings
         readings = []
@@ -206,18 +200,14 @@ class TestMockPAT:
 
         excinfo.match(r"^At least 10 readings are required")
 
-    def test_analyze_actigraphy_invalid_reading_format(
-        self, mock_pat, sample_device_info
-    ):
+    def test_analyze_actigraphy_invalid_reading_format(self, mock_pat, sample_device_info):
         """Test analysis with invalid reading format. Ensure enough readings are provided first."""
         # Create 10 readings, with the first one malformed (missing timestamp)
         malformed_readings = [{"x": 0.1, "y": 0.2, "z": 0.9}]  # Malformed first reading
         for i in range(1, 10):  # Add 9 more valid readings
             malformed_readings.append(
                 {
-                    "timestamp": (
-                        datetime.now(timezone.utc) - timedelta(seconds=i)
-                    ).isoformat(),
+                    "timestamp": (datetime.now(timezone.utc) - timedelta(seconds=i)).isoformat(),
                     "x": 0.1 + i * 0.01,
                     "y": 0.2 + i * 0.01,
                     "z": 0.9 - i * 0.01,
@@ -285,9 +275,7 @@ class TestMockPAT:
         magnitude = sum(x**2 for x in vector) ** 0.5
         assert abs(magnitude - 1.0) < 1e-6  # Should be very close to 1.0
 
-    def test_get_analysis_by_id_success(
-        self, mock_pat, sample_readings, sample_device_info
-    ):
+    def test_get_analysis_by_id_success(self, mock_pat, sample_readings, sample_device_info):
         """Test successful retrieval of analysis by ID."""
         # First, create an analysis
         result = mock_pat.analyze_actigraphy(
@@ -319,9 +307,7 @@ class TestMockPAT:
 
         excinfo.match(r"^Analysis not found")
 
-    def test_get_patient_analyses_success(
-        self, mock_pat, sample_readings, sample_device_info
-    ):
+    def test_get_patient_analyses_success(self, mock_pat, sample_readings, sample_device_info):
         """Test successful retrieval of patient analyses."""
         # Create multiple analyses for the same patient
         for i in range(3):
@@ -490,10 +476,6 @@ class TestMockPAT:
     def test_uninitialized_error(self) -> None:
         """Test calling methods before initialization."""
         # Create a fresh instance of MockPATService that's guaranteed to be uninitialized
-        uninitialized_service = (
-            MockPAT()
-        )  # Corrected: Use MockPAT as defined by `as MockPAT`
-        with pytest.raises(
-            InitializationError
-        ):  # InitializationError is from base_exceptions
+        uninitialized_service = MockPAT()  # Corrected: Use MockPAT as defined by `as MockPAT`
+        with pytest.raises(InitializationError):  # InitializationError is from base_exceptions
             uninitialized_service.get_model_info()

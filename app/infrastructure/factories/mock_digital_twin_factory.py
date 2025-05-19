@@ -27,9 +27,7 @@ class MockDigitalTwinFactory:
     """
 
     @staticmethod
-    def create_repositories() -> (
-        tuple[MockDigitalTwinRepository, MockPatientRepository]
-    ):
+    def create_repositories() -> tuple[MockDigitalTwinRepository, MockPatientRepository]:
         """
         Create the mock repositories needed for the Digital Twin.
 
@@ -42,9 +40,7 @@ class MockDigitalTwinFactory:
         return digital_twin_repository, patient_repository
 
     @staticmethod
-    def create_ai_services() -> (
-        tuple[MockXGBoostService, MockPATService, MockMentalLLaMAService]
-    ):
+    def create_ai_services() -> tuple[MockXGBoostService, MockPATService, MockMentalLLaMAService]:
         """
         Create the mock AI services needed for the Digital Twin.
 

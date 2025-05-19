@@ -99,20 +99,14 @@ class PharmacogenomicsServiceImpl(PharmacogenomicsService):
                 "response_probability": response_prediction["probability"],
                 "confidence_score": response_prediction["confidence"],
                 "relevant_genetic_markers": response_prediction["relevant_markers"],
-                "recommendation": self._generate_medication_recommendation(
-                    response_prediction
-                ),
+                "recommendation": self._generate_medication_recommendation(response_prediction),
             }
 
-            logger.info(
-                f"Medication response prediction completed for patient {patient_id}"
-            )
+            logger.info(f"Medication response prediction completed for patient {patient_id}")
             return result
 
         except Exception as e:
-            logger.error(
-                f"Error predicting medication response for patient {patient_id}: {e!s}"
-            )
+            logger.error(f"Error predicting medication response for patient {patient_id}: {e!s}")
             raise RuntimeError(f"Failed to predict medication response: {e!s}")
 
     async def analyze_gene_interactions(
@@ -155,18 +149,14 @@ class PharmacogenomicsServiceImpl(PharmacogenomicsService):
                 "medications_analyzed": medications,
                 "gene_interactions": interactions,
                 "contraindications": contraindications,
-                "summary": self._generate_interaction_summary(
-                    interactions, contraindications
-                ),
+                "summary": self._generate_interaction_summary(interactions, contraindications),
             }
 
             logger.info(f"Gene interaction analysis completed for patient {patient_id}")
             return result
 
         except Exception as e:
-            logger.error(
-                f"Error analyzing gene interactions for patient {patient_id}: {e!s}"
-            )
+            logger.error(f"Error analyzing gene interactions for patient {patient_id}: {e!s}")
             raise RuntimeError(f"Failed to analyze gene interactions: {e!s}")
 
     async def generate_treatment_plan(
@@ -188,9 +178,7 @@ class PharmacogenomicsServiceImpl(PharmacogenomicsService):
         Returns:
             Dictionary containing personalized treatment plan recommendations
         """
-        logger.info(
-            f"Generating treatment plan for patient {patient_id}, condition: {condition}"
-        )
+        logger.info(f"Generating treatment plan for patient {patient_id}, condition: {condition}")
 
         try:
             # Preprocess the input data
@@ -219,14 +207,10 @@ class PharmacogenomicsServiceImpl(PharmacogenomicsService):
             return result
 
         except Exception as e:
-            logger.error(
-                f"Error generating treatment plan for patient {patient_id}: {e!s}"
-            )
+            logger.error(f"Error generating treatment plan for patient {patient_id}: {e!s}")
             raise RuntimeError(f"Failed to generate treatment plan: {e!s}")
 
-    def _identify_contraindications(
-        self, interactions: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+    def _identify_contraindications(self, interactions: dict[str, Any]) -> list[dict[str, Any]]:
         """Identify contraindications from gene-medication interactions."""
         contraindications = []
 
@@ -243,9 +227,7 @@ class PharmacogenomicsServiceImpl(PharmacogenomicsService):
 
         return contraindications
 
-    def _generate_medication_recommendation(
-        self, response_prediction: dict[str, Any]
-    ) -> str:
+    def _generate_medication_recommendation(self, response_prediction: dict[str, Any]) -> str:
         """Generate a recommendation based on predicted medication response."""
         # Implementation would create a recommendation based on the prediction
         # This is a placeholder for the actual implementation
