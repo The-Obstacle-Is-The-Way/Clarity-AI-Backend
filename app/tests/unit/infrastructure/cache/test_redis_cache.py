@@ -36,19 +36,20 @@ def mock_redis_client():
     mock_client.ttl = AsyncMock(return_value=300)
     return mock_client
 
+
 @pytest.fixture
 def redis_cache(mock_redis_client):
     """Create a RedisCache instance with a mock Redis client."""
-    with patch('redis.asyncio.from_url', return_value=mock_redis_client):
+    with patch("redis.asyncio.from_url", return_value=mock_redis_client):
         # The connection_url is mocked, so the actual URL doesn't matter here
         cache = RedisCache(connection_url="redis://mocked:6379/0")
         # Directly assign the mock client after initialization for testing
         cache.redis_client = mock_redis_client
         return cache
 
+
 # Group tests within a class
 class TestRedisCache:
-
     @pytest.mark.asyncio
     async def test_get_nonexistent_key(self, redis_cache, mock_redis_client):
         """Test getting a nonexistent key returns None."""
@@ -118,7 +119,7 @@ class TestRedisCache:
         circular_ref = {"self_ref": None}
         circular_ref["self_ref"] = circular_ref
 
-        with patch('json.dumps', side_effect=TypeError("Circular reference")):
+        with patch("json.dumps", side_effect=TypeError("Circular reference")):
             success = await redis_cache.set("error-key", circular_ref, 60)
 
         assert success is False
@@ -254,26 +255,34 @@ class TestRedisCache:
         assert ttl is None
         mock_redis_client.ttl.assert_called_once_with("error-key")
 
+
 # These tests don't need the class structure or fixtures
 def test_no_redis_available():
     """Test graceful degradation when Redis is not available."""
-    with patch('redis.asyncio.from_url', side_effect=Exception("Connection error")):
-        cache = RedisCache(connection_url="redis://unavailable:6379/0") # Use a different URL for clarity
+    with patch("redis.asyncio.from_url", side_effect=Exception("Connection error")):
+        cache = RedisCache(
+            connection_url="redis://unavailable:6379/0"
+        )  # Use a different URL for clarity
         assert cache.redis_client is None
+
 
 @pytest.mark.asyncio
 async def test_methods_with_no_redis_client():
     """Test all methods gracefully handle when Redis client is not available."""
     # Simulate Redis not being available during initialization
-    with patch('redis.asyncio.from_url', side_effect=Exception("Connection error")):
+    with patch("redis.asyncio.from_url", side_effect=Exception("Connection error")):
         cache = RedisCache(connection_url="redis://unavailable:6379/0")
 
-    assert cache.redis_client is None # Ensure client is None
+    assert cache.redis_client is None  # Ensure client is None
 
     # Test all methods
     assert await cache.get("any-key") is None
     assert await cache.set("any-key", "value") is False
-    assert await cache.delete_bool("any-key") is False  # Use delete_bool for boolean return
+    assert (
+        await cache.delete_bool("any-key") is False
+    )  # Use delete_bool for boolean return
     assert await cache.exists("any-key") is False
-    assert await cache.increment_with_none("any-key") is None  # Use increment_with_none for None return
+    assert (
+        await cache.increment_with_none("any-key") is None
+    )  # Use increment_with_none for None return
     assert await cache.get_ttl("any-key") is None

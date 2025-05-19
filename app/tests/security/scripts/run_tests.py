@@ -28,6 +28,7 @@ def run_quantum_security_tests():
     test_runner.run_all_tests()
     return test_runner.results
 
+
 class SecurityTestRunner:
     """Quantum-grade test collector and runner for NovaMind security tests."""
 
@@ -38,8 +39,7 @@ class SecurityTestRunner:
             output_path: Path to save test reports
         """
         self.base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-        self.output_path = output_path or os.path.join(
-            self.base_dir, "test_results")
+        self.output_path = output_path or os.path.join(self.base_dir, "test_results")
 
         # Ensure output directory exists
         os.makedirs(self.output_path, exist_ok=True)
@@ -106,13 +106,17 @@ class SecurityTestRunner:
         import uuid
 
         # Ensure test_results directory exists in scripts folder
-        results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_results")
+        results_dir = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "test_results"
+        )
         os.makedirs(results_dir, exist_ok=True)
-        
+
         # Create a unique report filename based on the test file
         test_filename = os.path.basename(test_file).replace(".py", "")
-        report_file = os.path.join(results_dir, f"report_{test_filename}_{uuid.uuid4().hex[:8]}.json")
-        
+        report_file = os.path.join(
+            results_dir, f"report_{test_filename}_{uuid.uuid4().hex[:8]}.json"
+        )
+
         # Construct pytest command with coverage
         cmd = (
             f"{sys.executable} -m pytest "
@@ -123,11 +127,18 @@ class SecurityTestRunner:
 
         print(f"Running: {cmd}")
         try:
-            result = subprocess.run(cmd, shell=True, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+
             print(f"pytest stdout: {result.stdout}")
             print(f"pytest stderr: {result.stderr}")
-            
+
             # Read the JSON report
             if os.path.exists(report_file):
                 with open(report_file) as f:
@@ -137,13 +148,10 @@ class SecurityTestRunner:
                     "success": False,
                     "error": f"Report file not found: {report_file}",
                     "stdout": result.stdout,
-                    "stderr": result.stderr
+                    "stderr": result.stderr,
                 }
         except Exception as e:
-            return {
-                "success": False,
-                "error": f"Error running test {test_file}: {e!s}"
-            }
+            return {"success": False, "error": f"Error running test {test_file}: {e!s}"}
 
     def parse_test_results(self, results: dict[str, Any]) -> dict[str, Any]:
         """Parse pytest JSON report into a simplified format.
@@ -223,7 +231,9 @@ class SecurityTestRunner:
             # Accumulate category summary
             for key in ["total", "passed", "failed", "skipped", "errors"]:
                 category_results["tests"][key] += parsed_results["summary"][key]
-                self.results["summary"][key] += parsed_results["summary"][key]  # Accumulate overall results here
+                self.results["summary"][key] += parsed_results["summary"][
+                    key
+                ]  # Accumulate overall results here
 
         # Store category results (moved outside the inner loop)
         self.results["categories"][category_name] = category_results
@@ -276,7 +286,8 @@ class SecurityTestRunner:
 
         # Save results to file
         results_file = os.path.join(
-            self.output_path, f"security_test_results_{start_time.strftime('%Y%m%d_%H%M%S')}.json"
+            self.output_path,
+            f"security_test_results_{start_time.strftime('%Y%m%d_%H%M%S')}.json",
         )
         with open(results_file, "w") as f:
             json.dump(self.results, f, indent=2)
@@ -286,12 +297,14 @@ class SecurityTestRunner:
             from dashboard.dashboard import generate_dashboard
 
             dashboard_file = os.path.join(
-                self.output_path, f"security_dashboard_{start_time.strftime('%Y%m%d_%H%M%S')}.html"
+                self.output_path,
+                f"security_dashboard_{start_time.strftime('%Y%m%d_%H%M%S')}.html",
             )
             generate_dashboard(self.results, dashboard_file)
             print(f"Dashboard generated at: {dashboard_file}")
         except ImportError:
             print("Dashboard generation module not available.")
+
 
 if __name__ == "__main__":
     run_quantum_security_tests()

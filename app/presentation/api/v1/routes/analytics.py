@@ -37,11 +37,7 @@ async def get_metrics() -> dict[str, Any]:
     # TODO: Implement actual service call
     # metrics = await analytics_service.get_system_metrics()
     # Placeholder implementation:
-    return {
-        "total_patients": 0,
-        "active_treatments": 0,
-        "average_outcome_score": 0.0
-    }
+    return {"total_patients": 0, "active_treatments": 0, "average_outcome_score": 0.0}
 
 
 @router.get("/patient/{patient_id}", response_model=dict[str, Any])
@@ -66,6 +62,6 @@ async def get_patient_analytics(patient_id: UUID) -> dict[str, Any]:
         "metrics": {
             "adherence_rate": 0.0,
             "symptom_improvement": 0.0,
-            "treatment_response": 0.0
-        }
+            "treatment_response": 0.0,
+        },
     }

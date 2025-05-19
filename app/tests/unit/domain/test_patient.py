@@ -8,17 +8,19 @@ import pytest
 
 from app.domain.entities.patient import Patient
 from app.domain.value_objects.address import Address
-from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
+from app.infrastructure.security.encryption.base_encryption_service import (
+    BaseEncryptionService,
+)
 
 
 @pytest.fixture
 def mock_encryption_service():
-
     """Create a mock encryption service."""
     mock = MagicMock(spec=BaseEncryptionService)
     mock.encrypt.side_effect = lambda x: f"encrypted_{x}"
     mock.decrypt.side_effect = lambda x: x.replace("encrypted_", "")
     return mock
+
 
 @pytest.fixture
 def valid_patient_data(mock_encryption_service):
@@ -31,17 +33,13 @@ def valid_patient_data(mock_encryption_service):
         "email": "john.doe@example.com",
         "phone": "123-456-7890",
         "address": Address(
-            street="123 Main St",
-            city="Anytown",
-            state="NY",
-            zip_code="12345"
+            street="123 Main St", city="Anytown", state="NY", zip_code="12345"
         ),
     }
 
 
 @pytest.mark.venv_only()
 def test_create_patient(valid_patient_data, mock_encryption_service):
-
     """Test patient creation with valid data."""
     # Create patient
     patient = Patient(**valid_patient_data)
@@ -59,7 +57,7 @@ def test_create_patient(valid_patient_data, mock_encryption_service):
 
     # Verify address (assuming it's still handled directly or via descriptor)
     # Adjust assertion if address handling changed
-    assert patient.address is not None 
+    assert patient.address is not None
     assert patient.address.street == "123 Main St"
     assert patient.address.city == "Anytown"
     assert patient.address.state == "NY"
@@ -74,6 +72,7 @@ def test_create_patient(valid_patient_data, mock_encryption_service):
     # Encryption service should not be called during entity creation
     assert not mock_encryption_service.encrypt.called
 
+
 def test_update_patient(valid_patient_data, mock_encryption_service):
     """Test patient update."""
     # Create initial patient using the modified fixture
@@ -82,10 +81,10 @@ def test_update_patient(valid_patient_data, mock_encryption_service):
     # Update patient - Use the update_contact_info method or direct assignment
     patient.update_contact_info(email="jane.smith@example.com", phone="987-654-3210")
     # Or: patient.contact_info = {'email': 'jane.smith@example.com', 'phone': '987-654-3210'}
-    
+
     # Update other fields if necessary (assuming Patient has an update method or direct assignment works)
-    patient.first_name="Jane" 
-    patient.last_name="Smith"
+    patient.first_name = "Jane"
+    patient.last_name = "Smith"
 
     # Verify updates on the domain entity (raw values)
     assert patient.first_name == "Jane"
@@ -103,13 +102,13 @@ def test_update_patient(valid_patient_data, mock_encryption_service):
 
 def test_patient_phi_masking(valid_patient_data):
     """Test PHI masking in patient data representation.
-       NOTE: Domain entity dump should return raw data. Masking is responsibility of other layers.
+    NOTE: Domain entity dump should return raw data. Masking is responsibility of other layers.
     """
     patient = Patient(**valid_patient_data)
 
     # Test entity dump returns raw data
-    patient_dict = patient.model_dump(exclude_none=True) # Use model_dump if available
-    
+    patient_dict = patient.model_dump(exclude_none=True)  # Use model_dump if available
+
     # Assert raw data is present in the dump
     assert patient_dict.get("first_name") == "John"
     assert patient_dict.get("last_name") == "Doe"

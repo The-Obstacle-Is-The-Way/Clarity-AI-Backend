@@ -33,9 +33,11 @@ def aws_config():
 def mock_boto3(mocker, request):
     """Fixture to mock boto3 clients and resources for tests that need it."""
 
-    # --- Mock boto3.client to return specific mocks per service --- 
+    # --- Mock boto3.client to return specific mocks per service ---
     mock_s3_instance = MagicMock()
-    mock_s3_instance.list_buckets.return_value = {"Buckets": [{"Name": "test-pat-bucket"}]}
+    mock_s3_instance.list_buckets.return_value = {
+        "Buckets": [{"Name": "test-pat-bucket"}]
+    }
     # Add other S3 mocks as needed...
 
     mock_sagemaker_instance = MagicMock()
@@ -62,10 +64,10 @@ def mock_boto3(mocker, request):
     #     else:
     #         # Default mock for any other service
     #         return MagicMock()
-            
+
     # mock_client.side_effect = client_side_effect
 
-    # --- Mock boto3.resource --- 
+    # --- Mock boto3.resource ---
     mock_dynamodb_table_instance = MagicMock()
 
     # Central mock for boto3.resource, targeting where it's imported in the service module
@@ -80,7 +82,7 @@ def mock_boto3(mocker, request):
 
     # mock_resource.side_effect = resource_side_effect
 
-    yield # Allow tests to run with mocks
+    yield  # Allow tests to run with mocks
 
 
 @pytest.fixture
@@ -95,8 +97,10 @@ def mock_dynamodb_resource(mocker, request):
     # Check if the 'simulate_load_failure' marker is present
     if hasattr(request, "param") and request.param == "simulate_load_failure":
         # Simulate ClientError on table.load()
-        error_response = {'Error': {'Code': 'ResourceNotFoundException', 'Message': 'Table not found'}}
-        operation_name = 'DescribeTable'
+        error_response = {
+            "Error": {"Code": "ResourceNotFoundException", "Message": "Table not found"}
+        }
+        operation_name = "DescribeTable"
         mock_table.load.side_effect = ClientError(error_response, operation_name)
 
     # Configure the mock resource's Table method to return the mock table
@@ -116,13 +120,13 @@ def mock_dynamodb_resource(mocker, request):
 #     client.detect_phi.return_value = {
 #         'Entities': [
 #             {
-#                 'Text': 'John Doe', 'Type': 'NAME', 'Score': 0.99, 
+#                 'Text': 'John Doe', 'Type': 'NAME', 'Score': 0.99,
 #                 'BeginOffset': 14, 'EndOffset': 22
 #             },
 #             {
 #                 # Adjusted BeginOffset from 32 to 33 to exclude leading space
-#                 'Text': '123 Main St.', 'Type': 'ADDRESS', 'Score': 0.98, 
-#                 'BeginOffset': 33, 'EndOffset': 44 
+#                 'Text': '123 Main St.', 'Type': 'ADDRESS', 'Score': 0.98,
+#                 'BeginOffset': 33, 'EndOffset': 44
 #             }
 #         ]
 #     }
@@ -141,7 +145,7 @@ def mock_s3_client(mocker):
 #     """Provides an AWSPATService instance initialized with mock resources."""
 #     # Use mocks for clients/resources
 #     service = AWSPATService(
-#         config=aws_config, 
+#         config=aws_config,
 #         dynamodb_resource=mock_dynamodb_resource,
 #         comprehend_medical_client=mock_comprehend_medical_client,
 #         s3_client=mock_s3_client
@@ -152,7 +156,7 @@ def mock_s3_client(mocker):
 
 # @pytest.mark.parametrize("mock_dynamodb_resource", ["simulate_load_failure"], indirect=True)
 # def test_initialization_failure(
-#     aws_config, 
+#     aws_config,
 #     mock_dynamodb_resource, # Result from the fixture (via indirect=True)
 #     mocker # Add mocker fixture
 # ):
@@ -180,9 +184,9 @@ def mock_s3_client(mocker):
 
 
 # def test_sanitize_phi(
-#     mock_comprehend_medical_client: MagicMock, 
-#     mock_dynamodb_resource: MagicMock, 
-#     mock_s3_client: MagicMock, 
+#     mock_comprehend_medical_client: MagicMock,
+#     mock_dynamodb_resource: MagicMock,
+#     mock_s3_client: MagicMock,
 #     aws_config: dict
 # ):
 #     """Test the _sanitize_phi method for correct PHI redaction."""
@@ -193,9 +197,9 @@ def mock_s3_client(mocker):
 #     # Ensure the correct, configured mock_comprehend_medical_client is passed.
 #     service.initialize(
 #         config=aws_config,
-#         comprehend_medical_client=mock_comprehend_medical_client, 
-#         dynamodb_resource=mock_dynamodb_resource, 
-#         s3_client=mock_s3_client 
+#         comprehend_medical_client=mock_comprehend_medical_client,
+#         dynamodb_resource=mock_dynamodb_resource,
+#         s3_client=mock_s3_client
 #     )
 
 #     text_with_phi = "Patient name: John Doe, lives at 123 Main St."
@@ -217,7 +221,7 @@ def mock_s3_client(mocker):
 #     # Ensure the service has been initialized and has the comprehend client
 #     assert hasattr(aws_pat_service, '_comprehend_medical') and aws_pat_service._comprehend_medical is not None
 #     mock_comprehend_medical = aws_pat_service._comprehend_medical
-    
+
 #     mock_comprehend_medical.detect_phi.side_effect = ClientError(
 #         {"Error": {"Code": "InternalServerError", "Message": "Test error"}}, "DetectPHI"
 #     )

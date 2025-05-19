@@ -16,13 +16,13 @@ logger = get_logger(__name__)
 _token_blacklist_repository_instance = None
 
 
-def get_token_blacklist_repository() -> 'TokenBlacklistRepository':
+def get_token_blacklist_repository() -> "TokenBlacklistRepository":
     """
     Get or create the token blacklist repository singleton instance.
-    
+
     This function follows the dependency injection pattern used throughout
     the application and provides a consistent way to access the repository.
-    
+
     Returns:
         TokenBlacklistRepository: The token blacklist repository instance
     """
@@ -35,7 +35,7 @@ def get_token_blacklist_repository() -> 'TokenBlacklistRepository':
 class TokenBlacklistRepository(ITokenRepository):
     """
     Repository implementation for managing blacklisted tokens.
-    
+
     This implementation uses in-memory storage for development/testing.
     For production, this should be replaced with a Redis or database implementation.
     """
@@ -45,15 +45,15 @@ class TokenBlacklistRepository(ITokenRepository):
         # In-memory storage for blacklisted tokens
         # Structure: {token: expiry_datetime}
         self._token_blacklist: dict[str, datetime] = {}
-        
+
         # User token mapping for quick revocation of all user tokens
         # Structure: {user_id: set(tokens)}
         self._user_tokens: dict[str, set[str]] = {}
-        
+
         # Session token mapping for quick revocation of all session tokens
         # Structure: {session_id: set(tokens)}
         self._session_tokens: dict[str, set[str]] = {}
-        
+
         logger.info("TokenBlacklistRepository initialized")
 
     async def blacklist_token(self, token: str, expires_at: datetime) -> None:
@@ -91,13 +91,13 @@ class TokenBlacklistRepository(ITokenRepository):
             # Check if token is in the blacklist
             if token not in self._token_blacklist:
                 return False
-                
+
             # Check if token has expired from the blacklist
             if self._token_blacklist[token] < datetime.now(datetime.UTC):
                 # Clean up expired token
                 del self._token_blacklist[token]
                 return False
-                
+
             return True
         except Exception as e:
             logger.error(f"Failed to check token blacklist: {e!s}")
@@ -117,15 +117,17 @@ class TokenBlacklistRepository(ITokenRepository):
             # Add an extra year to the expiration to ensure tokens are rejected
             now = datetime.now(datetime.UTC)
             expiry = now.replace(year=now.year + 1)
-            
+
             # Blacklist all user tokens
             if user_id in self._user_tokens:
                 for token in self._user_tokens[user_id]:
                     self._token_blacklist[token] = expiry
-                
+
                 # Log the number of tokens blacklisted
-                logger.info(f"Blacklisted {len(self._user_tokens[user_id])} tokens for user {user_id}")
-                
+                logger.info(
+                    f"Blacklisted {len(self._user_tokens[user_id])} tokens for user {user_id}"
+                )
+
         except Exception as e:
             logger.error(f"Failed to blacklist user tokens: {e!s}")
             raise RepositoryException(f"Failed to blacklist user tokens: {e!s}")
@@ -144,15 +146,17 @@ class TokenBlacklistRepository(ITokenRepository):
             # Add an extra year to the expiration to ensure tokens are rejected
             now = datetime.now(datetime.UTC)
             expiry = now.replace(year=now.year + 1)
-            
+
             # Blacklist all session tokens
             if session_id in self._session_tokens:
                 for token in self._session_tokens[session_id]:
                     self._token_blacklist[token] = expiry
-                
+
                 # Log the number of tokens blacklisted
-                logger.info(f"Blacklisted {len(self._session_tokens[session_id])} tokens for session {session_id}")
-                
+                logger.info(
+                    f"Blacklisted {len(self._session_tokens[session_id])} tokens for session {session_id}"
+                )
+
         except Exception as e:
             logger.error(f"Failed to blacklist session tokens: {e!s}")
             raise RepositoryException(f"Failed to blacklist session tokens: {e!s}")
@@ -170,30 +174,33 @@ class TokenBlacklistRepository(ITokenRepository):
         try:
             now = datetime.now(datetime.UTC)
             expired_tokens = [
-                token for token, expires_at in self._token_blacklist.items()
+                token
+                for token, expires_at in self._token_blacklist.items()
                 if expires_at < now
             ]
-            
+
             # Remove expired tokens
             for token in expired_tokens:
                 del self._token_blacklist[token]
-                
+
                 # Remove from user tokens mapping if present
                 for user_id, tokens in self._user_tokens.items():
                     if token in tokens:
                         tokens.remove(token)
-                        
+
                 # Remove from session tokens mapping if present
                 for session_id, tokens in self._session_tokens.items():
                     if token in tokens:
                         tokens.remove(token)
-            
+
             # Log cleanup results
             if expired_tokens:
-                logger.debug(f"Removed {len(expired_tokens)} expired tokens from blacklist")
-                
+                logger.debug(
+                    f"Removed {len(expired_tokens)} expired tokens from blacklist"
+                )
+
             return len(expired_tokens)
-            
+
         except Exception as e:
             logger.error(f"Failed to cleanup expired tokens: {e!s}")
             raise RepositoryException(f"Failed to cleanup expired tokens: {e!s}")
@@ -215,36 +222,36 @@ class TokenBlacklistRepository(ITokenRepository):
             # In a production implementation, this would query the database
             # or cache for active sessions associated with the user
             # For this in-memory implementation, we don't track this directly
-            
+
             # Return empty list for now
             return []
-            
+
         except Exception as e:
             logger.error(f"Failed to get active sessions: {e!s}")
             raise RepositoryException(f"Failed to get active sessions: {e!s}")
-            
+
     def add_token_to_user(self, user_id: str, token: str) -> None:
         """
         Associate a token with a user for tracking.
-        
+
         Args:
             user_id: The user identifier
             token: The token to associate
         """
         if user_id not in self._user_tokens:
             self._user_tokens[user_id] = set()
-            
+
         self._user_tokens[user_id].add(token)
-        
+
     def add_token_to_session(self, session_id: str, token: str) -> None:
         """
         Associate a token with a session for tracking.
-        
+
         Args:
             session_id: The session identifier
             token: The token to associate
         """
         if session_id not in self._session_tokens:
             self._session_tokens[session_id] = set()
-            
-        self._session_tokens[session_id].add(token) 
+
+        self._session_tokens[session_id].add(token)

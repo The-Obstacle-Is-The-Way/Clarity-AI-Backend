@@ -8,10 +8,10 @@ from dataclasses import dataclass
 class Address:
     """
     Immutable value object representing a physical address.
-    
+
     Follows HIPAA best practices for storing address information.
     """
-    
+
     street: str
     city: str
     state: str
@@ -49,21 +49,21 @@ class Address:
         object.__setattr__(self, "country", country)
         object.__setattr__(self, "line2", line2)
         self.__post_init__()
-    
+
     def __post_init__(self) -> None:
         """Validate address after initialization."""
         if not self.street:
             raise ValueError("Street is required")
-        
+
         if not self.city:
             raise ValueError("City is required")
-        
+
         if not self.state:
             raise ValueError("State is required")
-        
+
         if not self.zip_code:
             raise ValueError("ZIP code is required")
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
@@ -71,27 +71,27 @@ class Address:
             "city": self.city,
             "state": self.state,
             "zip_code": self.zip_code,
-            "country": self.country
+            "country": self.country,
         }
-    
+
     def dict(self) -> dict:
         """
         Alias for to_dict() - for Pydantic v1 compatibility.
-        
+
         Returns:
             Dictionary representation of the address
         """
         return self.to_dict()
-        
+
     def model_dump(self) -> dict:
         """
         Alias for to_dict() - for Pydantic v2 compatibility.
-        
+
         Returns:
             Dictionary representation of the address
         """
         return self.to_dict()
-    
+
     def __str__(self) -> str:
         """Get string representation."""
         return f"{self.street}, {self.city}, {self.state} {self.zip_code}"

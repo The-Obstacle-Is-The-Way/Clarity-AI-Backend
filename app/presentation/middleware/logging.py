@@ -35,8 +35,10 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         try:
             # Use attribute access, which is standard for Starlette state
             request_id = request.state.request_id
-        except AttributeError: # Handle case where RequestIdMiddleware might not have run
-            request_id = "N/A" # Fallback if not set
+        except (
+            AttributeError
+        ):  # Handle case where RequestIdMiddleware might not have run
+            request_id = "N/A"  # Fallback if not set
 
         # Extract safe headers
         safe_headers = {
@@ -48,9 +50,9 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         response = None
         try:
             response = await call_next(request)
-            process_time = (time.time() - start_time) * 1000 # Convert to ms
+            process_time = (time.time() - start_time) * 1000  # Convert to ms
             status_code = response.status_code
-            log_level = logging.INFO # Default level for successful responses
+            log_level = logging.INFO  # Default level for successful responses
 
             # Log request finish details
             # CRITICAL (HIPAA): Do not log response body or sensitive headers.
@@ -68,8 +70,8 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
         except Exception as e:
             # Log exceptions before re-raising
-            process_time = (time.time() - start_time) * 1000 # Convert to ms
-            status_code = 500 # Assume internal server error for unhandled exceptions
+            process_time = (time.time() - start_time) * 1000  # Convert to ms
+            status_code = 500  # Assume internal server error for unhandled exceptions
             log_level = logging.ERROR
             log_details_error = {
                 "request_id": request_id,
@@ -83,10 +85,10 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             self.logger.error(
                 f"Request failed: {request.method} {request.url.path} {request_id} "
                 f"| Duration: {log_details_error['duration_ms']:.2f}ms | Error: {e}",
-                exc_info=True, # Include traceback information
+                exc_info=True,  # Include traceback information
                 extra=log_details_error,
             )
-            raise # Re-raise the exception to be handled by FastAPI/Starlette
+            raise  # Re-raise the exception to be handled by FastAPI/Starlette
 
         return response
 

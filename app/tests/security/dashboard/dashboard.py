@@ -18,6 +18,7 @@ class MockDatabase:
     def clear_data(self):
         pass
 
+
 class MockUser:
     def __init__(self, id: int, username: str, password: str, role: str):
         self.id = id
@@ -25,12 +26,15 @@ class MockUser:
         self.password = password
         self.role = role
 
+
 class MockAuthService:
     def __init__(self, users: dict[str, MockUser]):
         self.users = users
 
+
 class MockAuthorizationService:
     pass
+
 
 def create_app():
     # Create a mock app for testing purposes
@@ -43,54 +47,62 @@ def create_app():
             class MockTestClient:
                 def post(self, url, data, follow_redirects):
                     # Mock login response
-                    if url == '/login':
-                        return MockResponse(200, b'Login successful')
+                    if url == "/login":
+                        return MockResponse(200, b"Login successful")
 
                 def get(self, url, follow_redirects):
                     # Mock dashboard response
-                    if url == '/admin/dashboard':
-                        return MockResponse(200, b'Admin Dashboard')
+                    if url == "/admin/dashboard":
+                        return MockResponse(200, b"Admin Dashboard")
 
             return MockTestClient()
 
     return MockApp()
+
 
 class MockResponse:
     def __init__(self, status_code: int, data: bytes):
         self.status_code = status_code
         self.data = data
 
+
 class DashboardSecurityTest(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures before each test method."""
         self.app = create_app()
         self.client = self.app.test_client()
-        self.app.config['TESTING'] = True
-        self.app.config['WTF_CSRF_ENABLED'] = False
-        self.app.config['DEBUG'] = False
-        
+        self.app.config["TESTING"] = True
+        self.app.config["WTF_CSRF_ENABLED"] = False
+        self.app.config["DEBUG"] = False
+
         # Set up test database or mock database connection
         self.db = MockDatabase()
-        self.app.config['DATABASE'] = self.db
-        
+        self.app.config["DATABASE"] = self.db
+
         # Initialize test users and roles
-        self.admin_user = MockUser(id=1, username='admin', password='adminpass', role='admin')
-        self.provider_user = MockUser(id=2, username='provider', password='providerpass', role='provider')
-        self.patient_user = MockUser(id=3, username='patient', password='patientpass', role='patient')
-        
+        self.admin_user = MockUser(
+            id=1, username="admin", password="adminpass", role="admin"
+        )
+        self.provider_user = MockUser(
+            id=2, username="provider", password="providerpass", role="provider"
+        )
+        self.patient_user = MockUser(
+            id=3, username="patient", password="patientpass", role="patient"
+        )
+
         self.users = {
-            'admin': self.admin_user,
-            'provider': self.provider_user,
-            'patient': self.patient_user
+            "admin": self.admin_user,
+            "provider": self.provider_user,
+            "patient": self.patient_user,
         }
-        
+
         # Setup mock authentication service
         self.auth_service = MockAuthService(self.users)
-        self.app.config['AUTH_SERVICE'] = self.auth_service
-        
+        self.app.config["AUTH_SERVICE"] = self.auth_service
+
         # Setup mock authorization service
         self.authz_service = MockAuthorizationService()
-        self.app.config['AUTHZ_SERVICE'] = self.authz_service
+        self.app.config["AUTHZ_SERVICE"] = self.authz_service
 
     def tearDown(self):
         """Clean up after each test method."""
@@ -99,60 +111,62 @@ class DashboardSecurityTest(unittest.TestCase):
 
     def login(self, username, password):
         """Helper method to login a user."""
-        response = self.client.post('/login', data=dict(
-            username=username,
-            password=password
-        ), follow_redirects=True)
+        response = self.client.post(
+            "/login",
+            data=dict(username=username, password=password),
+            follow_redirects=True,
+        )
         return response
 
     def logout(self):
         """Helper method to logout the current user."""
-        return self.client.get('/logout', follow_redirects=True)
+        return self.client.get("/logout", follow_redirects=True)
 
     def assertAccessDenied(self, response):
         """Assert that the response indicates access denied."""
         self.assertEqual(response.status_code, 403)
-        self.assertIn(b'Access Denied', response.data)
+        self.assertIn(b"Access Denied", response.data)
 
     def assertUnauthorized(self, response):
         """Assert that the response indicates unauthorized access."""
         self.assertEqual(response.status_code, 401)
-        self.assertIn(b'Unauthorized', response.data)
+        self.assertIn(b"Unauthorized", response.data)
 
     def assertSuccessfulLogin(self, response, username):
         """Assert that login was successful."""
         self.assertEqual(response.status_code, 200)
-        self.assertIn(f'Welcome {username}'.encode(), response.data)
+        self.assertIn(f"Welcome {username}".encode(), response.data)
 
     def assertSuccessfulLogout(self, response):
         """Assert that logout was successful."""
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b'You have been logged out', response.data)
+        self.assertIn(b"You have been logged out", response.data)
 
     def test_admin_dashboard_access(self):
         """Test admin dashboard access for different roles."""
         # Test admin access (should succeed)
         self.login(self.admin_user.username, self.admin_user.password)
-        response = self.client.get('/admin/dashboard')
+        response = self.client.get("/admin/dashboard")
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b'Admin Dashboard', response.data)
+        self.assertIn(b"Admin Dashboard", response.data)
         self.logout()
-        
+
         # Test provider access (should be denied)
         self.login(self.provider_user.username, self.provider_user.password)
-        response = self.client.get('/admin/dashboard')
+        response = self.client.get("/admin/dashboard")
         self.assertAccessDenied(response)
         self.logout()
-        
+
         # Test patient access (should be denied)
         self.login(self.patient_user.username, self.patient_user.password)
-        response = self.client.get('/admin/dashboard')
+        response = self.client.get("/admin/dashboard")
         self.assertAccessDenied(response)
         self.logout()
-        
+
         # Test unauthenticated access (should be unauthorized)
-        response = self.client.get('/admin/dashboard')
+        response = self.client.get("/admin/dashboard")
         self.assertUnauthorized(response)
+
 
 def generate_dashboard(results: dict[str, Any], output_path: str) -> None:
     """Generate HTML dashboard for security test results.
@@ -162,11 +176,11 @@ def generate_dashboard(results: dict[str, Any], output_path: str) -> None:
         output_path: Path to save the dashboard HTML
     """
     # Calculate overall metrics
-    total_tests = results['summary']['total']
-    passed_tests = results['summary']['passed']
-    failed_tests = results['summary']['failed']
-    error_tests = results['summary']['errors']
-    skipped_tests = results['summary']['skipped']
+    total_tests = results["summary"]["total"]
+    passed_tests = results["summary"]["passed"]
+    failed_tests = results["summary"]["failed"]
+    error_tests = results["summary"]["errors"]
+    skipped_tests = results["summary"]["skipped"]
 
     # Calculate success rate
     if total_tests > 0:
@@ -175,14 +189,14 @@ def generate_dashboard(results: dict[str, Any], output_path: str) -> None:
         success_rate = 0
 
     # Generate timestamp
-    timestamp = datetime.fromisoformat(results['timestamp'])
-    formatted_timestamp = timestamp.strftime('%Y-%m-%d %H:%M:%S')
+    timestamp = datetime.fromisoformat(results["timestamp"])
+    formatted_timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
     # Generate category summaries
     category_rows = []
-    for name, category in results['categories'].items():
-        cat_total = category['tests']['total']
-        cat_passed = category['tests']['passed']
+    for name, category in results["categories"].items():
+        cat_total = category["tests"]["total"]
+        cat_passed = category["tests"]["passed"]
         cat_success_rate = 100 * cat_passed / cat_total if cat_total > 0 else 0
 
         # Set color based on success rate
@@ -193,7 +207,8 @@ def generate_dashboard(results: dict[str, Any], output_path: str) -> None:
         else:
             color_class = "danger"
 
-        category_rows.append(f"""
+        category_rows.append(
+            f"""
         <tr class="{color_class}">
         <td>{name}</td>
         <td>{cat_passed}/{cat_total}</td>
@@ -202,20 +217,21 @@ def generate_dashboard(results: dict[str, Any], output_path: str) -> None:
         <td>{category['tests']['skipped']}</td>
         <td>{cat_success_rate:.2f}%</td>
         </tr>
-        """)
+        """
+        )
 
     # Generate detailed test file results
     file_sections = []
-    for name, category in results['categories'].items():
+    for name, category in results["categories"].items():
         file_rows = []
 
-        for file_result in category.get('files', []):
-            file_name = file_result.get('file', 'Unknown')
-            file_path = file_result.get('path', 'Unknown')
-            file_summary = file_result.get('summary', {})
+        for file_result in category.get("files", []):
+            file_name = file_result.get("file", "Unknown")
+            file_path = file_result.get("path", "Unknown")
+            file_summary = file_result.get("summary", {})
 
-            file_total = file_summary.get('total', 0)
-            file_passed = file_summary.get('passed', 0)
+            file_total = file_summary.get("total", 0)
+            file_passed = file_summary.get("passed", 0)
             file_success_rate = 100 * file_passed / file_total if file_total > 0 else 0
 
             # Set color based on success rate
@@ -226,7 +242,8 @@ def generate_dashboard(results: dict[str, Any], output_path: str) -> None:
             else:
                 color_class = "danger"
 
-            file_rows.append(f"""
+            file_rows.append(
+                f"""
             <tr class="{color_class}">
             <td>{file_name}</td>
             <td>{file_passed}/{file_total}</td>
@@ -235,36 +252,40 @@ def generate_dashboard(results: dict[str, Any], output_path: str) -> None:
             <td>{file_summary.get('skipped', 0)}</td>
             <td>{file_success_rate:.2f}%</td>
             </tr>
-            """)
+            """
+            )
 
             # Add detailed test results
             test_rows = []
-            for test in file_result.get('tests', []):
-                test_name = test.get('name', 'Unknown')
-                test_outcome = test.get('outcome', 'unknown')
-                test_duration = test.get('duration', 0)
-                test_message = test.get('message', '')
+            for test in file_result.get("tests", []):
+                test_name = test.get("name", "Unknown")
+                test_outcome = test.get("outcome", "unknown")
+                test_duration = test.get("duration", 0)
+                test_message = test.get("message", "")
 
                 # Set color based on outcome
-                if test_outcome == 'passed':
+                if test_outcome == "passed":
                     row_class = "success"
-                elif test_outcome == 'skipped':
+                elif test_outcome == "skipped":
                     row_class = "warning"
                 else:
                     row_class = "danger"
 
-                test_rows.append(f"""
+                test_rows.append(
+                    f"""
                 <tr class="{row_class}">
                 <td>{test_name}</td>
                 <td>{test_outcome}</td>
                 <td>{test_duration:.3f}s</td>
                 <td><pre class="message">{test_message}</pre></td>
                 </tr>
-                """)
+                """
+                )
 
                 # Add test details if available
                 if test_rows:
-                    file_rows.append(f"""
+                    file_rows.append(
+                        f"""
                     <tr>
                     <td colspan="6">
                     <div class="test-details">
@@ -284,11 +305,13 @@ def generate_dashboard(results: dict[str, Any], output_path: str) -> None:
                     </div>
                     </td>
                     </tr>
-                    """)
+                    """
+                    )
 
             # Add file section
             if file_rows:
-                file_sections.append(f"""
+                file_sections.append(
+                    f"""
                 <div class="card mb-4">
                 <div class="card-header">
                 <h3>{name}</h3>
@@ -312,7 +335,8 @@ def generate_dashboard(results: dict[str, Any], output_path: str) -> None:
                 </table>
                 </div>
                 </div>
-                """)
+                """
+                )
 
     # Determine overall status color
     if success_rate >= 95:
@@ -471,17 +495,20 @@ def generate_dashboard(results: dict[str, Any], output_path: str) -> None:
 """
 
     # Write the HTML to the output file
-    with open(output_path, 'w') as f:
-        f.write(html.format(
-            formatted_timestamp=formatted_timestamp,
-            status_class=status_class,
-            status_text=status_text,
-            total_tests=total_tests,
-            passed_tests=passed_tests,
-            failed_tests=failed_tests,
-            error_tests=error_tests,
-            success_rate=success_rate,
-        ))
+    with open(output_path, "w") as f:
+        f.write(
+            html.format(
+                formatted_timestamp=formatted_timestamp,
+                status_class=status_class,
+                status_text=status_text,
+                total_tests=total_tests,
+                passed_tests=passed_tests,
+                failed_tests=failed_tests,
+                error_tests=error_tests,
+                success_rate=success_rate,
+            )
+        )
+
 
 def parse_test_results(results_path: str) -> dict[str, Any]:
     """Parse a test results JSON file.
@@ -495,28 +522,33 @@ def parse_test_results(results_path: str) -> dict[str, Any]:
     with open(results_path) as f:
         return json.load(f)
 
+
 if __name__ == "__main__":
     # Get the most recent results file
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    results_dir = os.path.join(base_dir, 'test_results')
+    results_dir = os.path.join(base_dir, "test_results")
 
     if not os.path.exists(results_dir):
         print(f"Results directory not found: {results_dir}")
         exit(1)
 
     # Find the most recent results file
-    results_files = [f for f in os.listdir(results_dir) if f.endswith('.json')]
+    results_files = [f for f in os.listdir(results_dir) if f.endswith(".json")]
     if not results_files:
         print("No results files found")
         exit(1)
 
     # Sort by modification time (most recent first)
-    results_files.sort(key=lambda f: os.path.getmtime(os.path.join(results_dir, f)), reverse=True)
+    results_files.sort(
+        key=lambda f: os.path.getmtime(os.path.join(results_dir, f)), reverse=True
+    )
     latest_file = os.path.join(results_dir, results_files[0])
 
     # Generate dashboard
     results = parse_test_results(latest_file)
-    dashboard_path = os.path.join(results_dir, f"dashboard_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html")
+    dashboard_path = os.path.join(
+        results_dir, f"dashboard_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+    )
     generate_dashboard(results, dashboard_path)
 
     print(f"Dashboard generated at: {dashboard_path}")

@@ -7,13 +7,16 @@ following Clean Architecture principles with proper separation of concerns.
 
 # Re-export from the canonical implementation for backward compatibility
 from app.infrastructure.services.mocks.mock_enhanced_digital_twin_core_service import (
-    MockEnhancedDigitalTwinCoreService
+    MockEnhancedDigitalTwinCoreService,
 )
 
 # Re-export the neurotransmitter service implementation following clean architecture
 from app.infrastructure.services.mocks.mock_enhanced_digital_twin_neurotransmitter_service import (
-    MockEnhancedDigitalTwinNeurotransmitterService
+    MockEnhancedDigitalTwinNeurotransmitterService,
 )
 
 # Export all relevant service classes to maintain a clean interface
-__all__ = ["MockEnhancedDigitalTwinCoreService", "MockEnhancedDigitalTwinNeurotransmitterService"]
+__all__ = [
+    "MockEnhancedDigitalTwinCoreService",
+    "MockEnhancedDigitalTwinNeurotransmitterService",
+]

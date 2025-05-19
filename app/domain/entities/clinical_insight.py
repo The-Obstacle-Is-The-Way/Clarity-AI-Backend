@@ -9,38 +9,41 @@ from enum import Enum, auto
 from typing import Any, Optional
 from uuid import UUID
 
+
 class InsightCategory(Enum):
     """Categories for different types of clinical insights."""
-    SYMPTOM = auto()          # Observations about patient symptoms
-    TREATMENT = auto()        # Insights about treatment efficacy or needs
-    RISK = auto()             # Risk factors for negative outcomes
-    PROGRESS = auto()         # Progress indicators for recovery
-    PSYCHOSOCIAL = auto()     # Psychosocial factors affecting health
-    DIAGNOSTIC = auto()       # Diagnostic considerations
-    COMORBIDITY = auto()      # Comorbid conditions
-    LIFESTYLE = auto()        # Lifestyle and behavioral factors
-    MEDICATION = auto()       # Medication-related insights
+
+    SYMPTOM = auto()  # Observations about patient symptoms
+    TREATMENT = auto()  # Insights about treatment efficacy or needs
+    RISK = auto()  # Risk factors for negative outcomes
+    PROGRESS = auto()  # Progress indicators for recovery
+    PSYCHOSOCIAL = auto()  # Psychosocial factors affecting health
+    DIAGNOSTIC = auto()  # Diagnostic considerations
+    COMORBIDITY = auto()  # Comorbid conditions
+    LIFESTYLE = auto()  # Lifestyle and behavioral factors
+    MEDICATION = auto()  # Medication-related insights
 
 
 class InsightSeverity(Enum):
     """Severity levels for clinical insights."""
-    LOW = auto()              # Minor or minimal impact
-    MODERATE = auto()         # Moderate impact or concern
-    HIGH = auto()             # Significant concern or impact
-    CRITICAL = auto()         # Urgent or critical concern
-    IMPROVING = auto()        # Positive trend
-    WORSENING = auto()        # Negative trend
-    STABLE = auto()           # No significant change
+
+    LOW = auto()  # Minor or minimal impact
+    MODERATE = auto()  # Moderate impact or concern
+    HIGH = auto()  # Significant concern or impact
+    CRITICAL = auto()  # Urgent or critical concern
+    IMPROVING = auto()  # Positive trend
+    WORSENING = auto()  # Negative trend
+    STABLE = auto()  # No significant change
 
 
 class ClinicalInsight:
     """
     Represents a structured clinical insight extracted from clinical data.
-    
+
     This entity encapsulates insights derived from clinical notes, assessments,
     and other clinical data sources through AI analysis.
     """
-    
+
     def __init__(
         self,
         text: str,
@@ -51,11 +54,11 @@ class ClinicalInsight:
         evidence: Optional[str] = None,
         confidence: float = 0.0,
         timestamp: Optional[datetime] = None,
-        metadata: Optional[dict[str, Any]] = None
+        metadata: Optional[dict[str, Any]] = None,
     ):
         """
         Initialize a clinical insight.
-        
+
         Args:
             text: The descriptive text of the insight
             category: The category of the insight
@@ -76,18 +79,22 @@ class ClinicalInsight:
         self.confidence = confidence
         self.timestamp = timestamp or datetime.now()
         self.metadata = metadata or {}
-        
+
         # These properties are for compatibility with existing code
         self.temporal_context = {
             "timestamp": self.timestamp.isoformat(),
-            "relative_time_reference": metadata.get("relative_time_reference", "current") if metadata else "current"
+            "relative_time_reference": metadata.get(
+                "relative_time_reference", "current"
+            )
+            if metadata
+            else "current",
         }
         self.related_concepts = metadata.get("related_concepts", []) if metadata else []
-        
+
     def to_dict(self) -> dict[str, Any]:
         """
         Convert the insight to a dictionary representation.
-        
+
         Returns:
             Dictionary representation of the insight
         """
@@ -102,34 +109,48 @@ class ClinicalInsight:
             "timestamp": self.timestamp.isoformat(),
             "temporal_context": self.temporal_context,
             "related_concepts": self.related_concepts,
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
-        
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ClinicalInsight":
         """
         Create an insight from a dictionary representation.
-        
+
         Args:
             data: Dictionary representation of the insight
-            
+
         Returns:
             ClinicalInsight instance
         """
         # Convert string enum names to actual enum values
-        category = InsightCategory[data["category"]] if isinstance(data["category"], str) else data["category"]
-        severity = InsightSeverity[data["severity"]] if isinstance(data["severity"], str) else data["severity"]
-        
+        category = (
+            InsightCategory[data["category"]]
+            if isinstance(data["category"], str)
+            else data["category"]
+        )
+        severity = (
+            InsightSeverity[data["severity"]]
+            if isinstance(data["severity"], str)
+            else data["severity"]
+        )
+
         # Extract timestamp
-        timestamp = datetime.fromisoformat(data["timestamp"]) if isinstance(data["timestamp"], str) else data["timestamp"]
-        
+        timestamp = (
+            datetime.fromisoformat(data["timestamp"])
+            if isinstance(data["timestamp"], str)
+            else data["timestamp"]
+        )
+
         # Build metadata from additional fields
         metadata = data.get("metadata", {}).copy()
         if "related_concepts" in data:
             metadata["related_concepts"] = data["related_concepts"]
         if "temporal_context" in data and isinstance(data["temporal_context"], dict):
-            metadata["relative_time_reference"] = data["temporal_context"].get("relative_time_reference")
-        
+            metadata["relative_time_reference"] = data["temporal_context"].get(
+                "relative_time_reference"
+            )
+
         return cls(
             text=data["text"],
             category=category,
@@ -139,9 +160,11 @@ class ClinicalInsight:
             evidence=data.get("evidence"),
             confidence=data.get("confidence", 0.0),
             timestamp=timestamp,
-            metadata=metadata
+            metadata=metadata,
         )
-        
+
     def __str__(self) -> str:
         """String representation of the insight."""
-        return f"ClinicalInsight({self.category.name}, {self.severity.name}): {self.text}"
+        return (
+            f"ClinicalInsight({self.category.name}, {self.severity.name}): {self.text}"
+        )

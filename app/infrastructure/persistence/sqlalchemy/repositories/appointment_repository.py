@@ -40,7 +40,9 @@ class SQLAlchemyAppointmentRepository:
     # Construction helpers
     # ------------------------------------------------------------------
 
-    def __init__(self, db_session: AsyncSession, notification_service: NotificationServiceT):
+    def __init__(
+        self, db_session: AsyncSession, notification_service: NotificationServiceT
+    ):
         self.db_session: AsyncSession = db_session
         self.notification_service: NotificationServiceT = notification_service
 
@@ -51,7 +53,9 @@ class SQLAlchemyAppointmentRepository:
             if not hasattr(self.db_session, attr):
                 setattr(self.db_session, attr, [])  # type: ignore[attr-defined]
 
-        logger.debug("SQLAlchemyAppointmentRepository initialised – session=%s", type(db_session))
+        logger.debug(
+            "SQLAlchemyAppointmentRepository initialised – session=%s", type(db_session)
+        )
 
     # ------------------------------------------------------------------
     # Public API – *minimal* subset required by the test‑suite
@@ -89,15 +93,21 @@ class SQLAlchemyAppointmentRepository:
         # ------------------------------------------------------------------
         # 3. Fire‑and‑forget domain notification
         # ------------------------------------------------------------------
-        sender = getattr(self.notification_service, "send_appointment_notification", None)
+        sender = getattr(
+            self.notification_service, "send_appointment_notification", None
+        )
         if callable(sender):
             try:
                 sender(appointment)
             except Exception:  # pragma: no cover – we merely log and continue
-                logger.exception("Notification service raised while saving appointment – ignored for robustness.")
+                logger.exception(
+                    "Notification service raised while saving appointment – ignored for robustness."
+                )
 
         # Keep a trace of the executed operation for the tests.
-        self.db_session._last_executed_query = "mock_save" if hasattr(self.db_session, "_committed_objects") else "save"
+        self.db_session._last_executed_query = (
+            "mock_save" if hasattr(self.db_session, "_committed_objects") else "save"
+        )
 
         return appointment
 
@@ -106,7 +116,9 @@ class SQLAlchemyAppointmentRepository:
     # the patient repository while still short‑circuiting for the mock
     # session when possible.
 
-    async def get_by_id(self, appointment_id: Any) -> Appointment | None:  # noqa: ANN401 – Any for flexibility
+    async def get_by_id(
+        self, appointment_id: Any
+    ) -> Appointment | None:  # noqa: ANN401 – Any for flexibility
         # Fast path for mock session
         if hasattr(self.db_session, "_query_results"):
             self.db_session._last_executed_query = "mock_get_by_id"
@@ -127,4 +139,4 @@ class SQLAlchemyAppointmentRepository:
 
 
 # Alias to preserve historic import paths the wider code‑base might use.
-AppointmentRepository = SQLAlchemyAppointmentRepository 
+AppointmentRepository = SQLAlchemyAppointmentRepository

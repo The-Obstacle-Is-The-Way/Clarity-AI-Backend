@@ -14,7 +14,7 @@ from app.presentation.api.schemas.actigraphy import (
 
 
 async def validate_analyze_actigraphy_request(
-    request: Request
+    request: Request,
 ) -> AnalyzeActigraphyRequest:
     """
     Dependency to parse and validate analyze actigraphy request payload.
@@ -26,13 +26,12 @@ async def validate_analyze_actigraphy_request(
     except PydanticValidationError as exc:
         # Return validation errors in HTTPException detail
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=exc.errors()
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.errors()
         )
 
 
 async def validate_get_actigraphy_embeddings_request(
-    request: Request
+    request: Request,
 ) -> GetActigraphyEmbeddingsRequest:
     """
     Dependency to parse and validate get actigraphy embeddings request payload.
@@ -43,6 +42,5 @@ async def validate_get_actigraphy_embeddings_request(
         return GetActigraphyEmbeddingsRequest.model_validate(payload)
     except PydanticValidationError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=exc.errors()
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.errors()
         )

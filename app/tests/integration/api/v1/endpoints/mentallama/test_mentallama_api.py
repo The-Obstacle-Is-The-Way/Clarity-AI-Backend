@@ -22,7 +22,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.domain.entities.audit_log import AuditLog
-from app.core.interfaces.services.audit_logger_interface import AuditEventType, IAuditLogger, AuditSeverity
+from app.core.interfaces.services.audit_logger_interface import (
+    AuditEventType,
+    IAuditLogger,
+    AuditSeverity,
+)
 from app.application.services.audit_log_service import AuditLogService
 from app.core.security.rate_limiting.middleware import RateLimitingMiddleware
 
@@ -35,13 +39,18 @@ from app.core.services.ml.interface import MentaLLaMAInterface
 from app.core.models.token_models import TokenPayload
 from app.domain.entities.user import User
 from app.domain.models.user import UserRole
-from app.presentation.api.dependencies.auth import get_current_user, get_current_active_user
+from app.presentation.api.dependencies.auth import (
+    get_current_user,
+    get_current_active_user,
+)
 from app.presentation.api.v1.dependencies.digital_twin import get_mentallama_service
 from app.presentation.api.dependencies.auth import get_jwt_service
+
 
 # Create a custom audit service dependency for testing
 def get_audit_log_service():
     return MockAuditLogService()
+
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -58,50 +67,85 @@ TEST_USER_ID = "00000000-0000-0000-0000-000000000001"
 TEST_MODEL = "test_model"
 MENTALLAMA_API_PREFIX = f"{Settings().API_V1_STR}/mentallama"
 
+
 # Create a mock audit logger that doesn't use the database
 class MockAuditLogService(IAuditLogger):
     """Mock implementation of IAuditLogger for testing that doesn't access the database."""
-    
-    async def log_event(self, event_type: AuditEventType, actor_id: str, 
-                       resource_type: Optional[str] = None, resource_id: Optional[str] = None,
-                       action: Optional[str] = None, metadata: Optional[dict] = None, 
-                       ip_address: Optional[str] = None, details: Optional[str] = None) -> str:
+
+    async def log_event(
+        self,
+        event_type: AuditEventType,
+        actor_id: str,
+        resource_type: Optional[str] = None,
+        resource_id: Optional[str] = None,
+        action: Optional[str] = None,
+        metadata: Optional[dict] = None,
+        ip_address: Optional[str] = None,
+        details: Optional[str] = None,
+    ) -> str:
         """Log an event without using the database."""
         return str(uuid.uuid4())
-        
-    async def log_phi_access(self, actor_id: str, resource_type: str, resource_id: str,
-                           action: str, metadata: Optional[dict] = None,
-                           ip_address: Optional[str] = None, details: Optional[str] = None) -> str:
+
+    async def log_phi_access(
+        self,
+        actor_id: str,
+        resource_type: str,
+        resource_id: str,
+        action: str,
+        metadata: Optional[dict] = None,
+        ip_address: Optional[str] = None,
+        details: Optional[str] = None,
+    ) -> str:
         """Log PHI access without using the database."""
         return str(uuid.uuid4())
-        
-    async def log_security_event(self, event_type: AuditEventType, actor_id: str,
-                               details: str, metadata: Optional[dict] = None,
-                               ip_address: Optional[str] = None) -> str:
+
+    async def log_security_event(
+        self,
+        event_type: AuditEventType,
+        actor_id: str,
+        details: str,
+        metadata: Optional[dict] = None,
+        ip_address: Optional[str] = None,
+    ) -> str:
         """Log security event without using the database."""
         return str(uuid.uuid4())
-        
-    async def log_admin_action(self, actor_id: str, action: str, 
-                              resource_type: Optional[str] = None, resource_id: Optional[str] = None,
-                              metadata: Optional[dict] = None, details: Optional[str] = None) -> str:
+
+    async def log_admin_action(
+        self,
+        actor_id: str,
+        action: str,
+        resource_type: Optional[str] = None,
+        resource_id: Optional[str] = None,
+        metadata: Optional[dict] = None,
+        details: Optional[str] = None,
+    ) -> str:
         """Log admin action without using the database."""
         return str(uuid.uuid4())
-        
-    async def log_login(self, user_id: str, success: bool, ip_address: Optional[str] = None, 
-                       details: Optional[str] = None) -> str:
+
+    async def log_login(
+        self,
+        user_id: str,
+        success: bool,
+        ip_address: Optional[str] = None,
+        details: Optional[str] = None,
+    ) -> str:
         """Log login event without using the database."""
         return str(uuid.uuid4())
-        
+
     async def log_logout(self, user_id: str, ip_address: Optional[str] = None) -> str:
         """Log logout event without using the database."""
         return str(uuid.uuid4())
-        
-    async def log_system_event(self, event_type: str, details: str, 
-                             component: Optional[str] = None, 
-                             metadata: Optional[dict] = None) -> str:
+
+    async def log_system_event(
+        self,
+        event_type: str,
+        details: str,
+        component: Optional[str] = None,
+        metadata: Optional[dict] = None,
+    ) -> str:
         """Log system event without using the database."""
         return str(uuid.uuid4())
-    
+
     async def get_audit_trail(
         self,
         filters: Optional[Dict[str, Any]] = None,
@@ -112,7 +156,7 @@ class MockAuditLogService(IAuditLogger):
     ) -> List[Dict[str, Any]]:
         """Mock implementation that returns an empty list."""
         return []
-    
+
     async def export_audit_logs(
         self,
         start_time: Optional[datetime] = None,
@@ -123,17 +167,14 @@ class MockAuditLogService(IAuditLogger):
     ) -> str:
         """Mock implementation that returns a fake file path."""
         return "/tmp/mock_audit_export.json"
-        
-    async def get_security_dashboard_data(
-        self,
-        days: int = 7
-    ) -> Dict[str, Any]:
+
+    async def get_security_dashboard_data(self, days: int = 7) -> Dict[str, Any]:
         """Mock implementation that returns empty dashboard data."""
         return {
             "login_attempts": 0,
             "failed_logins": 0,
             "phi_access_events": 0,
-            "security_incidents": 0
+            "security_incidents": 0,
         }
 
 
@@ -141,7 +182,7 @@ class MockAuditLogService(IAuditLogger):
 def auth_headers() -> dict[str, str]:
     """
     Create authentication headers for testing.
-    
+
     Returns:
         Dictionary with authentication headers
     """
@@ -152,24 +193,24 @@ def auth_headers() -> dict[str, str]:
 
 @pytest_asyncio.fixture(scope="function")
 async def mock_mentallama_service_instance() -> AsyncMock:
-    """Provides a mock Mentallama service dependency override 
+    """Provides a mock Mentallama service dependency override
     with pre-configured return values.
     """
     # Create a mock instance respecting the MentaLLaMAInterface spec
     mock = AsyncMock(spec=MentaLLaMAInterface)
-    
+
     # Mock is_healthy method to return True for health checks
     mock.is_healthy.return_value = True
-    
+
     # Create async process method that returns a proper dictionary
     async def process_side_effect(*args, **kwargs):
         """Process method implementation that handles different parameter formats.
         Some endpoints pass text=..., others pass prompt=..., and the kwargs vary.
         """
         # Get the input text from either the 'text' or 'prompt' parameter
-        input_text = kwargs.get('text', kwargs.get('prompt', ''))
-        model_type = kwargs.get('model_type', kwargs.get('model', 'default'))
-        
+        input_text = kwargs.get("text", kwargs.get("prompt", ""))
+        model_type = kwargs.get("model_type", kwargs.get("model", "default"))
+
         # Return different responses based on the model_type
         if model_type == "analysis":
             return {
@@ -177,28 +218,28 @@ async def mock_mentallama_service_instance() -> AsyncMock:
                 "analysis": {
                     "sentiment": "positive",
                     "topics": ["health", "wellness"],
-                    "emotions": ["happy", "content"]
-                }
+                    "emotions": ["happy", "content"],
+                },
             }
         elif model_type == "conditions":
             return {
                 "success": True,
                 "conditions": [
                     {"name": "anxiety", "confidence": 0.3},
-                    {"name": "depression", "confidence": 0.1}
-                ]
+                    {"name": "depression", "confidence": 0.1},
+                ],
             }
         elif model_type == "therapeutic":
             return {
                 "success": True,
-                "response": "I understand you're feeling that way. Let's explore this further."
+                "response": "I understand you're feeling that way. Let's explore this further.",
             }
         elif model_type == "risk":
             return {
                 "success": True,
                 "risk_level": "low",
                 "assessment": "No immediate risk detected",
-                "recommendations": ["Regular follow-up"]
+                "recommendations": ["Regular follow-up"],
             }
         elif model_type == "wellness":
             return {
@@ -207,9 +248,9 @@ async def mock_mentallama_service_instance() -> AsyncMock:
                     "physical": 0.8,
                     "emotional": 0.7,
                     "social": 0.6,
-                    "spiritual": 0.5
+                    "spiritual": 0.5,
                 },
-                "assessment": "Overall positive wellness profile"
+                "assessment": "Overall positive wellness profile",
             }
         else:
             # Default response for any other model type
@@ -217,12 +258,12 @@ async def mock_mentallama_service_instance() -> AsyncMock:
                 "success": True,
                 "generated_text": f"Response for {input_text} using {model_type}",
                 "model_used": model_type,
-                "processing_time": 0.1
+                "processing_time": 0.1,
             }
-    
+
     # Mock the process method with our implementation
     mock.process.side_effect = process_side_effect
-    
+
     return mock
 
 
@@ -263,18 +304,18 @@ def mock_auth_service() -> MagicMock:
 def global_mock_jwt_service() -> MagicMock:
     """
     Provides a mock JWT service for tests.
-    
+
     Returns:
         MagicMock: JWT service mock with test functionality
     """
     mock = MagicMock(spec=IJwtService)
-    
+
     # Mock token creation function
     async def create_access_token_side_effect(data=None, expires_delta=None):
         return "test.jwt.token"
-    
+
     mock.create_access_token = AsyncMock(side_effect=create_access_token_side_effect)
-    
+
     # Mock token decoding function
     async def decode_token_side_effect(token, audience=None):
         # Return a valid payload regardless of the token input
@@ -285,55 +326,69 @@ def global_mock_jwt_service() -> MagicMock:
             jti=str(uuid.uuid4()),
             role="PATIENT",
             roles=["PATIENT"],
-            username="testuser", 
+            username="testuser",
             verified=True,
-            active=True
+            active=True,
         )
-    
+
     mock.decode_token = AsyncMock(side_effect=decode_token_side_effect)
-    
+
     return mock
 
 
 # --- New Fixture for MentaLLaMA Test Client --- #
 @pytest_asyncio.fixture
 async def mentallama_test_client(
-    client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI], 
+    client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI],
     mock_mentallama_service_instance: AsyncMock,
-    global_mock_jwt_service: MagicMock
+    global_mock_jwt_service: MagicMock,
 ) -> AsyncClient:
     """Provides a test client with MentaLLaMA service dependency overridden."""
     client, app = client_app_tuple_func_scoped
-    
+
     # Log app type for debugging
-    logging.info(f"MENTALLAMA_TEST_CLIENT: Received app_from_fixture of type: {type(app)}")
-    
+    logging.info(
+        f"MENTALLAMA_TEST_CLIENT: Received app_from_fixture of type: {type(app)}"
+    )
+
     if not isinstance(app, FastAPI):
-        logging.warning(f"MENTALLAMA_TEST_CLIENT: app_from_fixture is not FastAPI: {type(app)}. Trying to get FastAPI app from it.")
+        logging.warning(
+            f"MENTALLAMA_TEST_CLIENT: app_from_fixture is not FastAPI: {type(app)}. Trying to get FastAPI app from it."
+        )
         app = app.app  # Try to get the FastAPI app
     else:
-        logging.info(f"MENTALLAMA_TEST_CLIENT: app_from_fixture is already FastAPI type: {type(app)}. Using it directly for overrides.")
-    
+        logging.info(
+            f"MENTALLAMA_TEST_CLIENT: app_from_fixture is already FastAPI type: {type(app)}. Using it directly for overrides."
+        )
+
     # Override MentaLLaMA service
-    app.dependency_overrides[get_mentallama_service] = lambda: mock_mentallama_service_instance
-    logging.info(f"MENTALLAMA_TEST_CLIENT: Overrode MentaLLaMAInterface on app {id(app)}")
-    
+    app.dependency_overrides[
+        get_mentallama_service
+    ] = lambda: mock_mentallama_service_instance
+    logging.info(
+        f"MENTALLAMA_TEST_CLIENT: Overrode MentaLLaMAInterface on app {id(app)}"
+    )
+
     # Override JWT service
     app.dependency_overrides[get_jwt_service] = lambda: global_mock_jwt_service
-    logging.info(f"MENTALLAMA_TEST_CLIENT: Overrode IJwtService on app {id(app)} with global_mock_jwt_service ID: {id(global_mock_jwt_service)}")
-    
+    logging.info(
+        f"MENTALLAMA_TEST_CLIENT: Overrode IJwtService on app {id(app)} with global_mock_jwt_service ID: {id(global_mock_jwt_service)}"
+    )
+
     # Disable audit logging middleware for tests
     app.state.disable_audit_middleware = True
     logging.info(f"MENTALLAMA_TEST_CLIENT: Disabled audit middleware for testing")
-    
+
     # Override audit log service with our mock
     mock_audit_service = MockAuditLogService()
     app.dependency_overrides[get_audit_log_service] = lambda: mock_audit_service
-    logging.info(f"MENTALLAMA_TEST_CLIENT: Overrode AuditLogService with MockAuditLogService")
-    
+    logging.info(
+        f"MENTALLAMA_TEST_CLIENT: Overrode AuditLogService with MockAuditLogService"
+    )
+
     # Set the mock audit logger on app.state to use in middleware
     app.state.audit_logger = mock_audit_service
-    
+
     # Override get_current_user dependency with a mock user
     async def mock_get_current_user():
         """Returns a mock user for testing."""
@@ -344,39 +399,51 @@ async def mentallama_test_client(
             role=UserRole.PATIENT.value,
             is_active=True,
             is_verified=True,
-            roles=[UserRole.PATIENT]
+            roles=[UserRole.PATIENT],
         )
-    
+
     # Override get_current_active_user to avoid account_status check
     async def mock_get_current_active_user():
         """Returns a mock active user for testing without checking account_status."""
         return await mock_get_current_user()
-    
+
     # Override both dependencies
     app.dependency_overrides[get_current_user] = mock_get_current_user
     app.dependency_overrides[get_current_active_user] = mock_get_current_active_user
-    
-    logging.info(f"MENTALLAMA_TEST_CLIENT: Overrode get_current_user and get_current_active_user dependencies on app {id(app)}")
-    
+
+    logging.info(
+        f"MENTALLAMA_TEST_CLIENT: Overrode get_current_user and get_current_active_user dependencies on app {id(app)}"
+    )
+
     yield client
-    
+
     # Clear dependency overrides after test
     app.dependency_overrides.clear()
-    logging.info(f"MENTALLAMA_TEST_CLIENT: Cleared dependency_overrides on app {id(app)}")
+    logging.info(
+        f"MENTALLAMA_TEST_CLIENT: Cleared dependency_overrides on app {id(app)}"
+    )
 
 
 # --- Test Functions (Updated to use mentallama_test_client) --- #
 
+
 @pytest.mark.asyncio
-async def test_health_check(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
+async def test_health_check(
+    mentallama_test_client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
     """Tests the health check endpoint."""
-    response = await mentallama_test_client.get(f"{MENTALLAMA_API_PREFIX}/health", headers=auth_headers)
+    response = await mentallama_test_client.get(
+        f"{MENTALLAMA_API_PREFIX}/health", headers=auth_headers
+    )
     assert response.status_code == 200
     # Check if the mocked service's healthy status is reflected
     assert response.json() == {"status": "healthy", "service_status": True}
 
+
 @pytest.mark.asyncio
-async def test_process_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
+async def test_process_endpoint(
+    mentallama_test_client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
     """Tests the process endpoint with valid input."""
     payload = {"prompt": TEST_PROMPT, "user_id": TEST_USER_ID, "model": TEST_MODEL}
     response = await mentallama_test_client.post(
@@ -386,12 +453,18 @@ async def test_process_endpoint(mentallama_test_client: AsyncClient, auth_header
     # Check response matches our mock implementation
     response_json = response.json()
     assert response_json["success"] is True
-    assert response_json["generated_text"] == f"Response for {TEST_PROMPT} using {TEST_MODEL}"
+    assert (
+        response_json["generated_text"]
+        == f"Response for {TEST_PROMPT} using {TEST_MODEL}"
+    )
     assert response_json["model_used"] == TEST_MODEL
     assert "processing_time" in response_json
 
+
 @pytest.mark.asyncio
-async def test_analyze_text_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
+async def test_analyze_text_endpoint(
+    mentallama_test_client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
     """Tests the analyze text endpoint."""
     payload = {"text": "Some text to analyze", "user_id": TEST_USER_ID}
     response = await mentallama_test_client.post(
@@ -406,8 +479,11 @@ async def test_analyze_text_endpoint(mentallama_test_client: AsyncClient, auth_h
     assert "topics" in response_json["analysis"]
     assert "emotions" in response_json["analysis"]
 
+
 @pytest.mark.asyncio
-async def test_detect_conditions_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
+async def test_detect_conditions_endpoint(
+    mentallama_test_client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
     """Tests the detect conditions endpoint."""
     payload = {"text": "Feeling very down.", "user_id": TEST_USER_ID}
     response = await mentallama_test_client.post(
@@ -420,15 +496,20 @@ async def test_detect_conditions_endpoint(mentallama_test_client: AsyncClient, a
     assert "conditions" in response_json
     assert isinstance(response_json["conditions"], list)
 
+
 @pytest.mark.asyncio
-async def test_therapeutic_response_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
+async def test_therapeutic_response_endpoint(
+    mentallama_test_client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
     """Tests the therapeutic response endpoint."""
     payload = {
         "conversation_history": [{"role": "user", "content": "I feel sad."}],
-        "user_id": TEST_USER_ID
+        "user_id": TEST_USER_ID,
     }
     response = await mentallama_test_client.post(
-        f"{MENTALLAMA_API_PREFIX}/therapeutic-response", json=payload, headers=auth_headers
+        f"{MENTALLAMA_API_PREFIX}/therapeutic-response",
+        json=payload,
+        headers=auth_headers,
     )
     assert response.status_code == 200
     # Check response matches our mock implementation for therapeutic model type
@@ -436,12 +517,17 @@ async def test_therapeutic_response_endpoint(mentallama_test_client: AsyncClient
     assert response_json["success"] is True
     assert "response" in response_json
 
+
 @pytest.mark.asyncio
-async def test_suicide_risk_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
+async def test_suicide_risk_endpoint(
+    mentallama_test_client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
     """Tests the suicide risk assessment endpoint."""
     payload = {"text": "I want to end it all.", "user_id": TEST_USER_ID}
     response = await mentallama_test_client.post(
-        f"{MENTALLAMA_API_PREFIX}/assess-suicide-risk", json=payload, headers=auth_headers
+        f"{MENTALLAMA_API_PREFIX}/assess-suicide-risk",
+        json=payload,
+        headers=auth_headers,
     )
     assert response.status_code == 200
     # Check response matches our mock implementation for risk model type
@@ -451,8 +537,11 @@ async def test_suicide_risk_endpoint(mentallama_test_client: AsyncClient, auth_h
     assert "assessment" in response_json
     assert "recommendations" in response_json
 
+
 @pytest.mark.asyncio
-async def test_wellness_dimensions_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
+async def test_wellness_dimensions_endpoint(
+    mentallama_test_client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
     """Tests the wellness dimensions assessment endpoint."""
     payload = {"text": "Feeling balanced.", "user_id": TEST_USER_ID}
     response = await mentallama_test_client.post(
@@ -465,82 +554,85 @@ async def test_wellness_dimensions_endpoint(mentallama_test_client: AsyncClient,
     assert "dimensions" in response_json
     assert "assessment" in response_json
 
+
 @pytest.mark.asyncio
-async def test_service_unavailable(mentallama_test_client: AsyncClient, mock_mentallama_service_instance: AsyncMock, auth_headers: dict[str, str]) -> None:
+async def test_service_unavailable(
+    mentallama_test_client: AsyncClient,
+    mock_mentallama_service_instance: AsyncMock,
+    auth_headers: dict[str, str],
+) -> None:
     """Test behavior when MentaLLaMA service is not available."""
     # Override is_healthy to return False and make the API throw the expected HTTPException
     mock_mentallama_service_instance.is_healthy.return_value = False
-    
+
     # Test with the process endpoint
     response = await mentallama_test_client.post(
         f"{MENTALLAMA_API_PREFIX}/process",
-        json={
-            "prompt": TEST_PROMPT,
-            "user_id": TEST_USER_ID,
-            "model": TEST_MODEL
-        },
-        headers=auth_headers
+        json={"prompt": TEST_PROMPT, "user_id": TEST_USER_ID, "model": TEST_MODEL},
+        headers=auth_headers,
     )
-    
+
     # Should return 503 Service Unavailable
     assert response.status_code == 503
     assert "MentaLLaMA service is not available" in response.text
 
 
 @pytest_asyncio.fixture(scope="function")
-async def client_app_tuple_func_scoped() -> AsyncGenerator[tuple[AsyncClient, FastAPI], None]:
+async def client_app_tuple_func_scoped() -> AsyncGenerator[
+    tuple[AsyncClient, FastAPI], None
+]:
     """
     Provides a tuple of (AsyncClient, FastAPI) for testing with proper database engine setup
     and middleware skipping.
-    
+
     Returns:
         Tuple with AsyncClient and FastAPI app
     """
     # Create an in-memory SQLite database with proper async engine
     # Add check_same_thread=False to prevent connection issues
     engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:", 
+        "sqlite+aiosqlite:///:memory:",
         echo=False,
-        connect_args={"check_same_thread": False}
+        connect_args={"check_same_thread": False},
     )
-    
+
     # Create tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
     # Create a real session factory with a real engine
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
-    
+
     # Create custom settings for test environment with rate limiting disabled
     custom_settings = Settings()
     custom_settings.RATE_LIMITING_ENABLED = False  # Critical: Disable rate limiting
     custom_settings.ENVIRONMENT = "test"  # Ensure we're in test environment
     custom_settings.POSTGRES_TEST_DB = "test_db"
-    
+
     # Create the FastAPI application with test settings
     app = create_application(
         skip_auth_middleware=True,  # Skip authentication middleware for tests
         settings_override=custom_settings,  # Use our custom settings without rate limiting
         include_test_routers=False,  # Don't include test routers
-        disable_audit_middleware=True  # Disable audit middleware explicitly
+        disable_audit_middleware=True,  # Disable audit middleware explicitly
     )
-    
+
     # Override app.state attributes with the properly configured session factory and engine
     app.state.db_engine = engine
     app.state.actual_session_factory = session_factory
     app.state.db_schema_created = True  # Indicate schema is already created
     app.state.testing = True  # Mark app as being in testing mode
-    
+
     # Create an AsyncClient for testing
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
         headers={"Content-Type": "application/json"},
-        timeout=10.0  # Set a timeout for requests
+        timeout=10.0,  # Set a timeout for requests
     ) as client:
         # Yield the client and app as a tuple for use in tests
         yield client, app
-    
+
     # Clean up the database after the tests
     try:
         async with engine.begin() as conn:

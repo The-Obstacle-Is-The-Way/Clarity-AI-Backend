@@ -15,6 +15,7 @@ try:
     from app.domain.entities.digital_twin import DigitalTwin
 except ImportError:
     from typing import Any
+
     DigitalTwin = Any
 
 
@@ -30,7 +31,7 @@ class IDigitalTwinRepository(ABC):
     async def get_by_patient_id(self, patient_id: UUID) -> DigitalTwin | None:
         """Retrieve the digital twin for a specific patient."""
         pass
-    
+
     @abstractmethod
     async def create(self, twin: DigitalTwin) -> DigitalTwin:
         """Create a new digital twin record."""
@@ -50,26 +51,35 @@ class IDigitalTwinRepository(ABC):
     async def list_all(self, skip: int = 0, limit: int = 100) -> list[DigitalTwin]:
         """List all digital twins with pagination."""
         pass
-    
+
     @abstractmethod
-    async def update_twin_state(self, patient_id: UUID, state_updates: dict[str, Any]) -> DigitalTwin:
+    async def update_twin_state(
+        self, patient_id: UUID, state_updates: dict[str, Any]
+    ) -> DigitalTwin:
         """Update specific aspects of a digital twin's state."""
         pass
-    
+
     @abstractmethod
-    async def get_twin_history(self, patient_id: UUID, 
-                              start_time: datetime | None = None, 
-                              end_time: datetime | None = None,
-                              limit: int = 100) -> list[dict[str, Any]]:
+    async def get_twin_history(
+        self,
+        patient_id: UUID,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
         """Get historical state changes for a digital twin."""
         pass
-    
+
     @abstractmethod
-    async def create_session(self, patient_id: UUID, session_type: str, 
-                           metadata: dict[str, Any] | None = None) -> str:
+    async def create_session(
+        self,
+        patient_id: UUID,
+        session_type: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> str:
         """Create a new interaction session with the digital twin. Returns session ID."""
         pass
-    
+
     @abstractmethod
     async def end_session(self, session_id: str) -> bool:
         """End an active digital twin session. Returns True if successful."""

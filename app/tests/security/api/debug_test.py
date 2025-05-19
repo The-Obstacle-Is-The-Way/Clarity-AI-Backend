@@ -12,13 +12,14 @@ import pytest
 # Configure debug logging
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger("debug_test")
 
 # Create a minimal FastAPI app for testing
 app = FastAPI()
+
 
 @app.get("/test-error")
 async def force_runtime_error():
@@ -26,14 +27,15 @@ async def force_runtime_error():
     logger.debug("Endpoint called, raising RuntimeError")
     raise RuntimeError("Test error that should be masked")
 
+
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     """Global exception handler."""
     logger.debug(f"Exception handler called for: {type(exc).__name__}")
     return JSONResponse(
-        status_code=500,
-        content={"detail": "An internal server error occurred."}
+        status_code=500, content={"detail": "An internal server error occurred."}
     )
+
 
 @app.middleware("http")
 async def debug_middleware(request: Request, call_next):
@@ -48,6 +50,7 @@ async def debug_middleware(request: Request, call_next):
         logger.debug(f"Middleware caught exception: {type(e).__name__}")
         raise
 
+
 async def debug_test():
     """Run a simplified test case to debug the hanging issue."""
     logger.debug("Starting debug test")
@@ -61,6 +64,7 @@ async def debug_test():
             logger.debug(f"Client request failed: {type(e).__name__}")
         logger.debug("Test completed")
 
+
 if __name__ == "__main__":
     logger.debug("Running debug test")
-    asyncio.run(debug_test()) 
+    asyncio.run(debug_test())

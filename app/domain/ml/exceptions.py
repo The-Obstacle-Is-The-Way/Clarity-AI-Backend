@@ -10,19 +10,16 @@ from typing import Any
 class MentalLLaMABaseException(Exception):
     """
     Base exception for all MentalLLaMA model errors.
-    
+
     This serves as the parent class for all MentalLLaMA-related
     exceptions, providing consistent error handling and reporting.
     """
-    def __init__(
-        self, 
-        message: str,
-        details: dict[str, Any] | None = None
-    ):
+
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         self.message = message
         self.details = details or {}
         super().__init__(message)
-    
+
     def __str__(self) -> str:
         """Human-readable string representation of the error."""
         return self.message
@@ -31,21 +28,22 @@ class MentalLLaMABaseException(Exception):
 class MentalLLaMAConnectionError(MentalLLaMABaseException):
     """
     Exception raised when connection to MentalLLaMA service fails.
-    
+
     This could be due to network issues, service unavailability, or
     other connection-related problems.
     """
+
     def __init__(
-        self, 
+        self,
         message: str,
         endpoint: str | None = None,
-        details: dict[str, Any] | None = None
+        details: dict[str, Any] | None = None,
     ):
         self.endpoint = endpoint
         # Use provided details only; do not inject endpoint into details
         combined_details = details if details is not None else {}
         super().__init__(message, combined_details)
-    
+
     def __str__(self) -> str:
         """Human-readable string representation including endpoint."""
         if self.endpoint:
@@ -56,31 +54,29 @@ class MentalLLaMAConnectionError(MentalLLaMABaseException):
 class MentalLLaMAAuthenticationError(MentalLLaMABaseException):
     """
     Exception raised when authentication with MentalLLaMA fails.
-    
-    This could be due to invalid API keys, expired credentials, or 
+
+    This could be due to invalid API keys, expired credentials, or
     insufficient permissions.
     """
-    def __init__(
-        self, 
-        message: str,
-        details: dict[str, Any] | None = None
-    ):
+
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, details)
 
 
 class MentalLLaMAInferenceError(MentalLLaMABaseException):
     """
     Exception raised when MentalLLaMA inference process fails.
-    
+
     This could be due to model-specific issues, invalid inputs, or
     unexpected errors during the inference process.
     """
+
     def __init__(
         self,
         message: str,
         model_name: str | None = None,
         inference_parameters: dict[str, Any] | None = None,
-        details: dict[str, Any] | None = None
+        details: dict[str, Any] | None = None,
     ):
         # Store model identifier and parameters
         self.model_name = model_name
@@ -91,9 +87,11 @@ class MentalLLaMAInferenceError(MentalLLaMABaseException):
         combined_details = current_details.copy()
         if "model_name" not in combined_details and self.model_name is not None:
             combined_details["model_name"] = self.model_name
-        if "inference_parameters" not in combined_details: # self.inference_parameters is already a dict
-             combined_details["inference_parameters"] = self.inference_parameters
-        
+        if (
+            "inference_parameters" not in combined_details
+        ):  # self.inference_parameters is already a dict
+            combined_details["inference_parameters"] = self.inference_parameters
+
         super().__init__(message, combined_details)
 
     def __str__(self) -> str:
@@ -106,29 +104,32 @@ class MentalLLaMAInferenceError(MentalLLaMABaseException):
 class MentalLLaMAValidationError(MentalLLaMABaseException):
     """
     Exception raised when input validation for MentalLLaMA fails.
-    
+
     This could be due to invalid input formats, missing required fields,
     or input values outside of acceptable ranges.
     """
+
     def __init__(
-        self, 
+        self,
         message: str,
         validation_errors: dict[str, str] | None = None,
-        details: dict[str, Any] | None = None
+        details: dict[str, Any] | None = None,
     ):
         self.validation_errors = validation_errors or {}
-        
+
         # Merge validation_errors into details
         combined_details = details or {}
         combined_details["validation_errors"] = self.validation_errors
-            
+
         super().__init__(message, combined_details)
-    
+
     def __str__(self) -> str:
         """Human-readable string including validation errors."""
         base = super().__str__()
         if self.validation_errors:
-            errors = ", ".join(f"{field}: {err}" for field, err in self.validation_errors.items())
+            errors = ", ".join(
+                f"{field}: {err}" for field, err in self.validation_errors.items()
+            )
             return f"{base} [{errors}]"
         return base
 
@@ -136,16 +137,17 @@ class MentalLLaMAValidationError(MentalLLaMABaseException):
 class MentalLLaMAQuotaExceededError(MentalLLaMABaseException):
     """
     Exception raised when API usage quota is exceeded.
-    
+
     This occurs when the user has exceeded their allocated usage limits
     for the MentalLLaMA service.
     """
+
     def __init__(
-        self, 
+        self,
         message: str,
         quota_limit: int | None = None,
         quota_used: int | None = None,
-        details: dict[str, Any] | None = None
+        details: dict[str, Any] | None = None,
     ):
         # Store quota information
         self.quota_limit = quota_limit
@@ -163,7 +165,7 @@ class MentalLLaMAQuotaExceededError(MentalLLaMABaseException):
             combined_details["quota_used"] = quota_used
             combined_details["quota_remaining"] = self.quota_remaining
         super().__init__(message, combined_details)
-    
+
     def __str__(self) -> str:
         """Human-readable string including quota information."""
         base = super().__str__()

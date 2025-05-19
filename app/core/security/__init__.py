@@ -13,7 +13,7 @@ from fastapi import HTTPException, Request, status
 
 # AuthenticationMiddleware has been moved to app.presentation.middleware.authentication
 # Do not import it here from app.core.security.middleware anymore.
-# from app.core.security.middleware import AuthenticationMiddleware 
+# from app.core.security.middleware import AuthenticationMiddleware
 
 from app.core.security.rate_limiting import (
     RateLimitConfig,
@@ -54,6 +54,7 @@ class PHIMiddleware:
         # Stub implementation for test collection
         return await call_next(request)
 
+
 # Role-based access control
 def check_permission(user: Any, permission: str) -> bool:
     """
@@ -69,6 +70,7 @@ def check_permission(user: Any, permission: str) -> bool:
     # Stub implementation for test collection
     return True
 
+
 def has_role(user: Any, role: str) -> bool:
     """
     Check if a user has a specific role.
@@ -82,6 +84,7 @@ def has_role(user: Any, role: str) -> bool:
     """
     # Stub implementation for test collection
     return True
+
 
 # HIPAA compliance verification
 def verify_hipaa_compliance(data: dict[str, Any]) -> dict[str, Any]:
@@ -100,6 +103,7 @@ def verify_hipaa_compliance(data: dict[str, Any]) -> dict[str, Any]:
     # Stub implementation for test collection
     return data
 
+
 def verify_input_sanitization(data: dict[str, Any]) -> dict[str, Any]:
     """
     Sanitize input data to prevent injection attacks.
@@ -112,6 +116,7 @@ def verify_input_sanitization(data: dict[str, Any]) -> dict[str, Any]:
     """
     # Stub implementation for test collection
     return data
+
 
 def verify_output_sanitization(data: dict[str, Any]) -> dict[str, Any]:
     """
@@ -126,6 +131,7 @@ def verify_output_sanitization(data: dict[str, Any]) -> dict[str, Any]:
     # Stub implementation for test collection
     return data
 
+
 __all__ = [
     # "AuthenticationMiddleware", # Removed, as it has moved
     "PHIMiddleware",
@@ -136,5 +142,5 @@ __all__ = [
     "has_role",
     "verify_hipaa_compliance",
     "verify_input_sanitization",
-    "verify_output_sanitization"
+    "verify_output_sanitization",
 ]

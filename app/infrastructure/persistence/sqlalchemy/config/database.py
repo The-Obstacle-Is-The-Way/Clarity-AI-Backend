@@ -15,7 +15,7 @@ from sqlalchemy.pool import FallbackAsyncAdaptedQueuePool, NullPool
 from sqlalchemy.orm import sessionmaker
 
 # from app.config.settings import Settings, get_settings # Legacy import
-from app.core.config.settings import Settings, get_settings # Corrected import
+from app.core.config.settings import Settings, get_settings  # Corrected import
 from app.core.utils.logging import get_logger
 from app.infrastructure.persistence.sqlalchemy.config.base import Base
 
@@ -31,18 +31,19 @@ logger = get_logger(__name__)
 # the `settings` parameter has been made optional.
 # ------------------------------------------------------------
 
+
 class Database:
     """
     Database connection manager.
-    
+
     This class manages a SQLAlchemy async engine and session factory,
     providing controlled access to database sessions.
     """
-    
+
     def __init__(self, settings: Settings | None = None):
         """
         Initialize the database with main application settings.
-        
+
         Args:
             settings: Application settings object from app.core.config
         """
@@ -55,30 +56,36 @@ class Database:
         self.settings = settings
         self.engine = self._create_engine()
         self.session_factory = self._create_session_factory()
-        
+
     def _create_engine(self):
         """
         Create the SQLAlchemy async engine using the main settings.
-        
+
         Returns:
             SQLAlchemy async engine
         """
         # DIAGNOSTIC LOGGING
         env_uri_override = os.getenv("SQLALCHEMY_DATABASE_URI")
-        logger.info(f"[DB._create_engine] ENTERING. ENVIRONMENT={self.settings.ENVIRONMENT}")
+        logger.info(
+            f"[DB._create_engine] ENTERING. ENVIRONMENT={self.settings.ENVIRONMENT}"
+        )
         logger.info(f"[DB._create_engine] Settings URI: {self.settings.DATABASE_URL}")
-        logger.info(f"[DB._create_engine] [REDACTED NAME] Override URI: {env_uri_override}")
+        logger.info(
+            f"[DB._create_engine] [REDACTED NAME] Override URI: {env_uri_override}"
+        )
 
         # Use the assembled connection string directly from main settings
         connection_url = str(self.settings.DATABASE_URL)
-        
+
         # Ensure SQLite connections use the correct async driver (sqlite+aiosqlite)
         if connection_url.startswith("sqlite:"):
             connection_url = connection_url.replace("sqlite:", "sqlite+aiosqlite:", 1)
-        
-        logger.info(f"[DB._create_engine] [REDACTED NAME] URL for create_async_engine: {connection_url}")
 
-        # --- Pooling configuration --- 
+        logger.info(
+            f"[DB._create_engine] [REDACTED NAME] URL for create_async_engine: {connection_url}"
+        )
+
+        # --- Pooling configuration ---
         # Use NullPool for SQLite in test environment to avoid potential issues
         if connection_url.startswith("sqlite+aiosqlite:"):
             pooling_args = {"poolclass": NullPool}
@@ -87,27 +94,29 @@ class Database:
             # Default pooling for other DBs (e.g., PostgreSQL)
             pooling_args = {
                 "poolclass": FallbackAsyncAdaptedQueuePool,
-                "pool_size": 5, 
+                "pool_size": 5,
                 "max_overflow": 10,
                 "pool_timeout": 30,
                 "pool_recycle": 1800,
-                "pool_pre_ping": True
+                "pool_pre_ping": True,
             }
-            logger.info(f"[DB._create_engine] Using {pooling_args.get('poolclass')} pool.")
-            
+            logger.info(
+                f"[DB._create_engine] Using {pooling_args.get('poolclass')} pool."
+            )
+
         # Create engine
         return create_async_engine(
             connection_url,
             # Use ENVIRONMENT from main settings to control echo
-            echo=self.settings.ENVIRONMENT == "development", 
+            echo=self.settings.ENVIRONMENT == "development",
             future=True,
-            **pooling_args
+            **pooling_args,
         )
-        
+
     def _create_session_factory(self):
         """
         Create the session factory for this engine.
-        
+
         Returns:
             Async session factory
         """
@@ -116,14 +125,14 @@ class Database:
             expire_on_commit=False,
             autoflush=False,
             autocommit=False,
-            class_=AsyncSession
+            class_=AsyncSession,
         )
-        
+
     @asynccontextmanager
     async def session(self):
         """
         Create a new session as an async context manager.
-        
+
         Yields:
             SQLAlchemy AsyncSession
         """
@@ -132,17 +141,17 @@ class Database:
             yield session
         finally:
             await session.close()
-            
+
     async def create_all(self):
         """Create all tables defined in the models."""
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-            
+
     async def drop_tables(self):
         """Drop all tables defined in the models."""
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
-            
+
     async def dispose(self):
         """Dispose the engine and all connections."""
         await self.engine.dispose()
@@ -168,7 +177,7 @@ class Database:
             # Provide detailed log without leaking credentials.
             logger.error("Failed to create DB session", exc_info=True)
             raise exc
-        
+
 
 # Global database instance
 _db_instance = None
@@ -177,40 +186,41 @@ _db_instance = None
 class DatabaseFactory:
     """
     Factory class for creating and managing database instances.
-    
+
     This singleton factory ensures that only one database instance is created
     per application lifecycle, improving performance and resource utilization.
     """
+
     _instance = None
     _settings_provider = None
-    
+
     @classmethod
     def initialize(cls, settings_provider=None):
         """
         Initialize the factory with a settings provider function.
-        
+
         Args:
             settings_provider: Function that returns Settings instance
         """
         cls._settings_provider = settings_provider or get_settings
-        
+
     @classmethod
     def get_database(cls):
         """
         Get or create the database instance.
-        
+
         Returns:
             Database: The singleton database instance
         """
         if cls._instance is None:
             if cls._settings_provider is None:
                 cls._settings_provider = get_settings
-            
+
             settings = cls._settings_provider()
             cls._instance = Database(settings)
-            
+
         return cls._instance
-    
+
     @classmethod
     def reset(cls):
         """Reset the singleton instance for testing purposes."""
@@ -249,8 +259,8 @@ def get_db_instance() -> Database:
         # Return a new instance directly, DO NOT assign to _db_instance
         return Database(test_settings)
 
-    # --- Logic for non-test environments --- 
-    # Use a lock or thread-safe mechanism if concurrent initialization is possible, 
+    # --- Logic for non-test environments ---
+    # Use a lock or thread-safe mechanism if concurrent initialization is possible,
     # but for typical web app startup, this might be sufficient.
     if _db_instance is None:
         # Get the main application settings instance (potentially cached)
@@ -271,14 +281,15 @@ def get_db_instance() -> Database:
 # treating it as a return type in endpoints
 DBSessionDep = Annotated[AsyncSession, "DBSession"]
 
+
 async def get_db_session() -> AsyncGenerator[DBSessionDep, None]:
     """
     Get a database session from the session factory.
-    
+
     This function is used as a FastAPI dependency for database access
     in endpoint handlers. The custom return type annotation prevents
     FastAPI from trying to use AsyncSession in response models.
-    
+
     Yields:
         An async database session (with custom type annotation)
     """
@@ -290,10 +301,10 @@ async def get_db_session() -> AsyncGenerator[DBSessionDep, None]:
 def get_db_dependency() -> Callable:
     """
     Get the database dependency function.
-    
+
     This function is used to provide the database dependency in FastAPI.
     It's also used for dependency overriding in tests.
-    
+
     Returns:
         Database dependency function
     """
@@ -303,7 +314,7 @@ def get_db_dependency() -> Callable:
 async def close_db_connections() -> None:
     """
     Close all database connections.
-    
+
     This function should be called during application shutdown.
     """
     if _db_instance is not None:

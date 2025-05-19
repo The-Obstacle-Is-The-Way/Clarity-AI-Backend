@@ -23,6 +23,7 @@ from app.tests.security.utils.test_mocks import (
 
 # We're now using the MockEntityFactory from test_mocks.py
 
+
 # Remove inheritance from TestCase
 class BaseSecurityTest:
     """
@@ -33,7 +34,7 @@ class BaseSecurityTest:
         - Mock database session
         - Mock entity factory
         - Mock RBAC setup
-        """
+    """
 
     @pytest.fixture(autouse=True)
     def setup_security_test(self, mock_db_session, mock_entity_factory, mock_rbac):
@@ -48,7 +49,7 @@ class BaseSecurityTest:
         self.rbac = mock_rbac
 
     # Convert setUp logic into fixtures
-    @pytest.fixture(scope="function") # Scope per test function
+    @pytest.fixture(scope="function")  # Scope per test function
     def mock_db_session(self):
         """Provides a mock database session."""
         return MockAsyncSession()
@@ -81,11 +82,7 @@ class BaseSecurityTest:
         return rbac
 
     # Helper methods remain as regular methods
-    def has_permission(
-        self,
-        permission: str,
-        roles: list[str] | None = None
-    ) -> bool:
+    def has_permission(self, permission: str, roles: list[str] | None = None) -> bool:
         """
         Check if the specified roles have the given permission using the instance's rbac.
 
@@ -124,8 +121,8 @@ class BaseSecurityTest:
             str: A mock authentication token
         """
         claims = {
-            "sub": user_id or self.test_user_id, # Use instance attribute
-            "roles": roles or self.test_roles,   # Use instance attribute
+            "sub": user_id or self.test_user_id,  # Use instance attribute
+            "roles": roles or self.test_roles,  # Use instance attribute
             **(custom_claims or {}),
         }
         # Mock token is just the string representation of the claims for
@@ -175,7 +172,7 @@ class BaseSecurityTest:
         mock_db_session,
         user_id="test_user_id",
         email="test@example.com",
-        roles: list[str] | None = None
+        roles: list[str] | None = None,
     ):
         """Helper to create a mock user with specific roles."""
         if roles is None:

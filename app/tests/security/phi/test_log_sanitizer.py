@@ -17,65 +17,71 @@ from app.infrastructure.security.phi.sanitizer import PHISafeLogger
 # Create a test-specific mock sanitizer that returns expected values
 class MockLogSanitizer(PHISanitizer):
     """Mock sanitizer for log sanitization tests with predefined responses."""
-    
+
     def sanitize_string(self, text, path=None):
         """Return predetermined sanitized text based on input patterns for log tests."""
         # Handle specific test cases first
         if "Patient John Smith visited on 2023-01-01" in text:
             return "Patient [REDACTED NAME] visited on 2023-01-01"
-            
+
         if "Contact patient at john.smith@example.com for follow-up" in text:
             return "Contact patient at [REDACTED EMAIL] for follow-up"
-            
+
         if "Patient phone number is 555-123-4567" in text:
             return "Patient phone number is [REDACTED PHONE]"
-            
+
         if "Patient lives at 123 Main St, Anytown, CA 90210" in text:
             return "Patient lives at [REDACTED ADDRESS]"
-            
+
         if "Patient SSN is 123-45-6789" in text:
             return "Patient SSN is [REDACTED SSN]"
-            
+
         if "Patient MRN#987654 admitted to ward" in text:
             return "Patient [REDACTED MRN] admitted to ward"
-            
+
         if "Patient DOB is 01/15/1980" in text:
             return "Patient DOB is [REDACTED DATE]"
-            
-        if "Patient John Smith, DOB 01/15/1980, SSN 123-45-6789 lives at 123 Main St" in text:
+
+        if (
+            "Patient John Smith, DOB 01/15/1980, SSN 123-45-6789 lives at 123 Main St"
+            in text
+        ):
             return "Patient [REDACTED NAME], DOB [REDACTED DATE], SSN [REDACTED SSN] lives at [REDACTED ADDRESS]"
-            
+
         if "System initialized with error code 0x123" in text:
             return text  # Non-PHI should be unchanged
-            
+
         if "PATIENT JOHN SMITH has email JOHN.SMITH@EXAMPLE.COM" in text:
             return "PATIENT [REDACTED NAME] has email [REDACTED EMAIL]"
-            
+
         # Special cases for specific tests
         if "Patient SSN: 123-45-6789" in text:
             return "Patient SSN: [REDACTED SSN]"
-            
+
         if "Error code: 12345" in text:
             return text  # Special case for test_phi_detection
-            
+
         # Handle the performance test pattern with regex
         import re
+
         performance_pattern = re.compile(r"Patient-\d+ John Smith \(SSN: 123-45-6789\)")
         if performance_pattern.search(text):
             # Can't use \d in replacement string, use a function instead
-            return re.sub(r"(Patient-\d+) John Smith \(SSN: 123-45-6789\)",
-                         lambda m: f"{m.group(1)} [REDACTED NAME] (SSN: [REDACTED SSN])",
-                         text)
-            
+            return re.sub(
+                r"(Patient-\d+) John Smith \(SSN: 123-45-6789\)",
+                lambda m: f"{m.group(1)} [REDACTED NAME] (SSN: [REDACTED SSN])",
+                text,
+            )
+
         # Return the original text if no specific rule matches
         return super().sanitize_string(text, path)
-        
+
     def contains_phi(self, text: str, path: str = "") -> bool:
         """Mock implementation for contains_phi to support test cases."""
         # Special case for test_phi_detection
         if text == "Error code: 12345":
             return False
-            
+
         # For all other cases, use the normal implementation
         return super().contains_phi(text, path)
 
@@ -199,7 +205,7 @@ class TestLogSanitization:
     @pytest.fixture
     def temp_log_file(self):
         """Create a temporary log file for testing."""
-        fd, temp_path = tempfile.mkstemp(suffix='.log')
+        fd, temp_path = tempfile.mkstemp(suffix=".log")
         os.close(fd)
         yield temp_path
         # Cleanup
@@ -210,7 +216,7 @@ class TestLogSanitization:
     def logger_setup(self, temp_log_file):
         """Set up a logger with PHISafeLogger for testing."""
         # Create and configure logger
-        test_logger = logging.getLogger('test_phi_logger')
+        test_logger = logging.getLogger("test_phi_logger")
         test_logger.setLevel(logging.DEBUG)
 
         # Create file handler
@@ -218,7 +224,9 @@ class TestLogSanitization:
         file_handler.setLevel(logging.DEBUG)
 
         # Set up a basic formatter
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
         file_handler.setFormatter(formatter)
 
         # Add handler to logger
@@ -226,20 +234,23 @@ class TestLogSanitization:
 
         # Set PHISafeLogger as the logger class
         original_logger_class = logging.getLoggerClass()
-        
+
         # Use a patched sanitizer that always succeeds for tests
-        with patch('app.infrastructure.security.phi.sanitizer.get_sanitizer', return_value=MockLogSanitizer()):
+        with patch(
+            "app.infrastructure.security.phi.sanitizer.get_sanitizer",
+            return_value=MockLogSanitizer(),
+        ):
             logging.setLoggerClass(PHISafeLogger)
-            
+
             try:
                 # Get a PHI-safe logger
-                phi_safe_logger = logging.getLogger('test_phi_safe_logger')
+                phi_safe_logger = logging.getLogger("test_phi_safe_logger")
                 phi_safe_logger.setLevel(logging.DEBUG)
                 phi_safe_logger.addHandler(file_handler)
-                
+
                 # Get the mock sanitizer
                 phi_safe_logger.sanitizer = MockLogSanitizer()
-                
+
                 return phi_safe_logger, temp_log_file
             finally:
                 # Reset logger class
@@ -248,21 +259,23 @@ class TestLogSanitization:
     def test_phi_detection(self):
         """Test that the sanitizer correctly detects PHI in text."""
         sanitizer = MockLogSanitizer()
-        
+
         # For the purposes of the test, let's directly test the specific cases
         # instead of relying on the contains_phi method
-        
+
         # Test with PHI text - direct sanitization
         phi_text = "SSN: 123-45-6789"
         sanitized_phi = sanitizer.sanitize_string(phi_text)
         assert sanitized_phi != phi_text, "Should detect PHI in text"
         assert "[REDACTED SSN]" in sanitized_phi
-        
+
         # Test with non-PHI text - direct check
         non_phi_text = "Error code: 12345"
         sanitized_non_phi = sanitizer.sanitize_string(non_phi_text)
         # For this specific test, force the expected behavior
-        assert sanitized_non_phi == non_phi_text, "Should not detect PHI in non-PHI text"
+        assert (
+            sanitized_non_phi == non_phi_text
+        ), "Should not detect PHI in non-PHI text"
 
     def test_phi_never_reaches_logs(self, logger_setup):
         """End-to-end test ensuring PHI doesn't make it to logs."""
@@ -274,7 +287,7 @@ class TestLogSanitization:
         phi_logger.error("Patient with phone number (555) 123-4567 reported an issue")
 
         # Read the log file and check for PHI
-        with open(log_file, 'r') as f:
+        with open(log_file, "r") as f:
             log_content = f.read()
 
         # Verify no PHI is present
@@ -305,6 +318,7 @@ class TestLogSanitization:
 
         # Time the sanitization
         import time
+
         start_time = time.time()
         sanitized = sanitizer.sanitize_string(large_log)
         end_time = time.time()
@@ -320,37 +334,43 @@ class TestLogSanitization:
     def test_get_sanitized_logger(self):
         """Test the get_sanitized_logger factory function."""
         # Use a different approach - patch the get_sanitizer method to verify it was called
-        with patch('app.infrastructure.security.phi.sanitizer.get_sanitizer') as mock_get_sanitizer:
+        with patch(
+            "app.infrastructure.security.phi.sanitizer.get_sanitizer"
+        ) as mock_get_sanitizer:
             # Configure mock
             mock_sanitizer = MagicMock()
             mock_sanitizer.sanitize_string.return_value = "Patient SSN: [REDACTED SSN]"
             mock_get_sanitizer.return_value = mock_sanitizer
-            
+
             # Get a sanitized logger
             logger = get_sanitized_logger("test.logger")
-            
+
             # Verify it's the correct type
-            assert isinstance(logger, PHISafeLogger), "Should return a PHISafeLogger instance"
-            
+            assert isinstance(
+                logger, PHISafeLogger
+            ), "Should return a PHISafeLogger instance"
+
             # Create a handler that we can check
             log_stream = io.StringIO()
             handler = logging.StreamHandler(log_stream)
-            formatter = logging.Formatter('%(message)s')
+            formatter = logging.Formatter("%(message)s")
             handler.setFormatter(formatter)
-            
+
             # Add handler to logger
             logger.addHandler(handler)
             logger.setLevel(logging.INFO)
-            
+
             # Simply verify that using the logger does not cause errors
             # The actual sanitization is tested elsewhere
             logger.info("Test message with no PHI")
-            
+
             # Check that the logger is working properly
             assert "Test message with no PHI" in log_stream.getvalue()
-            
+
             # This is the simplest way to verify that the right logger class and sanitizer are being used
-            assert mock_get_sanitizer.called, "get_sanitizer should be called during logger setup"
+            assert (
+                mock_get_sanitizer.called
+            ), "get_sanitizer should be called during logger setup"
 
 
 if __name__ == "__main__":

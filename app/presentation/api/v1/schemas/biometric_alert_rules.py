@@ -25,8 +25,10 @@ from app.domain.entities.biometric_alert_rule import (
 
 # ======== Enums for API ========
 
+
 class ApiAlertPriority(str, Enum):
     """Alert priority levels exposed in the API."""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -36,6 +38,7 @@ class ApiAlertPriority(str, Enum):
 
 class ApiComparatorOperator(str, Enum):
     """Comparator operators exposed in the API."""
+
     GREATER_THAN = "greater_than"
     LESS_THAN = "less_than"
     EQUAL_TO = "equal_to"
@@ -46,12 +49,14 @@ class ApiComparatorOperator(str, Enum):
 
 class ApiLogicalOperator(str, Enum):
     """Logical operators exposed in the API."""
+
     AND = "and"
     OR = "or"
 
 
 class ApiMetricType(str, Enum):
     """Biometric metric types exposed in the API."""
+
     HEART_RATE = "heart_rate"
     BLOOD_PRESSURE = "blood_pressure"
     BLOOD_OXYGEN = "blood_oxygen"
@@ -66,67 +71,99 @@ class ApiMetricType(str, Enum):
 
 # ======== Base Models ========
 
+
 class RuleConditionBase(BaseModel):
     """Base model for rule conditions."""
+
     metric_name: str = Field(..., description="Biometric metric name")
-    comparator_operator: ApiComparatorOperator = Field(..., description="Comparison operator")
+    comparator_operator: ApiComparatorOperator = Field(
+        ..., description="Comparison operator"
+    )
     threshold_value: float = Field(..., description="Threshold value for comparison")
-    duration_minutes: Optional[int] = Field(None, description="Duration in minutes condition must persist")
-    description: Optional[str] = Field(None, description="Optional description of condition")
+    duration_minutes: Optional[int] = Field(
+        None, description="Duration in minutes condition must persist"
+    )
+    description: Optional[str] = Field(
+        None, description="Optional description of condition"
+    )
 
 
 class AlertRuleBase(BaseModel):
     """Base model for alert rules."""
+
     name: str = Field(..., description="Rule name")
     description: Optional[str] = Field(None, description="Rule description")
-    priority: ApiAlertPriority = Field(ApiAlertPriority.MEDIUM, description="Alert priority level")
-    logical_operator: ApiLogicalOperator = Field(ApiLogicalOperator.AND, description="Logical operator for conditions")
+    priority: ApiAlertPriority = Field(
+        ApiAlertPriority.MEDIUM, description="Alert priority level"
+    )
+    logical_operator: ApiLogicalOperator = Field(
+        ApiLogicalOperator.AND, description="Logical operator for conditions"
+    )
     is_active: bool = Field(True, description="Whether rule is active")
 
 
 # ======== Request Models ========
 
+
 class AlertRuleCreate(AlertRuleBase):
     """Model for creating a new alert rule."""
+
     patient_id: UUID = Field(..., description="Patient this rule applies to")
-    conditions: List[RuleConditionBase] = Field(..., description="Rule conditions", min_items=1)
+    conditions: List[RuleConditionBase] = Field(
+        ..., description="Rule conditions", min_items=1
+    )
 
 
 class TemplateCustomization(BaseModel):
     """Model for template customization options."""
-    priority: Optional[ApiAlertPriority] = Field(None, description="Override default priority")
-    threshold_value: Optional[Dict[str, float]] = Field(None, description="Override thresholds by metric")
+
+    priority: Optional[ApiAlertPriority] = Field(
+        None, description="Override default priority"
+    )
+    threshold_value: Optional[Dict[str, float]] = Field(
+        None, description="Override thresholds by metric"
+    )
     is_active: Optional[bool] = Field(None, description="Override active status")
 
 
 class RuleFromTemplateCreate(BaseModel):
     """Model for creating a rule from a template."""
+
     template_id: UUID = Field(..., description="Template to base the rule on")
     patient_id: UUID = Field(..., description="Patient this rule applies to")
-    customization: TemplateCustomization = Field(..., description="Template customization")
+    customization: TemplateCustomization = Field(
+        ..., description="Template customization"
+    )
 
 
 class AlertRuleUpdate(BaseModel):
     """Model for updating an existing alert rule."""
+
     name: Optional[str] = Field(None, description="Rule name")
     description: Optional[str] = Field(None, description="Rule description")
-    priority: Optional[ApiAlertPriority] = Field(None, description="Alert priority level")
-    logical_operator: Optional[ApiLogicalOperator] = Field(None, description="Logical operator for conditions")
+    priority: Optional[ApiAlertPriority] = Field(
+        None, description="Alert priority level"
+    )
+    logical_operator: Optional[ApiLogicalOperator] = Field(
+        None, description="Logical operator for conditions"
+    )
     is_active: Optional[bool] = Field(None, description="Whether rule is active")
-    conditions: Optional[List[RuleConditionBase]] = Field(None, description="Rule conditions")
+    conditions: Optional[List[RuleConditionBase]] = Field(
+        None, description="Rule conditions"
+    )
 
 
 class AlertRuleWrapperRequest(BaseModel):
     """Wrapper model for rule data that matches the test payload format."""
+
     rule_data: AlertRuleCreate
 
-    model_config = ConfigDict(
-        extra="allow"
-    )
+    model_config = ConfigDict(extra="allow")
 
 
 class TemplateConditionCreate(BaseModel):
     """Model for template condition creation."""
+
     metric_name: str = Field(..., description="Biometric metric name")
     operator: str = Field(..., description="Operation (e.g., GREATER_THAN)")
     threshold: float = Field(..., description="Threshold value")
@@ -136,18 +173,23 @@ class TemplateConditionCreate(BaseModel):
 
 class AlertRuleTemplateCreate(BaseModel):
     """Model for creating a new alert rule template."""
+
     template_id: str = Field(..., description="Unique template identifier")
     name: str = Field(..., description="Template name")
     description: str = Field(..., description="Template description")
     category: Optional[str] = Field(None, description="Template category")
-    conditions: List[TemplateConditionCreate] = Field(..., description="Template conditions", min_length=1)
+    conditions: List[TemplateConditionCreate] = Field(
+        ..., description="Template conditions", min_length=1
+    )
     priority: str = Field("MEDIUM", description="Default priority level")
 
 
 # ======== Response Models ========
 
+
 class RuleConditionResponse(RuleConditionBase):
     """Response model for rule conditions."""
+
     id: Optional[UUID] = Field(None, description="Condition ID if available")
 
     @classmethod
@@ -162,24 +204,31 @@ class RuleConditionResponse(RuleConditionBase):
             ComparatorOperator.LESS_THAN_OR_EQUAL: ApiComparatorOperator.LESS_THAN_OR_EQUAL,
             ComparatorOperator.NOT_EQUAL: ApiComparatorOperator.NOT_EQUAL,
         }
-        
+
         return cls(
             metric_name=entity.metric_type.name.lower(),
-            comparator_operator=operator_map.get(entity.operator, ApiComparatorOperator.GREATER_THAN),
+            comparator_operator=operator_map.get(
+                entity.operator, ApiComparatorOperator.GREATER_THAN
+            ),
             threshold_value=entity.threshold_value,
             duration_minutes=getattr(entity, "duration_minutes", None),
             description=entity.description,
-            id=getattr(entity, "id", None)
+            id=getattr(entity, "id", None),
         )
 
 
 class AlertRuleResponse(AlertRuleBase):
     """Response model for alert rules."""
+
     id: UUID = Field(..., description="Rule ID")
     patient_id: UUID = Field(..., description="Patient this rule applies to")
-    provider_id: Optional[UUID] = Field(None, description="Provider who created the rule")
+    provider_id: Optional[UUID] = Field(
+        None, description="Provider who created the rule"
+    )
     conditions: List[RuleConditionResponse] = Field(..., description="Rule conditions")
-    template_id: Optional[UUID] = Field(None, description="Template this rule was based on")
+    template_id: Optional[UUID] = Field(
+        None, description="Template this rule was based on"
+    )
     created_at: Optional[datetime] = Field(None, description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
 
@@ -194,12 +243,12 @@ class AlertRuleResponse(AlertRuleBase):
             AlertPriority.LOW: ApiAlertPriority.LOW,
             AlertPriority.INFO: ApiAlertPriority.INFO,
         }
-        
+
         logical_op_map = {
             RuleLogicalOperator.AND: ApiLogicalOperator.AND,
             RuleLogicalOperator.OR: ApiLogicalOperator.OR,
         }
-        
+
         return cls(
             id=entity.id,
             name=entity.name,
@@ -207,9 +256,14 @@ class AlertRuleResponse(AlertRuleBase):
             patient_id=entity.patient_id,
             provider_id=entity.provider_id,
             priority=priority_map.get(entity.priority, ApiAlertPriority.MEDIUM),
-            logical_operator=logical_op_map.get(entity.logical_operator, ApiLogicalOperator.AND),
+            logical_operator=logical_op_map.get(
+                entity.logical_operator, ApiLogicalOperator.AND
+            ),
             is_active=entity.is_active,
-            conditions=[RuleConditionResponse.from_entity(condition) for condition in entity.conditions],
+            conditions=[
+                RuleConditionResponse.from_entity(condition)
+                for condition in entity.conditions
+            ],
             template_id=entity.template_id,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
@@ -218,6 +272,7 @@ class AlertRuleResponse(AlertRuleBase):
 
 class AlertRuleList(BaseModel):
     """Response model for lists of alert rules."""
+
     items: List[AlertRuleResponse] = Field(..., description="List of alert rules")
     total: int = Field(..., description="Total count of matching rules")
     skip: int = Field(..., description="Number of rules skipped")
@@ -226,17 +281,23 @@ class AlertRuleList(BaseModel):
 
 class AlertRuleTemplateResponse(BaseModel):
     """Response model for rule templates."""
+
     template_id: str = Field(..., description="Unique template identifier")
     name: str = Field(..., description="Template name")
     description: str = Field(..., description="Template description")
     category: Optional[str] = Field(None, description="Template category")
     conditions: List[Dict[str, Any]] = Field(..., description="Template conditions")
-    logical_operator: str = Field("and", description="Logical operator between conditions")
+    logical_operator: str = Field(
+        "and", description="Logical operator between conditions"
+    )
     default_priority: str = Field("medium", description="Default priority for alerts")
-    customizable_fields: List[str] = Field([], description="Fields that can be customized")
-    
+    customizable_fields: List[str] = Field(
+        [], description="Fields that can be customized"
+    )
+
     class Config:
         """Pydantic model configuration."""
+
         json_schema_extra = {
             "example": {
                 "template_id": "high_heart_rate",
@@ -248,11 +309,11 @@ class AlertRuleTemplateResponse(BaseModel):
                         "metric_name": "heart_rate",
                         "comparator_operator": "greater_than",
                         "threshold_value": 100,
-                        "duration_minutes": 5
+                        "duration_minutes": 5,
                     }
                 ],
                 "logical_operator": "and",
                 "default_priority": "medium",
-                "customizable_fields": ["threshold_value", "priority"]
+                "customizable_fields": ["threshold_value", "priority"],
             }
-        } 
+        }

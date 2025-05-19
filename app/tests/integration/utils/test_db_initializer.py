@@ -58,25 +58,30 @@ TEST_CLINICIAN_ID = uuid.UUID("00000000-0000-0000-0000-000000000002")
 
 async def create_test_users(session: AsyncSession) -> None:
     """Create standard test users in the database using direct SQL rather than ORM.
-    
+
     This approach avoids SQLAlchemy ORM mapping issues by using core SQL expressions
     which bypass the ORM layer entirely, making it more robust against mapping errors.
     """
-    logger.info(f"CREATE_TEST_USERS: Called with session ID: {id(session)}. Will create users with TEST_USER_ID: {TEST_USER_ID}, TEST_CLINICIAN_ID: {TEST_CLINICIAN_ID}") # DEBUG LOG
+    logger.info(
+        f"CREATE_TEST_USERS: Called with session ID: {id(session)}. Will create users with TEST_USER_ID: {TEST_USER_ID}, TEST_CLINICIAN_ID: {TEST_CLINICIAN_ID}"
+    )  # DEBUG LOG
     try:
         # Check if test users exist using direct SQL query
         query = f"SELECT id FROM users WHERE id IN ('{TEST_USER_ID}', '{TEST_CLINICIAN_ID}')"
         result = await session.execute(text(query))
         existing_ids = [str(row[0]) for row in result.fetchall()]
-        
+
         current_time = datetime.now(timezone.utc).isoformat()
-        password_hash = "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC"  # 'password'
+        password_hash = (
+            "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC"  # 'password'
+        )
         inserted_users = []
-        
+
         # Create test patient user if not exists using direct SQL
         if str(TEST_USER_ID) not in existing_ids:
             # Use SQL text() to directly insert the user, bypassing ORM mapping issues
-            patient_insert = text("""
+            patient_insert = text(
+                """
                 INSERT INTO users (
                     id, username, email, password_hash, is_active, is_verified, email_verified,
                     role, roles, first_name, last_name, created_at, updated_at, password_changed_at,
@@ -86,37 +91,42 @@ async def create_test_users(session: AsyncSession) -> None:
                     :role, :roles, :first_name, :last_name, :created_at, :updated_at, :password_changed_at,
                     :failed_login_attempts, :audit_id
                 )
-            """)
-            
+            """
+            )
+
             # Create a JSON array with the patient role for the roles column
             patient_roles = json.dumps([UserRole.PATIENT.name])
-            
+
             # Generate a UUID for audit tracking
             audit_id = str(uuid.uuid4())
-            
-            await session.execute(patient_insert, {
-                "id": str(TEST_USER_ID),
-                "username": "testuser",
-                "email": "test.user@novamind.ai",
-                "password_hash": password_hash,
-                "is_active": True,
-                "is_verified": True,
-                "email_verified": True,
-                "role": UserRole.PATIENT.name,  # Use the NAME of enum for SQLAlchemy Enum type
-                "roles": patient_roles,  # Use NAME for consistency in JSON array
-                "failed_login_attempts": 0,  # Add required failed_login_attempts field
-                "audit_id": audit_id,  # Add required audit_id field
-                "first_name": "Test",
-                "last_name": "User",
-                "created_at": current_time,
-                "updated_at": current_time,
-                "password_changed_at": current_time
-            })
+
+            await session.execute(
+                patient_insert,
+                {
+                    "id": str(TEST_USER_ID),
+                    "username": "testuser",
+                    "email": "test.user@novamind.ai",
+                    "password_hash": password_hash,
+                    "is_active": True,
+                    "is_verified": True,
+                    "email_verified": True,
+                    "role": UserRole.PATIENT.name,  # Use the NAME of enum for SQLAlchemy Enum type
+                    "roles": patient_roles,  # Use NAME for consistency in JSON array
+                    "failed_login_attempts": 0,  # Add required failed_login_attempts field
+                    "audit_id": audit_id,  # Add required audit_id field
+                    "first_name": "Test",
+                    "last_name": "User",
+                    "created_at": current_time,
+                    "updated_at": current_time,
+                    "password_changed_at": current_time,
+                },
+            )
             inserted_users.append(str(TEST_USER_ID))
-            
+
         # Create test clinician user if not exists using direct SQL
         if str(TEST_CLINICIAN_ID) not in existing_ids:
-            clinician_insert = text("""
+            clinician_insert = text(
+                """
                 INSERT INTO users (
                     id, username, email, password_hash, is_active, is_verified, email_verified,
                     role, roles, first_name, last_name, created_at, updated_at, password_changed_at,
@@ -126,41 +136,49 @@ async def create_test_users(session: AsyncSession) -> None:
                     :role, :roles, :first_name, :last_name, :created_at, :updated_at, :password_changed_at,
                     :failed_login_attempts, :audit_id
                 )
-            """)
-            
+            """
+            )
+
             # Create a JSON array with the clinician role for the roles column
             clinician_roles = json.dumps([UserRole.CLINICIAN.name])
-            
+
             # Generate a UUID for audit tracking - unique for this clinician
             clinician_audit_id = str(uuid.uuid4())
-            
-            await session.execute(clinician_insert, {
-                "id": str(TEST_CLINICIAN_ID),
-                "username": "testclinician",
-                "email": "test.clinician@novamind.ai",
-                "password_hash": password_hash,
-                "is_active": True,
-                "is_verified": True,
-                "email_verified": True,
-                "role": UserRole.CLINICIAN.name,  # Use the NAME of enum
-                "roles": clinician_roles,  # Use NAME for consistency in JSON array
-                "failed_login_attempts": 0,  # Add required failed_login_attempts field
-                "audit_id": clinician_audit_id,  # Add required audit_id field
-                "first_name": "Test",
-                "last_name": "Clinician",
-                "created_at": current_time,
-                "updated_at": current_time,
-                "password_changed_at": current_time
-            })
+
+            await session.execute(
+                clinician_insert,
+                {
+                    "id": str(TEST_CLINICIAN_ID),
+                    "username": "testclinician",
+                    "email": "test.clinician@novamind.ai",
+                    "password_hash": password_hash,
+                    "is_active": True,
+                    "is_verified": True,
+                    "email_verified": True,
+                    "role": UserRole.CLINICIAN.name,  # Use the NAME of enum
+                    "roles": clinician_roles,  # Use NAME for consistency in JSON array
+                    "failed_login_attempts": 0,  # Add required failed_login_attempts field
+                    "audit_id": clinician_audit_id,  # Add required audit_id field
+                    "first_name": "Test",
+                    "last_name": "Clinician",
+                    "created_at": current_time,
+                    "updated_at": current_time,
+                    "password_changed_at": current_time,
+                },
+            )
             inserted_users.append(str(TEST_CLINICIAN_ID))
-        
+
         # Commit changes if we inserted any users
         if inserted_users:
             await session.commit()
-            logger.info(f"Committed test users using direct SQL: {inserted_users}. Session ID: {id(session)}") # DEBUG LOG
+            logger.info(
+                f"Committed test users using direct SQL: {inserted_users}. Session ID: {id(session)}"
+            )  # DEBUG LOG
         else:
-            logger.info(f"Test users already exist in database. Session ID: {id(session)}") # DEBUG LOG
-            
+            logger.info(
+                f"Test users already exist in database. Session ID: {id(session)}"
+            )  # DEBUG LOG
+
     except Exception as e:
         logger.error(f"Error creating test users: {e}")
         await session.rollback()
@@ -168,46 +186,55 @@ async def create_test_users(session: AsyncSession) -> None:
         logger.warning("Falling back to minimal user creation approach")
         await create_minimal_test_users(session)
 
+
 async def create_minimal_test_users(session: AsyncSession) -> None:
     """Create minimal test users with only required fields using direct SQL.
-    
+
     This is a fallback method that creates users with minimal fields to avoid mapping issues.
     """
     try:
         # Very minimal insert with just the essential fields including mandatory roles column
-        minimal_insert = text("""
+        minimal_insert = text(
+            """
         INSERT OR IGNORE INTO users (id, username, email, password_hash, is_active, role, roles, created_at, updated_at) 
         VALUES (:id, :username, :email, :password_hash, :is_active, :role, :roles, :created_at, :updated_at)
-        """)
-        
+        """
+        )
+
         current_time = datetime.now(timezone.utc).isoformat()
-        
+
         # Insert patient user
-        await session.execute(minimal_insert, {
-            "id": str(TEST_USER_ID),
-            "username": "testuser",
-            "email": "test.user@novamind.ai",
-            "password_hash": "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC",
-            "is_active": True,
-            "role": UserRole.PATIENT.name, # Use NAME
-            "roles": json.dumps([UserRole.PATIENT.name]), # Use NAME
-            "created_at": current_time,
-            "updated_at": current_time
-        })
-        
+        await session.execute(
+            minimal_insert,
+            {
+                "id": str(TEST_USER_ID),
+                "username": "testuser",
+                "email": "test.user@novamind.ai",
+                "password_hash": "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC",
+                "is_active": True,
+                "role": UserRole.PATIENT.name,  # Use NAME
+                "roles": json.dumps([UserRole.PATIENT.name]),  # Use NAME
+                "created_at": current_time,
+                "updated_at": current_time,
+            },
+        )
+
         # Insert clinician user
-        await session.execute(minimal_insert, {
-            "id": str(TEST_CLINICIAN_ID),
-            "username": "testclinician",
-            "email": "test.clinician@novamind.ai",
-            "password_hash": "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC",
-            "is_active": True,
-            "role": UserRole.CLINICIAN.name, # Use NAME
-            "roles": json.dumps([UserRole.CLINICIAN.name]), # Use NAME
-            "created_at": current_time,
-            "updated_at": current_time
-        })
-        
+        await session.execute(
+            minimal_insert,
+            {
+                "id": str(TEST_CLINICIAN_ID),
+                "username": "testclinician",
+                "email": "test.clinician@novamind.ai",
+                "password_hash": "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC",
+                "is_active": True,
+                "role": UserRole.CLINICIAN.name,  # Use NAME
+                "roles": json.dumps([UserRole.CLINICIAN.name]),  # Use NAME
+                "created_at": current_time,
+                "updated_at": current_time,
+            },
+        )
+
         await session.commit()
         logger.info("Created minimal test users via direct SQL")
     except Exception as e:
@@ -229,34 +256,34 @@ async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
 
     # Log SQLAlchemy initialization for debugging
     logger.info("Initializing SQLAlchemy test session with model validation")
-    
+
     # Use the metadata from the canonical Base
     async with engine.begin() as conn:
         # Enable foreign key support for SQLite
         await conn.execute(text("PRAGMA foreign_keys=ON;"))
-        
-        # Ensure all models are properly loaded 
+
+        # Ensure all models are properly loaded
         # ensure_all_models_loaded()
         # validate_models()
-        
+
         # Create tables based on the real application models
         # Use a sync function to create all tables
         def create_tables(sync_conn):
             # Create all tables using the canonical Base metadata
             Base.metadata.create_all(sync_conn)
             logger.info(f"Created {len(Base.metadata.tables)} tables from metadata")
-            
+
             # Get table names for verification
             table_names = list(Base.metadata.tables.keys())
             logger.info(f"Created tables: {', '.join(table_names)}")
-            
+
             # Validate models after creation
             # validate_models()
-            
+
             # Verify that the users table exists
             if "users" not in table_names:
                 logger.error("Users table not found in metadata!")
-        
+
         # Run the table creation function synchronously
         await conn.run_sync(create_tables)
 
@@ -273,23 +300,25 @@ async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
         try:
             # Enable foreign keys specifically for this session (important for SQLite)
             await session.execute(text("PRAGMA foreign_keys=ON;"))
-            
+
             # Validate models at runtime to ensure proper mapping
             # For AsyncEngine, we need to use the begin()/run_sync() pattern
             try:
                 async with engine.begin() as conn:
                     # Define the sync function
                     def validate_models_sync(sync_session_arg_not_used):
-                        logger.info("Validating models (sync context inside get_test_db_session)")
+                        logger.info(
+                            "Validating models (sync context inside get_test_db_session)"
+                        )
                         # validate_models()
-                    
+
                     # Run validation in sync context
                     await conn.run_sync(validate_models_sync)
                 logger.info("SQLAlchemy model validation completed successfully")
             except Exception as e:
                 logger.error(f"Model validation error: {e!s}")
                 # Continue without validation for now - we've already created tables
-                
+
             # Create test users within the session context
             await create_test_users(session)
 
@@ -298,8 +327,8 @@ async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
             await session.rollback()
         except Exception as e:
             logger.error(f"Error during test database session setup/teardown: {e}")
-            await session.rollback() # Ensure rollback on error
-            raise # Re-raise the exception
+            await session.rollback()  # Ensure rollback on error
+            raise  # Re-raise the exception
         finally:
             # Ensure the session is closed
             await session.close()
@@ -322,8 +351,8 @@ async def create_test_patient_domain(
     user_id: uuid.UUID | None = None,
     first_name: str = "Test",
     last_name: str = "Patient",
-    email: str = f"testpatient.{uuid.uuid4().hex[:6]}@example.com", # Ensure unique email
-    phone: str = f"555{random.randint(1000000, 9999999)}", # Ensure unique phone
+    email: str = f"testpatient.{uuid.uuid4().hex[:6]}@example.com",  # Ensure unique email
+    phone: str = f"555{random.randint(1000000, 9999999)}",  # Ensure unique phone
     ssn: str | None = None,
     date_of_birth: str | date | None = None,
     patient_id: uuid.UUID | None = None,
@@ -355,11 +384,11 @@ async def create_test_patient_domain(
         date_of_birth=date_of_birth,
         medical_record_number=f"MRN-TEST-{uuid.uuid4().hex[:8].upper()}",
         ssn=ssn,
-        created_by=user_id or TEST_USER_ID, # Default to test user if not specified
+        created_by=user_id or TEST_USER_ID,  # Default to test user if not specified
         active=True,
         # Add other required fields with defaults if necessary
         gender="Prefer not to say",
-        address=None, # Explicitly set complex types if needed
+        address=None,  # Explicitly set complex types if needed
         emergency_contact=None,
         insurance_provider=None,
         medical_history=[],
@@ -372,9 +401,10 @@ async def create_test_patient_domain(
         version=1,
         insurance_number=None,
         biometric_twin_id=None,
-        external_id=None
+        external_id=None,
     )
     return patient_entity
+
 
 # Function to verify table existence (useful for debugging setup)
 async def verify_table_exists(session: AsyncSession, table_name: str) -> bool:
@@ -386,5 +416,7 @@ async def verify_table_exists(session: AsyncSession, table_name: str) -> bool:
         return True
     except Exception as e:
         # Catching broad exception as specific DB errors vary (e.g., NoSuchTableError, OperationalError)
-        logger.warning(f"Table '{table_name}' does not seem to exist or query failed: {e}")
+        logger.warning(
+            f"Table '{table_name}' does not seem to exist or query failed: {e}"
+        )
         return False

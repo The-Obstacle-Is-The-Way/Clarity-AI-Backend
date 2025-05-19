@@ -26,7 +26,7 @@ def event_loop_policy():
 @pytest.fixture(scope="function")
 def setup_test_event_loop():
     """Set up a test event loop without yielding it.
-    
+
     This is a non-yielding helper fixture that can be used by tests that
     need to set up an event loop but don't need the loop itself.
     """
@@ -37,13 +37,14 @@ def setup_test_event_loop():
 @pytest.fixture(scope="function")
 def cleanup_test_loop(request):
     """Clean up the event loop after a test.
-    
+
     This is a finalizer fixture that ensures the event loop is properly
     cleaned up, even if the test fails.
     """
+
     def fin():
         loop = asyncio.get_event_loop()
         cleanup_event_loop(loop)
-    
+
     request.addfinalizer(fin)
-    return None 
+    return None

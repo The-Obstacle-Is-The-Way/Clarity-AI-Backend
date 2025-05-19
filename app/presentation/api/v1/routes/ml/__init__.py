@@ -14,4 +14,4 @@ router = APIRouter()
 # Include XGBoost router
 router.include_router(xgboost_router, prefix="/xgboost")
 
-__all__ = ["router"] 
+__all__ = ["router"]

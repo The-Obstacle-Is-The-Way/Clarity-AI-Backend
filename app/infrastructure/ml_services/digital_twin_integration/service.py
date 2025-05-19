@@ -230,9 +230,7 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
             return insights
 
         except Exception as e:
-            logger.error(
-                f"Error generating insights for patient {patient_id}: {e!s}"
-            )
+            logger.error(f"Error generating insights for patient {patient_id}: {e!s}")
             raise RuntimeError(f"Failed to generate comprehensive insights: {e!s}")
 
     async def _generate_symptom_forecast(

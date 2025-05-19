@@ -45,19 +45,18 @@ class TestBiometricAlertAuditService:
     def audit_service(self, mock_alert_repository, mock_audit_logger):
         """Create a BiometricAlertAuditService with mock dependencies."""
         return BiometricAlertAuditService(
-            alert_repository=mock_alert_repository,
-            audit_logger=mock_audit_logger
+            alert_repository=mock_alert_repository, audit_logger=mock_audit_logger
         )
 
     @pytest.fixture
     def sample_patient_id(self):
         """Create a sample patient ID."""
-        return UUID('12345678-1234-5678-1234-567812345678')
+        return UUID("12345678-1234-5678-1234-567812345678")
 
     @pytest.fixture
     def sample_provider_id(self):
         """Create a sample provider ID."""
-        return UUID('87654321-8765-4321-8765-432187654321')
+        return UUID("87654321-8765-4321-8765-432187654321")
 
     @pytest.fixture
     def sample_rule_id(self):
@@ -90,7 +89,7 @@ class TestBiometricAlertAuditService:
         sample_rule_id: str,
         sample_rule_name: str,
         sample_alert_id: str,
-        sample_data_point: MagicMock
+        sample_data_point: MagicMock,
     ) -> BiometricAlert:
         """Create a sample BiometricAlert using the correct constructor."""
         return BiometricAlert(
@@ -101,9 +100,8 @@ class TestBiometricAlertAuditService:
             priority=AlertPriority.URGENT,
             data_point=sample_data_point,
             message="Heart rate is significantly elevated",
-            context={}
+            context={},
         )
-
 
     @pytest.mark.asyncio
     async def test_notify_alert_creates_audit_record(
@@ -138,8 +136,13 @@ class TestBiometricAlertAuditService:
 
     @pytest.mark.asyncio
     async def test_record_alert_acknowledgment(
-        self, audit_service, mock_alert_repository, mock_audit_logger,
-        sample_alert, sample_alert_id, sample_provider_id
+        self,
+        audit_service,
+        mock_alert_repository,
+        mock_audit_logger,
+        sample_alert,
+        sample_alert_id,
+        sample_provider_id,
     ):
         """Test that record_alert_acknowledgment logs the event correctly."""
         # Setup: The service now fetches the alert for context
@@ -152,7 +155,7 @@ class TestBiometricAlertAuditService:
         await audit_service.record_alert_acknowledgment(
             alert_id=sample_alert_id,
             provider_id=sample_provider_id,
-            notes="Acknowledged by Dr. Smith"
+            notes="Acknowledged by Dr. Smith",
         )
 
         # Verify
@@ -184,7 +187,7 @@ class TestBiometricAlertAuditService:
             event_description="Test event description",
             actor_id=sample_provider_id,
             notes="Test notes",
-            additional_data={"additional": "data"}
+            additional_data={"additional": "data"},
         )
 
         # Verify
@@ -219,8 +222,12 @@ class TestBiometricAlertAuditService:
 
     @pytest.mark.asyncio
     async def test_search_audit_trail(
-        self, audit_service, mock_audit_logger, sample_patient_id,
-        sample_alert_id, sample_provider_id
+        self,
+        audit_service,
+        mock_audit_logger,
+        sample_patient_id,
+        sample_alert_id,
+        sample_provider_id,
     ):
         """Test that search_audit_trail correctly builds search criteria."""
         # Setup
@@ -237,7 +244,7 @@ class TestBiometricAlertAuditService:
             start_date=start_date,
             end_date=end_date,
             limit=50,
-            offset=10
+            offset=10,
         )
 
         # Verify
@@ -258,8 +265,12 @@ class TestBiometricAlertAuditService:
 
     @pytest.mark.asyncio
     async def test_no_audit_record_for_nonexistent_alert_acknowledgment(
-        self, audit_service, mock_alert_repository, mock_audit_logger,
-        sample_alert_id, sample_provider_id
+        self,
+        audit_service,
+        mock_alert_repository,
+        mock_audit_logger,
+        sample_alert_id,
+        sample_provider_id,
     ):
         """Test that no audit record is created when acknowledging a nonexistent alert."""
         # Setup
@@ -269,7 +280,7 @@ class TestBiometricAlertAuditService:
         await audit_service.record_alert_acknowledgment(
             alert_id=sample_alert_id,
             provider_id=sample_provider_id,
-            notes="Acknowledged by Dr. Smith"
+            notes="Acknowledged by Dr. Smith",
         )
 
         # Verify

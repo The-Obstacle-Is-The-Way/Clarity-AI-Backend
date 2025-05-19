@@ -12,7 +12,4 @@ from app.infrastructure.persistence.repositories.redis_token_blacklist_repositor
     RedisTokenBlacklistRepository,
 )
 
-__all__ = [
-    "TokenBlacklistRepository",
-    "RedisTokenBlacklistRepository"
-] 
+__all__ = ["TokenBlacklistRepository", "RedisTokenBlacklistRepository"]

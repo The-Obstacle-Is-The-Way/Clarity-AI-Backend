@@ -9,11 +9,11 @@ from app.core.exceptions.base_exceptions import ApplicationError
 
 class AuthenticationError(ApplicationError):
     """Base exception for authentication errors."""
-    
+
     def __init__(self, message: str = "Authentication failed", *args, **kwargs):
         """
         Initialize authentication error.
-        
+
         Args:
             message: Error message
             args: Additional positional arguments
@@ -24,11 +24,13 @@ class AuthenticationError(ApplicationError):
 
 class AuthorizationError(ApplicationError):
     """Exception raised when a user is not authorized to perform an action."""
-    
-    def __init__(self, message: str = "Not authorized to perform this action", *args, **kwargs):
+
+    def __init__(
+        self, message: str = "Not authorized to perform this action", *args, **kwargs
+    ):
         """
         Initialize authorization error.
-        
+
         Args:
             message: Error message
             args: Additional positional arguments
@@ -39,11 +41,13 @@ class AuthorizationError(ApplicationError):
 
 class TokenExpiredError(AuthenticationError):
     """Exception raised when an authentication token has expired."""
-    
-    def __init__(self, message: str = "Authentication token has expired", *args, **kwargs):
+
+    def __init__(
+        self, message: str = "Authentication token has expired", *args, **kwargs
+    ):
         """
         Initialize token expired error.
-        
+
         Args:
             message: Error message
             args: Additional positional arguments
@@ -54,11 +58,11 @@ class TokenExpiredError(AuthenticationError):
 
 class InvalidTokenError(AuthenticationError):
     """Exception raised when an authentication token is invalid."""
-    
+
     def __init__(self, message: str = "Invalid authentication token", *args, **kwargs):
         """
         Initialize invalid token error.
-        
+
         Args:
             message: Error message
             args: Additional positional arguments

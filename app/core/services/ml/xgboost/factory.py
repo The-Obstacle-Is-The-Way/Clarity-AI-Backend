@@ -26,10 +26,11 @@ _registry: dict[str, type[XGBoostInterface]] = {
 # Cache to avoid creating multiple instances unnecessarily
 _instances: dict[str, XGBoostInterface] = {}
 
+
 def get_xgboost_service() -> XGBoostInterface:
     """
     Factory function to create an XGBoost service instance.
-    
+
     Returns:
         XGBoostInterface: An instance of the XGBoost service
     """
@@ -37,21 +38,22 @@ def get_xgboost_service() -> XGBoostInterface:
     # For testing, this can be overridden
     return create_xgboost_service(implementation_name="mock")
 
+
 @lru_cache(maxsize=8)  # Cache instances to improve performance
 def create_xgboost_service(
-    implementation_name: str = "mock", 
-    **kwargs: dict  # More specific than Any, for service configuration parameters
+    implementation_name: str = "mock",
+    **kwargs: dict,  # More specific than Any, for service configuration parameters
 ) -> XGBoostInterface:
     """
     Create an XGBoost service instance based on implementation name.
-    
+
     Args:
         implementation_name: Name of the implementation to create ("aws", "mock")
         **kwargs: Additional configuration parameters for the service
-        
+
     Returns:
         An implementation of XGBoostInterface
-        
+
     Raises:
         ValueError: If the requested implementation is not registered
     """
@@ -61,33 +63,41 @@ def create_xgboost_service(
             f"Unknown XGBoost implementation '{implementation_name}'. Using 'mock' instead."
         )
         implementation_name = "mock"
-    
+
     # Get the implementation class
     if implementation_name == "mock":
         # Lazy import to avoid circular dependencies
-        from app.infrastructure.services.mocks.mock_xgboost_service import MockXGBoostService
+        from app.infrastructure.services.mocks.mock_xgboost_service import (
+            MockXGBoostService,
+        )
+
         implementation_class = cast(type[XGBoostInterface], MockXGBoostService)
     else:
         implementation_class = _registry[implementation_name]
-    
+
     # Create and return instance
-    logger.info(f"Creating XGBoost service instance using '{implementation_name}' implementation")
-    
+    logger.info(
+        f"Creating XGBoost service instance using '{implementation_name}' implementation"
+    )
+
     # Use cached instance if it exists
-    cache_key = f"{implementation_name}:{hash(frozenset(kwargs.items()))}" 
+    cache_key = f"{implementation_name}:{hash(frozenset(kwargs.items()))}"
     if cache_key in _instances:
         return _instances[cache_key]
-    
+
     # Create new instance
     instance = implementation_class(**kwargs)
     _instances[cache_key] = instance
-    
+
     return instance
 
-def register_implementation(name: str, implementation_class: type[XGBoostInterface]) -> None:
+
+def register_implementation(
+    name: str, implementation_class: type[XGBoostInterface]
+) -> None:
     """
     Register a new XGBoost service implementation.
-    
+
     Args:
         name: Name to register the implementation under
         implementation_class: Class implementing XGBoostInterface

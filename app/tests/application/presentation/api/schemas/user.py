@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 
 class UserResponseSchema(BaseModel):
     """Schema for representing a user in API responses."""
+
     id: UUID
     username: str
     email: EmailStr | None = None

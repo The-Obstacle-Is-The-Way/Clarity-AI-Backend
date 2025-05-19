@@ -97,12 +97,21 @@ class RiskPredictionRequest(BaseModelConfig):
 
     risk_type: RiskType
     patient_id: str
-    patient_data: dict[str, Any] = Field(..., description="Patient demographic and baseline data")
-    clinical_data: dict[str, Any] = Field(..., description="Clinical data and measurements")
+    patient_data: dict[str, Any] = Field(
+        ..., description="Patient demographic and baseline data"
+    )
+    clinical_data: dict[str, Any] = Field(
+        ..., description="Clinical data and measurements"
+    )
     include_explainability: bool = False
     visualization_type: VisualizationType | None = None
     time_frame_days: int = Field(default=90, description="Prediction timeframe in days")
-    confidence_threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Minimum confidence threshold for predictions")
+    confidence_threshold: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Minimum confidence threshold for predictions",
+    )
 
     # For backward compatibility with legacy code
     @property
@@ -158,8 +167,12 @@ class PerformanceMetrics(BaseModelConfig):
     f1_score: float = Field(
         ge=0.0, le=1.0, description="F1 score (harmonic mean of precision and recall)"
     )
-    auc_roc: float | None = Field(None, ge=0.0, le=1.0, description="Area under ROC curve")
-    specificity: float | None = Field(None, ge=0.0, le=1.0, description="Specificity metric")
+    auc_roc: float | None = Field(
+        None, ge=0.0, le=1.0, description="Area under ROC curve"
+    )
+    specificity: float | None = Field(
+        None, ge=0.0, le=1.0, description="Specificity metric"
+    )
     confusion_matrix: dict[str, int] | None = None
     cross_validation_scores: list[float] | None = None
 
@@ -256,13 +269,15 @@ class OutcomePredictionRequest(BaseModelConfig):
 
     patient_id: str
     outcome_timeframe: dict[str, int] | None = None
-    features: dict[str, Any] = Field(..., description="Features used for the prediction model")
+    features: dict[str, Any] = Field(
+        ..., description="Features used for the prediction model"
+    )
     timeframe_days: int = Field(..., description="Prediction timeframe in days")
     clinical_data: dict[str, Any] | None = None
     treatment_plan: dict[str, Any] | None = None
     socioeconomic_factors: dict[str, Any] | None = None
     biometric_data: dict[str, Any] | None = None
-    
+
     # Optional fields
     include_trajectories: bool = False
     include_recommendations: bool = True
@@ -330,10 +345,18 @@ class XGBoostPredictionResponse(BaseModelConfig):
 
 class FeatureImportanceResponse(BaseModelConfig):
     """Response schema for feature importance explanations."""
-    
-    prediction_id: str = Field(..., description="The ID of the prediction being explained")
+
+    prediction_id: str = Field(
+        ..., description="The ID of the prediction being explained"
+    )
     patient_id: str = Field(..., description="The ID of the patient")
     features: dict[str, float] = Field(..., description="Feature importance scores")
-    timestamp: str | datetime = Field(..., description="Timestamp of when the explanation was generated")
-    model_version: str = Field(..., description="Version of the model used for the prediction")
-    explanation_method: str = Field(default="SHAP", description="Method used to calculate feature importance")
+    timestamp: str | datetime = Field(
+        ..., description="Timestamp of when the explanation was generated"
+    )
+    model_version: str = Field(
+        ..., description="Version of the model used for the prediction"
+    )
+    explanation_method: str = Field(
+        default="SHAP", description="Method used to calculate feature importance"
+    )

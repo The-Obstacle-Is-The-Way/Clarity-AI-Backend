@@ -11,7 +11,7 @@ import logging
 from .roles import ROLE_PERMISSIONS, Role
 
 # Assuming User entity might be needed for context later
-# from app.domain.entities.user import User 
+# from app.domain.entities.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -30,19 +30,22 @@ try:
 except ModuleNotFoundError:  # pragma: no cover – should never happen
     pass
 
+
 class RBACService:
     """
     Provides methods to check user permissions based on their roles.
-    
+
     Uses the definitive roles and permissions defined in `roles.py`.
     """
 
     def __init__(self):
         """Initialize the RBAC service."""
         # Roles and permissions are loaded directly from the imported roles module
-        pass 
+        pass
 
-    def check_permission(self, user_roles: list[Role], required_permission: str) -> bool:
+    def check_permission(
+        self, user_roles: list[Role], required_permission: str
+    ) -> bool:
         """
         Check if a user with the given roles has a specific permission.
 
@@ -55,14 +58,13 @@ class RBACService:
         """
         if not user_roles:
             return False
-            
+
         # Check against the ROLE_PERMISSIONS mapping, allowing dynamic overrides
         has_perm = any(
-            required_permission in ROLE_PERMISSIONS.get(role, [])
-            for role in user_roles
+            required_permission in ROLE_PERMISSIONS.get(role, []) for role in user_roles
         )
-        
-        # Future: Implement context-aware checks here if needed 
+
+        # Future: Implement context-aware checks here if needed
         # (e.g., checking resource ownership for 'own_' permissions)
         # Example:
         # if not has_perm and required_permission.startswith("read:"):
@@ -71,7 +73,9 @@ class RBACService:
         #          # Need resource_owner_id and user_id context here
         #          pass # Logic to compare owner_id and user_id
 
-        logger.debug(f"Permission check: Roles={user_roles}, Required='{required_permission}', Result={has_perm}")
+        logger.debug(
+            f"Permission check: Roles={user_roles}, Required='{required_permission}', Result={has_perm}"
+        )
         return has_perm
 
     def get_permissions_for_roles(self, roles: list[Role]) -> list[str]:
@@ -90,9 +94,9 @@ class RBACService:
             all_permissions.update(ROLE_PERMISSIONS.get(role, []))
         return list(all_permissions)
 
+
 # Optional: Singleton pattern if desired, similar to role_manager.py
 # from functools import lru_cache
 # @lru_cache(maxsize=1)
 # def get_rbac_service() -> RBACService:
 #     return RBACService()
-

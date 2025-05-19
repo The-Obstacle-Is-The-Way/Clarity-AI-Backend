@@ -18,7 +18,9 @@ from app.core.exceptions import (
     ServiceUnavailableError,
 )
 from app.domain.utils.datetime_utils import UTC
-from app.infrastructure.ml.mentallama.mock import MockMentaLLaMA  # Corrected import path
+from app.infrastructure.ml.mentallama.mock import (
+    MockMentaLLaMA,
+)  # Corrected import path
 
 
 @pytest.fixture(scope="function")
@@ -26,25 +28,26 @@ def mock_mentallama_service(request):
     """Pytest fixture to set up and tear down MockMentaLLaMA for each test."""
     service = MockMentaLLaMA()
     service.initialize({})
-    
+
     sample_text = (
         "I've been feeling down for several weeks. I'm constantly tired, "
         "have trouble sleeping, and don't enjoy things anymore. Sometimes "
         "I wonder if life is worth living, but I wouldn't actually hurt myself."
     )
-    
+
     # Store service and common data on the test instance via request
     request.instance.service = service
     request.instance.sample_text = sample_text
-    
-    yield service # Provide the service to the test function
+
+    yield service  # Provide the service to the test function
 
     # Teardown: Shutdown the service
     if hasattr(request.instance, "service") and request.instance.service.is_healthy():
         request.instance.service.shutdown()
 
-@pytest.mark.usefixtures("mock_mentallama_service") # Apply the fixture
-@pytest.mark.db_required() # Keep existing marker
+
+@pytest.mark.usefixtures("mock_mentallama_service")  # Apply the fixture
+@pytest.mark.db_required()  # Keep existing marker
 class TestMockMentaLLaMA:
     """Test suite for MockMentaLLaMA class (pytest style)."""
 
@@ -52,16 +55,11 @@ class TestMockMentaLLaMA:
         """Test initialization with valid and invalid configurations."""
         # Test default initialization
         service = MockMentaLLaMA()
-        service.initialize({}) 
+        service.initialize({})
         assert service.is_healthy()
 
         # Test initialization with custom mock responses
-        custom_responses = {
-            "general": {
-                "custom": True,
-                "model_type": "general"
-            }
-        }
+        custom_responses = {"general": {"custom": True, "model_type": "general"}}
         service = MockMentaLLaMA()
         service.initialize({"mock_responses": custom_responses})
         assert service.is_healthy()
@@ -87,7 +85,7 @@ class TestMockMentaLLaMA:
 
         # Test non-string text
         with pytest.raises(InvalidRequestError):
-            self.service.process(123) 
+            self.service.process(123)
 
         # Test invalid model type
         with pytest.raises(ModelNotFoundError):
@@ -112,7 +110,7 @@ class TestMockMentaLLaMA:
         timestamp_str = result["timestamp"]
         timestamp = datetime.fromisoformat(timestamp_str)
         if timestamp.tzinfo is None:
-             timestamp = timestamp.replace(tzinfo=UTC)
+            timestamp = timestamp.replace(tzinfo=UTC)
         assert (datetime.now(UTC) - timestamp).total_seconds() < 10
 
         # Test all available model types
@@ -122,7 +120,7 @@ class TestMockMentaLLaMA:
             "sentiment_analysis",
             "wellness_dimensions",
             "digital_twin",
-        ]: 
+        ]:
             result = self.service.process(self.sample_text, model_type)
             assert result["model_type"] == model_type
 
@@ -207,7 +205,9 @@ class TestMockMentaLLaMA:
         twin_id = twin_result["digital_twin_id"]
 
         # Create a session with the digital twin
-        session_result = self.service.create_digital_twin_session(twin_id, session_type="therapy")
+        session_result = self.service.create_digital_twin_session(
+            twin_id, session_type="therapy"
+        )
         assert "session_id" in session_result
         session_id = session_result["session_id"]
 
@@ -217,7 +217,9 @@ class TestMockMentaLLaMA:
         assert session_details["status"] == "active"
 
         # Send message to session
-        message_result = self.service.send_message_to_session(session_id, "How can I manage my anxiety better?")
+        message_result = self.service.send_message_to_session(
+            session_id, "How can I manage my anxiety better?"
+        )
         assert "response" in message_result
         assert "messages" in message_result
         assert len(message_result["messages"]) > 0

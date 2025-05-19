@@ -21,35 +21,35 @@ from app.infrastructure.persistence.sqlalchemy.models.temporal_sequence_model im
 class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
     """
     SQLAlchemy implementation of the temporal sequence repository.
-    
+
     This repository handles the persistence of temporal sequences, including
     serialization/deserialization between domain entities and database models.
     """
-    
+
     def __init__(self, session: AsyncSession):
         """Initialize with a SQLAlchemy session."""
         self.session = session
-    
+
     async def save(self, sequence: TemporalSequence) -> UUID:
         """
         Persist a temporal sequence.
-        
+
         Args:
             sequence: The domain entity to persist
-            
+
         Returns:
             UUID of the saved sequence
         """
         # Convert domain entity to ORM models
-        
+
         # Create sequence model
         sequence_model = TemporalSequenceModel(
             sequence_id=sequence.sequence_id,
             patient_id=sequence.patient_id,
             feature_names_json=sequence.feature_names,  # Store as JSON-compatible list
-            sequence_metadata=sequence.metadata
+            sequence_metadata=sequence.metadata,
         )
-        
+
         # Create data point models for each time point
         data_points = []
         for i, tp in enumerate(sequence.time_points):
@@ -57,24 +57,24 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
                 sequence_id=sequence.sequence_id,
                 position=i,
                 timestamp=tp.time_value,
-                values=tp.data
+                values=tp.data,
             )
             data_points.append(data_point)
-        
+
         # Save to database
         self.session.add(sequence_model)
         self.session.add_all(data_points)
         await self.session.flush()
-        
+
         return sequence.sequence_id
-    
+
     async def get_by_id(self, sequence_id: UUID) -> TemporalSequence | None:
         """
         Retrieve a temporal sequence by ID.
-        
+
         Args:
             sequence_id: UUID of the sequence to retrieve
-            
+
         Returns:
             TemporalSequence if found, None otherwise
         """
@@ -85,10 +85,10 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
             )
         )
         sequence_model = result.scalars().first()
-        
+
         if not sequence_model:
             return None
-        
+
         # Get data points
         result = await self.session.execute(
             sa.select(TemporalDataPointModel)
@@ -96,28 +96,27 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
             .order_by(TemporalDataPointModel.position)
         )
         data_points = result.scalars().all()
-        
+
         # Convert to domain entity
         time_points = [
-            TimePoint(time_value=dp.timestamp, data=dp.values)
-            for dp in data_points
+            TimePoint(time_value=dp.timestamp, data=dp.values) for dp in data_points
         ]
-        
+
         return TemporalSequence(
             sequence_id=sequence_model.sequence_id,
             patient_id=sequence_model.patient_id,
             feature_names=sequence_model.feature_names,  # Use property accessor
             time_points=time_points,
-            metadata=sequence_model.sequence_metadata
+            metadata=sequence_model.sequence_metadata,
         )
-    
+
     async def get_by_patient_id(self, patient_id: UUID) -> list[TemporalSequence]:
         """
         Get all temporal sequences for a patient.
-        
+
         Args:
             patient_id: UUID of the patient
-            
+
         Returns:
             List of temporal sequences
         """
@@ -128,7 +127,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
             )
         )
         sequence_models = result.scalars().all()
-        
+
         # Build list of domain entities
         sequences = []
         for seq_model in sequence_models:
@@ -139,31 +138,30 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
                 .order_by(TemporalDataPointModel.position)
             )
             data_points = result.scalars().all()
-            
+
             # Convert to domain entity
             time_points = [
-                TimePoint(time_value=dp.timestamp, data=dp.values)
-                for dp in data_points
+                TimePoint(time_value=dp.timestamp, data=dp.values) for dp in data_points
             ]
-            
+
             sequence = TemporalSequence(
                 sequence_id=seq_model.sequence_id,
                 patient_id=seq_model.patient_id,
                 feature_names=seq_model.feature_names,  # Use property accessor
                 time_points=time_points,
-                metadata=seq_model.sequence_metadata
+                metadata=seq_model.sequence_metadata,
             )
             sequences.append(sequence)
-        
+
         return sequences
-    
+
     async def delete(self, sequence_id: UUID) -> bool:
         """
         Delete a temporal sequence.
-        
+
         Args:
             sequence_id: UUID of the sequence to delete
-            
+
         Returns:
             True if deletion was successful
         """
@@ -173,30 +171,27 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
                 TemporalDataPointModel.sequence_id == sequence_id
             )
         )
-        
+
         # Delete sequence
         result = await self.session.execute(
             sa.delete(TemporalSequenceModel).where(
                 TemporalSequenceModel.sequence_id == sequence_id
             )
         )
-        
+
         return result.rowcount > 0
-    
+
     async def get_latest_by_feature(
-        self, 
-        patient_id: UUID, 
-        feature_name: str,
-        limit: int = 10
+        self, patient_id: UUID, feature_name: str, limit: int = 10
     ) -> TemporalSequence | None:
         """
         Get the most recent temporal sequence containing a specific feature.
-        
+
         Args:
             patient_id: UUID of the patient
             feature_name: Name of the feature to find
             limit: Maximum number of entries to return
-            
+
         Returns:
             The most recent temporal sequence containing the feature
         """
@@ -209,19 +204,18 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
             .limit(limit * 2)  # Fetch more to increase chances of finding matches
         )
         sequence_models = result.scalars().all()
-        
+
         # Filter sequences that contain the feature
         matching_models = [
-            model for model in sequence_models
-            if feature_name in model.feature_names
+            model for model in sequence_models if feature_name in model.feature_names
         ]
-        
+
         if not matching_models:
             return None
-        
+
         # Get the most recent matching sequence
         latest_model = matching_models[0]
-        
+
         # Get data points
         result = await self.session.execute(
             sa.select(TemporalDataPointModel)
@@ -229,17 +223,16 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
             .order_by(TemporalDataPointModel.position)
         )
         data_points = result.scalars().all()
-        
+
         # Convert to domain entity
         time_points = [
-            TimePoint(time_value=dp.timestamp, data=dp.values)
-            for dp in data_points
+            TimePoint(time_value=dp.timestamp, data=dp.values) for dp in data_points
         ]
-        
+
         return TemporalSequence(
             sequence_id=latest_model.sequence_id,
             patient_id=latest_model.patient_id,
             feature_names=latest_model.feature_names,  # Use property accessor
             time_points=time_points,
-            metadata=latest_model.sequence_metadata
-        ) 
+            metadata=latest_model.sequence_metadata,
+        )

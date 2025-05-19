@@ -145,7 +145,9 @@ import importlib as _importlib
 
 # Attempt to import (or retrieve) the test module and patch its ``UTC``
 try:
-    _test_mod = _sys.modules.get(_test_mod_name) or _importlib.import_module(_test_mod_name)
+    _test_mod = _sys.modules.get(_test_mod_name) or _importlib.import_module(
+        _test_mod_name
+    )
     if getattr(_test_mod, "UTC", None) is not None:
         from datetime import timezone as _dt_timezone
 
@@ -198,25 +200,29 @@ for _m in list(_sys.modules.values()):
     if _m is None or not hasattr(_m, "UTC"):
         continue
     if isinstance(_m.UTC, _dt_timedelta):
-            _m.UTC = _dt_timezone.utc
+        _m.UTC = _dt_timezone.utc
 
-            # Replace the directly imported `datetime` symbol inside the test
-            # module so that `datetime.now(UTC)` accepts a plain `timedelta` as
-            # seen in the fixture definitions.
-            if hasattr(_m, "datetime"):
-                _orig_dt_cls = _m.datetime
+        # Replace the directly imported `datetime` symbol inside the test
+        # module so that `datetime.now(UTC)` accepts a plain `timedelta` as
+        # seen in the fixture definitions.
+        if hasattr(_m, "datetime"):
+            _orig_dt_cls = _m.datetime
 
-                class _DTCompat:
-                    @staticmethod
-                    def now(tz=None):  # type: ignore[override]
-                        if isinstance(tz, _dt_timedelta):
-                            tz = _dt_timezone(tz)
-                        return _orig_dt_cls.now(tz) if hasattr(_orig_dt_cls, 'now') else _orig_dt_cls(tz)
+            class _DTCompat:
+                @staticmethod
+                def now(tz=None):  # type: ignore[override]
+                    if isinstance(tz, _dt_timedelta):
+                        tz = _dt_timezone(tz)
+                    return (
+                        _orig_dt_cls.now(tz)
+                        if hasattr(_orig_dt_cls, "now")
+                        else _orig_dt_cls(tz)
+                    )
 
-                    def __getattr__(self, item):
-                        return getattr(_orig_dt_cls, item)
+                def __getattr__(self, item):
+                    return getattr(_orig_dt_cls, item)
 
-                _m.datetime = _DTCompat
+            _m.datetime = _DTCompat
 
 # ---------------------------------------------------------------------------
 # New Digital‑Twin endpoints required by the unit test suite
@@ -326,9 +332,13 @@ async def generate_symptom_forecast_endpoint(
     try:
         return await service.generate_symptom_forecasting(patient_id)
     except ResourceNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     except ModelExecutionError as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
 
 
 @router.get(
@@ -344,9 +354,13 @@ async def correlate_biometrics_endpoint(
     try:
         return await service.correlate_biometrics(patient_id)
     except ResourceNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     except ModelExecutionError as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
 
 
 @router.get(
@@ -362,9 +376,13 @@ async def predict_medication_response_endpoint(
     try:
         return await service.predict_medication_response(patient_id)
     except ResourceNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     except ModelExecutionError as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
 
 
 @router.get(
@@ -380,16 +398,20 @@ async def generate_treatment_plan_endpoint(
     try:
         return await service.generate_treatment_plan(patient_id)
     except ResourceNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     except ModelExecutionError as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
 
 
 @router.get(
     "/{patient_id}",
     summary="Get Latest Digital Twin State",
     description="Retrieve the latest state of the digital twin for a specific patient, "
-                "optionally initializing with genetic data or biomarkers.",
+    "optionally initializing with genetic data or biomarkers.",
 )
 async def get_latest_state(
     patient_id: UUID,
@@ -405,7 +427,7 @@ async def get_latest_state(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Patient with ID {patient_id} not found"
+            detail=f"Patient with ID {patient_id} not found",
         )
     return {
         "id": str(state.id),
@@ -431,7 +453,7 @@ async def process_treatment_event(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Patient with ID {patient_id} not found"
+            detail=f"Patient with ID {patient_id} not found",
         )
     return {
         "id": str(state.id),
@@ -498,4 +520,3 @@ async def generate_clinical_summary(
     return await service.generate_clinical_summary(
         patient_id, include_treatment_history, include_predictions
     )
-

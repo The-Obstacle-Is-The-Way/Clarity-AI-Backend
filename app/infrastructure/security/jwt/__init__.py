@@ -10,13 +10,7 @@ from app.infrastructure.security.jwt.jwt_service import (
     IJwtService,
     TokenPayload,
     TokenType,
-    get_jwt_service
+    get_jwt_service,
 )
 
-__all__ = [
-    "JWTService",
-    "IJwtService",
-    "TokenPayload",
-    "TokenType",
-    "get_jwt_service"
-] 
+__all__ = ["JWTService", "IJwtService", "TokenPayload", "TokenType", "get_jwt_service"]

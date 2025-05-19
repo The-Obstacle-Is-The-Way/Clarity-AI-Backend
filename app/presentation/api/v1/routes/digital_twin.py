@@ -13,7 +13,10 @@ import copy
 from fastapi import APIRouter, Depends, HTTPException, status, Body, Request
 
 from app.core.domain.entities.user import User
-from app.core.exceptions.base_exceptions import ResourceNotFoundError, ModelExecutionError
+from app.core.exceptions.base_exceptions import (
+    ResourceNotFoundError,
+    ModelExecutionError,
+)
 from app.presentation.api.dependencies.auth import get_current_active_user
 
 # Assuming schemas exist here, adjust if necessary
@@ -23,14 +26,16 @@ from app.presentation.api.schemas.digital_twin import (
     ComponentStatus,
     PersonalizedInsightResponse,
     ClinicalTextAnalysisRequest,
-    ClinicalTextAnalysisResponse
+    ClinicalTextAnalysisResponse,
 )
 from app.presentation.api.v1.dependencies.digital_twin import DigitalTwinServiceDep
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/digital-twin", tags=["digital-twin"], dependencies=[Depends(get_current_active_user)]
+    prefix="/digital-twin",
+    tags=["digital-twin"],
+    dependencies=[Depends(get_current_active_user)],
 )
 
 
@@ -53,19 +58,21 @@ async def get_digital_twin(
     except ResourceNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Digital twin data not found for current user"
+            detail="Digital twin data not found for current user",
         )
     except Exception as e:
         logger.error(f"Error retrieving digital twin: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve digital twin: {str(e)}"
+            detail=f"Failed to retrieve digital twin: {str(e)}",
         )
 
 
 @router.get(
     "/{patient_id}/status",
-    response_model=Dict[str, Any],  # Use Dict instead of DigitalTwinStatusResponse to avoid validation
+    response_model=Dict[
+        str, Any
+    ],  # Use Dict instead of DigitalTwinStatusResponse to avoid validation
     summary="Get the digital twin status for a patient",
 )
 async def get_twin_status(
@@ -83,13 +90,13 @@ async def get_twin_status(
     except ResourceNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Digital twin status not found: {str(e)}"
+            detail=f"Digital twin status not found: {str(e)}",
         )
     except Exception as e:
         logger.error(f"Error retrieving digital twin status: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve digital twin status: {str(e)}"
+            detail=f"Failed to retrieve digital twin status: {str(e)}",
         )
 
 
@@ -109,29 +116,32 @@ async def get_comprehensive_insights(
     logger.info(f"Generating comprehensive insights for patient {patient_id}")
     try:
         # Simply return the service response directly
-        return await dt_service.generate_comprehensive_patient_insights(patient_id=patient_id)
+        return await dt_service.generate_comprehensive_patient_insights(
+            patient_id=patient_id
+        )
     except ResourceNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Patient or digital twin not found: {str(e)}"
+            detail=f"Patient or digital twin not found: {str(e)}",
         )
     except ModelExecutionError as e:
         # Convert ModelExecutionError to HTTP 500 with standardized error response
         logger.error(f"Model execution error in insights generation: {str(e)}")
         # Return a structured JSON response with both detail and error_code fields
         from fastapi.responses import JSONResponse
+
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
                 "detail": "An unexpected internal server error occurred.",
-                "error_code": "INTERNAL_SERVER_ERROR"
-            }
+                "error_code": "INTERNAL_SERVER_ERROR",
+            },
         )
     except Exception as e:
         logger.error(f"Error generating insights: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error generating insights: {str(e)}"
+            detail=f"Unexpected error generating insights: {str(e)}",
         )
 
 
@@ -143,7 +153,9 @@ async def get_comprehensive_insights(
 async def analyze_clinical_text(
     patient_id: UUID,
     request: Request,  # Add the Request object
-    request_data: Optional[dict] = Body(default=None),  # Make Body optional with default None
+    request_data: Optional[dict] = Body(
+        default=None
+    ),  # Make Body optional with default None
     dt_service: DigitalTwinServiceDep = None,  # Keep it as None to avoid Depends issues
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, Any]:
@@ -151,15 +163,19 @@ async def analyze_clinical_text(
     Analyze clinical text using MentaLLaMA integration with the patient's digital twin.
     """
     logger.info(f"Analyzing clinical text for patient {patient_id}")
-    
+
     # Debug prints
     print(f"DEBUG request: {request}")
     print(f"DEBUG request_data: {request_data}")
-    print(f"DEBUG request.state has parsed_body: {'parsed_body' in request.state.__dict__}")
-    
+    print(
+        f"DEBUG request.state has parsed_body: {'parsed_body' in request.state.__dict__}"
+    )
+
     # Try to get data from different sources
-    if hasattr(request.state, 'parsed_body') and request.state.parsed_body:
-        print(f"DEBUG Using parsed_body from request.state: {request.state.parsed_body}")
+    if hasattr(request.state, "parsed_body") and request.state.parsed_body:
+        print(
+            f"DEBUG Using parsed_body from request.state: {request.state.parsed_body}"
+        )
         parsed_data = request.state.parsed_body
     elif request_data is not None:
         print(f"DEBUG Using request_data: {request_data}")
@@ -170,52 +186,52 @@ async def analyze_clinical_text(
             print("DEBUG Trying to read raw body")
             raw_body = await request.body()
             import json
+
             parsed_data = json.loads(raw_body)
             print(f"DEBUG Read raw body: {parsed_data}")
         except Exception as e:
             print(f"DEBUG Failed to read raw body: {e}")
             parsed_data = {}
-    
+
     # Extract the request from the wrapper if it exists
-    if isinstance(parsed_data, dict) and 'request' in parsed_data:
-        parsed_data = parsed_data['request']
-    
+    if isinstance(parsed_data, dict) and "request" in parsed_data:
+        parsed_data = parsed_data["request"]
+
     # Create a proper ClinicalTextAnalysisRequest object
     try:
         req = ClinicalTextAnalysisRequest(**parsed_data)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": f"Invalid request: {str(e)}"}
+            detail={"error": f"Invalid request: {str(e)}"},
         )
-    
+
     try:
         # Simply return the service response directly
         return await dt_service.analyze_clinical_text_mentallama(
-            patient_id=patient_id,
-            text=req.text,
-            analysis_type=req.analysis_type
+            patient_id=patient_id, text=req.text, analysis_type=req.analysis_type
         )
     except ResourceNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Patient or digital twin not found: {str(e)}"
+            detail=f"Patient or digital twin not found: {str(e)}",
         )
     except ModelExecutionError as e:
         # Convert ModelExecutionError to HTTP 500 with standardized error response
         logger.error(f"Model execution error in text analysis: {str(e)}")
         # Return a structured JSON response with both detail and error_code fields
         from fastapi.responses import JSONResponse
+
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
                 "detail": "An unexpected internal server error occurred.",
-                "error_code": "INTERNAL_SERVER_ERROR"
-            }
+                "error_code": "INTERNAL_SERVER_ERROR",
+            },
         )
     except Exception as e:
         logger.error(f"Error analyzing clinical text: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error analyzing text: {str(e)}"
+            detail=f"Unexpected error analyzing text: {str(e)}",
         )

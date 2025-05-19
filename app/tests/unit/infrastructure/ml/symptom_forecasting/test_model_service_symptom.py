@@ -3,7 +3,10 @@ import asyncio
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout
 
-pytest.skip("Skipping symptom forecasting model service tests (torch unsupported)", allow_module_level=True)
+pytest.skip(
+    "Skipping symptom forecasting model service tests (torch unsupported)",
+    allow_module_level=True,
+)
 from datetime import date, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID
@@ -15,10 +18,13 @@ from app.domain.entities.patient import Patient
 
 # Removed unused import for MLSettings
 # Removed import for non-existent ModelRegistry
-# from app.infrastructure.ml.interfaces.model_registry import ModelRegistry 
-from app.infrastructure.ml.symptom_forecasting.model_service import SymptomForecastingService
+# from app.infrastructure.ml.interfaces.model_registry import ModelRegistry
+from app.infrastructure.ml.symptom_forecasting.model_service import (
+    SymptomForecastingService,
+)
 
 # from app.core.exceptions import ModelExecutionError, ResourceNotFoundError # Old incorrect import
+
 
 class TestSymptomForecastingModelService:
     """Test suite for the SymptomForecastingModelService."""
@@ -31,15 +37,15 @@ class TestSymptomForecastingModelService:
     #     return registry
 
     @pytest.fixture
-    def service(self): # Removed mock_model_registry dependency
+    def service(self):  # Removed mock_model_registry dependency
         """Create a SymptomForecastingModelService instance for testing."""
-        # Correct instantiation - requires updating based on new __init__ 
+        # Correct instantiation - requires updating based on new __init__
         # TODO: Update instantiation with necessary paths/mocks
         return SymptomForecastingService(
             model_dir="/tmp/test_symptom_service",
             # model_registry=mock_model_registry, # Removed registry argument
-            feature_names=["anxiety", "depression", "sleep_hours"], # Example features
-            target_names=["anxiety_forecast", "depression_forecast"] # Example targets
+            feature_names=["anxiety", "depression", "sleep_hours"],  # Example features
+            target_names=["anxiety_forecast", "depression_forecast"],  # Example targets
         )
 
     @pytest.fixture
@@ -50,7 +56,7 @@ class TestSymptomForecastingModelService:
             id=UUID("00000000-0000-0000-0000-000000000001"),
             first_name="John",
             last_name="Doe",
-            date_of_birth=date(1980, 1, 1), # Use date object
+            date_of_birth=date(1980, 1, 1),  # Use date object
             email="john.doe@example.com",
             phone="555-123-4567",
             active=True,
@@ -70,7 +76,9 @@ class TestSymptomForecastingModelService:
             "medication_history": [
                 {
                     "medication": "Sertraline",
-                    "start_date": (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d"),
+                    "start_date": (datetime.now() - timedelta(days=60)).strftime(
+                        "%Y-%m-%d"
+                    ),
                     "end_date": None,
                     "dosage": "50mg",
                     "frequency": "daily",
@@ -116,16 +124,13 @@ class TestSymptomForecastingModelService:
         }
 
     @pytest.mark.asyncio
-    async def test_preprocess_patient_data_success(
-        self, service, sample_patient_data
-    ):
+    async def test_preprocess_patient_data_success(self, service, sample_patient_data):
         """Test that preprocess_patient_data correctly processes valid patient data."""
         # Execute
         patient_id = UUID(sample_patient_data["patient_id"])
         df, metadata = await service.preprocess_patient_data(
             patient_id, sample_patient_data
         )
-        
 
         # Verify
         assert isinstance(df, pd.DataFrame)
@@ -152,9 +157,7 @@ class TestSymptomForecastingModelService:
             await service.preprocess_patient_data(patient_id, incomplete_data)
 
     @pytest.mark.asyncio
-    async def test_predict_symptom_progression(
-        self, service, sample_patient_data
-    ):
+    async def test_predict_symptom_progression(self, service, sample_patient_data):
         """Test prediction of symptom progression."""
         # Setup
         patient_id = UUID(sample_patient_data["patient_id"])
@@ -162,27 +165,30 @@ class TestSymptomForecastingModelService:
 
         # Mock the preprocessing
         # Correct patch and return_value structure
-        mock_df = pd.DataFrame({
-            "date": pd.date_range(start=datetime.now() - timedelta(days=3), periods=3),
-            "symptom_severity": [6, 5, 4],
-            "sleep_hours": [6.5, 7.2, 8.0],
-            "heart_rate_avg": [72, 68, 65],
-        })
+        mock_df = pd.DataFrame(
+            {
+                "date": pd.date_range(
+                    start=datetime.now() - timedelta(days=3), periods=3
+                ),
+                "symptom_severity": [6, 5, 4],
+                "sleep_hours": [6.5, 7.2, 8.0],
+                "heart_rate_avg": [72, 68, 65],
+            }
+        )
         mock_metadata = {"symptom_type": "anxiety"}
-        
+
         with patch.object(
             service,
             "preprocess_patient_data",
-            AsyncMock(return_value=(mock_df, mock_metadata))
+            AsyncMock(return_value=(mock_df, mock_metadata)),
         ):
             # Execute
             # Correct function call
             result = await service.predict_symptom_progression(
                 patient_id=patient_id,
                 patient_data=sample_patient_data,
-                forecast_days=forecast_days
+                forecast_days=forecast_days,
             )
-            
 
             # Verify
             assert len(result["forecast"]) == forecast_days
@@ -207,7 +213,6 @@ class TestSymptomForecastingModelService:
                 patient_data=sample_patient_data,
                 forecast_days=0,  # Invalid value
             )
-            
 
         with pytest.raises(ValueError, match="Forecast days must be between 1 and 30"):
             await service.predict_symptom_progression(
@@ -215,7 +220,6 @@ class TestSymptomForecastingModelService:
                 patient_data=sample_patient_data,
                 forecast_days=31,  # Invalid value
             )
-            
 
     @pytest.mark.asyncio
     async def test_predict_symptom_with_interventions(
@@ -237,24 +241,19 @@ class TestSymptomForecastingModelService:
                 "type": "therapy",
                 "name": "CBT",
                 "start_date": datetime.now().strftime("%Y-%m-%d"),
-                "expected_effect": -0.3
-            }
+                "expected_effect": -0.3,
+            },
         ]
 
         # Mock the preprocessing and model
-        with patch.object(
-            service,
-            "preprocess_patient_data",
-            AsyncMock()
-        ):
+        with patch.object(service, "preprocess_patient_data", AsyncMock()):
             # Execute
             result = await service.predict_symptom_progression(
                 patient_id=patient_id,
                 patient_data=sample_patient_data,
                 forecast_days=forecast_days,
-                interventions=interventions
+                interventions=interventions,
             )
-            
 
             # Verify
             assert len(result["forecast"]) == forecast_days
@@ -284,9 +283,9 @@ class TestSymptomForecastingModelService:
                 "biometrics": [],
                 "symptom_history": [],
             },
-            forecast_days=3
+            forecast_days=3,
         )
-        
+
         # Verify
         assert isinstance(result, dict)
         assert "forecast" in result
@@ -322,18 +321,20 @@ class TestSymptomForecastingModelService:
                 {
                     "type": "medication",
                     "name": "Fluoxetine",
-                    "start_date": (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d"),
+                    "start_date": (datetime.now() + timedelta(days=1)).strftime(
+                        "%Y-%m-%d"
+                    ),
                     "expected_effect": -0.5,
                 },
                 {
                     "type": "therapy",
                     "name": "CBT",
                     "start_date": datetime.now().strftime("%Y-%m-%d"),
-                    "expected_effect": -0.3
-                }
-            ]
+                    "expected_effect": -0.3,
+                },
+            ],
         )
-        
+
         # Verify
         assert isinstance(result, dict)
         assert "forecast" in result

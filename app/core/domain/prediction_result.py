@@ -13,7 +13,7 @@ from uuid import UUID
 class PredictionResult:
     """
     Domain entity representing an ML model prediction result.
-    
+
     This follows clean architecture principles by representing a core domain concept
     that is independent of any specific ML implementation or external service.
     """
@@ -32,7 +32,7 @@ class PredictionResult:
     ):
         """
         Initialize a new prediction result.
-        
+
         Args:
             prediction_id: Unique identifier for this prediction
             model_type: Type of model used for prediction (e.g., "risk", "treatment")
@@ -53,7 +53,7 @@ class PredictionResult:
         self.timestamp = timestamp or datetime.now()
         self.metadata = metadata or {}
         self.model_version = model_version
-        
+
     def to_dict(self) -> dict[str, Any]:
         """Convert the prediction result to a dictionary representation."""
         return {
@@ -65,9 +65,9 @@ class PredictionResult:
             "features_used": self.features_used,
             "timestamp": self.timestamp.isoformat(),
             "metadata": self.metadata,
-            "model_version": self.model_version
+            "model_version": self.model_version,
         }
-        
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "PredictionResult":
         """Create a PredictionResult from a dictionary representation."""
@@ -75,7 +75,7 @@ class PredictionResult:
         if "timestamp" in data and isinstance(data["timestamp"], str):
             data = data.copy()  # Don't modify the original
             data["timestamp"] = datetime.fromisoformat(data["timestamp"])
-            
+
         return cls(
             prediction_id=data["prediction_id"],
             model_type=data["model_type"],
@@ -85,5 +85,5 @@ class PredictionResult:
             features_used=data["features_used"],
             timestamp=data.get("timestamp"),
             metadata=data.get("metadata", {}),
-            model_version=data.get("model_version")
+            model_version=data.get("model_version"),
         )

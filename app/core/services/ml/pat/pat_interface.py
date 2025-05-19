@@ -44,7 +44,7 @@ class PATInterface(abc.ABC):
         sampling_rate_hz: float,
         device_info: dict[str, Any],
         analysis_types: list[str],
-        **kwargs
+        **kwargs,
     ) -> dict[str, Any]:
         """Analyze actigraphy data and return insights.
 
@@ -76,7 +76,7 @@ class PATInterface(abc.ABC):
         start_time: str,
         end_time: str,
         sampling_rate_hz: float,
-        **kwargs
+        **kwargs,
     ) -> dict[str, Any]:
         """Generate embeddings from actigraphy data.
 
@@ -123,7 +123,7 @@ class PATInterface(abc.ABC):
         analysis_type: str | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
-        **kwargs
+        **kwargs,
     ) -> dict[str, Any]:
         """Retrieve analyses for a patient.
 
@@ -165,22 +165,22 @@ class PATInterface(abc.ABC):
         actigraphy_analysis: dict[str, Any] | None = None,
         integration_types: list[str] | None = None,
         metadata: dict[str, Any] | None = None,
-        **kwargs
+        **kwargs,
     ) -> dict[str, Any]:
         """Integrate actigraphy analysis with a digital twin profile.
             patient_id: Patient identifier
             profile_id: Digital twin profile identifier
             actigraphy_analysis: Results from actigraphy analysis
             **kwargs: Additional parameters
-            
+
         Returns:
             Dict containing integrated digital twin profile
         """
         pass
 
-# ---------------------------------------------------------------------------
-# Optional convenience methods
-# ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Optional convenience methods
+    # ---------------------------------------------------------------------------
 
     def get_analysis_types(self) -> list[str]:
         """Return the list of analysis types supported by the service.

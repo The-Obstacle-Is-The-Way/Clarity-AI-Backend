@@ -8,11 +8,7 @@ following Clean Architecture principles.
 from app.core.interfaces.services.rate_limiting.rate_limiter_interface import (
     IRateLimiter,
     RateLimitConfig,
-    RateLimitScope
+    RateLimitScope,
 )
 
-__all__ = [
-    "IRateLimiter",
-    "RateLimitConfig",
-    "RateLimitScope"
-]
+__all__ = ["IRateLimiter", "RateLimitConfig", "RateLimitScope"]

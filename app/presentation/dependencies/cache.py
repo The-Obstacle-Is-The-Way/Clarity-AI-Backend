@@ -11,9 +11,8 @@ logger = get_logger(__name__)
 
 _redis_cache_service_instance: RedisCacheService | None = None
 
-async def get_cache_service(
-    settings: Settings = Depends(get_settings)
-) -> CacheService:
+
+async def get_cache_service(settings: Settings = Depends(get_settings)) -> CacheService:
     """
     Dependency provider for the CacheService.
 
@@ -29,7 +28,7 @@ async def get_cache_service(
         logger.error("REDIS_URL is not configured.")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Cache service is not configured."
+            detail="Cache service is not configured.",
         )
 
     try:
@@ -49,10 +48,10 @@ async def get_cache_service(
             port=port,
             password=password,
             ssl=ssl_enabled,
-            prefix=f"{settings.PROJECT_NAME.lower().replace(' ', '_')}:cache:"
+            prefix=f"{settings.PROJECT_NAME.lower().replace(' ', '_')}:cache:",
         )
         logger.info(f"RedisCacheService initialized for host: {host}:{port}")
-        # It's good practice to test the connection if possible, 
+        # It's good practice to test the connection if possible,
         # but RedisCacheService doesn't have an explicit connect method.
         # Operations will fail later if connection is bad.
         return _redis_cache_service_instance
@@ -60,11 +59,11 @@ async def get_cache_service(
         logger.error(f"ValueError during RedisCacheService initialization: {ve!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Invalid cache configuration: {ve!s}"
+            detail=f"Invalid cache configuration: {ve!s}",
         )
     except Exception as e:
         logger.error(f"Failed to initialize RedisCacheService: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Could not initialize cache service."
+            detail="Could not initialize cache service.",
         )

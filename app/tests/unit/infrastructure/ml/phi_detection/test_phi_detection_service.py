@@ -22,21 +22,21 @@ def phi_detection_service():
             name="US Phone Number",
             pattern=r"\b\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b",
             description="US phone number with or without formatting",
-            category="contact"
+            category="contact",
         ),
         PHIPattern(
             name="Full Name",
             pattern=r"(?:[A-Z][a-z]+\s+){1,2}[A-Z][a-z]+",
             description="Full name with 2-3 parts",
-            category="name"
-        )
+            category="name",
+        ),
     ]
-    
+
     # Bypass file loading by providing the patterns directly
     service = PHIDetectionService(pattern_file="mock_path")
     service._initialized = True
     service.patterns = patterns
-    
+
     return service
 
 
@@ -56,12 +56,16 @@ class TestPHIDetectionService:
             name="Test Pattern",
             pattern=r"test",
             description="Test pattern for error handling",
-            category="test"
+            category="test",
         )
         default_patterns = [mock_pattern]
-        
+
         with patch("builtins.open", side_effect=OSError("Mock file error")):
-            with patch.object(PHIDetectionService, "_get_default_patterns", return_value=default_patterns):
+            with patch.object(
+                PHIDetectionService,
+                "_get_default_patterns",
+                return_value=default_patterns,
+            ):
                 service = PHIDetectionService(pattern_file="nonexistent_file")
                 service.ensure_initialized()
                 assert len(service.patterns) == 1
@@ -81,12 +85,17 @@ class TestPHIDetectionService:
     def test_detect_phi(self, phi_detection_service):
         """Test that PHI detection finds all PHI instances."""
         text = "Patient John Doe called from (555) 123-4567 about his appointment."
-        
+
         # Mock the detect_phi method to return controlled results for consistent testing
-        expected_results = [("name", "John Doe", 8, 16), ("contact", "(555) 123-4567", 29, 43)]
-        with patch.object(phi_detection_service, "detect_phi", return_value=expected_results):
+        expected_results = [
+            ("name", "John Doe", 8, 16),
+            ("contact", "(555) 123-4567", 29, 43),
+        ]
+        with patch.object(
+            phi_detection_service, "detect_phi", return_value=expected_results
+        ):
             results = phi_detection_service.detect_phi(text)
-            
+
             assert len(results) == 2
             assert results[0][0] == "name"
             assert results[0][1] == "John Doe"
@@ -96,9 +105,9 @@ class TestPHIDetectionService:
     def test_redact_phi(self, phi_detection_service):
         """Test that PHI redaction replaces PHI with redacted markers."""
         text = "Patient John Doe called from (555) 123-4567."
-        
+
         redacted = phi_detection_service.redact_phi(text)
-        
+
         assert "John Doe" not in redacted
         assert "(555) 123-4567" not in redacted
         assert "[REDACTED:" in redacted
@@ -106,17 +115,25 @@ class TestPHIDetectionService:
     def test_anonymize_phi(self, phi_detection_service):
         """Test that PHI anonymization replaces PHI with synthetic data."""
         text = "Patient John Doe called from (555) 123-4567."
-        
+
         anonymized = phi_detection_service.anonymize_phi(text)
-        
+
         assert "John Doe" not in anonymized
         assert "(555) 123-4567" not in anonymized
-        assert "JOHN DOE" in anonymized or "NAME" in anonymized or "name" in anonymized.lower()
+        assert (
+            "JOHN DOE" in anonymized
+            or "NAME" in anonymized
+            or "name" in anonymized.lower()
+        )
         assert "CONTACT-INFO" in anonymized or "contact" in anonymized.lower()
 
     def test_error_handling(self, phi_detection_service):
         """Test that the service handles errors gracefully."""
-        with patch.object(phi_detection_service, "ensure_initialized", side_effect=Exception("Test error")):
+        with patch.object(
+            phi_detection_service,
+            "ensure_initialized",
+            side_effect=Exception("Test error"),
+        ):
             with pytest.raises(PHIDetectionError):
                 phi_detection_service.contains_phi("Test text")
 

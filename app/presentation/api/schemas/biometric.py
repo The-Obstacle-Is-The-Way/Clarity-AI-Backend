@@ -21,6 +21,7 @@ from app.presentation.api.schemas.xgboost import BaseModelConfig
 
 class BiometricBase(BaseModelConfig):
     """Base schema for biometric data with common fields."""
+
     biometric_type: BiometricType
     timestamp: datetime
     device_id: str | None = None
@@ -36,11 +37,13 @@ class BiometricBase(BaseModelConfig):
 
 class BiometricCreateRequest(BiometricBase):
     """Request schema for creating a new biometric record."""
+
     value: dict[str, Any] = Field(..., description="Biometric measurements")
 
 
 class BiometricUpdateRequest(BaseModelConfig):
     """Request schema for updating an existing biometric record."""
+
     biometric_type: BiometricType | None = None
     timestamp: datetime | None = None
     value: dict[str, Any] | None = None
@@ -50,6 +53,7 @@ class BiometricUpdateRequest(BaseModelConfig):
 
 class BiometricResponse(BiometricBase):
     """Response schema for a detailed biometric record."""
+
     id: UUID
     value: dict[str, Any] = Field(..., description="Biometric measurements")
     user_id: UUID
@@ -57,18 +61,23 @@ class BiometricResponse(BiometricBase):
 
 class BiometricSummaryResponse(BaseModelConfig):
     """Response schema for a summarized biometric record."""
+
     id: UUID
     biometric_type: BiometricType
     timestamp: datetime
     device_id: str | None = None
-    summary_value: dict[str, Any] = Field(..., description="Summarized biometric values")
+    summary_value: dict[str, Any] = Field(
+        ..., description="Summarized biometric values"
+    )
 
 
 class BiometricBatchItem(BiometricCreateRequest):
     """Schema for individual items in a batch upload."""
+
     pass
 
 
 class BiometricBatchUploadRequest(BaseModelConfig):
     """Request schema for batch uploading multiple biometric records."""
+
     records: list[BiometricBatchItem] = Field(..., min_items=1, max_items=100)

@@ -10,4 +10,4 @@ The main components are:
 - Audit Reporter: Generates comprehensive reports of PHI audit findings
 """
 
-__version__ = "1.0.0" 
+__version__ = "1.0.0"

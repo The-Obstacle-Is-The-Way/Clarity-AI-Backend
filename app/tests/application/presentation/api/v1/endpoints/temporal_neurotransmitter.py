@@ -21,12 +21,14 @@ from app.domain.entities.digital_twin_enums import BrainRegion, Neurotransmitter
 
 router = APIRouter(tags=["Temporal Neurotransmitter"])
 
+
 class TimeSeriesGenerateRequest(BaseModel):
     patient_id: UUID
     brain_region: BrainRegion
     neurotransmitter: Neurotransmitter
     time_range_days: int = 14
     time_step_hours: int = 6
+
 
 class TimeSeriesGenerateResponse(BaseModel):
     sequence_id: UUID
@@ -36,12 +38,14 @@ class TimeSeriesGenerateResponse(BaseModel):
     time_range_days: int
     time_step_hours: int
 
+
 class TreatmentSimulationRequest(BaseModel):
     patient_id: UUID
     brain_region: BrainRegion
     target_neurotransmitter: Neurotransmitter
     treatment_effect: float
     simulation_days: int = 14
+
 
 class TreatmentSimulationResponse(BaseModel):
     sequence_ids: dict[str, UUID]
@@ -51,9 +55,11 @@ class TreatmentSimulationResponse(BaseModel):
     treatment_effect: float
     simulation_days: int
 
+
 class VisualizationDataRequest(BaseModel):
     sequence_id: UUID
     focus_features: list[str] | None = None
+
 
 class VisualizationDataResponse(BaseModel):
     time_points: list[str]
@@ -61,10 +67,12 @@ class VisualizationDataResponse(BaseModel):
     values: list[list[float]]
     metadata: dict[str, Any] | None = None
 
+
 class AnalyzeNeurotransmitterRequest(BaseModel):
     patient_id: UUID
     brain_region: BrainRegion
     neurotransmitter: Neurotransmitter
+
 
 class AnalysisResponse(BaseModel):
     neurotransmitter: str
@@ -77,17 +85,20 @@ class AnalysisResponse(BaseModel):
     time_series_data: list[list[Any]]
     comparison_periods: dict[str, list[str]]
 
+
 class CascadeVisualizationRequest(BaseModel):
     patient_id: UUID
     starting_region: BrainRegion
     neurotransmitter: Neurotransmitter
     time_steps: int = 3
 
+
 class CascadeVisualizationResponse(BaseModel):
     nodes: list[dict[str, Any]]
     connections: list[dict[str, Any]]
     time_steps: list[dict[str, Any]]
     metadata: dict[str, Any] | None = None
+
 
 @router.post(
     "/time-series",
@@ -97,7 +108,9 @@ class CascadeVisualizationResponse(BaseModel):
 )
 async def generate_time_series(
     request: TimeSeriesGenerateRequest = Body(...),
-    service: TemporalNeurotransmitterService = Depends(get_temporal_neurotransmitter_service),
+    service: TemporalNeurotransmitterService = Depends(
+        get_temporal_neurotransmitter_service
+    ),
     current_user: dict = Depends(get_current_user),
 ) -> Any:
     sequence_id = await service.generate_neurotransmitter_time_series(
@@ -116,6 +129,7 @@ async def generate_time_series(
         "time_step_hours": request.time_step_hours,
     }
 
+
 @router.post(
     "/simulate-treatment",
     response_model=TreatmentSimulationResponse,
@@ -124,7 +138,9 @@ async def generate_time_series(
 )
 async def simulate_treatment(
     request: TreatmentSimulationRequest = Body(...),
-    service: TemporalNeurotransmitterService = Depends(get_temporal_neurotransmitter_service),
+    service: TemporalNeurotransmitterService = Depends(
+        get_temporal_neurotransmitter_service
+    ),
     current_user: dict = Depends(get_current_user),
 ) -> Any:
     sequence_ids = await service.simulate_treatment_response(
@@ -135,13 +151,16 @@ async def simulate_treatment(
         simulation_days=request.simulation_days,
     )
     return {
-        "sequence_ids": {k: v for k, v in sequence_ids.items()} if isinstance(sequence_ids, dict) else sequence_ids,
+        "sequence_ids": {k: v for k, v in sequence_ids.items()}
+        if isinstance(sequence_ids, dict)
+        else sequence_ids,
         "patient_id": request.patient_id,
         "brain_region": request.brain_region.value,
         "target_neurotransmitter": request.target_neurotransmitter.value,
         "treatment_effect": request.treatment_effect,
         "simulation_days": request.simulation_days,
     }
+
 
 @router.post(
     "/visualization-data",
@@ -151,7 +170,9 @@ async def simulate_treatment(
 )
 async def get_visualization_data(
     request: VisualizationDataRequest = Body(...),
-    service: TemporalNeurotransmitterService = Depends(get_temporal_neurotransmitter_service),
+    service: TemporalNeurotransmitterService = Depends(
+        get_temporal_neurotransmitter_service
+    ),
     current_user: dict = Depends(get_current_user),
 ) -> Any:
     data = await service.get_visualization_data(
@@ -165,6 +186,7 @@ async def get_visualization_data(
         )
     return data
 
+
 @router.post(
     "/analyze",
     response_model=AnalysisResponse,
@@ -173,7 +195,9 @@ async def get_visualization_data(
 )
 async def analyze_neurotransmitter(
     request: AnalyzeNeurotransmitterRequest = Body(...),
-    service: TemporalNeurotransmitterService = Depends(get_temporal_neurotransmitter_service),
+    service: TemporalNeurotransmitterService = Depends(
+        get_temporal_neurotransmitter_service
+    ),
     current_user: dict = Depends(get_current_user),
 ) -> Any:
     effect = await service.analyze_patient_neurotransmitter_levels(
@@ -205,11 +229,15 @@ async def analyze_neurotransmitter(
         "effect_size": effect.effect_size,
         "confidence_interval": effect.confidence_interval,
         "p_value": effect.p_value,
-        "is_statistically_significant": effect.p_value is not None and effect.p_value < 0.05,
-        "clinical_significance": effect.clinical_significance.value if effect.clinical_significance else None,
+        "is_statistically_significant": effect.p_value is not None
+        and effect.p_value < 0.05,
+        "clinical_significance": effect.clinical_significance.value
+        if effect.clinical_significance
+        else None,
         "time_series_data": time_series_data,
         "comparison_periods": comparison_periods,
     }
+
 
 @router.post(
     "/cascade-visualization",
@@ -219,7 +247,9 @@ async def analyze_neurotransmitter(
 )
 async def get_cascade_visualization(
     request: CascadeVisualizationRequest = Body(...),
-    service: TemporalNeurotransmitterService = Depends(get_temporal_neurotransmitter_service),
+    service: TemporalNeurotransmitterService = Depends(
+        get_temporal_neurotransmitter_service
+    ),
     current_user: dict = Depends(get_current_user),
 ) -> Any:
     data = await service.get_cascade_visualization(

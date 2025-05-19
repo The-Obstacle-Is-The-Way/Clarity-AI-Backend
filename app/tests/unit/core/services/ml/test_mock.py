@@ -54,12 +54,7 @@ class TestMockMentaLLaMA:
         assert service.is_healthy()
 
         # Test initialization with custom mock responses
-        custom_responses = {
-            "general": {
-                "custom": True,
-                "model_type": "general"
-            }
-        }
+        custom_responses = {"general": {"custom": True, "model_type": "general"}}
         service = MockMentaLLaMA()
         service.initialize({"mock_responses": custom_responses})
         assert service.is_healthy()
@@ -93,9 +88,7 @@ class TestMockMentaLLaMA:
         with pytest.raises(ServiceUnavailableError):
             uninitialized_service.process("Some text")
 
-    def test_process_returns_expected_structure(
-        self, mock_service, sample_text
-    ):
+    def test_process_returns_expected_structure(self, mock_service, sample_text):
         """Test that process returns the expected response structure."""
         # Test general model (default)
         result = mock_service.process(sample_text)
@@ -170,7 +163,9 @@ class TestMockMentaLLaMA:
         dimensions_found = [dim["dimension"] for dim in result["wellness_dimensions"]]
         assert "emotional" in dimensions_found
         assert "social" in dimensions_found
-        assert len(dimensions_found) == 2 # Ensure only requested dimensions are returned
+        assert (
+            len(dimensions_found) == 2
+        )  # Ensure only requested dimensions are returned
 
     def test_digital_twin_session_workflow(self, mock_service, sample_text):
         """Test the digital twin session workflow."""
@@ -215,6 +210,7 @@ class TestMockMentaLLaMA:
         assert "themes" in insights["insights"]
         assert "recommendations" in insights["insights"]
 
+
 class TestMockPHIDetection:
     """Test suite for MockPHIDetection class."""
 
@@ -253,9 +249,7 @@ class TestMockPHIDetection:
         service.initialize({"detection_level": "aggressive"})
         assert service.is_healthy()
 
-    def test_detect_phi_valid_inputs(
-        self, mock_phi_service, sample_phi_text
-    ):
+    def test_detect_phi_valid_inputs(self, mock_phi_service, sample_phi_text):
         """Test PHI detection with valid inputs."""
         # Test with default parameters
         result = mock_phi_service.detect_phi(sample_phi_text)
@@ -269,9 +263,7 @@ class TestMockPHIDetection:
 
         # Test with specific detection_level parameter
         for level in ["minimal", "moderate", "aggressive"]:
-            result = mock_phi_service.detect_phi(
-                sample_phi_text, detection_level=level
-            )
+            result = mock_phi_service.detect_phi(sample_phi_text, detection_level=level)
             assert "phi_instances" in result
             assert "detection_level" in result
             assert result["detection_level"] == level
@@ -293,9 +285,7 @@ class TestMockPHIDetection:
 
         # Test with invalid detection level
         with pytest.raises(InvalidRequestError):
-            mock_phi_service.detect_phi(
-                "Some text", detection_level="invalid_level"
-            )
+            mock_phi_service.detect_phi("Some text", detection_level="invalid_level")
 
     def test_redact_phi(self, mock_phi_service, sample_phi_text):
         """Test PHI redaction functionality."""
@@ -311,9 +301,7 @@ class TestMockPHIDetection:
         assert "[REDACTED]" in redacted_text
 
         # Test with custom redaction marker
-        result = mock_phi_service.redact_phi(
-            sample_phi_text, redaction_marker="[PHI]"
-        )
+        result = mock_phi_service.redact_phi(sample_phi_text, redaction_marker="[PHI]")
         assert "[PHI]" in result["redacted_text"]
 
         # Test with specific detection level
@@ -326,15 +314,9 @@ class TestMockPHIDetection:
     def test_phi_instance_creation(self, mock_phi_service):
         """Test internal _create_mock_phi_instances method."""
         # Access the protected method directly for testing
-        minimal_instances = mock_phi_service._create_mock_phi_instances(
-            "minimal"
-        )
-        moderate_instances = mock_phi_service._create_mock_phi_instances(
-            "moderate"
-        )
-        aggressive_instances = mock_phi_service._create_mock_phi_instances(
-            "aggressive"
-        )
+        minimal_instances = mock_phi_service._create_mock_phi_instances("minimal")
+        moderate_instances = mock_phi_service._create_mock_phi_instances("moderate")
+        aggressive_instances = mock_phi_service._create_mock_phi_instances("aggressive")
 
         # Check that each level produces expected number of instances
         assert len(minimal_instances) <= len(moderate_instances)

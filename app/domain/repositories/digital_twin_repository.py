@@ -9,7 +9,7 @@ from app.domain.entities.digital_twin import DigitalTwin
 
 
 # Rename class to match import in DI container -> Renaming back to DigitalTwinRepository
-class DigitalTwinRepository(ABC): # Renamed from DigitalTwinRepositoryInterface
+class DigitalTwinRepository(ABC):  # Renamed from DigitalTwinRepositoryInterface
     """Abstract base class defining the digital twin repository interface."""
 
     @abstractmethod

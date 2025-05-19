@@ -42,28 +42,30 @@ from app.infrastructure.security.jwt.jwt_service import get_jwt_service
 
 logger = get_logger(__name__)
 
+
 class RoleBasedAccessControl:
     """Role-based access control for the API."""
-    
+
     def has_permission(self, roles: list, permission: str) -> bool:
         """Check if the user roles have the required permission."""
         # To be implemented based on specific permission model
         # For now, simplified implementation for testing
         return permission in roles
 
+
 class AuthenticationMiddleware(BaseHTTPMiddleware):
     """
     Middleware for authentication and authorization of API requests.
-    
+
     This class enforces token validation for non-public paths and manages role-based
     access control to protected resources. It supports both production and test environments.
     """
-    
+
     def __init__(
         self,
         app: FastAPI,
         auth_service=None,  # Support for test injection
-        jwt_service=None,   # Support for test injection
+        jwt_service=None,  # Support for test injection
         public_paths: list[str] | set[str] | None = None,
         public_path_regex: list[str] | None = None,
         settings: Settings | None = None,
@@ -71,14 +73,14 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         """Initialize the middleware with configuration for public paths."""
         super().__init__(app)
         self.settings = settings or get_settings()
-        
+
         # Store service factories for later async initialization
         self._auth_service = auth_service
         self._jwt_service = jwt_service
         # Lazy-loaded service instances
         self._auth_service_instance = None
         self._jwt_service_instance = None
-        
+
         # Define default public paths that don't require authentication
         default_public_paths = [
             "/health",
@@ -91,22 +93,22 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             f"{self.settings.API_V1_STR}/auth/refresh",
             f"{self.settings.API_V1_STR}/auth/register",
         ]
-        
+
         # Allow overriding of public paths
         self.public_paths = set(public_paths or default_public_paths)
         self.public_path_regex = public_path_regex or []
-        
+
         # Initialize role-based access control
         self.rbac = RoleBasedAccessControl()
-        
+
         # Get services for token validation and authentication
         # Remove direct instantiation here
         # Initialize public paths as a set for O(1) lookups
         self.public_paths = set(public_paths or [])
-        
+
         # Add Swagger/OpenAPI paths by default
-        self.public_paths.update(['/docs', '/openapi.json', '/redoc', '/health', '/'])
-        
+        self.public_paths.update(["/docs", "/openapi.json", "/redoc", "/health", "/"])
+
         # Compile regex patterns for faster matching
         self.public_path_patterns = []
         if public_path_regex:
@@ -115,84 +117,103 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                     self.public_path_patterns.append(re.compile(pattern))
                 except re.error as e:
                     logger.warning(f"Invalid regex pattern: {pattern}, error: {e}")
-        
+
         # Log initialization for operational monitoring
         logger.info(
             "AuthenticationMiddleware initialized. Public paths: %s",
-            list(self.public_paths)
+            list(self.public_paths),
         )
 
     async def _is_public_path(self, path: str) -> bool:
         """
         Check if the given path is a public path that doesn't require authentication.
-        
+
         Args:
             path: The HTTP request path
-            
+
         Returns:
             True if the path is public, False otherwise
         """
         # Check exact path matches
         if path in self.public_paths:
             return True
-            
+
         # Check regex patterns
         for pattern in self.public_path_patterns:
             if pattern.match(path):
                 return True
-                
+
         return False
 
     async def _ensure_services_initialized(self):
         """Lazy-load services ONCE per middleware instance, prioritizing injected services."""
         # Reverted to logic that prefers injected, falls back if necessary
-        
+
         # Check for AuthenticationService - only initialize if instance is None
-        if self._auth_service_instance is None: 
+        if self._auth_service_instance is None:
             # If a service was injected via __init__, use it directly (it's already the mock instance)
             if self._auth_service:
-                self._auth_service_instance = self._auth_service # Assign the mock instance directly
-                logger.debug(f"Using injected auth service instance: {type(self._auth_service_instance)}")
+                self._auth_service_instance = (
+                    self._auth_service
+                )  # Assign the mock instance directly
+                logger.debug(
+                    f"Using injected auth service instance: {type(self._auth_service_instance)}"
+                )
             else:
                 # Otherwise, fall back to the default infrastructure getter
                 auth_service_source = get_auth_service
                 logger.debug("Using default infrastructure getter for auth service.")
                 auth_service_result = auth_service_source()
                 # Await if necessary (for the real service getter)
-                if asyncio.iscoroutine(auth_service_result) or asyncio.iscoroutinefunction(auth_service_source):
-                     self._auth_service_instance: IAuthenticationService = await auth_service_result
+                if asyncio.iscoroutine(
+                    auth_service_result
+                ) or asyncio.iscoroutinefunction(auth_service_source):
+                    self._auth_service_instance: IAuthenticationService = (
+                        await auth_service_result
+                    )
                 else:
-                     self._auth_service_instance: IAuthenticationService = auth_service_result
-                logger.debug(f"Auth service instance set via fallback: {type(self._auth_service_instance)}")
-
+                    self._auth_service_instance: IAuthenticationService = (
+                        auth_service_result
+                    )
+                logger.debug(
+                    f"Auth service instance set via fallback: {type(self._auth_service_instance)}"
+                )
 
         # Check for JWTService - only initialize if instance is None
-        if self._jwt_service_instance is None: 
+        if self._jwt_service_instance is None:
             # If a service was injected via __init__, use it directly
             if self._jwt_service:
-                self._jwt_service_instance = self._jwt_service # Assign the mock instance directly
-                logger.debug(f"Using injected jwt service instance: {type(self._jwt_service_instance)}")
+                self._jwt_service_instance = (
+                    self._jwt_service
+                )  # Assign the mock instance directly
+                logger.debug(
+                    f"Using injected jwt service instance: {type(self._jwt_service_instance)}"
+                )
             else:
                 # Otherwise, fall back to the default infrastructure getter
                 jwt_service_source = get_jwt_service
                 logger.debug("Using default infrastructure getter for jwt service.")
                 jwt_service_result = jwt_service_source()
                 # Await if necessary (for the real service getter)
-                if asyncio.iscoroutine(jwt_service_result) or asyncio.iscoroutinefunction(jwt_service_source):
-                     self._jwt_service_instance: IJwtService = await jwt_service_result
+                if asyncio.iscoroutine(
+                    jwt_service_result
+                ) or asyncio.iscoroutinefunction(jwt_service_source):
+                    self._jwt_service_instance: IJwtService = await jwt_service_result
                 else:
-                     self._jwt_service_instance: IJwtService = jwt_service_result
-                logger.debug(f"JWT service instance set via fallback: {type(self._jwt_service_instance)}")
-        
+                    self._jwt_service_instance: IJwtService = jwt_service_result
+                logger.debug(
+                    f"JWT service instance set via fallback: {type(self._jwt_service_instance)}"
+                )
+
         # Removed excessive logging from previous attempt
 
     def _extract_token(self, request: Request) -> str | None:
         """
         Extract JWT token from request headers or cookies.
-        
+
         Args:
             request: The HTTP request
-            
+
         Returns:
             The JWT token if found, None otherwise
         """
@@ -200,16 +221,16 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             return auth_header.replace("Bearer ", "")
-            
+
         # For testing specific scenarios
         if "X-Test-Token" in request.headers:
             return request.headers.get("X-Test-Token")
-            
+
         # Try cookie-based authentication
         token = request.cookies.get("access_token")
         if token:
             return token
-            
+
         return None
 
     async def validate_token_and_get_user(self, token: str) -> Any:
@@ -235,7 +256,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
             if not user:
                 logger.warning(f"User not found for ID: {token_payload.sub}")
-                raise UserNotFoundException(f"User with ID {token_payload.sub} not found.")
+                raise UserNotFoundException(
+                    f"User with ID {token_payload.sub} not found."
+                )
 
             if not user.is_active:
                 logger.warning(f"Attempt to authenticate inactive user: {user.id}")
@@ -246,46 +269,48 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
         except (InvalidTokenException, TokenExpiredException) as e:
             logger.info(f"Token validation failed: {e}")
-            raise e # Re-raise specific token exceptions
+            raise e  # Re-raise specific token exceptions
         except UserNotFoundException as e:
-             logger.warning(f"User lookup failed during auth: {e}")
-             raise e # Re-raise specific user not found exception
+            logger.warning(f"User lookup failed during auth: {e}")
+            raise e  # Re-raise specific user not found exception
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
         Process the request through the authentication middleware.
-        
+
         Args:
             request: The incoming HTTP request
             call_next: The next middleware in the chain
-            
+
         Returns:
             The HTTP response
         """
         # Initialize request state for authentication
         request.state.user = UnauthenticatedUser()
         request.state.auth = None
-        
+
         # Lazy-load services if needed
         await self._ensure_services_initialized()
-        
+
         # Skip authentication for public paths
         request_path = request.url.path
         if await self._is_public_path(request_path):
             logger.debug(f"Skipping auth for public path: {request_path}")
             return await call_next(request)
-        
+
         # Extract token from the request
         token = self._extract_token(request)
-            
+
         # Handle missing token
         if not token:
             logger.info(f"Authentication token missing for path: {request_path}")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": "Authentication required. No token provided."}, # HIPAA: No PHI
+                content={
+                    "detail": "Authentication required. No token provided."
+                },  # HIPAA: No PHI
             )
-            
+
         try:
             # Validate token and retrieve user
             user = await self.validate_token_and_get_user(token)
@@ -293,53 +318,68 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             # Attach authenticated user and credentials to request state
             request.state.user = user
             # Ensure roles/scopes are available on the user object
-            scopes = getattr(user, 'roles', []) or getattr(user, 'scopes', [])
+            scopes = getattr(user, "roles", []) or getattr(user, "scopes", [])
             request.state.auth = AuthCredentials(scopes=scopes)
-            logger.debug(f"User {user.id} authenticated successfully for path {request_path}")
+            logger.debug(
+                f"User {user.id} authenticated successfully for path {request_path}"
+            )
             return await call_next(request)
 
         except InvalidTokenException:
             logger.info(f"Invalid token received for path: {request_path}")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": "Invalid or malformed authentication token."}, # HIPAA: No PHI
+                content={
+                    "detail": "Invalid or malformed authentication token."
+                },  # HIPAA: No PHI
             )
         except TokenExpiredException:
             logger.info(f"Expired token received for path: {request_path}")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": "Authentication token has expired."}, # HIPAA: No PHI
+                content={
+                    "detail": "Authentication token has expired."
+                },  # HIPAA: No PHI
             )
         except UserNotFoundException:
-             logger.warning(f"User not found during authentication attempt for path: {request_path}")
-             return JSONResponse(
-                 status_code=HTTP_401_UNAUTHORIZED,
-                 content={"detail": "User associated with token not found."}, # HIPAA: No PHI
-             )
+            logger.warning(
+                f"User not found during authentication attempt for path: {request_path}"
+            )
+            return JSONResponse(
+                status_code=HTTP_401_UNAUTHORIZED,
+                content={
+                    "detail": "User associated with token not found."
+                },  # HIPAA: No PHI
+            )
         except AuthenticationError as e:
-             # Log the specific authentication error
-             logger.warning(f"Authentication failed for path {request_path}: {e}") 
-             # Return specific message and status code for inactive user
-             error_message = str(e).lower()
-             if "inactive" in error_message:
-                 detail = "User account is inactive."
-                 status_code = HTTP_403_FORBIDDEN
-             elif "Simulated auth service error" in str(e): # Check for the specific error for 500 test
-                 # This case should ideally be caught by the generic Exception handler below,
-                 # but we add a specific check here if needed for robustness or specific logging.
-                 logger.error(f"Caught specific AuthenticationError meant to cause 500: {e}", exc_info=True)
-                 # Fall through to the generic 500 handler by re-raising or letting the next handler catch
-                 # For clarity, let's explicitly raise a generic exception here to be caught below.
-                 raise Exception("Simulated internal auth error") from e
-             else:
-                 # Generic authentication failure
-                 detail = "Authentication failed."
-                 status_code = HTTP_401_UNAUTHORIZED
-             
-             return JSONResponse(
-                 status_code=status_code,
-                 content={"detail": detail}, # HIPAA: No PHI
-             )
+            # Log the specific authentication error
+            logger.warning(f"Authentication failed for path {request_path}: {e}")
+            # Return specific message and status code for inactive user
+            error_message = str(e).lower()
+            if "inactive" in error_message:
+                detail = "User account is inactive."
+                status_code = HTTP_403_FORBIDDEN
+            elif "Simulated auth service error" in str(
+                e
+            ):  # Check for the specific error for 500 test
+                # This case should ideally be caught by the generic Exception handler below,
+                # but we add a specific check here if needed for robustness or specific logging.
+                logger.error(
+                    f"Caught specific AuthenticationError meant to cause 500: {e}",
+                    exc_info=True,
+                )
+                # Fall through to the generic 500 handler by re-raising or letting the next handler catch
+                # For clarity, let's explicitly raise a generic exception here to be caught below.
+                raise Exception("Simulated internal auth error") from e
+            else:
+                # Generic authentication failure
+                detail = "Authentication failed."
+                status_code = HTTP_401_UNAUTHORIZED
+
+            return JSONResponse(
+                status_code=status_code,
+                content={"detail": detail},  # HIPAA: No PHI
+            )
         except Exception as e:
             # Catch-all for unexpected errors including the re-raised one above
             logger.error(
@@ -348,5 +388,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             )
             return JSONResponse(
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"detail": "An internal error occurred during authentication."}, # HIPAA: Generic error
+                content={
+                    "detail": "An internal error occurred during authentication."
+                },  # HIPAA: Generic error
             )

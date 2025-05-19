@@ -37,7 +37,7 @@ def create_db_engine_and_session(
             "sqlite+aiosqlite",
         ]
     ):
-        url_display = db_url[: db_url.find('@')] + "@..." if '@' in db_url else db_url
+        url_display = db_url[: db_url.find("@")] + "@..." if "@" in db_url else db_url
         error_msg = f"Database URL '{url_display}' does not seem to use a supported async driver."
         logger.error(error_msg)
         raise ValueError(error_msg)
@@ -54,9 +54,7 @@ def create_db_engine_and_session(
         logger.info("Database engine and session factory created successfully.")
         return engine, session_local
     except SQLAlchemyError as e:
-        logger.exception(
-            f"Failed to create database engine or session factory: {e}"
-        )
+        logger.exception(f"Failed to create database engine or session factory: {e}")
         raise
 
 
@@ -65,16 +63,19 @@ def create_db_engine_and_session(
 async def get_async_session_utility(
     session_factory: Callable[[], AsyncSession] | None
 ) -> AsyncGenerator[AsyncSession, None]:
-    """ Utility to get an async database session using a provided factory.
-    """
+    """Utility to get an async database session using a provided factory."""
     logger.debug(f"GET_ASYNC_SESSION_UTILITY: Entered.")
-    
+
     if session_factory is None:
-        logger.error("GET_ASYNC_SESSION_UTILITY: session_factory is None. Cannot create session.")
+        logger.error(
+            "GET_ASYNC_SESSION_UTILITY: session_factory is None. Cannot create session."
+        )
         raise RuntimeError("GET_ASYNC_SESSION_UTILITY: session_factory is None.")
 
-    logger.debug(f"GET_ASYNC_SESSION_UTILITY: Using provided session_factory: {session_factory}")
-    
+    logger.debug(
+        f"GET_ASYNC_SESSION_UTILITY: Using provided session_factory: {session_factory}"
+    )
+
     session: AsyncSession | None = None
     try:
         session = session_factory()
@@ -96,15 +97,19 @@ async def get_async_session_utility(
                 await session.close()
                 logger.debug("GET_ASYNC_SESSION_UTILITY: Session closed successfully.")
             except SQLAlchemyError as e:
-                logger.error(f"GET_ASYNC_SESSION_UTILITY: SQLAlchemyError during close: {e}", exc_info=True)
+                logger.error(
+                    f"GET_ASYNC_SESSION_UTILITY: SQLAlchemyError during close: {e}",
+                    exc_info=True,
+                )
             except Exception as e:
-                logger.error(f"GET_ASYNC_SESSION_UTILITY: Unexpected error during close: {e}", exc_info=True)
+                logger.error(
+                    f"GET_ASYNC_SESSION_UTILITY: Unexpected error during close: {e}",
+                    exc_info=True,
+                )
 
 
 # Test function to simulate dependency usage (not part of actual app logic)
-async def example_dependency_using_session(
-    db: AsyncSession 
-):
+async def example_dependency_using_session(db: AsyncSession):
     logger.info(f"Example dependency received session: {db}")
     # Use db session here
     pass

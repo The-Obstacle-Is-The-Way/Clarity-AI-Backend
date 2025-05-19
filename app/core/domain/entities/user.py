@@ -15,7 +15,7 @@ from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 class UserRole(str, enum.Enum):
     """User roles within the system."""
-    
+
     ADMIN = "admin"
     CLINICIAN = "clinician"
     PATIENT = "patient"
@@ -25,7 +25,7 @@ class UserRole(str, enum.Enum):
 
 class UserStatus(str, enum.Enum):
     """User account status within the system."""
-    
+
     ACTIVE = "active"
     INACTIVE = "inactive"
     SUSPENDED = "suspended"
@@ -34,7 +34,7 @@ class UserStatus(str, enum.Enum):
 
 class User(BaseModel):
     """User domain entity representing a user in the system."""
-    
+
     id: str = Field(..., description="Unique identifier for the user")
     username: str = Field(default="test_user", description="Username for login")
     email: EmailStr = Field(..., description="User's email address")
@@ -47,45 +47,49 @@ class User(BaseModel):
     status: UserStatus = Field(
         default=UserStatus.ACTIVE, description="User's account status"
     )
-    created_at: datetime = Field(
-        ..., description="When the user was created"
-    )
+    created_at: datetime = Field(..., description="When the user was created")
     updated_at: Optional[datetime] = Field(
         None, description="When the user was last updated"
     )
     full_name: Optional[str] = Field(
         None, description="User's full name (first + last)"
     )
-    
+
     # Authentication fields
-    hashed_password: str = Field(default="dummy_password_hash", description="Hashed password for authentication")
-    password_hash: str = Field(default="dummy_password_hash", description="Alias for hashed_password")
-    
+    hashed_password: str = Field(
+        default="dummy_password_hash", description="Hashed password for authentication"
+    )
+    password_hash: str = Field(
+        default="dummy_password_hash", description="Alias for hashed_password"
+    )
+
     # Modern Pydantic V2 configuration using ConfigDict
     model_config = ConfigDict(use_enum_values=True)
 
     def has_role(self, role: Union[UserRole, str]) -> bool:
         """Check if the user has a specific role.
-        
+
         Args:
             role: Role to check for (as enum or string)
-            
+
         Returns:
             bool: True if the user has the role, False otherwise
         """
-        role_value = role.value if hasattr(role, 'value') else str(role)
+        role_value = role.value if hasattr(role, "value") else str(role)
         for user_role in self.roles:
-            user_role_value = user_role.value if hasattr(user_role, 'value') else str(user_role)
+            user_role_value = (
+                user_role.value if hasattr(user_role, "value") else str(user_role)
+            )
             if user_role_value == role_value:
                 return True
         return False
-        
+
     def has_any_role(self, roles: List[Union[UserRole, str]]) -> bool:
         """Check if the user has any of the specified roles.
-        
+
         Args:
             roles: List of roles to check for (as enums or strings)
-            
+
         Returns:
             bool: True if the user has any of the roles, False otherwise
         """
@@ -93,7 +97,7 @@ class User(BaseModel):
             if self.has_role(role):
                 return True
         return False
-        
+
     def __post_init__(self):
         """Populate full_name from first_name and last_name if not provided."""
         if self.full_name is None and self.first_name and self.last_name:

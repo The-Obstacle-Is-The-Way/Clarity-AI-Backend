@@ -12,13 +12,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.interfaces.services.cache_service import CacheService
 from app.application.services.digital_twin_service import DigitalTwinApplicationService
 from app.core.dependencies.database import get_db_session
-from app.core.services.ml.pat import InitializationError, PATInterface, PATServiceFactory
+from app.core.services.ml.pat import (
+    InitializationError,
+    PATInterface,
+    PATServiceFactory,
+)
 from app.infrastructure.cache.redis_cache import RedisCache
 from app.infrastructure.persistence.repositories.digital_twin_repository import (
     DigitalTwinRepository,
 )
 
 logger = logging.getLogger(__name__)
+
 
 async def get_pat_service() -> PATInterface:
     """Return a configured PAT service instance, or 503 if initialization fails."""
@@ -33,7 +38,7 @@ async def get_pat_service() -> PATInterface:
         logger.error(f"Failed to initialize PAT service: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="PAT service is currently unavailable"
+            detail="PAT service is currently unavailable",
         )
 
 

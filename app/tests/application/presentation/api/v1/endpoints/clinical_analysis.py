@@ -57,14 +57,14 @@ async def analyze_clinical_text(
 ) -> ClinicalAnalysisResponse:
     """
     Analyze clinical text using MentaLLaMA.
-    
+
     Args:
         request: Analysis request with text and parameters
         mentallama_service: MentaLLaMA service instance
-        
+
     Returns:
         Analysis results
-        
+
     Raises:
         HTTPException: If analysis fails
     """
@@ -74,50 +74,50 @@ async def analyze_clinical_text(
             f"Clinical analysis requested, type: {request.analysis_type.value}, "
             f"text length: {len(request.text)}"
         )
-        
+
         # Perform analysis
         result = await mentallama_service.analyze(
             text=request.text,
             analysis_type=request.analysis_type.value,
-            patient_context=request.patient_context
+            patient_context=request.patient_context,
         )
-        
+
         # Log completion (no PHI)
         logger.info(
             f"Clinical analysis completed, type: {request.analysis_type.value}, "
             f"confidence: {result.confidence_score:.2f}"
         )
-        
+
         return result
-        
+
     except InvalidAnalysisTypeError as e:
         logger.warning(f"Invalid analysis type: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid analysis type: {e!s}",
         )
-        
+
     except ModelLoadingError as e:
         logger.error(f"Model loading error: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Service temporarily unavailable. Please try again later.",
         )
-        
+
     except MentalLLaMAInferenceError as e:
         logger.error(f"Inference error: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Analysis processing error. Please try again.",
         )
-        
+
     except AnalysisError as e:
         logger.error(f"Analysis error: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Analysis failed. Please try again.",
         )
-        
+
     except Exception as e:
         # Generic catch for unexpected errors - log details for debugging
         # but return a generic message to the client
@@ -147,42 +147,41 @@ async def detect_phi_in_text(
 ) -> dict[str, Any]:
     """
     Detect PHI in text with optional anonymization.
-    
+
     Args:
         text: Text to analyze for PHI
         anonymize: Whether to anonymize detected PHI
         mentallama_service: MentaLLaMA service instance with PHI detection
-        
+
     Returns:
         PHI detection results
-        
+
     Raises:
         HTTPException: If PHI detection fails
     """
     try:
         # Log operation (no PHI)
         logger.info(f"PHI detection requested, text length: {len(text)}")
-        
+
         if not mentallama_service.phi_detection_service:
             logger.warning("PHI detection service not available")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="PHI detection service not available",
             )
-        
+
         # Detect PHI
         anonymize_method = "redact" if anonymize else None
         result = await mentallama_service.phi_detection_service.detect_phi(
-            text=text,
-            anonymize_method=anonymize_method
+            text=text, anonymize_method=anonymize_method
         )
-        
+
         # Log completion (no PHI)
         phi_count = len(result.get("entities", []))
         logger.info(f"PHI detection completed, found {phi_count} PHI entities")
-        
+
         return result
-        
+
     except Exception as e:
         logger.error(f"Error in PHI detection: {e!s}")
         raise HTTPException(

@@ -38,6 +38,7 @@ def mock_service():
     """Create an instance of the mock service for testing."""
     return MockEnhancedDigitalTwinCoreService()
 
+
 @pytest_asyncio.fixture
 @pytest.mark.venv_only()
 @pytest.mark.asyncio
@@ -110,7 +111,7 @@ async def test_initialize_neurotransmitter_mapping_with_custom(
         sensitivity=0.8,
         clinical_relevance=ClinicalSignificance.MODERATE,
     )
-    
+
     custom_mapping.add_receptor_profile(profile)
 
     # Initialize with custom mapping
@@ -204,7 +205,7 @@ async def test_update_receptor_profiles_updates_existing_mapping(
             density=0.5,
             sensitivity=0.6,
             clinical_relevance=ClinicalSignificance.MILD,
-        )
+        ),
     ]
 
     # Update the profiles
@@ -247,9 +248,7 @@ async def test_get_neurotransmitter_effects_creates_mapping_if_needed(
 
 
 @pytest.mark.asyncio
-async def test_get_neurotransmitter_effects_with_regions(
-    mock_service, test_patient_id
-):
+async def test_get_neurotransmitter_effects_with_regions(mock_service, test_patient_id):
     """Test getting neurotransmitter effects with specific brain regions."""
     # Initialize mapping first
     await mock_service.initialize_neurotransmitter_mapping(
@@ -280,6 +279,7 @@ async def test_get_neurotransmitter_effects_with_regions(
         assert "receptor_types" in effects[region]
         assert "receptor_count" in effects[region]
         assert "is_produced_here" in effects[region]
+
 
 @pytest.mark.asyncio
 async def test_get_neurotransmitter_effects_without_regions(
@@ -356,6 +356,7 @@ async def test_get_brain_region_neurotransmitter_sensitivity_with_neurotransmitt
         assert "clinical_relevance" in data
         assert "is_produced_here" in data
 
+
 @pytest.mark.asyncio
 async def test_get_brain_region_neurotransmitter_sensitivity_without_neurotransmitters(
     mock_service, test_patient_id
@@ -382,16 +383,11 @@ async def test_simulate_neurotransmitter_cascade_creates_mapping_if_needed(
 ):
     """Test that simulate_neurotransmitter_cascade creates a mapping if needed."""
     # Define initial changes
-    initial_changes = {
-        Neurotransmitter.SEROTONIN: 0.2,
-        Neurotransmitter.DOPAMINE: 0.1
-    }
+    initial_changes = {Neurotransmitter.SEROTONIN: 0.2, Neurotransmitter.DOPAMINE: 0.1}
 
     # Call the method without initializing a mapping first
     results = await mock_service.simulate_neurotransmitter_cascade(
-        patient_id=test_patient_id, 
-        initial_changes=initial_changes, 
-        simulation_steps=2
+        patient_id=test_patient_id, initial_changes=initial_changes, simulation_steps=2
     )
 
     # Verify a mapping was created
@@ -447,6 +443,7 @@ async def test_simulate_neurotransmitter_cascade_with_parameters(
         for effect in step_data["region_effects"].values():
             assert abs(effect) >= 0.15
 
+
 @pytest.mark.asyncio
 async def test_analyze_treatment_neurotransmitter_effects_creates_mapping_if_needed(
     mock_service, test_patient_id
@@ -488,7 +485,7 @@ async def test_analyze_treatment_neurotransmitter_effects_with_parameters(
         datetime.now(UTC) + timedelta(days=i * 7)
         for i in range(5)  # 0, 7, 14, 21, 28 days
     ]
-    
+
     neurotransmitters = [
         Neurotransmitter.SEROTONIN,
         Neurotransmitter.DOPAMINE,
@@ -517,6 +514,7 @@ async def test_analyze_treatment_neurotransmitter_effects_with_parameters(
     affected_regions = results["affected_brain_regions"]
     assert len(affected_regions) > 0
 
+
 @pytest.mark.asyncio
 async def test_events_are_published(mock_service, test_patient_id):
     """Test that events are published when neurotransmitter mapping operations are performed."""
@@ -524,12 +522,14 @@ async def test_events_are_published(mock_service, test_patient_id):
     events_received = []
 
     async def event_handler(event_type, event_data, source, patient_id):
-        events_received.append({
-            "event_type": event_type,
-            "event_data": event_data,
-            "source": source,
-            "patient_id": patient_id,
-        })
+        events_received.append(
+            {
+                "event_type": event_type,
+                "event_data": event_data,
+                "source": source,
+                "patient_id": patient_id,
+            }
+        )
 
     subscription_id = await mock_service.subscribe_to_events(
         event_types=[
@@ -548,11 +548,11 @@ async def test_events_are_published(mock_service, test_patient_id):
     await mock_service.update_receptor_profiles(
         patient_id=test_patient_id,
         receptor_profiles=[
-                ReceptorProfile(
-                    brain_region=BrainRegion.THALAMUS,
-                    neurotransmitter=Neurotransmitter.GLUTAMATE,
-                    receptor_type=ReceptorType.EXCITATORY,
-                    receptor_subtype=ReceptorSubtype.GLUTAMATE_NMDA,
+            ReceptorProfile(
+                brain_region=BrainRegion.THALAMUS,
+                neurotransmitter=Neurotransmitter.GLUTAMATE,
+                receptor_type=ReceptorType.EXCITATORY,
+                receptor_subtype=ReceptorSubtype.GLUTAMATE_NMDA,
                 density=0.6,
                 sensitivity=0.7,
                 clinical_relevance=ClinicalSignificance.MILD,
@@ -565,7 +565,9 @@ async def test_events_are_published(mock_service, test_patient_id):
 
     # Check event types
     assert events_received[0]["event_type"] == "neurotransmitter_mapping.initialized"
-    assert events_received[1]["event_type"] == "neurotransmitter_mapping.profiles_updated"
+    assert (
+        events_received[1]["event_type"] == "neurotransmitter_mapping.profiles_updated"
+    )
 
     # Check event data
     assert "patient_id" in events_received[0]["event_data"]

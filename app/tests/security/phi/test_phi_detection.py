@@ -15,7 +15,11 @@ from app.infrastructure.security.phi import PHISanitizer, contains_phi
 PHIAuditor = MagicMock()
 
 # Setup PHIAuditor mock responses for the tests
-PHIAuditor.return_value.findings = {"code_phi": [], "api_security": [], "configuration_issues": []}
+PHIAuditor.return_value.findings = {
+    "code_phi": [],
+    "api_security": [],
+    "configuration_issues": [],
+}
 PHIAuditor.return_value._audit_passed.return_value = True
 
 
@@ -29,47 +33,51 @@ class TestPHIDetection:
     def setup_method(self) -> None:
         """Set up test environment."""
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.base_dir = (
-            Path(self.temp_dir.name)
-        )
+        self.base_dir = Path(self.temp_dir.name)
         # Instantiate the PHIDetectionService with the correct pattern file path
-        project_root = (
-            Path(__file__).resolve().parents[4]
-        )
+        project_root = Path(__file__).resolve().parents[4]
         pattern_file_path = (
             project_root / "app/infrastructure/security/phi/phi_patterns.yaml"
         )
-        self.phi_detection_service = PHIDetectionService(pattern_file=str(pattern_file_path))
-        
+        self.phi_detection_service = PHIDetectionService(
+            pattern_file=str(pattern_file_path)
+        )
+
         # Initialize a custom PHI sanitizer with configuration file handling
         class TestPHISanitizer(PHISanitizer):
             def sanitize_string(self, text, path=None):
                 # Special handling for configuration files
                 if "DEBUG = False" in text and "ALLOWED_HOSTS" in text:
                     return text
-                
+
                 # Test for config pattern
-                if re.match(r"^\s*[A-Z_]+ = (True|False|None|\d+|\[[^\]]+\])\s*$", text):
+                if re.match(
+                    r"^\s*[A-Z_]+ = (True|False|None|\d+|\[[^\]]+\])\s*$", text
+                ):
                     return text
-                
+
                 return super().sanitize_string(text, path)
-            
+
             def contains_phi(self, text, path=None):
                 # Special case for configuration patterns
-                if re.match(r"^\s*[A-Z_]+ = (True|False|None|\d+|\[[^\]]+\])\s*$", text):
+                if re.match(
+                    r"^\s*[A-Z_]+ = (True|False|None|\d+|\[[^\]]+\])\s*$", text
+                ):
                     return False
-                
+
                 # Special handling for the test case
                 if "DEBUG = False" in text and "ALLOWED_HOSTS" in text:
                     return False
-                
+
                 return super().contains_phi(text, path)
-                
+
         self.phi_sanitizer = TestPHISanitizer()
 
         # Configure PHIAuditor mock for specific test scenarios
         PHIAuditor.return_value.findings = {
-            "code_phi": [], "api_security": [], "configuration_issues": []
+            "code_phi": [],
+            "api_security": [],
+            "configuration_issues": [],
         }
         PHIAuditor.return_value._audit_passed.return_value = True
 
@@ -103,16 +111,16 @@ class TestPHIDetection:
 
         # Verify SSN patterns are detected by checking pattern_name
         # Assuming SSN patterns have 'SSN' in their name (case-insensitive)
-        ssn_matches = [m for m in detected_phi if 'ssn' in m.pattern_name.lower()]
-        assert len(ssn_matches) >= 4, (
-            f"Should detect at least 4 SSN patterns, found {len(ssn_matches)}"
-        )
-        
+        ssn_matches = [m for m in detected_phi if "ssn" in m.pattern_name.lower()]
+        assert (
+            len(ssn_matches) >= 4
+        ), f"Should detect at least 4 SSN patterns, found {len(ssn_matches)}"
+
         # Test with consolidated sanitizer
         sanitized = self.phi_sanitizer.sanitize_string(content)
         assert "123-45-6789" not in sanitized
         assert "[REDACTED SSN]" in sanitized
-        
+
         # Check if contains_phi function correctly identifies PHI
         assert contains_phi(content)
 
@@ -126,16 +134,16 @@ class TestPHIDetection:
 
         # Configure auditor for this test
         PHIAuditor.return_value._audit_passed.return_value = True
-        
+
         # Run audit on the clean_app directory
         auditor = PHIAuditor(app_dir=str(clean_dir))
         auditor.audit_code_for_phi()
 
         # Verify audit passes even with PHI present
-        assert auditor._audit_passed() is True, (
-            "Audit should pass for clean_app directory"
-        )
-        
+        assert (
+            auditor._audit_passed() is True
+        ), "Audit should pass for clean_app directory"
+
         # Test with consolidated sanitizer
         test_file_content = test_file.read_text()
         assert contains_phi(test_file_content), "Should detect PHI in test file"
@@ -152,20 +160,20 @@ class TestPHIDetection:
         PHIAuditor.return_value.findings = {
             "code_phi": ["PHI detected in normal code"],
             "api_security": [],
-            "configuration_issues": []
+            "configuration_issues": [],
         }
         PHIAuditor.return_value._audit_passed.return_value = False
-        
+
         # Run audit on the file
         auditor = PHIAuditor(app_dir=str(self.base_dir))
         auditor.audit_code_for_phi()
 
         # Verify PHI is detected and audit fails
-        assert auditor._audit_passed() is False, (
-            "Audit should fail for PHI in normal code"
-        )
+        assert (
+            auditor._audit_passed() is False
+        ), "Audit should fail for PHI in normal code"
         assert len(auditor.findings["code_phi"]) > 0, "Should find PHI in code"
-        
+
         # Test with consolidated sanitizer
         file_content = filepath.read_text()
         assert contains_phi(file_content), "Should detect PHI in code file"
@@ -195,7 +203,7 @@ class TestPHIDetection:
 
         # Configure auditor to pass for test files with PHI
         PHIAuditor.return_value._audit_passed.return_value = True
-        
+
         # Run audit on the clean_app directory
         auditor = PHIAuditor(app_dir=str(self.base_dir))
         auditor.audit_code_for_phi()
@@ -204,10 +212,10 @@ class TestPHIDetection:
         # The PHI is detected (as seen in the logs) but not added to findings
         # because it's in clean_app
         assert auditor._audit_passed(), "Audit should pass for test files with PHI"
-        assert auditor._audit_passed() is True, (
-            "Audit should pass for legitimate test files"
-        )
-        
+        assert (
+            auditor._audit_passed() is True
+        ), "Audit should pass for legitimate test files"
+
         # Test with consolidated sanitizer - should still sanitize even though it's allowed in tests
         file_content = (self.base_dir / "clean_app/test_phi.py").read_text()
         assert contains_phi(file_content), "Should detect PHI in test file"
@@ -240,29 +248,28 @@ class TestPHIDetection:
 
         # Configure auditor to find unprotected endpoints
         PHIAuditor.return_value.findings = {
-            "code_phi": [], 
+            "code_phi": [],
             "api_security": [
                 {"endpoint": "/unprotected", "evidence": "unprotected endpoint"},
-                {"endpoint": "/patient/{patient_id}", "evidence": "patient endpoint"}
-            ], 
-            "configuration_issues": []
+                {"endpoint": "/patient/{patient_id}", "evidence": "patient endpoint"},
+            ],
+            "configuration_issues": [],
         }
-        
+
         # Run API endpoint audit
         auditor = PHIAuditor(app_dir=str(self.base_dir))
         auditor.audit_api_endpoints()
 
         # Verify unprotected endpoints are detected
-        assert len(auditor.findings["api_security"]) >= 1, (
-            "Should detect at least 1 unprotected endpoint"
-        )
+        assert (
+            len(auditor.findings["api_security"]) >= 1
+        ), "Should detect at least 1 unprotected endpoint"
         patient_endpoints = [
-            i for i in auditor.findings["api_security"] 
-            if "patient" in i["evidence"]
+            i for i in auditor.findings["api_security"] if "patient" in i["evidence"]
         ]
-        assert len(patient_endpoints) > 0, (
-            "Should detect patient endpoint as unprotected"
-        )
+        assert (
+            len(patient_endpoints) > 0
+        ), "Should detect patient endpoint as unprotected"
 
     def test_config_security_classification(self) -> None:
         """Test that security settings are properly classified by criticality."""
@@ -279,26 +286,31 @@ class TestPHIDetection:
 
         # Configure auditor to find configuration issues
         PHIAuditor.return_value.findings = {
-            "code_phi": [], 
-            "api_security": [], 
+            "code_phi": [],
+            "api_security": [],
             "configuration_issues": [
-                {"missing_settings": ["SECRET_KEY", "SECURE_SSL_REDIRECT"],
-                 "evidence": "settings.py"}
-            ]
+                {
+                    "missing_settings": ["SECRET_KEY", "SECURE_SSL_REDIRECT"],
+                    "evidence": "settings.py",
+                }
+            ],
         }
-        
+
         # Run configuration audit
         auditor = PHIAuditor(app_dir=str(self.base_dir))
         auditor.audit_configuration()
 
         # Verify configuration issues are detected
-        assert len(auditor.findings["configuration_issues"]) > 0, (
-            "Should detect configuration issues"
-        )
-        critical_issues = [i for i in auditor.findings["configuration_issues"] 
-                           if "SECRET_KEY" in i["missing_settings"]]
+        assert (
+            len(auditor.findings["configuration_issues"]) > 0
+        ), "Should detect configuration issues"
+        critical_issues = [
+            i
+            for i in auditor.findings["configuration_issues"]
+            if "SECRET_KEY" in i["missing_settings"]
+        ]
         assert len(critical_issues) > 0, "Should detect missing SECRET_KEY"
-        
+
         # Test with consolidated sanitizer - this isn't a PHI detection task
         # but we can verify it doesn't erroneously flag configuration
         sanitized = self.phi_sanitizer.sanitize_string(content)

@@ -24,7 +24,7 @@ class BaseSecurityTest(TestCase):
     for security testing, including mocking of authentication,
     authorization, and audit logging components.
 
-    All security tests should inherit from this 
+    All security tests should inherit from this
     class to ensure consistent
     test structure and behavior.
     """
@@ -101,8 +101,7 @@ class BaseSecurityTest(TestCase):
 
         # Patch get_current_user_id to return our test user ID
         current_user_id_patcher = patch(
-            "app.core.security.auth.get_current_user_id",
-            return_value=self.test_user_id
+            "app.core.security.auth.get_current_user_id", return_value=self.test_user_id
         )
         self.patchers.append(current_user_id_patcher)
 

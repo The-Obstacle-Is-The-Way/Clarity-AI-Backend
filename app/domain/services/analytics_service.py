@@ -150,8 +150,10 @@ class AnalyticsService:
 
         # Get appointments in date range
         if provider_id:
-            appointments = await self.appointment_repository.list_by_provider_date_range(
-                provider_id=provider_id, start_date=start_date, end_date=end_date
+            appointments = (
+                await self.appointment_repository.list_by_provider_date_range(
+                    provider_id=provider_id, start_date=start_date, end_date=end_date
+                )
             )
         else:
             appointments = await self.appointment_repository.list_by_date_range(
@@ -450,7 +452,9 @@ class AnalyticsService:
     # Event persistence helpers
     # ---------------------------------------------------------------------
 
-    async def record_event_batch(self, events: list[AnalyticsEvent], user_id: str | None = None) -> list[str]:
+    async def record_event_batch(
+        self, events: list[AnalyticsEvent], user_id: str | None = None
+    ) -> list[str]:
         """Persist a batch of analytics events.
 
         Parameters

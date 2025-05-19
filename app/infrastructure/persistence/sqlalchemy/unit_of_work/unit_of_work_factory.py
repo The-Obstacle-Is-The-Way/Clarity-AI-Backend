@@ -8,7 +8,9 @@ UnitOfWork instances with their proper repository dependencies.
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.interfaces.unit_of_work import IUnitOfWork
-from app.infrastructure.persistence.sqlalchemy.unit_of_work.async_unit_of_work import AsyncSQLAlchemyUnitOfWork
+from app.infrastructure.persistence.sqlalchemy.unit_of_work.async_unit_of_work import (
+    AsyncSQLAlchemyUnitOfWork,
+)
 from app.infrastructure.persistence.sqlalchemy.repositories.biometric_alert_repository import (
     BiometricAlertRepositoryImpl,
 )
@@ -32,24 +34,24 @@ from app.infrastructure.persistence.sqlalchemy.repositories.user_repository impo
 class UnitOfWorkFactory:
     """
     Factory for creating UnitOfWork instances with proper dependencies.
-    
+
     This class manages the creation of UnitOfWork instances with the
     correct repository implementations, ensuring proper dependency injection.
     """
-    
+
     def __init__(
-        self, 
+        self,
         session_factory: async_sessionmaker[AsyncSession],
         user_repository_class=UserRepositoryImpl,
         patient_repository_class=PatientRepositoryImpl,
         digital_twin_repository_class=DigitalTwinRepositoryImpl,
         biometric_rule_repository_class=BiometricRuleRepositoryImpl,
         biometric_alert_repository_class=BiometricAlertRepositoryImpl,
-        biometric_twin_repository_class=BiometricTwinRepositoryImpl
+        biometric_twin_repository_class=BiometricTwinRepositoryImpl,
     ):
         """
         Initialize the factory with repository class dependencies.
-        
+
         Args:
             session_factory: Factory for creating database sessions
             user_repository_class: Class to use for user repositories
@@ -66,11 +68,11 @@ class UnitOfWorkFactory:
         self._biometric_rule_repository_class = biometric_rule_repository_class
         self._biometric_alert_repository_class = biometric_alert_repository_class
         self._biometric_twin_repository_class = biometric_twin_repository_class
-    
+
     def create_unit_of_work(self) -> IUnitOfWork:
         """
         Create a new UnitOfWork instance with proper repository dependencies.
-        
+
         Returns:
             A fully configured UnitOfWork instance
         """
@@ -81,5 +83,5 @@ class UnitOfWorkFactory:
             digital_twin_repository_cls=self._digital_twin_repository_class,
             biometric_rule_repository_cls=self._biometric_rule_repository_class,
             biometric_alert_repository_cls=self._biometric_alert_repository_class,
-            biometric_twin_repository_cls=self._biometric_twin_repository_class
-        ) 
+            biometric_twin_repository_cls=self._biometric_twin_repository_class,
+        )

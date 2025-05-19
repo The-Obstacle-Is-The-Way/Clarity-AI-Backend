@@ -1,1 +1,1 @@
-"""Mock implementations of domain services for testing.""" 
+"""Mock implementations of domain services for testing."""

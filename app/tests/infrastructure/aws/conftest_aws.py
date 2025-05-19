@@ -25,13 +25,15 @@ def aws_test_environment() -> None:
     """Set up the test environment for AWS service testing."""
     # Force testing mode
     os.environ["TESTING"] = "1"
-    
+
     # Initialize AWS service factory provider with in-memory implementation
     AWSServiceFactoryProvider.initialize(use_in_memory=True)
-    
+
     # Verify initialization was successful
     factory = AWSServiceFactoryProvider.get_instance().get_service_factory()
-    assert isinstance(factory, InMemoryAWSServiceFactory), "AWS factory not properly initialized for testing"
+    assert isinstance(
+        factory, InMemoryAWSServiceFactory
+    ), "AWS factory not properly initialized for testing"
 
 
 @pytest.fixture
@@ -71,7 +73,7 @@ def sagemaker_service(aws_service_factory) -> InMemorySageMakerService:
         sagemaker._endpoints = {
             "xgboost-suicide-risk": {"status": "InService"},
             "xgboost-readmission-risk": {"status": "InService"},
-            "xgboost-medication-adherence": {"status": "InService"}
+            "xgboost-medication-adherence": {"status": "InService"},
         }
     return sagemaker
 
@@ -85,10 +87,10 @@ def test_aws_config() -> dict[str, Any]:
         "bucket_name": "novamind-test-bucket",
         "dynamodb_table_name": "novamind-test-predictions",
         "audit_table_name": "novamind-test-audit-log",
-        "kms_key_id": "test-kms-key", 
+        "kms_key_id": "test-kms-key",
         "model_mappings": {
             "suicide": "suicide-risk",
             "readmission": "readmission-risk",
-            "medication_adherence": "medication-adherence"
-        }
-    } 
+            "medication_adherence": "medication-adherence",
+        },
+    }

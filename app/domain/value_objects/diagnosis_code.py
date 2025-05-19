@@ -73,7 +73,7 @@ class DiagnosisCode:
     def validate_code(self) -> None:
         """
         Validate that the diagnosis code matches the required format.
-        
+
         Raises:
             ValueError: If code format is invalid
         """

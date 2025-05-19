@@ -8,6 +8,7 @@ try:
     from app.domain.entities.biometric_alert import BiometricAlert
 except ImportError:
     from typing import Any
+
     BiometricAlert = Any
 
 
@@ -20,7 +21,9 @@ class IBiometricAlertRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_patient_id(self, patient_id: UUID, limit: int = 100, skip: int = 0) -> list[BiometricAlert]:
+    async def get_by_patient_id(
+        self, patient_id: UUID, limit: int = 100, skip: int = 0
+    ) -> list[BiometricAlert]:
         """Retrieve biometric alerts for a specific patient."""
         pass
 

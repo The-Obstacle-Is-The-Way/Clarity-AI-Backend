@@ -22,7 +22,9 @@ from sqlalchemy.orm import Session
 
 from app.core.dependencies.database import get_db_session
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
-from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
+from app.domain.repositories.biometric_alert_rule_repository import (
+    BiometricAlertRuleRepository,
+)
 from app.domain.repositories.biometric_alert_template_repository import (
     BiometricAlertTemplateRepository,
 )
@@ -121,7 +123,8 @@ def get_digital_twin_service():
 
 
 services.get_digital_twin_service = get_digital_twin_service  # type: ignore[attr-defined]
-    
+
+
 # ---------------------------------------------------------------------------
 # Stub PAT service for compatibility
 # ---------------------------------------------------------------------------
@@ -129,21 +132,28 @@ def get_pat_service():
     """Return a stub PAT service suitable for tests."""
     try:
         from app.infrastructure.services.mock_pat_service import MockPATService  # type: ignore
+
         return MockPATService()
     except ModuleNotFoundError:
+
         class StubPATService:
             async def initialize(self, *args, **kwargs):
                 pass
+
             async def analyze_actigraphy(self, *args, **kwargs):
                 return {}
+
             def get_model_info(self):
                 return {}
+
         return StubPATService()
+
 
 services.get_pat_service = get_pat_service  # type: ignore[attr-defined]
 
 
 # Biometric Alert service shim (required by biometric_alerts endpoint)
+
 
 def get_biometric_alert_service():
     """Return a stub BiometricAlertService suitable for tests."""
@@ -152,29 +162,39 @@ def get_biometric_alert_service():
         from app.infrastructure.services.mock_biometric_alert_service import (
             MockBiometricAlertService,  # type: ignore
         )
+
         return MockBiometricAlertService()
     except ModuleNotFoundError:
         # Fallback: Define a minimal stub if the mock is not found
         class StubBiometricAlertService:  # pragma: no cover – fallback
             async def create_alert(self, *args, **kwargs):
                 return {"id": "stub_alert_id", "message": "Stub Alert"}
+
             async def get_alert_by_id(self, alert_id: str, *args, **kwargs):
                 if alert_id == "stub_alert_id":
                     return {"id": "stub_alert_id", "message": "Stub Alert"}
-                return None # Or raise appropriate not found error stub
+                return None  # Or raise appropriate not found error stub
+
             async def acknowledge_alert(self, alert_id: str, *args, **kwargs):
-                 if alert_id == "stub_alert_id":
-                     return {"id": "stub_alert_id", "message": "Acknowledged Stub Alert", "acknowledged": True}
-                 return None # Or raise appropriate not found error stub
+                if alert_id == "stub_alert_id":
+                    return {
+                        "id": "stub_alert_id",
+                        "message": "Acknowledged Stub Alert",
+                        "acknowledged": True,
+                    }
+                return None  # Or raise appropriate not found error stub
+
             async def list_alerts(self, *args, **kwargs):
                 return []
 
         return StubBiometricAlertService()
 
-services.get_biometric_alert_service = get_biometric_alert_service # type: ignore[attr-defined]
+
+services.get_biometric_alert_service = get_biometric_alert_service  # type: ignore[attr-defined]
 
 
 # Biometric Alert Rule service shim (required by biometric_alerts endpoint)
+
 
 def get_biometric_alert_rule_service():
     """Return a stub BiometricAlertRuleService suitable for tests."""
@@ -183,38 +203,46 @@ def get_biometric_alert_rule_service():
         from app.infrastructure.services.mock_biometric_alert_rule_service import (
             MockBiometricAlertRuleService,  # type: ignore
         )
+
         return MockBiometricAlertRuleService()
     except ModuleNotFoundError:
         # Fallback: Define a minimal stub if the mock is not found
         class StubBiometricAlertRuleService:  # pragma: no cover – fallback
             async def create_rule(self, *args, **kwargs):
                 return {"id": "stub_rule_id", "name": "Stub Rule"}
+
             async def get_rule_by_id(self, rule_id: str, *args, **kwargs):
                 if rule_id == "stub_rule_id":
                     return {"id": "stub_rule_id", "name": "Stub Rule"}
-                return None # Or raise appropriate not found error stub
+                return None  # Or raise appropriate not found error stub
+
             async def update_rule(self, rule_id: str, *args, **kwargs):
-                 if rule_id == "stub_rule_id":
-                     return {"id": "stub_rule_id", "name": "Updated Stub Rule"}
-                 return None # Or raise appropriate not found error stub
+                if rule_id == "stub_rule_id":
+                    return {"id": "stub_rule_id", "name": "Updated Stub Rule"}
+                return None  # Or raise appropriate not found error stub
+
             async def delete_rule(self, rule_id: str, *args, **kwargs):
                 if rule_id == "stub_rule_id":
                     return True
-                return False # Or raise appropriate not found error stub
+                return False  # Or raise appropriate not found error stub
+
             async def list_rules(self, *args, **kwargs):
                 return []
 
         return StubBiometricAlertRuleService()
+
 
 services.get_biometric_alert_rule_service = get_biometric_alert_rule_service  # type: ignore[attr-defined]
 
 
 # Biometric Event Processor service shim (required by biometric_alerts endpoint)
 
+
 def get_event_processor():
     """Return an instance of the BiometricEventProcessor service."""
     # Currently, BiometricEventProcessor has no init dependencies
     return BiometricEventProcessor()
+
 
 services.get_event_processor = get_event_processor  # type: ignore[attr-defined]
 
@@ -246,7 +274,10 @@ repositories.get_patient_repository = get_patient_repository  # type: ignore[att
 
 # --- Biometric Rule Repository ---
 
-def get_rule_repository(db: Session = Depends(get_db_session)) -> BiometricAlertRuleRepository:
+
+def get_rule_repository(
+    db: Session = Depends(get_db_session),
+) -> BiometricAlertRuleRepository:
     """
     Dependency for getting the biometric rule repository.
 
@@ -258,11 +289,15 @@ def get_rule_repository(db: Session = Depends(get_db_session)) -> BiometricAlert
     """
     return SQLAlchemyBiometricAlertRuleRepository(db)
 
-repositories.get_rule_repository = get_rule_repository # type: ignore[attr-defined]
+
+repositories.get_rule_repository = get_rule_repository  # type: ignore[attr-defined]
 
 # --- Biometric Template Repository ---
 
-def get_template_repository(db: Session = Depends(get_db_session)) -> BiometricAlertTemplateRepository:
+
+def get_template_repository(
+    db: Session = Depends(get_db_session),
+) -> BiometricAlertTemplateRepository:
     """
     Dependency for getting the biometric alert template repository.
 
@@ -274,11 +309,15 @@ def get_template_repository(db: Session = Depends(get_db_session)) -> BiometricA
     """
     return SQLAlchemyBiometricAlertTemplateRepository(db)
 
-repositories.get_template_repository = get_template_repository # type: ignore[attr-defined]
+
+repositories.get_template_repository = get_template_repository  # type: ignore[attr-defined]
 
 # --- Biometric Alert Repository ---
 
-def get_alert_repository(db: Session = Depends(get_db_session)) -> BiometricAlertRepository:
+
+def get_alert_repository(
+    db: Session = Depends(get_db_session),
+) -> BiometricAlertRepository:
     """
     Dependency for getting the biometric alert repository.
 
@@ -290,4 +329,5 @@ def get_alert_repository(db: Session = Depends(get_db_session)) -> BiometricAler
     """
     return SQLAlchemyBiometricAlertRepository(db)
 
-repositories.get_alert_repository = get_alert_repository # type: ignore[attr-defined]
+
+repositories.get_alert_repository = get_alert_repository  # type: ignore[attr-defined]

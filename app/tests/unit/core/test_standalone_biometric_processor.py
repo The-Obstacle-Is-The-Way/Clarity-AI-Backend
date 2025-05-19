@@ -26,8 +26,10 @@ import pytest
 
 # ============= Biometric Event Processor Implementation =============
 
+
 class BiometricType(str, Enum):
     """Types of biometric data."""
+
     HEART_RATE = "heart_rate"
     BLOOD_PRESSURE = "blood_pressure"
     TEMPERATURE = "temperature"
@@ -44,6 +46,7 @@ class BiometricType(str, Enum):
 
 class AlertSeverity(str, Enum):
     """Severity levels for alerts."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -52,6 +55,7 @@ class AlertSeverity(str, Enum):
 
 class ComparisonOperator(str, Enum):
     """Comparison operators for rule conditions."""
+
     GREATER_THAN = "greater_than"
     GREATER_THAN_OR_EQUAL = "greater_than_or_equal"
     LESS_THAN = "less_than"
@@ -69,7 +73,7 @@ class BiometricDataPoint:
         data_type: BiometricType,
         value: float | int | dict[str, Any],
         timestamp: datetime | None = None,
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ):
         """
         Initialize a biometric data point.
@@ -109,7 +113,7 @@ class BiometricDataPoint:
             data_type=data_type,
             value=data.get("value"),
             timestamp=timestamp,
-            metadata=data.get("metadata", {})
+            metadata=data.get("metadata", {}),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -119,7 +123,7 @@ class BiometricDataPoint:
             "data_type": self.data_type.value,
             "value": self.value,
             "timestamp": self.timestamp.isoformat(),
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
 
@@ -136,7 +140,7 @@ class AlertRule:
         severity: AlertSeverity = AlertSeverity.MEDIUM,
         description: str | None = None,
         active: bool = True,
-        cooldown_minutes: int = 30
+        cooldown_minutes: int = 30,
     ):
         """
         Initialize an alert rule.
@@ -159,7 +163,9 @@ class AlertRule:
         self.threshold = threshold
         self.patient_id = patient_id
         self.severity = severity
-        self.description = description or f"{data_type.value} {operator.value} {threshold}"
+        self.description = (
+            description or f"{data_type.value} {operator.value} {threshold}"
+        )
         self.active = active
         self.cooldown_minutes = cooldown_minutes
         self.last_triggered: dict[str, datetime] = {}
@@ -197,7 +203,10 @@ class AlertRule:
         value = data_point.value
         if not isinstance(value, (int, float)):
             # For complex values like blood pressure, we need special handling
-            if isinstance(value, dict) and self.data_type == BiometricType.BLOOD_PRESSURE:
+            if (
+                isinstance(value, dict)
+                and self.data_type == BiometricType.BLOOD_PRESSURE
+            ):
                 # For blood pressure, use systolic by default
                 value = value.get("systolic")
                 if value is None:
@@ -205,7 +214,7 @@ class AlertRule:
 
         # Evaluate the condition
         triggered = False
-        
+
         if self.operator == ComparisonOperator.GREATER_THAN:
             triggered = value > self.threshold
         elif self.operator == ComparisonOperator.GREATER_THAN_OR_EQUAL:
@@ -218,11 +227,11 @@ class AlertRule:
             triggered = value == self.threshold
         elif self.operator == ComparisonOperator.NOT_EQUAL:
             triggered = value != self.threshold
-        
+
         # Update last triggered time if rule was triggered
         if triggered:
             self.last_triggered[data_point.patient_id] = datetime.now()
-            
+
         return triggered
 
     def to_dict(self) -> dict[str, Any]:
@@ -237,7 +246,7 @@ class AlertRule:
             "severity": self.severity.value,
             "description": self.description,
             "active": self.active,
-            "cooldown_minutes": self.cooldown_minutes
+            "cooldown_minutes": self.cooldown_minutes,
         }
 
 
@@ -252,7 +261,7 @@ class BiometricAlert:
         data_point: BiometricDataPoint,
         severity: AlertSeverity,
         message: str,
-        timestamp: datetime | None = None
+        timestamp: datetime | None = None,
     ):
         """
         Initialize a biometric alert.
@@ -301,8 +310,10 @@ class BiometricAlert:
             "message": self.message,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
             "acknowledged": self.acknowledged,
-            "acknowledged_at": self.acknowledged_at.isoformat() if self.acknowledged_at else None,
-            "acknowledged_by": self.acknowledged_by
+            "acknowledged_at": self.acknowledged_at.isoformat()
+            if self.acknowledged_at
+            else None,
+            "acknowledged_by": self.acknowledged_by,
         }
 
 
@@ -353,7 +364,7 @@ class EmailAlertObserver(AlertObserver):
         body += f"Value: {alert.data_point.value}\n"
         body += f"Time: {alert.timestamp.isoformat()}\n"
         body += f"Message: {alert.message}"
-        
+
         # In a real implementation, this would return the email details
         return {"subject": subject, "body": body, "recipients": self.recipients}
 
@@ -384,7 +395,10 @@ class SMSAlertObserver(AlertObserver):
             SMS details dictionary or None if no SMS was sent
         """
         # Only send SMS for high severity alerts if urgent_only is True
-        if self.urgent_only and alert.severity not in [AlertSeverity.HIGH, AlertSeverity.CRITICAL]:
+        if self.urgent_only and alert.severity not in [
+            AlertSeverity.HIGH,
+            AlertSeverity.CRITICAL,
+        ]:
             return None
 
         # In a real implementation, this would send an SMS
@@ -393,7 +407,7 @@ class SMSAlertObserver(AlertObserver):
 
         # Simulated SMS message
         message = f"ALERT: {alert.rule_name} for patient {alert.patient_id}"
-        
+
         # In a real implementation, this would return the SMS details
         return {"message": message, "phone_numbers": self.phone_numbers}
 
@@ -448,7 +462,7 @@ class ClinicalRuleEngine:
         threshold: float | int,
         severity: AlertSeverity = AlertSeverity.MEDIUM,
         description: str | None = None,
-        parameters: list[str] | None = None
+        parameters: list[str] | None = None,
     ) -> None:
         """
         Register a rule template.
@@ -470,14 +484,14 @@ class ClinicalRuleEngine:
             "threshold": threshold,
             "severity": severity,
             "description": description,
-            "parameters": parameters or []
+            "parameters": parameters or [],
         }
 
     def register_custom_condition(
         self,
         condition_id: str,
         condition_fn: Callable[[BiometricDataPoint], bool],
-        description: str
+        description: str,
     ) -> None:
         """
         Register a custom condition function.
@@ -493,7 +507,7 @@ class ClinicalRuleEngine:
         self,
         template_id: str,
         parameters: dict[str, Any] | None = None,
-        patient_id: str | None = None
+        patient_id: str | None = None,
     ) -> AlertRule:
         """
         Create a rule from a template.
@@ -530,7 +544,7 @@ class ClinicalRuleEngine:
             severity=severity,
             description=description,
             active=active,
-            cooldown_minutes=cooldown_minutes
+            cooldown_minutes=cooldown_minutes,
         )
 
 
@@ -656,7 +670,9 @@ class BiometricEventProcessor:
             self.contexts[patient_id] = ProcessorContext(patient_id)
         return self.contexts[patient_id]
 
-    def process_data_point(self, data_point: BiometricDataPoint) -> list[BiometricAlert]:
+    def process_data_point(
+        self, data_point: BiometricDataPoint
+    ) -> list[BiometricAlert]:
         """
         Process a biometric data point with support for hypothalamus-pituitary neural connectivity.
 
@@ -671,7 +687,10 @@ class BiometricEventProcessor:
             return []
 
         # Apply pituitary region sensitivity adjustments if enabled
-        if self.neural_connectivity_enabled and data_point.metadata.get("brain_region") == "pituitary":
+        if (
+            self.neural_connectivity_enabled
+            and data_point.metadata.get("brain_region") == "pituitary"
+        ):
             # Adjust sensitivity for pituitary-related metrics
             if isinstance(data_point.value, (int, float)):
                 # Store original value in metadata for reference
@@ -696,7 +715,7 @@ class BiometricEventProcessor:
                     patient_id=data_point.patient_id,
                     data_point=data_point,
                     severity=rule.severity,
-                    message=f"{rule.name} alert: {data_point.data_type.value} is {data_point.value}"
+                    message=f"{rule.name} alert: {data_point.data_type.value} is {data_point.value}",
                 )
                 alerts.append(alert)
 
@@ -711,6 +730,7 @@ class BiometricEventProcessor:
 
 
 # ============= Tests =============
+
 
 @pytest.mark.standalone()
 class TestBiometricEventProcessor(unittest.TestCase):
@@ -727,12 +747,12 @@ class TestBiometricEventProcessor(unittest.TestCase):
             name="High Heart Rate",
             data_type=BiometricType.HEART_RATE,
             operator=ComparisonOperator.GREATER_THAN,
-            threshold=100
+            threshold=100,
         )
-        
+
         # Add to processor
         self.processor.add_rule(rule)
-        
+
         # Check that rule was added
         self.assertIn(rule.id, self.processor.rules)
         self.assertEqual(self.processor.rules[rule.id], rule)
@@ -744,17 +764,17 @@ class TestBiometricEventProcessor(unittest.TestCase):
             name="High Heart Rate",
             data_type=BiometricType.HEART_RATE,
             operator=ComparisonOperator.GREATER_THAN,
-            threshold=100
+            threshold=100,
         )
         self.processor.add_rule(rule)
-        
+
         # Remove the rule
         result = self.processor.remove_rule(rule.id)
-        
+
         # Check that rule was removed
         self.assertTrue(result)
         self.assertNotIn(rule.id, self.processor.rules)
-        
+
         # Try to remove a non-existent rule
         result = self.processor.remove_rule("non_existent_rule")
         self.assertFalse(result)
@@ -763,10 +783,10 @@ class TestBiometricEventProcessor(unittest.TestCase):
         """Test registering an observer."""
         # Create an observer
         observer = EmailAlertObserver(recipients=["doctor@example.com"])
-        
+
         # Register the observer
         self.processor.register_observer(observer)
-        
+
         # Check that observer was registered
         self.assertIn(observer, self.processor.observers)
 
@@ -775,13 +795,13 @@ class TestBiometricEventProcessor(unittest.TestCase):
         # Create and register observers
         observer = EmailAlertObserver(recipients=["doctor@example.com"])
         self.processor.register_observer(observer)
-        
+
         observer2 = EmailAlertObserver(recipients=["nurse@example.com"])
         self.processor.register_observer(observer2)
-        
+
         # Unregister an observer
         result = self.processor.unregister_observer(observer)
-        
+
         # Check that observer was unregistered
         self.assertTrue(result)
         self.assertNotIn(observer, self.processor.observers)
@@ -791,14 +811,12 @@ class TestBiometricEventProcessor(unittest.TestCase):
         """Test processing a data point with no patient ID."""
         # Create a data point with no patient ID
         data_point = BiometricDataPoint(
-            patient_id="",
-            data_type=BiometricType.HEART_RATE,
-            value=120
+            patient_id="", data_type=BiometricType.HEART_RATE, value=120
         )
-        
+
         # Process the data point
         alerts = self.processor.process_data_point(data_point)
-        
+
         # Check that no alerts were generated
         self.assertEqual(len(alerts), 0)
 
@@ -809,20 +827,18 @@ class TestBiometricEventProcessor(unittest.TestCase):
             name="High Blood Pressure",
             data_type=BiometricType.BLOOD_PRESSURE,
             operator=ComparisonOperator.GREATER_THAN,
-            threshold=140
+            threshold=140,
         )
         self.processor.add_rule(rule)
-        
+
         # Create a data point for heart rate
         data_point = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=120
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=120
         )
-        
+
         # Process the data point
         alerts = self.processor.process_data_point(data_point)
-        
+
         # Check that no alerts were generated
         self.assertEqual(len(alerts), 0)
 
@@ -834,20 +850,18 @@ class TestBiometricEventProcessor(unittest.TestCase):
             data_type=BiometricType.HEART_RATE,
             operator=ComparisonOperator.GREATER_THAN,
             threshold=100,
-            severity=AlertSeverity.HIGH
+            severity=AlertSeverity.HIGH,
         )
         self.processor.add_rule(rule)
-        
+
         # Create a data point that should trigger the rule
         data_point = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=120
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=120
         )
-        
+
         # Process the data point
         alerts = self.processor.process_data_point(data_point)
-        
+
         # Check that an alert was generated
         self.assertEqual(len(alerts), 1)
         self.assertEqual(alerts[0].rule_id, rule.id)
@@ -862,27 +876,23 @@ class TestBiometricEventProcessor(unittest.TestCase):
             data_type=BiometricType.HEART_RATE,
             operator=ComparisonOperator.GREATER_THAN,
             threshold=100,
-            patient_id="patient1"
+            patient_id="patient1",
         )
         self.processor.add_rule(rule)
-        
+
         # Create data points for different patients
         data_point1 = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=120
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=120
         )
-        
+
         data_point2 = BiometricDataPoint(
-            patient_id="patient2",
-            data_type=BiometricType.HEART_RATE,
-            value=120
+            patient_id="patient2", data_type=BiometricType.HEART_RATE, value=120
         )
-        
+
         # Process the data points
         alerts1 = self.processor.process_data_point(data_point1)
         alerts2 = self.processor.process_data_point(data_point2)
-        
+
         # Check that only data_point1 generated an alert
         self.assertEqual(len(alerts1), 1)
         self.assertEqual(len(alerts2), 0)
@@ -895,20 +905,18 @@ class TestBiometricEventProcessor(unittest.TestCase):
             data_type=BiometricType.HEART_RATE,
             operator=ComparisonOperator.GREATER_THAN,
             threshold=100,
-            active=False
+            active=False,
         )
         self.processor.add_rule(rule)
-        
+
         # Create a data point that would match the rule if it were active
         data_point = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=120
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=120
         )
-        
+
         # Process the data point
         alerts = self.processor.process_data_point(data_point)
-        
+
         # Check that no alerts were generated
         self.assertEqual(len(alerts), 0)
 
@@ -916,33 +924,29 @@ class TestBiometricEventProcessor(unittest.TestCase):
         """Test that processing a data point updates the patient context."""
         # Create a data point
         data_point = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=80
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=80
         )
-        
+
         # Process the data point
         self.processor.process_data_point(data_point)
-        
+
         # Check that context was created and updated
         context = self.processor.get_context("patient1")
         self.assertEqual(context.last_values[BiometricType.HEART_RATE], 80)
         self.assertEqual(len(context.trends[BiometricType.HEART_RATE]), 1)
-        
+
         # Process another data point
         data_point2 = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=90
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=90
         )
-        
+
         self.processor.process_data_point(data_point2)
-        
+
         # Check that context was updated
         self.assertEqual(context.last_values[BiometricType.HEART_RATE], 90)
         self.assertEqual(len(context.trends[BiometricType.HEART_RATE]), 2)
         self.assertEqual(context.trends[BiometricType.HEART_RATE], [80, 90])
-        
+
     def test_pituitary_region_support(self):
         """Test specific support for pituitary region with adjusted sensitivity."""
         # Add a rule for detecting hypothalamus-pituitary axis anomalies
@@ -950,37 +954,39 @@ class TestBiometricEventProcessor(unittest.TestCase):
             name="Pituitary hormone level high",
             data_type=BiometricType.CUSTOM,  # Using custom for hormone levels
             operator=ComparisonOperator.GREATER_THAN,
-            threshold=8.5  # Threshold for normal hormone level
+            threshold=8.5,  # Threshold for normal hormone level
         )
         self.processor.add_rule(rule)
-        
+
         # Create a data point with pituitary region metadata
         data_point = BiometricDataPoint(
             patient_id="patient1",
             data_type=BiometricType.CUSTOM,
             value=10.0,
-            metadata={"brain_region": "pituitary"}
+            metadata={"brain_region": "pituitary"},
         )
-        
+
         # Process the data point - should have pituitary modifier applied
         alerts = self.processor.process_data_point(data_point)
-        
+
         # Check that the value was adjusted by pituitary modifier
         self.assertEqual(data_point.metadata["original_value"], 10.0)
-        self.assertAlmostEqual(data_point.value, 10.0 * self.processor.pituitary_threshold_modifier)
-        
+        self.assertAlmostEqual(
+            data_point.value, 10.0 * self.processor.pituitary_threshold_modifier
+        )
+
         # Value after adjustment should be 10.0 * 0.85 = 8.5
         # This should be exactly at threshold, not trigger an alert with greater_than
         self.assertEqual(len(alerts), 0)
-        
+
         # Try with a higher value that will trigger even with modification
         data_point2 = BiometricDataPoint(
             patient_id="patient1",
             data_type=BiometricType.CUSTOM,
             value=12.0,
-            metadata={"brain_region": "pituitary"}
+            metadata={"brain_region": "pituitary"},
         )
-        
+
         alerts2 = self.processor.process_data_point(data_point2)
         self.assertEqual(len(alerts2), 1)
 
@@ -997,7 +1003,7 @@ class TestAlertRule(unittest.TestCase):
             data_type=BiometricType.HEART_RATE,
             operator=ComparisonOperator.GREATER_THAN,
             threshold=100,
-            severity=AlertSeverity.HIGH
+            severity=AlertSeverity.HIGH,
         )
 
     def test_create_alert_rule(self):
@@ -1017,17 +1023,15 @@ class TestAlertRule(unittest.TestCase):
         """Test evaluating a rule with a matching data point."""
         # Create a data point that matches the rule
         data_point = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=110
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=110
         )
-        
+
         # Evaluate the rule
         result = self.rule.evaluate(data_point)
-        
+
         # Check that rule matched
         self.assertTrue(result)
-        
+
         # Check that last_triggered was updated
         self.assertIn("patient1", self.rule.last_triggered)
 
@@ -1035,17 +1039,15 @@ class TestAlertRule(unittest.TestCase):
         """Test evaluating a rule with a non-matching data point."""
         # Create a data point that doesn't match the rule
         data_point = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=90
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=90
         )
-        
+
         # Evaluate the rule
         result = self.rule.evaluate(data_point)
-        
+
         # Check that rule didn't match
         self.assertFalse(result)
-        
+
         # Check that last_triggered was not updated
         self.assertNotIn("patient1", self.rule.last_triggered)
 
@@ -1053,14 +1055,12 @@ class TestAlertRule(unittest.TestCase):
         """Test evaluating a rule with a data point of a different type."""
         # Create a data point with a different data type
         data_point = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.BLOOD_PRESSURE,
-            value=120
+            patient_id="patient1", data_type=BiometricType.BLOOD_PRESSURE, value=120
         )
-        
+
         # Evaluate the rule
         result = self.rule.evaluate(data_point)
-        
+
         # Check that rule didn't match
         self.assertFalse(result)
 
@@ -1073,22 +1073,18 @@ class TestAlertRule(unittest.TestCase):
             operator=ComparisonOperator.GREATER_THAN,
             threshold=100,
             severity=AlertSeverity.HIGH,
-            patient_id="patient1"
+            patient_id="patient1",
         )
-        
+
         # Create data points for different patients
         matching_data_point = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=110
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=110
         )
-        
+
         non_matching_data_point = BiometricDataPoint(
-            patient_id="patient2",
-            data_type=BiometricType.HEART_RATE,
-            value=110
+            patient_id="patient2", data_type=BiometricType.HEART_RATE, value=110
         )
-        
+
         # Evaluate the rule
         self.assertTrue(rule.evaluate(matching_data_point))
         self.assertFalse(rule.evaluate(non_matching_data_point))
@@ -1100,28 +1096,22 @@ class TestAlertRule(unittest.TestCase):
             name="High Heart Rate",
             data_type=BiometricType.HEART_RATE,
             operator=ComparisonOperator.GREATER_THAN,
-            threshold=100
+            threshold=100,
         )
-        
+
         # Create data points
         above_threshold = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=110
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=110
         )
-        
+
         at_threshold = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=100
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=100
         )
-        
+
         below_threshold = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=90
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=90
         )
-        
+
         # Evaluate the rule
         self.assertTrue(rule.evaluate(above_threshold))
         self.assertFalse(rule.evaluate(at_threshold))
@@ -1131,48 +1121,42 @@ class TestAlertRule(unittest.TestCase):
         """Test evaluating a rule with the greater than or equal operator."""
         # Create data points
         above_threshold = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=110
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=110
         )
-        
+
         at_threshold = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=100
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=100
         )
-        
+
         below_threshold = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=90
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=90
         )
-        
+
         # Test each case with a fresh rule to avoid cooldown interference
         # Test above threshold
         rule1 = AlertRule(
             name="High Heart Rate",
             data_type=BiometricType.HEART_RATE,
             operator=ComparisonOperator.GREATER_THAN_OR_EQUAL,
-            threshold=100
+            threshold=100,
         )
         self.assertTrue(rule1.evaluate(above_threshold))
-        
+
         # Test at threshold
         rule2 = AlertRule(
             name="High Heart Rate",
             data_type=BiometricType.HEART_RATE,
             operator=ComparisonOperator.GREATER_THAN_OR_EQUAL,
-            threshold=100
+            threshold=100,
         )
         self.assertTrue(rule2.evaluate(at_threshold))
-        
+
         # Test below threshold
         rule3 = AlertRule(
             name="High Heart Rate",
             data_type=BiometricType.HEART_RATE,
             operator=ComparisonOperator.GREATER_THAN_OR_EQUAL,
-            threshold=100
+            threshold=100,
         )
         self.assertFalse(rule3.evaluate(below_threshold))
 
@@ -1183,28 +1167,22 @@ class TestAlertRule(unittest.TestCase):
             name="Low Heart Rate",
             data_type=BiometricType.HEART_RATE,
             operator=ComparisonOperator.LESS_THAN,
-            threshold=60
+            threshold=60,
         )
-        
+
         # Create data points
         above_threshold = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=70
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=70
         )
-        
+
         at_threshold = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=60
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=60
         )
-        
+
         below_threshold = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=50
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=50
         )
-        
+
         # Evaluate the rule
         self.assertFalse(rule.evaluate(above_threshold))
         self.assertFalse(rule.evaluate(at_threshold))
@@ -1214,48 +1192,42 @@ class TestAlertRule(unittest.TestCase):
         """Test evaluating a rule with the less than or equal operator."""
         # Create data points
         above_threshold = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=70
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=70
         )
-        
+
         at_threshold = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=60
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=60
         )
-        
+
         below_threshold = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=50
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=50
         )
-        
+
         # Test each case with a fresh rule to avoid cooldown interference
         # Test above threshold
         rule1 = AlertRule(
             name="Low Heart Rate",
             data_type=BiometricType.HEART_RATE,
             operator=ComparisonOperator.LESS_THAN_OR_EQUAL,
-            threshold=60
+            threshold=60,
         )
         self.assertFalse(rule1.evaluate(above_threshold))
-        
+
         # Test at threshold
         rule2 = AlertRule(
             name="Low Heart Rate",
             data_type=BiometricType.HEART_RATE,
             operator=ComparisonOperator.LESS_THAN_OR_EQUAL,
-            threshold=60
+            threshold=60,
         )
         self.assertTrue(rule2.evaluate(at_threshold))
-        
+
         # Test below threshold
         rule3 = AlertRule(
             name="Low Heart Rate",
             data_type=BiometricType.HEART_RATE,
             operator=ComparisonOperator.LESS_THAN_OR_EQUAL,
-            threshold=60
+            threshold=60,
         )
         self.assertTrue(rule3.evaluate(below_threshold))
 
@@ -1266,32 +1238,26 @@ class TestAlertRule(unittest.TestCase):
             name="Exact Heart Rate",
             data_type=BiometricType.HEART_RATE,
             operator=ComparisonOperator.EQUAL,
-            threshold=60
+            threshold=60,
         )
-        
+
         # Create data points
         above_threshold = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=70
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=70
         )
-        
+
         at_threshold = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=60
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=60
         )
-        
+
         below_threshold = BiometricDataPoint(
-            patient_id="patient1",
-            data_type=BiometricType.HEART_RATE,
-            value=50
+            patient_id="patient1", data_type=BiometricType.HEART_RATE, value=50
         )
-        
+
         # Evaluate the rule
         self.assertFalse(rule.evaluate(above_threshold))
         self.assertTrue(rule.evaluate(at_threshold))
         self.assertFalse(rule.evaluate(below_threshold))
 
-# TODO: Update the test to use actual implementations instead of standalone duplicates
 
+# TODO: Update the test to use actual implementations instead of standalone duplicates

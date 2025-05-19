@@ -9,16 +9,29 @@ from app.domain.exceptions.base_exceptions import BaseApplicationError
 
 class PersistenceError(BaseApplicationError):
     """Base class for persistence-related exceptions."""
-    
-    def __init__(self, message: str = "Persistence operation failed", original_exception: Exception = None, *args, **kwargs):
+
+    def __init__(
+        self,
+        message: str = "Persistence operation failed",
+        original_exception: Exception = None,
+        *args,
+        **kwargs,
+    ):
         super().__init__(message, *args, **kwargs)
         self.original_exception = original_exception
 
 
 class EntityNotFoundError(PersistenceError):
     """Raised when an entity cannot be found in the persistence layer."""
-    
-    def __init__(self, entity_type: str = None, entity_id: str = None, message: str = None, *args, **kwargs):
+
+    def __init__(
+        self,
+        entity_type: str = None,
+        entity_id: str = None,
+        message: str = None,
+        *args,
+        **kwargs,
+    ):
         if message is None:
             if entity_type and entity_id:
                 message = f"{entity_type} with ID {entity_id} not found"
@@ -33,8 +46,15 @@ class EntityNotFoundError(PersistenceError):
 
 class RepositoryError(PersistenceError):
     """Raised when a repository operation fails."""
-    
-    def __init__(self, message: str = "Repository operation failed", repository: str = None, operation: str = None, *args, **kwargs):
+
+    def __init__(
+        self,
+        message: str = "Repository operation failed",
+        repository: str = None,
+        operation: str = None,
+        *args,
+        **kwargs,
+    ):
         if repository and operation:
             message = f"{message} in {repository} during {operation}"
         elif repository:
@@ -43,38 +63,50 @@ class RepositoryError(PersistenceError):
         self.repository = repository
         self.operation = operation
 
+
 class DataIntegrityError(PersistenceError):
     """Error raised when a data integrity constraint is violated."""
+
     def __init__(self, message: str = "Data integrity constraint violated"):
         super().__init__(message)
         self.message = message
 
+
 class ConnectionError(PersistenceError):
     """Error raised when a database connection fails."""
+
     def __init__(self, message: str = "Database connection failed"):
         super().__init__(message)
         self.message = message
 
+
 class TransactionError(PersistenceError):
     """Error raised when a transaction operation fails."""
+
     def __init__(self, message: str = "Transaction operation failed"):
         super().__init__(message)
         self.message = message
 
+
 class MigrationError(PersistenceError):
     """Error raised when a database migration fails."""
+
     def __init__(self, message: str = "Database migration failed"):
         super().__init__(message)
         self.message = message
 
+
 class QueryError(PersistenceError):
     """Error raised when a database query fails."""
+
     def __init__(self, message: str = "Database query failed"):
         super().__init__(message)
         self.message = message
 
+
 class SerializationError(PersistenceError):
     """Error raised when entity serialization or deserialization fails."""
+
     def __init__(self, message: str = "Entity serialization or deserialization failed"):
         super().__init__(message)
-        self.message = message 
+        self.message = message

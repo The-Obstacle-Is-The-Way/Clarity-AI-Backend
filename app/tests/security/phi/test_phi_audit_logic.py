@@ -25,13 +25,13 @@ except ImportError:
 # Uncomment AuditLog import now that the model exists
 
 # TEMP: Keep UserModel commented until user.py is verified/completed
-# from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel 
+# from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel
 from app.tests.security.utils.base_security_test import BaseSecurityTest
 
 # Import PHIAuditMiddleware from presentation layer - REMOVED as it's unused
 # from app.presentation.middleware.phi_middleware import PHIAuditMiddleware
 # PHIAuditHandler might also be in presentation or removed, leaving commented for now
-# from app.infrastructure.security.phi import PHIAuditHandler 
+# from app.infrastructure.security.phi import PHIAuditHandler
 # from app.infrastructure.security.phi.detector import PHIDetector # REMOVED as unused
 
 
@@ -53,7 +53,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         auditor.findings = {
             "code_phi": [],
             "api_security": [],
-            "configuration_issues": []
+            "configuration_issues": [],
         }
         assert auditor._audit_passed() is True, "Audit should pass with no issues"
 
@@ -61,6 +61,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         """Test that the audit passes for clean_app directory even with issues."""
         import shutil
         import tempfile
+
         temp_dir = tempfile.mkdtemp()
         try:
             # Create a clean_app directory
@@ -73,12 +74,16 @@ class TestPHIAuditLogic(BaseSecurityTest):
             # Add some mock issues
             auditor.findings = {
                 "code_phi": [{"file": "test.py", "evidence": "SSN: 123-45-6789"}],
-                "api_security": [{"endpoint": "/api/patient", "issue": "No authentication"}],
-                "configuration_issues": []
+                "api_security": [
+                    {"endpoint": "/api/patient", "issue": "No authentication"}
+                ],
+                "configuration_issues": [],
             }
 
             # Verify audit passes despite having issues
-            assert auditor._audit_passed() is True, "Audit should pass for clean_app directory regardless of issues"
+            assert (
+                auditor._audit_passed() is True
+            ), "Audit should pass for clean_app directory regardless of issues"
         finally:
             shutil.rmtree(temp_dir)
 
@@ -86,6 +91,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         """Test that the audit passes when 'clean_app' is in the path but not the directory name."""
         import shutil
         import tempfile
+
         temp_dir = tempfile.mkdtemp()
         try:
             # Create a directory with clean_app in the path
@@ -99,11 +105,13 @@ class TestPHIAuditLogic(BaseSecurityTest):
             auditor.findings = {
                 "code_phi": [{"file": "test.py", "evidence": "SSN: 123-45-6789"}],
                 "api_security": [],
-                "configuration_issues": []
+                "configuration_issues": [],
             }
 
             # Verify audit passes despite having issues
-            assert auditor._audit_passed() is True, "Audit should pass with clean_app in path"
+            assert (
+                auditor._audit_passed() is True
+            ), "Audit should pass with clean_app in path"
         finally:
             shutil.rmtree(temp_dir)
 
@@ -112,7 +120,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         import shutil
         import tempfile
         from app.tests.security.utils.test_mocks import MockPHIAuditor
-        
+
         temp_dir = tempfile.mkdtemp()
         try:
             # Create a MockPHIAuditor instance that correctly implements is_phi_test_file
@@ -126,29 +134,44 @@ class TestPHIAuditLogic(BaseSecurityTest):
             # Create a test file that isn't testing PHI
             non_phi_test_file = os.path.join(temp_dir, "test_regular.py")
             with open(non_phi_test_file, "w") as f:
-                f.write("""
+                f.write(
+                    """
                     import pytest
 
                     def test_something():
                         assert 1 + 1 == 2
-                """)
+                """
+                )
 
             # Create a PHI test file
             phi_test_file = os.path.join(temp_dir, "test_phi_detection.py")
             with open(phi_test_file, "w") as f:
-                f.write("""
+                f.write(
+                    """
                     import pytest
                     from app.core.utils.validation import PHIDetector
 
                     def test_phi_detection():
                         detector = PHIDetector()
                         assert detector.contains_phi("123-45-6789") is True
-                """)
+                """
+                )
 
             # Test the detection logic
-            assert auditor.is_phi_test_file(regular_file, open(regular_file).read()) is False, "Regular file should not be detected as PHI test file"
-            assert auditor.is_phi_test_file(non_phi_test_file, open(non_phi_test_file).read()) is False, "Non-PHI test file should not be detected as PHI test file"
-            assert auditor.is_phi_test_file(phi_test_file, open(phi_test_file).read()) is True, "PHI test file should be detected correctly"
+            assert (
+                auditor.is_phi_test_file(regular_file, open(regular_file).read())
+                is False
+            ), "Regular file should not be detected as PHI test file"
+            assert (
+                auditor.is_phi_test_file(
+                    non_phi_test_file, open(non_phi_test_file).read()
+                )
+                is False
+            ), "Non-PHI test file should not be detected as PHI test file"
+            assert (
+                auditor.is_phi_test_file(phi_test_file, open(phi_test_file).read())
+                is True
+            ), "PHI test file should be detected correctly"
         finally:
             shutil.rmtree(temp_dir)
 
@@ -157,10 +180,12 @@ class TestPHIAuditLogic(BaseSecurityTest):
         import shutil
         import tempfile
         from app.tests.security.utils.test_mocks import MockPHIAuditor
-        
+
         # Use monkeypatch to replace PHIAuditor with our MockPHIAuditor
-        monkeypatch.setattr("scripts.test.security.run_hipaa_phi_audit.PHIAuditor", MockPHIAuditor)
-        
+        monkeypatch.setattr(
+            "scripts.test.security.run_hipaa_phi_audit.PHIAuditor", MockPHIAuditor
+        )
+
         temp_dir = tempfile.mkdtemp()
         try:
             # Create a clean_app directory
@@ -170,10 +195,12 @@ class TestPHIAuditLogic(BaseSecurityTest):
             # Create a test file with PHI
             test_file = os.path.join(clean_app_dir, "test_phi.py")
             with open(test_file, "w") as f:
-                f.write("""
+                f.write(
+                    """
                     def test_function():
                         ssn = \"123-45-6789\"
-                """)
+                """
+                )
 
             # Create an auditor with strict_mode=True
             strict_auditor = MockPHIAuditor(app_dir=clean_app_dir, strict_mode=True)
@@ -182,18 +209,22 @@ class TestPHIAuditLogic(BaseSecurityTest):
             strict_auditor.findings = {
                 "code_phi": [{"file": "test_phi.py", "evidence": "SSN: 123-45-6789"}],
                 "api_security": [],
-                "configuration_issues": []
+                "configuration_issues": [],
             }
 
             # Verify audit fails in strict mode despite being in clean_app directory
-            assert strict_auditor._audit_passed() is False, "Audit should fail in strict mode even in clean_app directory"
+            assert (
+                strict_auditor._audit_passed() is False
+            ), "Audit should fail in strict mode even in clean_app directory"
 
             # Create a non-strict auditor for comparison
             regular_auditor = MockPHIAuditor(app_dir=clean_app_dir, strict_mode=False)
             regular_auditor.findings = strict_auditor.findings.copy()
-            
+
             # Verify regular mode passes in clean_app directory
-            assert regular_auditor._audit_passed() is True, "Regular audit should pass in clean_app directory"
+            assert (
+                regular_auditor._audit_passed() is True
+            ), "Regular audit should pass in clean_app directory"
         finally:
             shutil.rmtree(temp_dir)
 
@@ -201,6 +232,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         """Test that report correctly counts allowed PHI in clean_app directories."""
         import shutil
         import tempfile
+
         temp_dir = tempfile.mkdtemp()
         try:
             # Create clean_app directory with PHI
@@ -210,13 +242,15 @@ class TestPHIAuditLogic(BaseSecurityTest):
             # Create a file with PHI
             phi_file = os.path.join(clean_app_dir, "test_data.py")
             with open(phi_file, "w") as f:
-                f.write("""
+                f.write(
+                    """
                     def get_test_data():
                         return {
                             \"ssn\": \"123-45-6789\",
                             \"name\": \"John Smith\"
                         }
-                """)
+                """
+                )
 
             # Create and run the auditor
             auditor = PHIAuditor(app_dir=clean_app_dir)
@@ -226,7 +260,9 @@ class TestPHIAuditLogic(BaseSecurityTest):
             phi_files = [r for r in results if r.phi_detected]
             assert len(phi_files) > 0, "Report should show files with PHI"
             allowed_phi_files = [r for r in phi_files if r.is_allowed]
-            assert len(phi_files) == len(allowed_phi_files), "All PHI files should be counted as allowed"
+            assert len(phi_files) == len(
+                allowed_phi_files
+            ), "All PHI files should be counted as allowed"
         finally:
             shutil.rmtree(temp_dir)
 
@@ -236,9 +272,11 @@ class TestPHIAuditLogic(BaseSecurityTest):
         auditor.findings = {
             "code_phi": [{"file": "patient.py", "evidence": "SSN: 123-45-6789"}],
             "api_security": [],
-            "configuration_issues": []
+            "configuration_issues": [],
         }
-        assert auditor._audit_passed() is False, "Audit should fail with issues in regular directory"
+        assert (
+            auditor._audit_passed() is False
+        ), "Audit should fail with issues in regular directory"
 
     def test_audit_result_allowed_status(self):
         """Test the allowed status of audit results for PHI test files."""
@@ -258,6 +296,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         """Test the full run_audit method with a clean_app directory."""
         import shutil
         import tempfile
+
         temp_dir = tempfile.mkdtemp()
         try:
             # Create clean_app directory
@@ -277,6 +316,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
             assert audit_passed is True, "Audit should pass for clean_app directory"
         finally:
             shutil.rmtree(temp_dir)
+
 
 if __name__ == "__main__":
     pytest.main(["-v", __file__])

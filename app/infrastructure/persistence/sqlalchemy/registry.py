@@ -32,59 +32,59 @@ _registered_tables: set[str] = set()
 def register_model(model_class: type[Any]) -> type[Any]:
     """
     Register a model with the central SQLAlchemy registry.
-    
+
     This ensures all models share the same metadata and registry,
     eliminating mapping conflicts.
-    
+
     Args:
         model_class: SQLAlchemy model class to register
-        
+
     Returns:
         The registered model class (allows decorator usage)
     """
     if model_class not in _registered_models:
         _registered_models.add(model_class)
-        
+
         # Keep track of tables for diagnostics
-        if hasattr(model_class, '__tablename__'):
+        if hasattr(model_class, "__tablename__"):
             table_name = model_class.__tablename__
             if table_name in _registered_tables:
                 logger.warning(f"Table {table_name} registered multiple times!")
             _registered_tables.add(table_name)
-            
+
         logger.debug(f"Registered model: {model_class.__name__}")
-    
+
     return model_class
 
 
 def validate_models() -> None:
     """
     Validate all registered models to ensure they're properly mapped.
-    
+
     This helps detect issues with model definition and mapping early.
     """
     from sqlalchemy import inspect
-    
+
     logger.info(f"Validating {len(_registered_models)} registered models")
-    
+
     for model_class in _registered_models:
         try:
             # Check if model has __tablename__
-            if not hasattr(model_class, '__tablename__'):
+            if not hasattr(model_class, "__tablename__"):
                 logger.warning(f"Model {model_class.__name__} missing __tablename__")
                 continue
-                
+
             # Get mapper
             mapper = inspect(model_class)
-            
+
             # Check for primary key
             if not mapper.primary_key:
                 logger.warning(f"Model {model_class.__name__} has no primary key")
-                
+
             # Log column details for debugging
             column_details = [(c.name, c.type) for c in mapper.columns]
             logger.debug(f"Model {model_class.__name__} columns: {column_details}")
-            
+
         except Exception as e:
             logger.error(f"Validation error for {model_class.__name__}: {e!s}")
 
@@ -102,13 +102,13 @@ def get_registered_tables() -> list[str]:
 def ensure_all_models_registered() -> None:
     """
     Ensures all models are properly registered with SQLAlchemy.
-    
+
     This function should be called during application startup to prevent
     mapping errors and ensure a consistent state of all SQLAlchemy models.
     """
     try:
         # Import core models to ensure they're registered
-        
+
         # Log registered models for debugging
         model_names = get_registered_models()
         table_names = get_registered_tables()

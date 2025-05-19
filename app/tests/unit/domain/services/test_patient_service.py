@@ -49,7 +49,7 @@ class TestPatientService:
             patient_repository=self.mock_patient_repo,
             provider_repository=self.mock_provider_repo,
             appointment_repository=self.mock_appointment_repo,
-            clinical_note_repository=self.mock_note_repo
+            clinical_note_repository=self.mock_note_repo,
         )
 
         # Setup sample patient data
@@ -64,7 +64,7 @@ class TestPatientService:
             "address": "123 Main St",
             "insurance_number": "INS12345",
             "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat()
+            "updated_at": datetime.now().isoformat(),
         }
 
         # Create a patient entity

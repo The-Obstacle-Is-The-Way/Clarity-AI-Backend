@@ -30,6 +30,7 @@ class Gender(str, Enum):
                 return member
         return None
 
+
 class InsuranceStatus(str, Enum):
     """Insurance verification status enum."""
 
@@ -38,6 +39,7 @@ class InsuranceStatus(str, Enum):
     UNVERIFIED = "unverified"
     EXPIRED = "expired"
 
+
 class PatientStatus(str, Enum):
     """Patient status enum."""
 
@@ -45,10 +47,12 @@ class PatientStatus(str, Enum):
     INACTIVE = "inactive"
     ARCHIVED = "archived"
 
+
 class ValidationException(Exception):
     """Exception raised for validation errors."""
 
     pass
+
 
 @dataclass
 class Patient:
@@ -104,7 +108,7 @@ class Patient:
             raise ValidationException("Gender is required")
         if not self.email and not self.phone:
             raise ValidationException("Either email or phone is required")
-            
+
         # Validate name length
         if len(self.first_name) > 100:
             raise ValidationException("First name cannot exceed 100 characters")
@@ -114,10 +118,12 @@ class Patient:
         # Convert string dates to date objects
         if isinstance(self.date_of_birth, str):
             try:
-                self.date_of_birth = datetime.strptime(self.date_of_birth, "%Y-%m-%d").date()
+                self.date_of_birth = datetime.strptime(
+                    self.date_of_birth, "%Y-%m-%d"
+                ).date()
             except ValueError:
                 raise ValidationException(f"Invalid date format: {self.date_of_birth}")
-                
+
         # Validate date is not in the future
         if isinstance(self.date_of_birth, date) and self.date_of_birth > date.today():
             raise ValidationException("Date of birth cannot be in the future")
@@ -139,7 +145,9 @@ class Patient:
             try:
                 self.insurance_status = InsuranceStatus(self.insurance_status)
             except ValueError:
-                raise ValidationException(f"Invalid insurance status: {self.insurance_status}")
+                raise ValidationException(
+                    f"Invalid insurance status: {self.insurance_status}"
+                )
 
         if isinstance(self.status, str):
             try:
@@ -207,7 +215,9 @@ class Patient:
         if "name" not in contact:
             raise ValidationException("Emergency contact must have a name")
         if "phone" not in contact and "email" not in contact:
-            raise ValidationException("Emergency contact must have either phone or email")
+            raise ValidationException(
+                "Emergency contact must have either phone or email"
+            )
         self.emergency_contacts.append(contact)
         self.updated_at = datetime.now()
 
@@ -231,14 +241,16 @@ class Patient:
         if isinstance(medication, str):
             medication = {"name": medication, "dosage": "Unknown"}
         elif not isinstance(medication, dict):
-            raise ValidationException("Medication must be a string name or a dictionary")
-            
+            raise ValidationException(
+                "Medication must be a string name or a dictionary"
+            )
+
         # Validate the dictionary
         if "name" not in medication:
             raise ValidationException("Medication must have a name")
         if "dosage" not in medication:
             medication["dosage"] = "Unknown"  # Set default dosage
-            
+
         self.medications.append(medication)
         self.updated_at = datetime.now()
 
@@ -275,8 +287,12 @@ class Patient:
 
     def update_appointment_times(self, last_appointment=None, next_appointment=None):
         """Update appointment times."""
-        self.last_appointment = last_appointment if last_appointment is not None else self.last_appointment
-        self.next_appointment = next_appointment if next_appointment is not None else self.next_appointment
+        self.last_appointment = (
+            last_appointment if last_appointment is not None else self.last_appointment
+        )
+        self.next_appointment = (
+            next_appointment if next_appointment is not None else self.next_appointment
+        )
         self.updated_at = datetime.now()
 
     def set_preferred_provider(self, provider_id):
@@ -287,25 +303,35 @@ class Patient:
     def to_dict(self):
         """Convert to dictionary."""
         # Format the date as ISO string for serialization
-        dob = self.date_of_birth.isoformat() if hasattr(self.date_of_birth, "isoformat") else self.date_of_birth
+        dob = (
+            self.date_of_birth.isoformat()
+            if hasattr(self.date_of_birth, "isoformat")
+            else self.date_of_birth
+        )
 
         return {
             "id": str(self.id),
             "first_name": self.first_name,
             "last_name": self.last_name,
             "date_of_birth": dob,
-            "gender": self.gender.value if isinstance(self.gender, Gender) else self.gender,
+            "gender": self.gender.value
+            if isinstance(self.gender, Gender)
+            else self.gender,
             "email": self.email,
             "phone": self.phone,
             "address": self.address,
             "emergency_contacts": self.emergency_contacts,
             "insurance_info": self.insurance_info,
-            "insurance_status": self.insurance_status.value if isinstance(self.insurance_status, InsuranceStatus) else self.insurance_status,
+            "insurance_status": self.insurance_status.value
+            if isinstance(self.insurance_status, InsuranceStatus)
+            else self.insurance_status,
             "medical_history": self.medical_history,
             "medications": self.medications,
             "allergies": self.allergies,
             "notes": self.notes,
-            "status": self.status.value if isinstance(self.status, PatientStatus) else self.status,
+            "status": self.status.value
+            if isinstance(self.status, PatientStatus)
+            else self.status,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "last_appointment": self.last_appointment,
@@ -338,6 +364,7 @@ class Patient:
 
 class MockPatientRepository:
     """Mock repository for patient data during testing."""
+
     def __init__(self):
         self.patients = {}
 
@@ -372,7 +399,9 @@ class MockPatientRepository:
     async def search_by_name(self, name_query):
         """Search patients by name."""
         name_query = name_query.lower()
-        return [p for p in self.patients.values() if name_query in p.get("name", "").lower()]
+        return [
+            p for p in self.patients.values() if name_query in p.get("name", "").lower()
+        ]
 
     async def get_by_email(self, email):
         """Get patient by email."""
@@ -463,7 +492,7 @@ class MockPatientRepository:
                 "vital_signs": self.patients[patient_id].get("vital_signs", []),
                 "treatment_plans": self.patients[patient_id].get("treatment_plans", []),
                 "appointments": self.patients[patient_id].get("appointments", []),
-                "notes": self.patients[patient_id].get("notes", [])
+                "notes": self.patients[patient_id].get("notes", []),
             }
             return history
         return None

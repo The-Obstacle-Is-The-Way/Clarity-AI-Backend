@@ -32,8 +32,10 @@ class TestFieldEncryption(unittest.TestCase):
     def setUp(self):
         """Set up test environment."""
         # Instantiate BaseEncryptionService (using Mock for testing)
-        self.encryption_service = MockEncryptionService() 
-        self.encryption = FieldEncryptor(self.encryption_service) # Instantiate FieldEncryptor
+        self.encryption_service = MockEncryptionService()
+        self.encryption = FieldEncryptor(
+            self.encryption_service
+        )  # Instantiate FieldEncryptor
 
         # Define PHI fields for testing
         self.phi_fields = [
@@ -73,13 +75,13 @@ class TestFieldEncryption(unittest.TestCase):
         """Test encryption and decryption of a single value."""
         # Test with a regular string
         original = "This is sensitive PHI data"
-        encrypted = self.encryption_service.encrypt(original) # Use service directly
+        encrypted = self.encryption_service.encrypt(original)  # Use service directly
 
         # Encrypted value should be different from original
         self.assertNotEqual(original, encrypted)
 
         # Decrypted value should match original
-        decrypted = self.encryption_service.decrypt(encrypted) # Use service directly
+        decrypted = self.encryption_service.decrypt(encrypted)  # Use service directly
         self.assertEqual(original, decrypted)
 
         # Test with None or empty string
@@ -98,7 +100,9 @@ class TestFieldEncryption(unittest.TestCase):
         self.assertNotEqual(original_data["patient_id"], encrypted_data["patient_id"])
         self.assertNotEqual(original_data["name"], encrypted_data["name"])
         self.assertNotEqual(original_data["address"], encrypted_data["address"])
-        self.assertNotEqual(original_data["demographics"]["ssn"], encrypted_data["demographics"]["ssn"])
+        self.assertNotEqual(
+            original_data["demographics"]["ssn"], encrypted_data["demographics"]["ssn"]
+        )
 
         # Non-PHI fields should remain unchanged
         self.assertEqual(original_data["gender"], encrypted_data["gender"])
@@ -108,16 +112,24 @@ class TestFieldEncryption(unittest.TestCase):
         decrypted_data = self.encryption.decrypt_fields(encrypted_data, self.phi_fields)
 
         # Handle patient_id type conversion (string vs int)
-        if isinstance(original_data["patient_id"], str) and isinstance(decrypted_data["patient_id"], int):
+        if isinstance(original_data["patient_id"], str) and isinstance(
+            decrypted_data["patient_id"], int
+        ):
             original_data["patient_id"] = int(original_data["patient_id"])
-        elif isinstance(original_data["patient_id"], int) and isinstance(decrypted_data["patient_id"], str):
+        elif isinstance(original_data["patient_id"], int) and isinstance(
+            decrypted_data["patient_id"], str
+        ):
             decrypted_data["patient_id"] = int(decrypted_data["patient_id"])
 
         # Compare key fields individually to handle type differences
-        self.assertEqual(str(original_data["patient_id"]), str(decrypted_data["patient_id"]))
+        self.assertEqual(
+            str(original_data["patient_id"]), str(decrypted_data["patient_id"])
+        )
         self.assertEqual(original_data["name"], decrypted_data["name"])
         self.assertEqual(original_data["address"], decrypted_data["address"])
-        self.assertEqual(original_data["demographics"]["ssn"], decrypted_data["demographics"]["ssn"])
+        self.assertEqual(
+            original_data["demographics"]["ssn"], decrypted_data["demographics"]["ssn"]
+        )
         self.assertEqual(original_data["gender"], decrypted_data["gender"])
         self.assertEqual(original_data["diagnosis"], decrypted_data["diagnosis"])
 
@@ -130,13 +142,19 @@ class TestFieldEncryption(unittest.TestCase):
         encrypted_data = self.encryption.encrypt_fields(self.test_data, self.phi_fields)
 
         # Nested PHI fields should be encrypted
-        self.assertNotEqual(original_data["demographics"]["address"]["street"], encrypted_data["demographics"]["address"]["street"])
+        self.assertNotEqual(
+            original_data["demographics"]["address"]["street"],
+            encrypted_data["demographics"]["address"]["street"],
+        )
 
         # Decrypt the data using FieldEncryptor
         decrypted_data = self.encryption.decrypt_fields(encrypted_data, self.phi_fields)
 
         # Original and decrypted data should match
-        self.assertEqual(original_data["demographics"]["address"]["street"], decrypted_data["demographics"]["address"]["street"])
+        self.assertEqual(
+            original_data["demographics"]["address"]["street"],
+            decrypted_data["demographics"]["address"]["street"],
+        )
 
     def test_multiple_operations(self):
         """Test multiple encryption/decryption operations."""
@@ -149,16 +167,22 @@ class TestFieldEncryption(unittest.TestCase):
             data = self.encryption.decrypt_fields(data, self.phi_fields)
 
         # Handle patient_id type conversion (string vs int)
-        if isinstance(original_data["patient_id"], str) and isinstance(data["patient_id"], int):
+        if isinstance(original_data["patient_id"], str) and isinstance(
+            data["patient_id"], int
+        ):
             original_data["patient_id"] = int(original_data["patient_id"])
-        elif isinstance(original_data["patient_id"], int) and isinstance(data["patient_id"], str):
+        elif isinstance(original_data["patient_id"], int) and isinstance(
+            data["patient_id"], str
+        ):
             data["patient_id"] = int(data["patient_id"])
 
         # Compare key fields individually to handle type differences
         self.assertEqual(str(original_data["patient_id"]), str(data["patient_id"]))
         self.assertEqual(original_data["name"], data["name"])
         self.assertEqual(original_data["address"], data["address"])
-        self.assertEqual(original_data["demographics"]["ssn"], data["demographics"]["ssn"])
+        self.assertEqual(
+            original_data["demographics"]["ssn"], data["demographics"]["ssn"]
+        )
         self.assertEqual(original_data["gender"], data["gender"])
         self.assertEqual(original_data["diagnosis"], data["diagnosis"])
 
@@ -168,7 +192,9 @@ class TestFieldEncryption(unittest.TestCase):
         invalid_encrypted = "ENC_INVALID"  # Missing proper format
 
         try:
-            result = self.encryption_service.decrypt(invalid_encrypted) # Use service directly
+            result = self.encryption_service.decrypt(
+                invalid_encrypted
+            )  # Use service directly
             # If no exception is raised, the function should return the original value
             self.assertEqual(invalid_encrypted, result)
         except EncryptionError:
@@ -185,18 +211,26 @@ class TestFieldEncryption(unittest.TestCase):
         }
 
         # Encrypt the data using FieldEncryptor
-        encrypted_data = self.encryption.encrypt_fields(test_data, ["medical_record_number", "treatment_notes"])
+        encrypted_data = self.encryption.encrypt_fields(
+            test_data, ["medical_record_number", "treatment_notes"]
+        )
 
         # HIPAA requires that PHI is not visible in storage
-        self.assertNotEqual(test_data["medical_record_number"], encrypted_data["medical_record_number"])
-        self.assertNotEqual(test_data["treatment_notes"], encrypted_data["treatment_notes"])
+        self.assertNotEqual(
+            test_data["medical_record_number"], encrypted_data["medical_record_number"]
+        )
+        self.assertNotEqual(
+            test_data["treatment_notes"], encrypted_data["treatment_notes"]
+        )
 
         # Diagnosis code (not considered direct PHI) should remain unchanged
         self.assertEqual(test_data["diagnosis_code"], encrypted_data["diagnosis_code"])
 
         # Verify data can be correctly decrypted using FieldEncryptor
-        decrypted_data = self.encryption.decrypt_fields(encrypted_data, ["medical_record_number", "treatment_notes"])
-        
+        decrypted_data = self.encryption.decrypt_fields(
+            encrypted_data, ["medical_record_number", "treatment_notes"]
+        )
+
         self.assertEqual(test_data, decrypted_data)
 
 

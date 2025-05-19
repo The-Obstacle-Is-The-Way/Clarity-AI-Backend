@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict
 
 class AnalysisType(str, Enum):
     """Types of actigraphy analysis that can be performed."""
+
     SLEEP_QUALITY = "sleep_quality"
     ACTIVITY_PATTERNS = "activity_patterns"
     CIRCADIAN_RHYTHM = "circadian_rhythm"
@@ -28,6 +29,7 @@ class AnalysisType(str, Enum):
 
 class SleepStage(str, Enum):
     """Sleep stages identified in actigraphy analysis."""
+
     AWAKE = "awake"
     LIGHT = "light"
     DEEP = "deep"
@@ -37,11 +39,15 @@ class SleepStage(str, Enum):
 
 class BaseSchema(BaseModel):
     """Base schema with common configuration."""
-    model_config = ConfigDict(from_attributes=True, extra="ignore", protected_namespaces=())
+
+    model_config = ConfigDict(
+        from_attributes=True, extra="ignore", protected_namespaces=()
+    )
 
 
 class ActigraphyDataPoint(BaseSchema):
     """Individual actigraphy data point schema."""
+
     timestamp: datetime
     activity_count: int
     steps: int | None = None
@@ -49,10 +55,11 @@ class ActigraphyDataPoint(BaseSchema):
     light_level: float | None = None
     temperature: float | None = None
     position: str | None = None
-    
-    
+
+
 class ActigraphyUploadRequest(BaseSchema):
     """Schema for uploading raw actigraphy data."""
+
     patient_id: str
     device_id: str
     device_type: str
@@ -65,6 +72,7 @@ class ActigraphyUploadRequest(BaseSchema):
 
 class ActigraphyUploadResponse(BaseSchema):
     """Schema for actigraphy upload response."""
+
     message: str
     file_id: str
     filename: str
@@ -72,6 +80,7 @@ class ActigraphyUploadResponse(BaseSchema):
 
 class ActigraphyAnalysisRequest(BaseSchema):
     """Schema for requesting analysis of existing actigraphy data."""
+
     patient_id: str
     analysis_types: list[AnalysisType]
     start_time: datetime | None = None
@@ -81,6 +90,7 @@ class ActigraphyAnalysisRequest(BaseSchema):
 
 class SleepMetrics(BaseSchema):
     """Sleep metrics derived from actigraphy data."""
+
     total_sleep_time: float  # in minutes
     sleep_efficiency: float  # percentage
     sleep_latency: float  # in minutes
@@ -91,6 +101,7 @@ class SleepMetrics(BaseSchema):
 
 class ActivityMetrics(BaseSchema):
     """Activity metrics derived from actigraphy data."""
+
     total_steps: int
     active_minutes: float
     sedentary_minutes: float
@@ -100,6 +111,7 @@ class ActivityMetrics(BaseSchema):
 
 class CircadianMetrics(BaseSchema):
     """Circadian rhythm metrics derived from actigraphy data."""
+
     rest_onset_time: datetime
     activity_onset_time: datetime
     rhythm_stability: float  # 0-1 scale
@@ -109,6 +121,7 @@ class CircadianMetrics(BaseSchema):
 
 class ActigraphyAnalysisResult(BaseSchema):
     """Results of a specific type of actigraphy analysis."""
+
     analysis_type: AnalysisType
     analysis_time: datetime
     sleep_metrics: SleepMetrics | None = None
@@ -119,6 +132,7 @@ class ActigraphyAnalysisResult(BaseSchema):
 
 class AnalyzeActigraphyResponse(BaseSchema):
     """Schema for actigraphy analysis response."""
+
     analysis_id: uuid.UUID
     patient_id: str
     time_range: dict[str, datetime]
@@ -127,6 +141,7 @@ class AnalyzeActigraphyResponse(BaseSchema):
 
 class ActigraphySummaryRequest(BaseSchema):
     """Schema for requesting a summary of actigraphy data over time."""
+
     patient_id: str
     start_date: datetime
     end_date: datetime
@@ -135,6 +150,7 @@ class ActigraphySummaryRequest(BaseSchema):
 
 class DailySummary(BaseSchema):
     """Daily summary of actigraphy metrics."""
+
     date: datetime
     total_sleep_time: float
     sleep_efficiency: float
@@ -145,6 +161,7 @@ class DailySummary(BaseSchema):
 
 class ActigraphySummaryResponse(BaseSchema):
     """Schema for actigraphy summary response."""
+
     patient_id: str
     interval: str
     summaries: list[DailySummary]
@@ -161,10 +178,11 @@ class ActigraphyDataResponse(BaseSchema):
 
 class ActigraphyModelInfoResponse(BaseSchema):
     """Schema for actigraphy model information response."""
+
     message: str = "Actigraphy model info"
     version: str = "1.0"
     model_version: str = "1.0.0"
-    model_name: str = "ActigraphyAnalyzer" 
+    model_name: str = "ActigraphyAnalyzer"
     supported_analysis_types: list[AnalysisType] = []
     last_updated: datetime | None = None
     model_id: str = "actigraph-v1"

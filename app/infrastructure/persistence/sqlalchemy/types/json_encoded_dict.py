@@ -13,11 +13,11 @@ from sqlalchemy import types
 class JSONEncodedDict(types.TypeDecorator):
     """
     Represents a dictionary as a JSON-encoded string.
-    
-    Provides proper JSON serialization/deserialization of dictionaries for 
+
+    Provides proper JSON serialization/deserialization of dictionaries for
     storage in a database, with cross-database compatibility.
     """
-    
+
     impl = types.JSON
     cache_ok = True
 
@@ -32,7 +32,7 @@ class JSONEncodedDict(types.TypeDecorator):
         if value is None:
             return None
         return value
-    
+
     def coerce_compared_value(self, op, value):
         """Properly handle operators with JSON values."""
         if isinstance(value, dict):

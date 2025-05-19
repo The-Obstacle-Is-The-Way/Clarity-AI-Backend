@@ -11,7 +11,7 @@ from enum import Enum
 
 class ResponseLevel(str, Enum):
     """Treatment response levels for psychiatric treatment predictions."""
-    
+
     NONE = "none"
     MINIMAL = "minimal"
     PARTIAL = "partial"
@@ -21,7 +21,7 @@ class ResponseLevel(str, Enum):
 
 class PredictionType(str, Enum):
     """Types of predictions that can be made by XGBoost models."""
-    
+
     RISK = "risk"
     TREATMENT_RESPONSE = "treatment_response"
     OUTCOME = "outcome"
@@ -30,7 +30,7 @@ class PredictionType(str, Enum):
 
 class RiskLevel(str, Enum):
     """Risk levels for psychiatric risk predictions."""
-    
+
     LOW = "low"
     MODERATE = "moderate"
     HIGH = "high"
@@ -39,7 +39,7 @@ class RiskLevel(str, Enum):
 
 class TreatmentCategory(str, Enum):
     """Categories of psychiatric treatments."""
-    
+
     MEDICATION_SSRI = "medication_ssri"
     MEDICATION_SNRI = "medication_snri"
     MEDICATION_ATYPICAL = "medication_atypical"

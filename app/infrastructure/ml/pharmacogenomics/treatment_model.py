@@ -138,9 +138,7 @@ class PharmacogenomicsModel:
             logging.info(f"Loaded pharmacogenomics model from {model_path}")
         except Exception as e:
             logging.error(f"Error loading pharmacogenomics model: {e!s}")
-            raise ModelExecutionError(
-                f"Failed to load pharmacogenomics model: {e!s}"
-            )
+            raise ModelExecutionError(f"Failed to load pharmacogenomics model: {e!s}")
 
     def save_model(self, model_path: str) -> None:
         """
@@ -371,9 +369,7 @@ class PharmacogenomicsModel:
 
         except Exception as e:
             logging.error(f"Error training pharmacogenomics model: {e!s}")
-            raise ModelExecutionError(
-                f"Failed to train pharmacogenomics model: {e!s}"
-            )
+            raise ModelExecutionError(f"Failed to train pharmacogenomics model: {e!s}")
 
     async def predict_medication_response(
         self,
@@ -455,9 +451,7 @@ class PharmacogenomicsModel:
 
         except Exception as e:
             logging.error(f"Error predicting medication response: {e!s}")
-            raise ModelExecutionError(
-                f"Failed to predict medication response: {e!s}"
-            )
+            raise ModelExecutionError(f"Failed to predict medication response: {e!s}")
 
     def _categorize_effectiveness(self, score: float) -> str:
         """

@@ -26,7 +26,7 @@ from app.infrastructure.persistence.sqlalchemy.models.base import Base
 # Test database URL from environment or default to a test PostgreSQL DB
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:15432/novamind_test"
+    "postgresql+asyncpg://postgres:postgres@localhost:15432/novamind_test",
 )
 
 # Create a test engine with appropriate settings
@@ -34,7 +34,7 @@ test_engine = create_async_engine(
     TEST_DATABASE_URL,
     echo=False,
     poolclass=NullPool,
-    connect_args={"server_settings": {"jit": "off"}}  # Disable JIT for tests
+    connect_args={"server_settings": {"jit": "off"}},  # Disable JIT for tests
 )
 
 # Create a session factory for tests
@@ -43,7 +43,7 @@ TestSessionLocal = async_sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False,
     autocommit=False,
-    autoflush=False
+    autoflush=False,
 )
 
 
@@ -96,15 +96,15 @@ async def db_session(setup_database) -> AsyncGenerator[AsyncSession, None]:
 
 @pytest_asyncio.fixture(scope="function")
 async def override_get_session(
-    db_session: AsyncSession, 
-    dependency_overrides: dict
+    db_session: AsyncSession, dependency_overrides: dict
 ) -> None:
     """
-    Overrides the 'get_session' dependency for the FastAPI app using the 
+    Overrides the 'get_session' dependency for the FastAPI app using the
     standard dependency_overrides mechanism.
 
     Yields the test database session instance for the duration of a test.
     """
+
     async def _override_get_session_func() -> AsyncGenerator[AsyncSession, None]:
         """The actual function that will replace get_session during tests."""
         yield db_session
@@ -123,19 +123,21 @@ class TestDataFactory:
         """Create test patient data."""
         patients = []
         for i in range(1, count + 1):
-            patients.append({
-                "id": f"test-patient-{i}",
-                "name": f"Test Patient {i}",
-                "date_of_birth": "1990-01-01",
-                "gender": "male" if i % 2 == 0 else "female",
-                "contact_info": {
-                    "email": f"patient{i}@example.com",
-                    "phone": f"555-000-{i:04d}"
-                },
-                "medical_record_number": f"MRN{i:06d}",
-                "created_at": "2024-01-01T00:00:00",
-                "updated_at": "2024-01-01T00:00:00"
-            })
+            patients.append(
+                {
+                    "id": f"test-patient-{i}",
+                    "name": f"Test Patient {i}",
+                    "date_of_birth": "1990-01-01",
+                    "gender": "male" if i % 2 == 0 else "female",
+                    "contact_info": {
+                        "email": f"patient{i}@example.com",
+                        "phone": f"555-000-{i:04d}",
+                    },
+                    "medical_record_number": f"MRN{i:06d}",
+                    "created_at": "2024-01-01T00:00:00",
+                    "updated_at": "2024-01-01T00:00:00",
+                }
+            )
         return patients
 
     @staticmethod
@@ -143,18 +145,20 @@ class TestDataFactory:
         """Create test clinician data."""
         clinicians = []
         for i in range(1, count + 1):
-            clinicians.append({
-                "id": f"test-clinician-{i}",
-                "name": f"Dr. Test Clinician {i}",
-                "specialty": "Psychiatry" if i % 3 == 0 else "Psychology",
-                "license_number": f"LIC{i:06d}",
-                "contact_info": {
-                    "email": f"clinician{i}@example.com",
-                    "phone": f"555-111-{i:04d}"
-                },
-                "created_at": "2024-01-01T00:00:00",
-                "updated_at": "2024-01-01T00:00:00"
-            })
+            clinicians.append(
+                {
+                    "id": f"test-clinician-{i}",
+                    "name": f"Dr. Test Clinician {i}",
+                    "specialty": "Psychiatry" if i % 3 == 0 else "Psychology",
+                    "license_number": f"LIC{i:06d}",
+                    "contact_info": {
+                        "email": f"clinician{i}@example.com",
+                        "phone": f"555-111-{i:04d}",
+                    },
+                    "created_at": "2024-01-01T00:00:00",
+                    "updated_at": "2024-01-01T00:00:00",
+                }
+            )
         return clinicians
 
     @staticmethod
@@ -162,16 +166,18 @@ class TestDataFactory:
         """Create test user data."""
         users = []
         for i in range(1, count + 1):
-            users.append({
-                "id": f"test-user-{i}",
-                "username": f"testuser{i}",
-                "email": f"user{i}@example.com",
-                "hashed_password": "hashed_test_password",
-                "is_active": True,
-                "role": "user" if i % 3 != 0 else "admin",
-                "created_at": "2024-01-01T00:00:00",
-                "updated_at": "2024-01-01T00:00:00"
-            })
+            users.append(
+                {
+                    "id": f"test-user-{i}",
+                    "username": f"testuser{i}",
+                    "email": f"user{i}@example.com",
+                    "hashed_password": "hashed_test_password",
+                    "is_active": True,
+                    "role": "user" if i % 3 != 0 else "admin",
+                    "created_at": "2024-01-01T00:00:00",
+                    "updated_at": "2024-01-01T00:00:00",
+                }
+            )
         return users
 
 
@@ -201,6 +207,7 @@ def transactional_test(db_session: AsyncSession):
         return TransactionalTestContext(db_session)
 
     return _transactional_test
+
 
 # NOTE: Removed redundant get_test_settings function.
 # Test settings should now be obtained via app.core.config.settings.get_settings()

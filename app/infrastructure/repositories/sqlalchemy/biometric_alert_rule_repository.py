@@ -7,11 +7,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession  # Third-party
 
 from app.domain.entities.biometric_alert_rule import BiometricAlertRule  # First-party
-from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
+from app.domain.repositories.biometric_alert_rule_repository import (
+    BiometricAlertRuleRepository,
+)
 from app.infrastructure.persistence.sqlalchemy.mappers.biometric_rule_mapper import (
     map_rule_model_to_entity,
 )
-from app.infrastructure.persistence.sqlalchemy.models.biometric_rule import BiometricRuleModel
+from app.infrastructure.persistence.sqlalchemy.models.biometric_rule import (
+    BiometricRuleModel,
+)
 from app.infrastructure.persistence.sqlalchemy.repositories.biometric_rule_repository import (
     SQLAlchemyBiometricRuleRepository,
 )
@@ -43,7 +47,9 @@ class SQLAlchemyBiometricAlertRuleRepository(BiometricAlertRuleRepository):
 
     async def get_by_provider_id(self, provider_id: UUID) -> list[BiometricAlertRule]:
         """Retrieve all rules created by a specific provider."""
-        stmt = select(BiometricRuleModel).where(BiometricRuleModel.provider_id == provider_id)
+        stmt = select(BiometricRuleModel).where(
+            BiometricRuleModel.provider_id == provider_id
+        )
         result = await self.db.execute(stmt)
         models = result.scalars().all()
         return [map_rule_model_to_entity(m) for m in models]
@@ -52,7 +58,9 @@ class SQLAlchemyBiometricAlertRuleRepository(BiometricAlertRuleRepository):
         """Retrieve all active rules using the delegate repository."""
         return await self._delegate.get_all_active()
 
-    async def get_active_rules_for_patient(self, patient_id: UUID) -> list[BiometricAlertRule]:
+    async def get_active_rules_for_patient(
+        self, patient_id: UUID
+    ) -> list[BiometricAlertRule]:
         """Retrieve active rules for a patient by filtering delegate results."""
         rules = await self._delegate.get_by_patient_id(patient_id)
         return [rule for rule in rules if rule.is_active]
@@ -75,9 +83,7 @@ class SQLAlchemyBiometricAlertRuleRepository(BiometricAlertRuleRepository):
 
     # Aliases for backward compatibility / specific use cases
     async def get_rules(
-        self,
-        patient_id: UUID | None = None,
-        is_active: bool | None = None
+        self, patient_id: UUID | None = None, is_active: bool | None = None
     ) -> list[BiometricAlertRule]:
         """Retrieve rules, optionally filtering by patient_id and is_active status."""
         # This logic implements the filtering based on provided parameters

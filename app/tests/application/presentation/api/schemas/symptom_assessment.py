@@ -19,28 +19,31 @@ class SymptomAssessmentBase(BaseModel):
     scores: dict[str, Any]
     source: str | None = None
 
+
 class SymptomAssessmentCreate(SymptomAssessmentBase):
     pass
+
 
 # Assessments are typically immutable, so Update schema might not be needed
 # class SymptomAssessmentUpdate(BaseModel):
 #     scores: Optional[Dict[str, Any]] = None
 #     source: Optional[str] = None
 
+
 class SymptomAssessmentResponse(SymptomAssessmentBase):
     id: UUID
     created_at: datetime
-    last_updated: datetime # Will likely be same as created_at
+    last_updated: datetime  # Will likely be same as created_at
 
-    model_config = {"from_attributes": True} # Enable ORM mode equivalent
+    model_config = {"from_attributes": True}  # Enable ORM mode equivalent
+
 
 # Schema for listing assessments with potential filters
 class SymptomAssessmentListQuery(BaseModel):
-    patient_id: UUID # Usually required when listing assessments
+    patient_id: UUID  # Usually required when listing assessments
     assessment_type: AssessmentType | None = None
     start_date: datetime | None = None
     end_date: datetime | None = None
     source: str | None = None
     limit: int = Field(default=50, ge=1, le=200)
     offset: int = Field(default=0, ge=0)
-

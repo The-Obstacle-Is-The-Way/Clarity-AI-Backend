@@ -88,8 +88,14 @@ def mock_visualization_preprocessor():
             ],
             "values": [0.5 + i * 0.05 for i in range(10)],
             "events": [
-                {"timestamp": datetime.now(UTC) - timedelta(days=5), "type": "medication_change"},
-                {"timestamp": datetime.now(UTC) - timedelta(days=2), "type": "therapy_session"},
+                {
+                    "timestamp": datetime.now(UTC) - timedelta(days=5),
+                    "type": "medication_change",
+                },
+                {
+                    "timestamp": datetime.now(UTC) - timedelta(days=2),
+                    "type": "therapy_session",
+                },
             ],
         }
     )
@@ -120,9 +126,7 @@ def sample_temporal_sequence():
         patient_id=uuid.uuid4(),
         neurotransmitter=Neurotransmitter.SEROTONIN,
         brain_region=BrainRegion.PREFRONTAL_CORTEX,
-        timestamps=[
-            datetime.now(UTC) - timedelta(days=i) for i in range(10, 0, -1)
-        ],
+        timestamps=[datetime.now(UTC) - timedelta(days=i) for i in range(10, 0, -1)],
         values=[0.5 + i * 0.05 for i in range(10)],
         clinical_significance=ClinicalSignificance.SIGNIFICANT,
         created_at=datetime.now(UTC),
@@ -290,7 +294,11 @@ class TestTemporalNeurotransmitterService:
 
     @pytest.mark.asyncio
     async def test_correlate_events(
-        self, service, test_patient_id, sample_temporal_sequence, sample_correlated_events
+        self,
+        service,
+        test_patient_id,
+        sample_temporal_sequence,
+        sample_correlated_events,
     ):
         """Test correlating events with concentration changes."""
         # This would be implemented in a real test
@@ -313,12 +321,16 @@ class TestTemporalNeurotransmitterService:
         pass
 
     @pytest.mark.asyncio
-    async def test_calculate_average_concentration_no_data(self, service, test_patient_id):
+    async def test_calculate_average_concentration_no_data(
+        self, service, test_patient_id
+    ):
         """Test average concentration calculation when no data exists."""
         pass
 
     @pytest.mark.asyncio
-    async def test_calculate_average_concentration_invalid_range(self, service, test_patient_id):
+    async def test_calculate_average_concentration_invalid_range(
+        self, service, test_patient_id
+    ):
         """Test average concentration calculation with an invalid time range."""
         pass
 
@@ -328,7 +340,9 @@ class TestTemporalNeurotransmitterService:
         pass
 
     @pytest.mark.asyncio
-    async def test_identify_trend_insufficient_data(self, service, mock_sequence_repository):
+    async def test_identify_trend_insufficient_data(
+        self, service, mock_sequence_repository
+    ):
         """Test trend identification when there isn't enough data."""
         pass
 
@@ -338,17 +352,23 @@ class TestTemporalNeurotransmitterService:
         pass
 
     @pytest.mark.asyncio
-    async def test_detect_anomalies_normal_data(self, service, mock_sequence_repository):
+    async def test_detect_anomalies_normal_data(
+        self, service, mock_sequence_repository
+    ):
         """Test anomaly detection when data falls within expected ranges."""
         pass
 
     @pytest.mark.asyncio
-    async def test_predict_future_concentration(self, service, mock_sequence_repository):
+    async def test_predict_future_concentration(
+        self, service, mock_sequence_repository
+    ):
         """Test predicting a future neurotransmitter concentration."""
         pass
 
     @pytest.mark.asyncio
-    async def test_predict_future_concentration_no_data(self, service, mock_sequence_repository):
+    async def test_predict_future_concentration_no_data(
+        self, service, mock_sequence_repository
+    ):
         """Test prediction when there's not enough historical data."""
         pass
 

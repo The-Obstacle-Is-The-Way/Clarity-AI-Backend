@@ -8,9 +8,11 @@ from fastapi import Depends
 
 # Import concrete implementations - FastAPI can't handle interfaces as response types
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
-    SQLAlchemyUserRepository
+    SQLAlchemyUserRepository,
 )
-from app.infrastructure.security.auth.authentication_service import AuthenticationService
+from app.infrastructure.security.auth.authentication_service import (
+    AuthenticationService,
+)
 from app.infrastructure.security.jwt.jwt_service import JWTService, get_jwt_service
 from app.infrastructure.security.password.password_handler import PasswordHandler
 from app.presentation.api.dependencies.repositories import get_user_repository
@@ -23,7 +25,7 @@ def get_auth_service(
     jwt_service: JWTService = Depends(get_jwt_service),
 ) -> AuthenticationService:
     """Dependency injector for AuthenticationService.
-    
+
     Note: We return the concrete implementation type instead of the interface
     to prevent FastAPI dependency resolution errors.
     """
@@ -32,8 +34,9 @@ def get_auth_service(
     return AuthenticationService(
         password_handler=password_handler,
         user_repository=user_repository,
-        jwt_service=jwt_service
+        jwt_service=jwt_service,
     )
+
 
 # Type hint for dependency injection using Annotated pattern
 AuthServiceDep = Annotated[AuthenticationService, Depends(get_auth_service)]

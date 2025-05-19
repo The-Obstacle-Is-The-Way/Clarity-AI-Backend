@@ -14,6 +14,7 @@ from app.tests.security.utils.base_security_test import BaseSecurityTest
 # from app.domain.entities.user import User
 # from app.domain.enums.role import Role # Import Role enum
 
+
 # Inherit directly from BaseSecurityTest if it provides the necessary fixtures via autouse
 # If BaseSecurityTest is just a utility container, don't inherit.
 # Assuming inheritance makes sense to get access to fixtures on self.
@@ -31,9 +32,11 @@ class TestBaseSecurityTest(BaseSecurityTest):
         assert "user" in self.test_roles
         assert "clinician" in self.test_roles
         # Check fixtures assigned to self
-        assert self.db_session is not None # Instance of MockAsyncSession from fixture
-        assert self.entity_factory is not None # Instance of MockEntityFactory from fixture
-        assert self.rbac is not None # Instance of RoleBasedAccessControl from fixture
+        assert self.db_session is not None  # Instance of MockAsyncSession from fixture
+        assert (
+            self.entity_factory is not None
+        )  # Instance of MockEntityFactory from fixture
+        assert self.rbac is not None  # Instance of RoleBasedAccessControl from fixture
 
     def test_has_permission(self):
         """Test permission checking functionality using instance attributes."""
@@ -58,7 +61,9 @@ class TestBaseSecurityTest(BaseSecurityTest):
         # Basic check for mock token structure
         assert token.startswith("mock_token.{")
         assert f"'sub': '{self.test_user_id}'" in token
-        assert "'roles': ['user', 'clinician']" in token # Based on BaseSecurityTest defaults
+        assert (
+            "'roles': ['user', 'clinician']" in token
+        )  # Based on BaseSecurityTest defaults
 
         # Test with custom values
         custom_user_id = "custom_user_123"
@@ -66,12 +71,10 @@ class TestBaseSecurityTest(BaseSecurityTest):
         custom_claims = {"extra": "value"}
 
         token = self.get_auth_token(
-            user_id=custom_user_id,
-            roles=custom_roles,
-            custom_claims=custom_claims
+            user_id=custom_user_id, roles=custom_roles, custom_claims=custom_claims
         )
         assert f"'sub': '{custom_user_id}'" in token
-        assert f"'roles': {custom_roles!r}" in token # Use repr for list comparison
+        assert f"'roles': {custom_roles!r}" in token  # Use repr for list comparison
         assert "'extra': 'value'" in token
 
     def test_get_auth_headers(self):
@@ -112,9 +115,7 @@ class TestBaseSecurityTest(BaseSecurityTest):
         # assert isinstance(self.entity_factory, MockEntityFactory)
 
         # Test creating entities using the instance's factory
-        entity = self.entity_factory.create(
-            "patient", name="Test Patient"
-        )
+        entity = self.entity_factory.create("patient", name="Test Patient")
         assert entity["type"] == "patient"
         assert entity["name"] == "Test Patient"
         assert "id" in entity
@@ -122,6 +123,7 @@ class TestBaseSecurityTest(BaseSecurityTest):
         # Test retrieving entities
         retrieved = self.entity_factory.get(entity["id"])
         assert retrieved == entity
+
 
 # Remove unittest execution block
 # if __name__ == "__main__":

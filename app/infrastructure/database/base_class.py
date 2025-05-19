@@ -11,9 +11,11 @@ import logging
 import uuid
 from typing import Any
 
-from sqlalchemy import Column, DateTime, String, func # Removed MetaData
+from sqlalchemy import Column, DateTime, String, func  # Removed MetaData
+
 # Removed: from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.ext.declarative import declared_attr # Keep for @declared_attr
+from sqlalchemy.ext.declarative import declared_attr  # Keep for @declared_attr
+
 # Removed: from sqlalchemy.orm import registry
 from sqlalchemy.sql import func
 from app.domain.utils.datetime_utils import now_utc
@@ -29,14 +31,15 @@ logger = logging.getLogger(__name__)
 # Removed register_model function
 # Removed validate_models function
 
-class TimestampMixin(object): # Inherit from object (or nothing)
+
+class TimestampMixin(object):  # Inherit from object (or nothing)
     """
     Mixin to add created_at and updated_at timestamps to models.
-    
+
     This mixin provides standard timestamp tracking for database models,
     automatically setting and updating timestamps.
     """
-    
+
     @declared_attr
     def created_at(cls):
         return Column(
@@ -46,7 +49,7 @@ class TimestampMixin(object): # Inherit from object (or nothing)
             nullable=False,
             comment="Timestamp of when the record was created in UTC.",
         )
-    
+
     @declared_attr
     def updated_at(cls):
         return Column(
@@ -59,30 +62,28 @@ class TimestampMixin(object): # Inherit from object (or nothing)
         )
 
 
-class AuditMixin(object): # Inherit from object (or nothing)
+class AuditMixin(object):  # Inherit from object (or nothing)
     """
     Mixin for HIPAA-compliant audit fields.
-    
+
     Adds fields required for proper audit trails in a HIPAA-compliant system.
     """
+
     created_by = Column(
-        String(36),
-        nullable=True,
-        comment="User ID who created this record"
+        String(36), nullable=True, comment="User ID who created this record"
     )
-    
+
     updated_by = Column(
-        String(36),
-        nullable=True,
-        comment="User ID who last updated this record"
+        String(36), nullable=True, comment="User ID who last updated this record"
     )
-    
+
     audit_id = Column(
         String(36),
         default=lambda: str(uuid.uuid4()),
         nullable=False,
-        comment="Unique ID for audit trail reference"
+        comment="Unique ID for audit trail reference",
     )
+
 
 # Removed BaseModel class
 

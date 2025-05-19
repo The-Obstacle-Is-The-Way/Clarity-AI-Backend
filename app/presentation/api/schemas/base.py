@@ -12,5 +12,5 @@ class BaseModelConfig(BaseModel):
         populate_by_name=True,
         from_attributes=True,
         arbitrary_types_allowed=True,
-        protected_namespaces=()
+        protected_namespaces=(),
     )

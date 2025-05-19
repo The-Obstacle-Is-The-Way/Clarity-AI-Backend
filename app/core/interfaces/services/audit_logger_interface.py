@@ -14,7 +14,7 @@ from typing import Any, Dict, Optional, Union, List
 
 class AuditEventType(str, Enum):
     """Types of auditable events in the system."""
-    
+
     # Authentication events
     LOGIN = "login"
     LOGOUT = "logout"
@@ -23,49 +23,49 @@ class AuditEventType(str, Enum):
     PASSWORD_RESET = "password_reset"
     MFA_ENABLED = "mfa_enabled"
     MFA_DISABLED = "mfa_disabled"
-    
+
     # Authorization events
     ACCESS_DENIED = "access_denied"
     PERMISSION_CHANGED = "permission_changed"
     ROLE_ASSIGNED = "role_assigned"
     ROLE_REVOKED = "role_revoked"
-    
+
     # Data access events
     PHI_ACCESSED = "phi_accessed"
     PHI_MODIFIED = "phi_modified"
     PHI_DELETED = "phi_deleted"
     PHI_EXPORTED = "phi_exported"
-    
+
     # System events
     SYSTEM_STARTUP = "system_startup"
     SYSTEM_SHUTDOWN = "system_shutdown"
     CONFIGURATION_CHANGED = "configuration_changed"
-    
+
     # User management
     USER_CREATED = "user_created"
     USER_MODIFIED = "user_modified"
     USER_DEACTIVATED = "user_deactivated"
-    
+
     # API events
     API_REQUEST = "api_request"
     API_RESPONSE = "api_response"
-    
+
     # ML model events
     MODEL_INFERENCE = "model_inference"
     MODEL_TRAINED = "model_trained"
     MODEL_DEPLOYED = "model_deployed"
-    
+
     # Security events
     SECURITY_EVENT = "security_event"
     ANOMALY_DETECTED = "anomaly_detected"
-    
+
     # Fallback for other events
     OTHER = "other"
 
 
 class AuditSeverity(str, Enum):
     """Severity level of audit events."""
-    
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -75,11 +75,11 @@ class AuditSeverity(str, Enum):
 
 class IAuditLogger(ABC):
     """Interface for audit logging services.
-    
+
     This interface defines the contract that all audit logging implementations
     must fulfill to ensure HIPAA compliance and proper security tracking.
     """
-    
+
     @abstractmethod
     async def log_event(
         self,
@@ -96,7 +96,7 @@ class IAuditLogger(ABC):
         request: Optional[Any] = None,
     ) -> str:
         """Log an audit event in the system.
-        
+
         Args:
             event_type: Type of audit event
             actor_id: ID of the user/system performing the action
@@ -109,12 +109,12 @@ class IAuditLogger(ABC):
             metadata: Additional metadata for the event
             timestamp: When the event occurred (defaults to now if None)
             request: Optional request object for extracting context information
-            
+
         Returns:
             str: Unique identifier for the audit log entry
         """
         pass
-    
+
     @abstractmethod
     async def log_security_event(
         self,
@@ -126,9 +126,9 @@ class IAuditLogger(ABC):
         request: Optional[Any] = None,
     ) -> str:
         """Log a security-related event.
-        
+
         Convenience method for security events like authentication failures.
-        
+
         Args:
             description: Description of the security event
             actor_id: ID of the user/system involved
@@ -136,12 +136,12 @@ class IAuditLogger(ABC):
             severity: Severity level of the event
             details: Additional details about the event
             request: Optional request object for extracting context information
-            
+
         Returns:
             str: Unique identifier for the audit log entry
         """
         pass
-    
+
     @abstractmethod
     async def log_phi_access(
         self,
@@ -156,9 +156,9 @@ class IAuditLogger(ABC):
         request_context: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Log PHI access event specifically.
-        
+
         Specialized method for PHI access to ensure proper HIPAA audit trails.
-        
+
         Args:
             actor_id: ID of the user accessing PHI
             patient_id: ID of the patient whose PHI was accessed
@@ -169,12 +169,12 @@ class IAuditLogger(ABC):
             reason: Business reason for accessing the PHI
             request: Optional request object for extracting context information
             request_context: Additional context from the request (location, device, etc.)
-            
+
         Returns:
             str: Unique identifier for the audit log entry
         """
         pass
-    
+
     @abstractmethod
     async def get_audit_trail(
         self,
@@ -185,19 +185,19 @@ class IAuditLogger(ABC):
         offset: int = 0,
     ) -> List[Dict[str, Any]]:
         """Retrieve audit trail entries based on filters.
-        
+
         Args:
             filters: Optional filters to apply (e.g., event_type, actor_id)
             start_time: Optional start time for the audit trail
             end_time: Optional end time for the audit trail
             limit: Maximum number of entries to return
             offset: Offset for pagination
-            
+
         Returns:
             List[Dict[str, Any]]: List of audit log entries matching the criteria
         """
         pass
-    
+
     @abstractmethod
     async def export_audit_logs(
         self,
@@ -208,29 +208,26 @@ class IAuditLogger(ABC):
         filters: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Export audit logs to a file in the specified format.
-        
+
         Args:
             start_time: Start time for logs to export
-            end_time: End time for logs to export 
+            end_time: End time for logs to export
             format: Export format (json, csv, xml)
             file_path: Path to save the export file (generated if None)
             filters: Additional filters for the export (actor_id, resource_type, etc.)
-            
+
         Returns:
             str: Path to the exported file
         """
         pass
-    
+
     @abstractmethod
-    async def get_security_dashboard_data(
-        self,
-        days: int = 7
-    ) -> Dict[str, Any]:
+    async def get_security_dashboard_data(self, days: int = 7) -> Dict[str, Any]:
         """Get summary data for security dashboard.
-        
+
         Args:
             days: Number of days to include in the summary
-            
+
         Returns:
             Dict[str, Any]: Security data summary for dashboard
         """

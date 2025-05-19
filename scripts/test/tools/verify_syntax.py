@@ -10,13 +10,14 @@ import py_compile
 import concurrent.futures
 from typing import List, Tuple
 
+
 def check_file_syntax(file_path: str) -> Tuple[str, bool, str]:
     """
     Check a Python file for syntax errors.
-    
+
     Args:
         file_path: Path to the Python file to check
-        
+
     Returns:
         Tuple of (file_path, is_valid, error_message)
     """
@@ -29,14 +30,15 @@ def check_file_syntax(file_path: str) -> Tuple[str, bool, str]:
     except Exception as e:
         return (file_path, False, str(e))
 
+
 def find_python_files(root_dir: str, pattern: str = "_test.py") -> List[str]:
     """
     Find all Python test files in a directory tree.
-    
+
     Args:
         root_dir: Root directory to search
         pattern: File pattern to match (defaults to '_test.py')
-        
+
     Returns:
         List of Python test file paths
     """
@@ -47,6 +49,7 @@ def find_python_files(root_dir: str, pattern: str = "_test.py") -> List[str]:
                 python_files.append(os.path.join(dirpath, filename))
     return python_files
 
+
 def main():
     """Main entry point."""
     # Determine the project root directory
@@ -55,26 +58,26 @@ def main():
     else:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         # Assuming this script is in backend/scripts/test/tools/
-        root_dir = os.path.abspath(os.path.join(script_dir, '../../../'))
-    
+        root_dir = os.path.abspath(os.path.join(script_dir, "../../../"))
+
     print(f"Checking Python test files in {root_dir}")
-    
+
     # Find all Python test files
-    test_files = find_python_files(os.path.join(root_dir, 'app/tests'))
+    test_files = find_python_files(os.path.join(root_dir, "app/tests"))
     print(f"Found {len(test_files)} test files")
-    
+
     # Check syntax of all files in parallel
     with concurrent.futures.ProcessPoolExecutor() as executor:
         results = list(executor.map(check_file_syntax, test_files))
-    
+
     # Print results
     valid_files = [r[0] for r in results if r[1]]
     invalid_files = [(r[0], r[2]) for r in results if not r[1]]
-    
+
     print(f"\nResults:")
     print(f"  Valid files: {len(valid_files)}")
     print(f"  Invalid files: {len(invalid_files)}")
-    
+
     if invalid_files:
         print("\nFiles with syntax errors:")
         for file_path, error in invalid_files:
@@ -84,6 +87,7 @@ def main():
     else:
         print("\nAll files have valid syntax!")
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

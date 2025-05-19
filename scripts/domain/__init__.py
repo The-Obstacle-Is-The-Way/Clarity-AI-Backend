@@ -15,8 +15,10 @@ from typing import Dict, List, Literal, Optional, Set, Tuple, Union
 # Magnitude types for neural effects
 EffectMagnitude = Literal["large", "medium", "small"]
 
+
 class BrainRegion(Enum):
     """Brain regions explicitly modeled in the digital twin system."""
+
     PREFRONTAL_CORTEX = auto()
     AMYGDALA = auto()
     HIPPOCAMPUS = auto()
@@ -24,9 +26,11 @@ class BrainRegion(Enum):
     PITUITARY = auto()  # Added to support hypothalamus-pituitary connectivity
     STRIATUM = auto()
     NUCLEUS_ACCUMBENS = auto()
-    
+
+
 class Neurotransmitter(Enum):
     """Neurotransmitters modeled in the digital twin system."""
+
     SEROTONIN = auto()
     DOPAMINE = auto()
     NOREPINEPHRINE = auto()
@@ -34,6 +38,9 @@ class Neurotransmitter(Enum):
     GLUTAMATE = auto()
     ACETYLCHOLINE = auto()
 
+
 # Type definitions for neural pathway modeling
 RegionToRegionMapping = Dict[BrainRegion, Dict[BrainRegion, EffectMagnitude]]
-NeurotransmitterEffects = Dict[Neurotransmitter, Dict[Neurotransmitter, EffectMagnitude]]
+NeurotransmitterEffects = Dict[
+    Neurotransmitter, Dict[Neurotransmitter, EffectMagnitude]
+]

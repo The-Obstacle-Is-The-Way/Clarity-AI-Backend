@@ -16,7 +16,7 @@ from jose import JWTError, jwt
 from app.infrastructure.security.password.password_handler import PasswordHandler
 
 # from app.config.settings import get_settings # Legacy import
-from app.core.config.settings import get_settings # Corrected import
+from app.core.config.settings import get_settings  # Corrected import
 from app.domain.entities.user import User
 from app.domain.exceptions import AuthenticationError
 
@@ -25,12 +25,14 @@ logger = logging.getLogger(__name__)
 # TODO: Define IPasswordHandler in core.interfaces and use it here for Clean Architecture.
 # from app.core.interfaces.security.password_handler_interface import IPasswordHandler
 
+
 # Temporarily hinting with concrete class due to missing interface
 def get_password_handler() -> PasswordHandler:
     """Dependency provider for the Password Handler."""
     logger.debug("Providing Password Handler dependency")
     # Simply return an instance of the concrete implementation
     return PasswordHandler()
+
 
 # Type hint for dependency injection
 # Temporarily hinting with concrete class

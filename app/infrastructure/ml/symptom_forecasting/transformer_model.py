@@ -50,9 +50,9 @@ class MultiHeadAttention(nn.Module):
 
     def forward(
         self,
-        query: 'torch.Tensor',  # type: ignore
-        key: 'torch.Tensor',    # type: ignore
-        value: 'torch.Tensor',  # type: ignore
+        query: "torch.Tensor",  # type: ignore
+        key: "torch.Tensor",  # type: ignore
+        value: "torch.Tensor",  # type: ignore
         mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
@@ -88,9 +88,12 @@ class MultiHeadAttention(nn.Module):
 
         # Scaled dot-product attention
         # Scaled dot-product attention
-        scores = torch.matmul(query, key.transpose(-2, -1)) / torch.sqrt(
-            torch.tensor(self.head_dim, dtype=torch.float32)
-        ) if torch is not None else None
+        scores = (
+            torch.matmul(query, key.transpose(-2, -1))
+            / torch.sqrt(torch.tensor(self.head_dim, dtype=torch.float32))
+            if torch is not None
+            else None
+        )
 
         if mask is not None:
             scores = scores.masked_fill(mask == 0, -1e9)
@@ -497,9 +500,7 @@ class MultiHorizonTransformer(nn.Module):
                 }
 
         except Exception as e:
-            raise Exception(
-                f"Error during transformer model inference: {e!s}"
-            )
+            raise Exception(f"Error during transformer model inference: {e!s}")
 
 
 class SymptomTransformerModel:

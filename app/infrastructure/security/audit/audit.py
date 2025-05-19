@@ -26,6 +26,7 @@ from app.core.config.settings import get_settings
 # Use standard logger
 logger = logging.getLogger(__name__)
 
+
 class AuditLogger:
     """
     HIPAA-compliant audit logging system that tracks and records access to PHI
@@ -45,18 +46,20 @@ class AuditLogger:
         self.settings = get_settings()
         self.log_level = getattr(logging, self.settings.LOG_LEVEL.upper(), logging.INFO)
         self.audit_log_file = self.settings.AUDIT_LOG_FILE
-        
+
         # Default setting for external audit if not available in settings
-        self.external_audit_enabled = getattr(self.settings, 'EXTERNAL_AUDIT_ENABLED', False)
-        
+        self.external_audit_enabled = getattr(
+            self.settings, "EXTERNAL_AUDIT_ENABLED", False
+        )
+
         # Configure the audit logger
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(self.log_level)
-        
+
         # Remove existing handlers to avoid duplicate logs if re-initialized
         if self.logger.hasHandlers():
             self.logger.handlers.clear()
-            
+
         # Create a file handler
         if self.audit_log_file:
             try:
@@ -64,36 +67,41 @@ class AuditLogger:
                 log_dir = os.path.dirname(self.audit_log_file)
                 if log_dir:
                     os.makedirs(log_dir, exist_ok=True)
-                    
+
                 file_handler = logging.FileHandler(self.audit_log_file)
                 # Use a specific format for audit logs
                 formatter = logging.Formatter(
                     '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "module": "%(module)s", "event": %(message)s}',
-                    datefmt='%Y-%m-%dT%H:%M:%S%z' # ISO 8601 format
+                    datefmt="%Y-%m-%dT%H:%M:%S%z",  # ISO 8601 format
                 )
                 file_handler.setFormatter(formatter)
                 self.logger.addHandler(file_handler)
                 logger.info(f"Audit logs will be written to: {self.audit_log_file}")
             except Exception as e:
-                logger.error(f"Failed to configure file handler for audit log at {self.audit_log_file}: {e}", exc_info=True)
+                logger.error(
+                    f"Failed to configure file handler for audit log at {self.audit_log_file}: {e}",
+                    exc_info=True,
+                )
         else:
-            logger.warning("AUDIT_LOG_FILE not set. Audit logs will not be written to a file.")
+            logger.warning(
+                "AUDIT_LOG_FILE not set. Audit logs will not be written to a file."
+            )
 
         # Add a console handler as well for visibility during development/debugging
         console_handler = logging.StreamHandler()
-        console_formatter = logging.Formatter(
-            'AUDIT [%(levelname)s]: %(message)s'
-        )
+        console_formatter = logging.Formatter("AUDIT [%(levelname)s]: %(message)s")
         console_handler.setFormatter(console_formatter)
         self.logger.addHandler(console_handler)
-        
+
         # Prevent audit logs from propagating to the root logger if handlers are set
         if self.logger.hasHandlers():
             self.logger.propagate = False
         else:
             # If no handlers could be set up, allow propagation so messages aren't lost
-            self.logger.propagate = True 
-            logger.error("AuditLogger failed to set up any handlers. Logs may be lost or appear in root logger.")
+            self.logger.propagate = True
+            logger.error(
+                "AuditLogger failed to set up any handlers. Logs may be lost or appear in root logger."
+            )
 
     def log_phi_access(
         self,
@@ -171,17 +179,17 @@ class AuditLogger:
         # If configured, also send to external audit service
         if self.external_audit_enabled:
             self._send_to_external_audit_service(audit_entry)
-            
+
     def log_system_event(
-        self, 
+        self,
         event_type: str,
         description: str,
         details: Optional[Dict[str, Any]] = None,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
     ) -> None:
         """
         Log a system event.
-        
+
         Args:
             event_type: Type of system event (e.g., "startup", "shutdown", "config_change")
             description: Description of the event
@@ -190,7 +198,7 @@ class AuditLogger:
         """
         event_id = str(uuid.uuid4())
         timestamp = datetime.datetime.now(timezone.utc).isoformat()
-        
+
         # Create audit entry
         audit_entry = {
             "event_id": event_id,
@@ -201,10 +209,10 @@ class AuditLogger:
             "user_id": user_id,
             "details": details or {},
         }
-        
+
         # Log the audit entry
         self.logger.info(f"SYSTEM_EVENT: {json.dumps(audit_entry)}")
-        
+
         # If configured, also send to external audit service
         if self.external_audit_enabled:
             self._send_to_external_audit_service(audit_entry)
@@ -231,15 +239,26 @@ try:
     audit_logger = AuditLogger()
 except Exception as e:
     logger.error(f"Failed to initialize AuditLogger: {e}", exc_info=True)
+
     # Create a dummy logger that won't crash when used
     class DummyAuditLogger:
-        def log_phi_access(self, *args, **kwargs): 
-            logger.error("DummyAuditLogger: log_phi_access called but logger not properly initialized")
-        def log_auth_event(self, *args, **kwargs): 
-            logger.error("DummyAuditLogger: log_auth_event called but logger not properly initialized")
-        def log_system_event(self, *args, **kwargs): 
-            logger.error("DummyAuditLogger: log_system_event called but logger not properly initialized")
-        def _send_to_external_audit_service(self, *args, **kwargs): pass
-    
+        def log_phi_access(self, *args, **kwargs):
+            logger.error(
+                "DummyAuditLogger: log_phi_access called but logger not properly initialized"
+            )
+
+        def log_auth_event(self, *args, **kwargs):
+            logger.error(
+                "DummyAuditLogger: log_auth_event called but logger not properly initialized"
+            )
+
+        def log_system_event(self, *args, **kwargs):
+            logger.error(
+                "DummyAuditLogger: log_system_event called but logger not properly initialized"
+            )
+
+        def _send_to_external_audit_service(self, *args, **kwargs):
+            pass
+
     audit_logger = DummyAuditLogger()
     logger.warning("Using DummyAuditLogger as fallback due to initialization error")

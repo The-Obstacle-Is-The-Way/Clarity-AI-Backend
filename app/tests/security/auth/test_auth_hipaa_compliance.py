@@ -25,6 +25,7 @@ except ImportError:
     AuthMiddleware = MagicMock()
     RoleManager = MagicMock()
 
+
 # Mock JWT service for testing
 class JWTService:
     """Mock JWT service for testing."""
@@ -37,7 +38,9 @@ class JWTService:
     def create_access_token(self, data, expires_delta=None):
         """Create a test JWT token."""
         to_encode = data.copy()
-        expire = datetime.now(UTC) + timedelta(minutes=expires_delta or self.expires_delta)
+        expire = datetime.now(UTC) + timedelta(
+            minutes=expires_delta or self.expires_delta
+        )
         to_encode.update({"exp": expire})
         return jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
 
@@ -53,6 +56,7 @@ class JWTService:
         except jwt.PyJWTError:
             return None
 
+
 class AuthMiddleware:
     """Mock auth middleware for testing."""
 
@@ -66,6 +70,7 @@ class AuthMiddleware:
             return None
         return payload
 
+
 class RoleManager:
     """Mock role manager for testing."""
 
@@ -75,7 +80,7 @@ class RoleManager:
             "doctor": ["read:patient", "write:patient", "read:phi", "write:phi"],
             "nurse": ["read:patient", "read:phi"],
             "patient": ["read:own_data"],
-            "guest": []
+            "guest": [],
         }
 
     def has_permission(self, user_role, permission):
@@ -89,12 +94,13 @@ class RoleManager:
         if not token_payload:
             return "guest"
         # Handle both dict and object access
-        if isinstance(token_payload, dict) and 'role' in token_payload:
-            return token_payload['role']
-        elif hasattr(token_payload, 'role'):
+        if isinstance(token_payload, dict) and "role" in token_payload:
+            return token_payload["role"]
+        elif hasattr(token_payload, "role"):
             return token_payload.role
         else:
             return "guest"
+
 
 class TestHIPAAAuthCompliance:
     """Test authentication and authorization for HIPAA compliance."""
@@ -117,38 +123,57 @@ class TestHIPAAAuthCompliance:
     @pytest.fixture
     def doctor_token(self, jwt_service):
         """Create a valid doctor token."""
-        return jwt_service.create_access_token({
-            "sub": "doctor123",
-            "role": "doctor",
-            "name": "Dr. Jane Smith",
-            "permissions": ["read:patient", "write:patient", "read:phi", "write:phi"]
-        })
+        return jwt_service.create_access_token(
+            {
+                "sub": "doctor123",
+                "role": "doctor",
+                "name": "Dr. Jane Smith",
+                "permissions": [
+                    "read:patient",
+                    "write:patient",
+                    "read:phi",
+                    "write:phi",
+                ],
+            }
+        )
 
     @pytest.fixture
     def patient_token(self, jwt_service):
         """Create a valid patient token."""
-        return jwt_service.create_access_token({
-            "sub": "patient456",
-            "role": "patient",
-            "name": "John Doe",
-            "patient_id": "P12345",
-            "permissions": ["read:own_data"]
-        })
+        return jwt_service.create_access_token(
+            {
+                "sub": "patient456",
+                "role": "patient",
+                "name": "John Doe",
+                "patient_id": "P12345",
+                "permissions": ["read:own_data"],
+            }
+        )
 
     @pytest.fixture
     def expired_token(self, jwt_service):
         """Create an expired token."""
-        return jwt_service.create_access_token({
-            "sub": "doctor789",
-            "role": "doctor",
-            "permissions": ["read:patient", "write:patient", "read:phi", "write:phi"]
-        }, expires_delta=-1)  # Token expired 1 minute ago
+        return jwt_service.create_access_token(
+            {
+                "sub": "doctor789",
+                "role": "doctor",
+                "permissions": [
+                    "read:patient",
+                    "write:patient",
+                    "read:phi",
+                    "write:phi",
+                ],
+            },
+            expires_delta=-1,
+        )  # Token expired 1 minute ago
 
     def test_valid_token_authentication(self, auth_middleware, doctor_token):
         """Test that valid tokens authenticate successfully."""
         payload = auth_middleware.authenticate(doctor_token)
         assert payload is not None
-        assert (payload.role if hasattr(payload, 'role') else payload["role"]) == "doctor"
+        assert (
+            payload.role if hasattr(payload, "role") else payload["role"]
+        ) == "doctor"
         assert "sub" in payload
         assert "exp" in payload
 
@@ -163,7 +188,9 @@ class TestHIPAAAuthCompliance:
         payload = auth_middleware.authenticate(tampered_token)
         assert payload is None
 
-    def test_role_based_access_control(self, role_manager, doctor_token, patient_token, jwt_service):
+    def test_role_based_access_control(
+        self, role_manager, doctor_token, patient_token, jwt_service
+    ):
         """Test that role-based access control properly enforces permissions."""
         doctor_payload = jwt_service.decode_token(doctor_token)
         patient_payload = jwt_service.decode_token(patient_token)
@@ -188,19 +215,23 @@ class TestHIPAAAuthCompliance:
     def test_patient_data_isolation(self, jwt_service, role_manager):
         """Test that patients can only access their own data."""
         # Create two different patient tokens
-        patient1_token = jwt_service.create_access_token({
-            "sub": "patient111",
-            "role": "patient",
-            "patient_id": "P111",
-            "permissions": ["read:own_data"]
-        })
+        patient1_token = jwt_service.create_access_token(
+            {
+                "sub": "patient111",
+                "role": "patient",
+                "patient_id": "P111",
+                "permissions": ["read:own_data"],
+            }
+        )
 
-        patient2_token = jwt_service.create_access_token({
-            "sub": "patient222",
-            "role": "patient",
-            "patient_id": "P222",
-            "permissions": ["read:own_data"]
-        })
+        patient2_token = jwt_service.create_access_token(
+            {
+                "sub": "patient222",
+                "role": "patient",
+                "patient_id": "P222",
+                "permissions": ["read:own_data"],
+            }
+        )
 
         # Decode tokens to get payloads
         payload1 = jwt_service.decode_token(patient1_token)
@@ -225,10 +256,9 @@ class TestHIPAAAuthCompliance:
     def test_token_without_role(self, jwt_service, role_manager):
         """Test that tokens without role get default guest permissions."""
         # Create token without role
-        no_role_token = jwt_service.create_access_token({
-            "sub": "user999",
-            "name": "No Role User"
-        })
+        no_role_token = jwt_service.create_access_token(
+            {"sub": "user999", "name": "No Role User"}
+        )
 
         # Decode token
         payload = jwt_service.decode_token(no_role_token)
@@ -242,8 +272,8 @@ class TestHIPAAAuthCompliance:
         assert role_manager.has_permission(role, "read:patient") is False
         assert role_manager.has_permission(role, "read:own_data") is False
 
-    @patch('jwt.encode', side_effect=jwt.encode)
-    @patch('jwt.decode', side_effect=jwt.decode)
+    @patch("jwt.encode", side_effect=jwt.encode)
+    @patch("jwt.decode", side_effect=jwt.decode)
     def test_token_operations_audit_trail(self, mock_decode, mock_encode, jwt_service):
         """Test that token operations can be properly audited."""
         # Create and verify a token, monitoring encode/decode calls
@@ -267,27 +297,44 @@ class TestHIPAAAuthCompliance:
     def test_multi_factor_auth_support(self, jwt_service):
         """Test support for multi-factor authentication in tokens."""
         # Create a token with MFA flag
-        mfa_token = jwt_service.create_access_token({
-            "sub": "mfa_user",
-            "role": "doctor",
-            "mfa_complete": True,
-            "auth_level": "2"  # 2 = MFA completed
-        })
+        mfa_token = jwt_service.create_access_token(
+            {
+                "sub": "mfa_user",
+                "role": "doctor",
+                "mfa_complete": True,
+                "auth_level": "2",  # 2 = MFA completed
+            }
+        )
 
         # Verify MFA information is in token
         payload = jwt_service.decode_token(mfa_token)
-        assert (payload.mfa_complete if hasattr(payload, 'mfa_complete') else payload["mfa_complete"]) is True
-        assert (payload.auth_level if hasattr(payload, 'auth_level') else payload["auth_level"]) == "2"
+        assert (
+            payload.mfa_complete
+            if hasattr(payload, "mfa_complete")
+            else payload["mfa_complete"]
+        ) is True
+        assert (
+            payload.auth_level
+            if hasattr(payload, "auth_level")
+            else payload["auth_level"]
+        ) == "2"
 
     def test_minimal_phi_in_token(self, jwt_service):
         """Test that tokens contain minimal PHI, even for authorized users."""
         # Create an admin token
-        admin_token = jwt_service.create_access_token({
-            "sub": "admin123",
-            "role": "admin",
-            "name": "Admin User",  # Only minimal identifying info
-            "permissions": ["read:patient", "write:patient", "read:phi", "write:phi"]
-        })
+        admin_token = jwt_service.create_access_token(
+            {
+                "sub": "admin123",
+                "role": "admin",
+                "name": "Admin User",  # Only minimal identifying info
+                "permissions": [
+                    "read:patient",
+                    "write:patient",
+                    "read:phi",
+                    "write:phi",
+                ],
+            }
+        )
 
         # Decode token
         payload = jwt_service.decode_token(admin_token)
@@ -296,6 +343,7 @@ class TestHIPAAAuthCompliance:
         phi_fields = ["ssn", "address", "phone", "email", "dob", "medical_record"]
         for field in phi_fields:
             assert field not in payload
+
 
 if __name__ == "__main__":
     pytest.main(["-v", __file__])

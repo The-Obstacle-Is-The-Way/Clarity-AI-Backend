@@ -9,7 +9,9 @@ This module provides dependency injection for biometric alert related services.
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.application.services.biometric_alert_rule_service import BiometricAlertRuleService
+from app.application.services.biometric_alert_rule_service import (
+    BiometricAlertRuleService,
+)
 from app.core.dependencies.database import get_db_session
 from app.core.interfaces.repositories.alert_repository_interface import (
     IAlertRepository,
@@ -42,11 +44,11 @@ async def get_alert_repository(
 ) -> IAlertRepository:
     """
     Dependency provider for alert repository.
-    
+
     Args:
         db_session: Database session
         encryption_service: Encryption service for sensitive data
-        
+
     Returns:
         Alert repository instance
     """
@@ -59,15 +61,17 @@ async def get_biometric_repository(
 ) -> BiometricAlertRepository:
     """
     Dependency provider for biometric repository.
-    
+
     Args:
         db_session: Database session
         encryption_service: Encryption service for sensitive data
-        
+
     Returns:
         Biometric repository instance
     """
-    return BiometricAlertRepository(db_session=db_session, encryption_service=encryption_service)
+    return BiometricAlertRepository(
+        db_session=db_session, encryption_service=encryption_service
+    )
 
 
 async def get_rule_repository(
@@ -76,11 +80,11 @@ async def get_rule_repository(
 ) -> IBiometricRuleRepository:
     """
     Dependency provider for biometric alert rule repository.
-    
+
     Args:
         db_session: Database session
         encryption_service: Encryption service for sensitive data
-        
+
     Returns:
         Biometric rule repository instance
     """
@@ -92,10 +96,10 @@ async def get_template_repository(
 ) -> ITemplateRepository:
     """
     Get the biometric alert template repository instance.
-    
+
     Args:
         db_session: Database session dependency
-        
+
     Returns:
         An instance of the template repository
     """
@@ -114,7 +118,7 @@ async def get_event_processor(
     # from app.infrastructure.processors.biometric_event_processor import ConcreteEventProcessor
     # processor = ConcreteEventProcessor(alert_repo, biometric_repo, rule_repo, template_repo)
     # return processor
-    return None # Return None or raise NotImplementedError to prevent usage
+    return None  # Return None or raise NotImplementedError to prevent usage
 
 
 async def get_biometric_alert_rule_service(
@@ -123,15 +127,14 @@ async def get_biometric_alert_rule_service(
 ) -> BiometricAlertRuleService:
     """
     Provides a BiometricAlertRuleService instance for dependency injection.
-    
+
     Args:
         rule_repository: Repository for accessing biometric alert rules
         template_repository: Repository for accessing rule templates
-        
+
     Returns:
         An instance of BiometricAlertRuleService
     """
     return BiometricAlertRuleService(
-        rule_repository=rule_repository,
-        template_repository=template_repository
+        rule_repository=rule_repository, template_repository=template_repository
     )

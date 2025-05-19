@@ -4,6 +4,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp
 
+
 class RequestIdMiddleware(BaseHTTPMiddleware):
     """
     Middleware to ensure each request has a unique ID (x-request-id).
@@ -13,6 +14,7 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
     - The request ID is stored in request.state.request_id
     - The request ID is added to the response headers.
     """
+
     def __init__(self, app: ASGIApp):
         super().__init__(app)
 
@@ -40,6 +42,8 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
 
         # Add the request ID to the response headers
         response.headers["x-request-id"] = request_id
-        response.headers["request_id"] = request_id  # Also add lowercase version for test compatibility
+        response.headers[
+            "request_id"
+        ] = request_id  # Also add lowercase version for test compatibility
 
         return response

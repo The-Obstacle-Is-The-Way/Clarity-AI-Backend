@@ -18,8 +18,9 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Configure logging
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Add the backend directory to sys.path if needed
@@ -53,7 +54,6 @@ DIRECT_SQL = {
     "enable_foreign_keys": """
     PRAGMA foreign_keys = ON;
     """,
-    
     "users": """
     CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -77,7 +77,6 @@ DIRECT_SQL = {
         last_name TEXT NULL
     );
     """,
-    
     "patients": """
     CREATE TABLE IF NOT EXISTS patients (
         id TEXT PRIMARY KEY,
@@ -115,8 +114,9 @@ DIRECT_SQL = {
         -- Digital twin relationship
         biometric_twin_id TEXT NULL
     );
-    """
+    """,
 }
+
 
 async def table_exists(session: AsyncSession, table_name: str) -> bool:
     """
@@ -124,7 +124,9 @@ async def table_exists(session: AsyncSession, table_name: str) -> bool:
     Uses parameterized query to prevent SQL injection.
     """
     try:
-        query = text("SELECT name FROM sqlite_master WHERE type='table' AND name=:table_name")
+        query = text(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=:table_name"
+        )
         result = await session.execute(query, {"table_name": table_name})
         exists = result.scalar() is not None
         logger.debug(f"Table '{table_name}' exists check result: {exists}")
@@ -133,20 +135,21 @@ async def table_exists(session: AsyncSession, table_name: str) -> bool:
         logger.error(f"Error checking if table {table_name} exists: {e}")
         return False
 
+
 async def verify_table_exists(session: AsyncSession, table_name: str) -> bool:
     """
     Verify that a table exists in the database.
-    
+
     Args:
         session: SQLAlchemy AsyncSession
         table_name: Name of the table to check
-        
+
     Returns:
         bool: True if table exists, False otherwise
     """
     try:
         exists = await table_exists(session, table_name)
-        
+
         if exists:
             # Also verify table has data structure by counting columns
             columns_query = text(f"PRAGMA table_info({table_name})")
@@ -161,32 +164,35 @@ async def verify_table_exists(session: AsyncSession, table_name: str) -> bool:
         logger.error(f"Error verifying table {table_name}: {e}")
         return False
 
+
 async def create_test_users(session: AsyncSession) -> None:
     """
     Create standard test users in the database if they don't already exist.
     """
     logger.info("Creating test users for foreign key relationships")
-    
+
     # Check if test user exists
     query = text("SELECT id FROM users WHERE id = :user_id")
     result = await session.execute(query, {"user_id": TEST_USER_ID})
     test_user_exists = result.scalar() is not None
-    
+
     # Check if test clinician exists
     query = text("SELECT id FROM users WHERE id = :user_id")
     result = await session.execute(query, {"user_id": TEST_CLINICIAN_ID})
     test_clinician_exists = result.scalar() is not None
-    
+
     # Create test user if not exists
     if not test_user_exists:
         logger.info(f"Creating test user with ID: {TEST_USER_ID}")
-        query = text("""
+        query = text(
+            """
         INSERT INTO users (id, username, email, password_hash, is_active, 
                          is_verified, email_verified, role, created_at, updated_at)
         VALUES (:id, :username, :email, :password_hash, :is_active, 
                 :is_verified, :email_verified, :role, :created_at, :updated_at)
-        """)
-        
+        """
+        )
+
         await session.execute(
             query,
             {
@@ -200,19 +206,21 @@ async def create_test_users(session: AsyncSession) -> None:
                 "role": "PATIENT",
                 "created_at": datetime.now(UTC),
                 "updated_at": datetime.now(UTC),
-            }
+            },
         )
-    
+
     # Create test clinician if not exists
     if not test_clinician_exists:
         logger.info(f"Creating test clinician with ID: {TEST_CLINICIAN_ID}")
-        query = text("""
+        query = text(
+            """
         INSERT INTO users (id, username, email, password_hash, is_active, 
                          is_verified, email_verified, role, created_at, updated_at)
         VALUES (:id, :username, :email, :password_hash, :is_active, 
                 :is_verified, :email_verified, :role, :created_at, :updated_at)
-        """)
-        
+        """
+        )
+
         await session.execute(
             query,
             {
@@ -226,27 +234,32 @@ async def create_test_users(session: AsyncSession) -> None:
                 "role": "CLINICIAN",
                 "created_at": datetime.now(UTC),
                 "updated_at": datetime.now(UTC),
-            }
+            },
         )
-    
+
     await session.commit()
-    
+
     # Verify users were created
     query = text("SELECT id FROM users WHERE id = ANY(:user_ids)")
-    result = await session.execute(query, {"user_ids": [TEST_USER_ID, TEST_CLINICIAN_ID]})
+    result = await session.execute(
+        query, {"user_ids": [TEST_USER_ID, TEST_CLINICIAN_ID]}
+    )
     users = result.fetchall()
     if len(users) != 2:
         logger.error(f"Failed to verify test users. Found {len(users)}.")
     logger.info(f"Verified {len(users)}/2 test users exist")
+
 
 async def initialize_database() -> None:
     """
     Initialize the database with all required tables and test data.
     """
     logger.info("QUANTUM DATABASE INITIALIZER: Starting database initialization")
-    
+
     engine = create_async_engine(settings.SQLALCHEMY_TEST_DATABASE_URI, echo=False)
-    async_session_local = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async_session_local = async_sessionmaker(
+        engine, expire_on_commit=False, class_=AsyncSession
+    )
 
     async with engine.begin() as conn:
         logger.info("Dropping all tables if they exist...")
@@ -258,6 +271,7 @@ async def initialize_database() -> None:
         await create_test_users(session)
 
     logger.info("Database initialization complete.")
+
 
 if __name__ == "__main__":
     asyncio.run(initialize_database())

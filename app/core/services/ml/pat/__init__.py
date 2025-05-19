@@ -26,16 +26,12 @@ from app.core.services.ml.pat.pat_interface import PATInterface
 __all__ = [
     # Interfaces
     "PATInterface",
-    
     # Implementations
     "BedrockPAT",
-    
     # Mock implementations for testing
     "MockPATService",
-    
     # Factory
     "PATServiceFactory",
-    
     # Exceptions
     "PATServiceError",
     "InitializationError",
@@ -48,5 +44,5 @@ __all__ = [
     "ConfigurationError",
     "IntegrationError",
     "AuthorizationError",
-    "EmbeddingError"
+    "EmbeddingError",
 ]

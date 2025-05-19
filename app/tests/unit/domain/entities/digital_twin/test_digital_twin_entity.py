@@ -25,10 +25,12 @@ def patient_id() -> UUID:
     """Provides a consistent patient UUID."""
     return uuid4()
 
+
 @pytest.fixture
 def digital_twin(patient_id: UUID) -> DigitalTwin:
     """Provides a basic DigitalTwin instance."""
     return DigitalTwin(patient_id=patient_id)
+
 
 @pytest.mark.venv_only()
 class TestDigitalTwin:
@@ -44,13 +46,20 @@ class TestDigitalTwin:
         assert isinstance(twin.state, DigitalTwinState)
         assert isinstance(twin.created_at, datetime)
         assert isinstance(twin.last_updated, datetime)
-        assert twin.created_at == twin.last_updated # Initially should be same
+        assert twin.created_at == twin.last_updated  # Initially should be same
         assert twin.version == 1
 
         # Check default config values
         assert twin.configuration.simulation_granularity_hours == 1
-        assert twin.configuration.prediction_models_enabled == ["risk_relapse", "treatment_response"]
-        assert twin.configuration.data_sources_enabled == ["actigraphy", "symptoms", "sessions"]
+        assert twin.configuration.prediction_models_enabled == [
+            "risk_relapse",
+            "treatment_response",
+        ]
+        assert twin.configuration.data_sources_enabled == [
+            "actigraphy",
+            "symptoms",
+            "sessions",
+        ]
         assert twin.configuration.alert_thresholds == {}
 
         # Check default state values
@@ -60,7 +69,6 @@ class TestDigitalTwin:
         assert twin.state.current_treatment_effectiveness is None
         assert twin.state.predicted_phq9_trajectory is None
 
-
     def test_init_custom_values(self, patient_id: UUID):
         """Test initialization with custom configuration and state."""
         custom_id = uuid4()
@@ -68,12 +76,12 @@ class TestDigitalTwin:
         custom_config = DigitalTwinConfiguration(
             simulation_granularity_hours=2,
             prediction_models_enabled=["risk_suicide"],
-            alert_thresholds={"phq9_change": 3.0}
+            alert_thresholds={"phq9_change": 3.0},
         )
         custom_state = DigitalTwinState(
             last_sync_time=created_time,
             overall_risk_level="moderate",
-            dominant_symptoms=["anhedonia", "insomnia"]
+            dominant_symptoms=["anhedonia", "insomnia"],
         )
 
         twin = DigitalTwin(
@@ -82,8 +90,8 @@ class TestDigitalTwin:
             configuration=custom_config,
             state=custom_state,
             created_at=created_time,
-            last_updated=created_time, # Initial last_updated matches created_at
-            version=5 # Test custom version
+            last_updated=created_time,  # Initial last_updated matches created_at
+            version=5,  # Test custom version
         )
 
         assert twin.id == custom_id
@@ -99,7 +107,7 @@ class TestDigitalTwin:
         original_state = digital_twin.state
         original_updated_at = digital_twin.last_updated
         original_version = digital_twin.version
-        time.sleep(0.01) # Ensure time difference
+        time.sleep(0.01)  # Ensure time difference
 
         new_state_data = {
             "overall_risk_level": "high",
@@ -112,17 +120,27 @@ class TestDigitalTwin:
         digital_twin.update_state(new_state_data)
 
         assert digital_twin.state.overall_risk_level == "high"
-        assert digital_twin.state.dominant_symptoms == ["anhedonia", "fatigue", "suicidal_ideation"]
+        assert digital_twin.state.dominant_symptoms == [
+            "anhedonia",
+            "fatigue",
+            "suicidal_ideation",
+        ]
         assert digital_twin.state.current_treatment_effectiveness == "worsening"
-        assert digital_twin.state.predicted_phq9_trajectory == [{"week": 1, "score": 18.5}]
+        assert digital_twin.state.predicted_phq9_trajectory == [
+            {"week": 1, "score": 18.5}
+        ]
         assert isinstance(digital_twin.state.last_sync_time, datetime)
-        assert digital_twin.state.last_sync_time > original_updated_at # Sync time updated
-        assert digital_twin.last_updated > original_updated_at # Entity updated time
-        assert digital_twin.version == original_version + 1 # Version incremented
+        assert (
+            digital_twin.state.last_sync_time > original_updated_at
+        )  # Sync time updated
+        assert digital_twin.last_updated > original_updated_at  # Entity updated time
+        assert digital_twin.version == original_version + 1  # Version incremented
 
     def test_update_state_partial(self, digital_twin: DigitalTwin):
         """Test partially updating the digital twin state."""
-        original_risk = digital_twin.state.overall_risk_level # Should be None initially
+        original_risk = (
+            digital_twin.state.overall_risk_level
+        )  # Should be None initially
         original_updated_at = digital_twin.last_updated
         original_version = digital_twin.version
         time.sleep(0.01)
@@ -133,7 +151,7 @@ class TestDigitalTwin:
         digital_twin.update_state(new_state_data)
 
         assert digital_twin.state.overall_risk_level == "moderate"
-        assert digital_twin.state.dominant_symptoms == [] # Unchanged
+        assert digital_twin.state.dominant_symptoms == []  # Unchanged
         assert digital_twin.last_updated > original_updated_at
         assert digital_twin.version == original_version + 1
 
@@ -146,18 +164,20 @@ class TestDigitalTwin:
 
         new_state_data = {
             "invalid_state_key": "some_value",
-            "overall_risk_level": "low" # Include a valid key too
+            "overall_risk_level": "low",  # Include a valid key too
         }
         digital_twin.update_state(new_state_data)
 
         # Check valid key was updated
         assert digital_twin.state.overall_risk_level == "low"
         # Check other keys remain unchanged
-        assert digital_twin.state.dominant_symptoms == original_state_dict["dominant_symptoms"]
+        assert (
+            digital_twin.state.dominant_symptoms
+            == original_state_dict["dominant_symptoms"]
+        )
         # Check timestamp and version updated
         assert digital_twin.last_updated > original_updated_at
         assert digital_twin.version == original_version + 1
-
 
     def test_update_configuration(self, digital_twin: DigitalTwin):
         """Test updating the digital twin configuration."""
@@ -169,16 +189,22 @@ class TestDigitalTwin:
         new_config_data = {
             "simulation_granularity_hours": 4,
             "prediction_models_enabled": ["risk_relapse", "risk_suicide"],
-            "alert_thresholds": {"phq9_change": 4.0}
+            "alert_thresholds": {"phq9_change": 4.0},
         }
 
         digital_twin.update_configuration(new_config_data)
 
         assert digital_twin.configuration.simulation_granularity_hours == 4
-        assert digital_twin.configuration.prediction_models_enabled == ["risk_relapse", "risk_suicide"]
+        assert digital_twin.configuration.prediction_models_enabled == [
+            "risk_relapse",
+            "risk_suicide",
+        ]
         assert digital_twin.configuration.alert_thresholds == {"phq9_change": 4.0}
         # Check unchanged config value
-        assert digital_twin.configuration.data_sources_enabled == original_config.data_sources_enabled
+        assert (
+            digital_twin.configuration.data_sources_enabled
+            == original_config.data_sources_enabled
+        )
         assert digital_twin.last_updated > original_updated_at
         assert digital_twin.version == original_version + 1
 
@@ -194,8 +220,13 @@ class TestDigitalTwin:
         }
         digital_twin.update_configuration(new_config_data)
 
-        assert digital_twin.configuration.prediction_models_enabled == ["risk_hospitalization"]
-        assert digital_twin.configuration.simulation_granularity_hours == original_granularity # Unchanged
+        assert digital_twin.configuration.prediction_models_enabled == [
+            "risk_hospitalization"
+        ]
+        assert (
+            digital_twin.configuration.simulation_granularity_hours
+            == original_granularity
+        )  # Unchanged
         assert digital_twin.last_updated > original_updated_at
         assert digital_twin.version == original_version + 1
 
@@ -208,14 +239,17 @@ class TestDigitalTwin:
 
         new_config_data = {
             "invalid_config_key": "some_value",
-            "simulation_granularity_hours": 8 # Include a valid key
+            "simulation_granularity_hours": 8,  # Include a valid key
         }
         digital_twin.update_configuration(new_config_data)
 
         # Check valid key was updated
         assert digital_twin.configuration.simulation_granularity_hours == 8
         # Check other keys remain unchanged
-        assert digital_twin.configuration.prediction_models_enabled == original_config_dict["prediction_models_enabled"]
+        assert (
+            digital_twin.configuration.prediction_models_enabled
+            == original_config_dict["prediction_models_enabled"]
+        )
         # Check timestamp and version updated
         assert digital_twin.last_updated > original_updated_at
         assert digital_twin.version == original_version + 1
@@ -224,7 +258,7 @@ class TestDigitalTwin:
         """Test the touch method updates timestamp and version."""
         original_updated_at = digital_twin.last_updated
         original_version = digital_twin.version
-        time.sleep(0.01) # Ensure time difference
+        time.sleep(0.01)  # Ensure time difference
 
         digital_twin.touch()
 

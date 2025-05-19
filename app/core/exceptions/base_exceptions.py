@@ -62,7 +62,7 @@ class ResourceNotFoundException(BaseException):
 class ResourceNotFoundError(BaseException):
     """
     Exception raised when a requested resource is not found.
-    
+
     This is an alias for ResourceNotFoundException for backward compatibility.
     """
 
@@ -73,7 +73,7 @@ class ResourceNotFoundError(BaseException):
         code: str = "RESOURCE_NOT_FOUND",
     ):
         super().__init__(message=message, detail=detail, code=code)
-        
+
         if " not found" not in message:
             self.message = f"{message} not found"
 
@@ -81,7 +81,7 @@ class ResourceNotFoundError(BaseException):
 class EntityNotFoundError(ResourceNotFoundError):
     """
     Exception raised when an entity cannot be found.
-    
+
     This is a specialized form of ResourceNotFoundError for domain entities.
     """
 
@@ -230,62 +230,121 @@ class InvalidConfigurationError(BaseException):
 
 # --- Additional exceptions to satisfy imports and test collection ---
 
+
 class AuthorizationError(BaseException):
     """Exception raised for authorization errors (legacy import compatibility)."""
-    def __init__(self, message: str = "Authorization error", detail: str | list[str] | dict[str, Any] | None = None, code: str = "AUTHORIZATION_ERROR"):
+
+    def __init__(
+        self,
+        message: str = "Authorization error",
+        detail: str | list[str] | dict[str, Any] | None = None,
+        code: str = "AUTHORIZATION_ERROR",
+    ):
         super().__init__(message=message, detail=detail, code=code)
+
 
 class ValidationError(BaseException):
     """Exception raised for validation errors (legacy import compatibility)."""
-    def __init__(self, message: str = "Validation error", detail: str | list[str] | dict[str, Any] | None = None, code: str = "VALIDATION_ERROR"):
+
+    def __init__(
+        self,
+        message: str = "Validation error",
+        detail: str | list[str] | dict[str, Any] | None = None,
+        code: str = "VALIDATION_ERROR",
+    ):
         super().__init__(message=message, detail=detail, code=code)
+
 
 class ServiceProviderError(BaseException):
     """Exception raised for service provider errors (legacy import compatibility)."""
-    def __init__(self, message: str = "Service provider error", detail: str | list[str] | dict[str, Any] | None = None, code: str = "SERVICE_PROVIDER_ERROR"):
+
+    def __init__(
+        self,
+        message: str = "Service provider error",
+        detail: str | list[str] | dict[str, Any] | None = None,
+        code: str = "SERVICE_PROVIDER_ERROR",
+    ):
         super().__init__(message=message, detail=detail, code=code)
+
 
 class AnalysisError(BaseException):
     """Exception raised for analysis errors (legacy import compatibility)."""
-    def __init__(self, message: str = "Analysis error", detail: str | list[str] | dict[str, Any] | None = None, code: str = "ANALYSIS_ERROR"):
+
+    def __init__(
+        self,
+        message: str = "Analysis error",
+        detail: str | list[str] | dict[str, Any] | None = None,
+        code: str = "ANALYSIS_ERROR",
+    ):
         super().__init__(message=message, detail=detail, code=code)
+
 
 class EmbeddingError(BaseException):
     """Exception raised for embedding errors (legacy import compatibility)."""
-    def __init__(self, message: str = "Embedding error", detail: str | list[str] | dict[str, Any] | None = None, code: str = "EMBEDDING_ERROR"):
+
+    def __init__(
+        self,
+        message: str = "Embedding error",
+        detail: str | list[str] | dict[str, Any] | None = None,
+        code: str = "EMBEDDING_ERROR",
+    ):
         super().__init__(message=message, detail=detail, code=code)
+
 
 class InitializationError(BaseException):
     """Exception raised for initialization errors (legacy import compatibility)."""
-    def __init__(self, message: str = "Initialization error", detail: str | list[str] | dict[str, Any] | None = None, code: str = "INITIALIZATION_ERROR"):
+
+    def __init__(
+        self,
+        message: str = "Initialization error",
+        detail: str | list[str] | dict[str, Any] | None = None,
+        code: str = "INITIALIZATION_ERROR",
+    ):
         super().__init__(message=message, detail=detail, code=code)
+
 
 class IntegrationError(BaseException):
     """Exception raised for integration errors (legacy import compatibility)."""
-    def __init__(self, message: str = "Integration error", detail: str | list[str] | dict[str, Any] | None = None, code: str = "INTEGRATION_ERROR"):
+
+    def __init__(
+        self,
+        message: str = "Integration error",
+        detail: str | list[str] | dict[str, Any] | None = None,
+        code: str = "INTEGRATION_ERROR",
+    ):
         super().__init__(message=message, detail=detail, code=code)
+
 
 class ModelExecutionError(BaseException):
     """Exception raised when an ML model fails during execution."""
-    def __init__(self, message: str = "Model execution error", detail: str | list[str] | dict[str, Any] | None = None, code: str = "MODEL_EXECUTION_ERROR"):
+
+    def __init__(
+        self,
+        message: str = "Model execution error",
+        detail: str | list[str] | dict[str, Any] | None = None,
+        code: str = "MODEL_EXECUTION_ERROR",
+    ):
         super().__init__(message=message, detail=detail, code=code)
 
-# --- Exceptions moved from standalone exceptions.py --- 
+
+# --- Exceptions moved from standalone exceptions.py ---
+
 
 class HIPAAComplianceError(BusinessRuleException):
     """Exception raised for HIPAA compliance violations."""
 
     def __init__(
-        self, 
+        self,
         message: str = "HIPAA compliance violation",
         detail: str | list[str] | dict[str, Any] | None = None,
         violation_type: str | None = None,
         code: str = "HIPAA_COMPLIANCE_ERROR",
-        **kwargs # Added to capture potential extra args from old definition
+        **kwargs,  # Added to capture potential extra args from old definition
     ):
         # Pass relevant info to base, handle potential extra args if needed
         super().__init__(message=message, detail=detail, code=code)
-        self.violation_type = violation_type # Store specific info
+        self.violation_type = violation_type  # Store specific info
+
 
 # Note: MentalLLaMAInferenceError was in exceptions.py but seems ML-specific.
 # It likely belongs in ml_exceptions.py rather than base_exceptions.py.

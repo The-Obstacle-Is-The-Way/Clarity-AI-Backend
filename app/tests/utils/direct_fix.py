@@ -12,12 +12,13 @@ import sys
 from pprint import pformat
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, 
-                   format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Add the backend directory to sys.path if needed
-backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
@@ -30,7 +31,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from app.domain.utils.datetime_utils import now_utc
 from app.infrastructure.persistence.sqlalchemy.config.base import Base
 
-# Import all models to register with metadata 
+# Import all models to register with metadata
 
 try:
     # Attempt to import Patient model
@@ -48,79 +49,101 @@ async def test_database_tables():
     # Register tables
     registered_tables = list(Base.metadata.tables.keys())
     logger.info(f"REGISTERED TABLES: {pformat(registered_tables)}")
-    
+
     # Fix: If 'patients' table is not registered, create it manually
-    if 'patients' not in registered_tables:
+    if "patients" not in registered_tables:
         logger.warning("'patients' table not found in metadata, creating manually")
-        
+
         # Define table manually with minimal required columns for tests
         from sqlalchemy import Table
-        if not hasattr(Base, 'metadata'):
+
+        if not hasattr(Base, "metadata"):
             logger.error("Base.metadata does not exist!")
             return
-            
+
         # Create a minimal patients table using SQLAlchemy Table construct
         # CRITICAL FIX: Use column names that match the SQL schema (without underscores)
         patients_table = Table(
-            'patients', 
+            "patients",
             Base.metadata,
-            Column('id', UUID(as_uuid=True), primary_key=True, default=uuid.uuid4),
-            Column('user_id', UUID(as_uuid=True), ForeignKey("users.id"), nullable=True),
-            Column('first_name', Text, nullable=True),  # Match column names with SQL schema
-            Column('last_name', Text, nullable=True),   # Match column names with SQL schema
-            Column('date_of_birth', Text, nullable=True), # Match column names with SQL schema
-            Column('email', Text, nullable=True),       # Match column names with SQL schema
-            Column('phone', Text, nullable=True),       # Match column names with SQL schema
-            Column('created_at', DateTime, default=now_utc, nullable=False),
-            Column('updated_at', DateTime, default=now_utc, onupdate=now_utc, nullable=False),
-            Column('is_active', Boolean, default=True, nullable=False),
+            Column("id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4),
+            Column(
+                "user_id", UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+            ),
+            Column(
+                "first_name", Text, nullable=True
+            ),  # Match column names with SQL schema
+            Column(
+                "last_name", Text, nullable=True
+            ),  # Match column names with SQL schema
+            Column(
+                "date_of_birth", Text, nullable=True
+            ),  # Match column names with SQL schema
+            Column("email", Text, nullable=True),  # Match column names with SQL schema
+            Column("phone", Text, nullable=True),  # Match column names with SQL schema
+            Column("created_at", DateTime, default=now_utc, nullable=False),
+            Column(
+                "updated_at",
+                DateTime,
+                default=now_utc,
+                onupdate=now_utc,
+                nullable=False,
+            ),
+            Column("is_active", Boolean, default=True, nullable=False),
         )
-        
+
         # Check that it's now registered
         registered_tables = list(Base.metadata.tables.keys())
         logger.info(f"UPDATED REGISTERED TABLES: {pformat(registered_tables)}")
-    
+
     # Create test in-memory database to verify table creation
     db_url = "sqlite+aiosqlite:///:memory:"
     engine = create_async_engine(db_url, echo=True)
-    
+
     try:
         # CRITICAL FIX: Enable foreign keys BEFORE creating tables
         async with engine.begin() as conn:
             # Enable foreign keys first
             await conn.execute(text("PRAGMA foreign_keys = ON;"))
             logger.info("Foreign keys enabled in SQLite")
-            
+
             # Then create all tables
             await conn.run_sync(Base.metadata.create_all)
             logger.info("Tables created successfully")
-        
+
         # Test session creation and verify tables
         session_factory = async_sessionmaker(bind=engine, class_=AsyncSession)
         async with session_factory() as session:
             # Verify tables exist
-            result = await session.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
+            result = await session.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table'")
+            )
             tables = [row[0] for row in result]
             logger.info(f"CREATED TABLES: {tables}")
-            
+
             # Check if critical tables exist
-            if 'users' not in tables or 'patients' not in tables:
-                logger.error(f"CRITICAL ERROR: Missing required tables! Found: {tables}")
+            if "users" not in tables or "patients" not in tables:
+                logger.error(
+                    f"CRITICAL ERROR: Missing required tables! Found: {tables}"
+                )
             else:
                 logger.info("SUCCESS: All required tables created")
-                
+
                 # Verify table structure
-                for table_name in ['users', 'patients']:
+                for table_name in ["users", "patients"]:
                     columns_query = text(f"PRAGMA table_info({table_name})")
                     columns_result = await session.execute(columns_query)
                     columns = columns_result.fetchall()
-                    column_names = [col[1] for col in columns]  # Column name is at index 1
+                    column_names = [
+                        col[1] for col in columns
+                    ]  # Column name is at index 1
                     logger.info(f"Table {table_name} columns: {column_names}")
-            
+
     except Exception as e:
         logger.error(f"Error during table creation: {e}")
     finally:
         await engine.dispose()
 
+
 if __name__ == "__main__":
-    asyncio.run(test_database_tables()) 
+    asyncio.run(test_database_tables())
