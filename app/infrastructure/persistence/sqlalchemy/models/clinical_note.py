@@ -6,6 +6,7 @@ mapping the domain entity to the database schema.
 """
 
 import uuid
+from typing import Any, Dict, List, Optional, Set
 
 from sqlalchemy import (
     JSON,
@@ -56,7 +57,7 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
     content = Column(Text, nullable=False)
     redacted_content = Column(Text, nullable=True)
     note_type = Column(String(50), nullable=True)
-    tags = Column(MutableDict.as_mutable(JSON), nullable=True)
+    tags: Column = Column(MutableDict.as_mutable(JSON), nullable=True)
     version = Column(Integer, default=1, nullable=False)
     parent_note_id = Column(
         SQLAlchemyUUID(as_uuid=True), ForeignKey("clinical_notes.id"), nullable=True

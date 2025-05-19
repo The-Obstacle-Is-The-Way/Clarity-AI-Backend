@@ -7,6 +7,7 @@ mapping the domain entity to the database schema.
 
 import uuid
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import UUID as SQLAlchemyUUID
 from sqlalchemy import (
@@ -54,7 +55,7 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
     start_time = Column(DateTime(timezone=True), nullable=False)
     end_time = Column(DateTime(timezone=True), nullable=False)
     appointment_type = Column(String(50), nullable=False)
-    status = Column(SQLAlchemyEnum(AppointmentStatus), nullable=False)
+    status: Column = Column(SQLAlchemyEnum(AppointmentStatus), nullable=False)
     notes = Column(Text, nullable=True)
     virtual = Column(Boolean, default=False, nullable=False)
     location = Column(String(255), nullable=True)

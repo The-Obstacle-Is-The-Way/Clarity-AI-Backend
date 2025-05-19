@@ -8,7 +8,7 @@ providing mapping between domain entities and the database schema.
 import json
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Dict, Optional, List
 
 from sqlalchemy import (
     JSON,
@@ -66,14 +66,14 @@ class DigitalTwinDataPoint(Base):
         self.value_json = json.dumps(value)
 
     @hybrid_property
-    def metadata_dict(self) -> dict[str, Any]:
+    def metadata_dict(self) -> Dict[str, Any]:
         """Get the metadata as a dictionary."""
         if self.metadata_json:
             return json.loads(self.metadata_json)
         return {}
 
     @metadata_dict.setter
-    def metadata_dict(self, metadata: dict[str, Any]) -> None:
+    def metadata_dict(self, metadata: Dict[str, Any]) -> None:
         """Set the metadata, serializing to JSON."""
         if metadata:
             self.metadata_json = json.dumps(metadata)
@@ -107,14 +107,14 @@ class BiometricTimeseriesModel(Base):
     )
 
     @hybrid_property
-    def physiological_range(self) -> dict[str, float] | None:
+    def physiological_range(self) -> Optional[Dict[str, float]]:
         """Get the physiological range as a dictionary."""
         if self.physiological_range_json:
             return json.loads(self.physiological_range_json)
         return None
 
     @physiological_range.setter
-    def physiological_range(self, range_data: dict[str, float] | None) -> None:
+    def physiological_range(self, range_data: Optional[Dict[str, float]]) -> None:
         """Set the physiological range, serializing to JSON."""
         if range_data:
             self.physiological_range_json = json.dumps(range_data)

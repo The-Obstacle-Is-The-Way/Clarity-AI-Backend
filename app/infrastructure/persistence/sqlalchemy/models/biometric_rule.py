@@ -8,6 +8,7 @@ biometric rules in the Novamind platform.
 
 import uuid
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import (
     JSON,
@@ -39,7 +40,7 @@ class BiometricRuleModel(Base, TimestampMixin, AuditMixin):
     description = Column(Text, nullable=True, doc="Description of the rule")
 
     # Rule configuration
-    conditions = Column(JSON, nullable=False, doc="JSON array of rule conditions")
+    conditions: Column = Column(JSON, nullable=False, doc="JSON array of rule conditions")
     logical_operator = Column(
         String(10),
         nullable=False,
@@ -81,7 +82,7 @@ class BiometricRuleModel(Base, TimestampMixin, AuditMixin):
         doc="When the rule was created",
     )
     updated_at = Column(DateTime, nullable=True, doc="When the rule was last updated")
-    rule_metadata = Column(JSON, nullable=True, doc="Additional metadata for the rule")
+    rule_metadata: Column = Column(JSON, nullable=True, doc="Additional metadata for the rule")
 
     def __repr__(self) -> str:
         """Get string representation of the model."""
