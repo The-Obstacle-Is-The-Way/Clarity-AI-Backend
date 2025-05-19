@@ -8,7 +8,7 @@ ensuring HIPAA compliance and correct data handling.
 import logging
 import uuid
 from collections.abc import AsyncGenerator
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, TypeVar
 from unittest.mock import ANY, AsyncMock, MagicMock
@@ -84,10 +84,11 @@ try:
         BiometricEventProcessor as InfraEventProcessor,
     )
 except ImportError:
-    InfraAlertRepo = AsyncMock(spec=BiometricAlertRepository)
-    InfraRuleRepo = AsyncMock(spec=BiometricAlertRuleRepository)
-    InfraTemplateRepo = AsyncMock(spec=BiometricAlertTemplateRepository)
-    InfraEventProcessor = AsyncMock(spec=BiometricEventProcessor)
+    # Type aliases for repository implementations
+    InfraAlertRepo: type[BiometricAlertRepository] = BiometricAlertRepository
+    InfraRuleRepo: type[BiometricAlertRuleRepository] = BiometricAlertRuleRepository
+    InfraTemplateRepo: type[BiometricAlertTemplateRepository] = BiometricAlertTemplateRepository
+    InfraEventProcessor: type[BiometricEventProcessor] = BiometricEventProcessor
 
 # ADDED: Import enums for filter values
 
@@ -615,8 +616,8 @@ class TestBiometricAlertsEndpoints:
             ],
             "logical_operator": "and",
             "is_active": True,
-            "created_at": datetime.now(UTC).isoformat(),
-            "updated_at": datetime.now(UTC).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
 
         rule_service_mock = MagicMock(spec=AlertRuleServiceInterface)
@@ -763,8 +764,8 @@ class TestBiometricAlertsEndpoints:
             ],
             "logical_operator": "and",
             "is_active": True,
-            "created_at": datetime.now(UTC).isoformat(),
-            "updated_at": datetime.now(UTC).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
 
         rule_service_mock = MagicMock(spec=AlertRuleServiceInterface)
@@ -847,8 +848,8 @@ class TestBiometricAlertsEndpoints:
                 }
             ],
             "logical_operator": "or",
-            "created_at": datetime.now(UTC).isoformat(),
-            "updated_at": datetime.now(UTC).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
 
         rule_service_mock = MagicMock(spec=AlertRuleServiceInterface)
@@ -1207,8 +1208,8 @@ class TestBiometricAlertsEndpoints:
                 ],
                 "logical_operator": "and",
                 "is_active": True,
-                "created_at": datetime.now(UTC).isoformat(),
-                "updated_at": datetime.now(UTC).isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             },
             {
                 "id": str(rule_id2),
@@ -1226,8 +1227,8 @@ class TestBiometricAlertsEndpoints:
                 ],
                 "logical_operator": "and",
                 "is_active": True,
-                "created_at": datetime.now(UTC).isoformat(),
-                "updated_at": datetime.now(UTC).isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             },
         ]
 
