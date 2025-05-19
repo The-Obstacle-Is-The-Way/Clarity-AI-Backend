@@ -29,7 +29,7 @@ from app.domain.exceptions.auth_exceptions import (
     TokenBlacklistedException,
     TokenExpiredException,
 )
-from app.domain.interfaces.token_repository import ITokenRepository
+from app.core.interfaces.repositories.token_repository_interface import ITokenRepository
 
 
 class TokenPayload(BaseModel):
