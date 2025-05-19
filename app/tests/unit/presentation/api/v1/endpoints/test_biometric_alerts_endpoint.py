@@ -507,7 +507,7 @@ class TestBiometricAlertsEndpoints:
             "template_id": "high_heart_rate",
             "patient_id": str(sample_patient_id),
             "customization": {
-                "threshold_value": 110.0,
+                "threshold_value": {"heart_rate": 110.0},
                 "priority": "high"
             }
         }
@@ -518,6 +518,10 @@ class TestBiometricAlertsEndpoints:
             headers=headers,
             json=payload
         )
+        
+        # Print response details for debugging
+        print(f"Response status: {response.status_code}")
+        print(f"Response body: {response.text}")
         
         # Assert response
         assert response.status_code == 201

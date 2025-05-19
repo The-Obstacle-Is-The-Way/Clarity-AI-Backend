@@ -42,7 +42,6 @@ from app.presentation.api.v1.schemas.biometric_alert_rules import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/biometric-alert-rules",
     tags=["Biometric Alert Rules"],
 )
 
