@@ -18,6 +18,7 @@ from app.core.config import Settings
 from app.core.interfaces.repositories.token_blacklist_repository_interface import (
     ITokenBlacklistRepository,
 )
+from app.core.interfaces.repositories.token_repository_interface import ITokenRepository
 from app.core.interfaces.services.audit_logger_interface import (
     AuditEventType,
     AuditSeverity,
@@ -29,7 +30,6 @@ from app.domain.exceptions.auth_exceptions import (
     TokenBlacklistedException,
     TokenExpiredException,
 )
-from app.core.interfaces.repositories.token_repository_interface import ITokenRepository
 
 
 class TokenPayload(BaseModel):
