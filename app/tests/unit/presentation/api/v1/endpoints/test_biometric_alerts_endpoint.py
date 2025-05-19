@@ -475,10 +475,13 @@ class TestBiometricAlertsEndpoints:
         # Create mock service
         alert_template_service_mock = AsyncMock(spec=AlertRuleTemplateServiceInterface)
         
+        # Create template ID as UUID
+        template_id = uuid.uuid4()
+        
         # Create a sample rule result
         rule_result = {
             "id": str(uuid.uuid4()),
-            "template_id": "high_heart_rate",
+            "template_id": str(template_id),
             "name": "High Heart Rate Alert",
             "description": "Detects abnormally high heart rate",
             "patient_id": str(sample_patient_id),
@@ -504,7 +507,7 @@ class TestBiometricAlertsEndpoints:
         # Prepare request
         headers = get_valid_provider_auth_headers
         payload = {
-            "template_id": "high_heart_rate",
+            "template_id": str(template_id),
             "patient_id": str(sample_patient_id),
             "customization": {
                 "threshold_value": {"heart_rate": 110.0},
@@ -516,7 +519,7 @@ class TestBiometricAlertsEndpoints:
         response = await client.post(
             "/api/v1/biometric-alert-rules/from-template",
             headers=headers,
-            json=payload
+            json={"template_data": payload}
         )
         
         # Print response details for debugging
@@ -531,7 +534,7 @@ class TestBiometricAlertsEndpoints:
         
         # Verify service was called with correct arguments
         alert_template_service_mock.apply_template.assert_called_once_with(
-            template_id="high_heart_rate",
+            template_id=str(template_id),
             patient_id=sample_patient_id,
             customization=payload["customization"]
         )
