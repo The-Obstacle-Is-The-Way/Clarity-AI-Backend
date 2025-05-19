@@ -58,6 +58,29 @@ class ValidationError(XGBoostServiceError):
         )
 
 
+class InvalidInputError(XGBoostServiceError):
+    """Exception raised when the input data is invalid for processing."""
+    
+    def __init__(self, message: str, field: str | None = None, value: Any = None, reason: str | None = None, **kwargs):
+        """
+        Initialize an invalid input error.
+        
+        Args:
+            message: Error message
+            field: Name of the field with invalid input
+            value: The invalid value
+            reason: Reason why the input is invalid
+            **kwargs: Additional error context
+        """
+        super().__init__(
+            message,
+            field=field,
+            value=value,
+            reason=reason,
+            **kwargs
+        )
+
+
 class DataPrivacyError(XGBoostServiceError):
     """Exception raised when PHI is detected in data."""
     
