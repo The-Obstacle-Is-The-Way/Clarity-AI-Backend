@@ -9,7 +9,6 @@ that prevents SQLAlchemy conflicts during testing.
 """
 
 import uuid
-from typing import Any, Dict, List, Optional
 
 from sqlalchemy import (
     JSON,

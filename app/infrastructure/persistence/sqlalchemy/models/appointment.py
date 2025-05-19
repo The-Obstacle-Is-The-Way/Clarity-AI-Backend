@@ -7,7 +7,7 @@ mapping the domain entity to the database schema.
 
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import UUID as SQLAlchemyUUID
 from sqlalchemy import (
@@ -27,6 +27,9 @@ from app.infrastructure.persistence.sqlalchemy.models.base import (
     Base,
     TimestampMixin,
 )
+
+if TYPE_CHECKING:
+    from app.domain.entities.appointment import Appointment
 
 
 class AppointmentModel(Base, TimestampMixin, AuditMixin):
@@ -102,7 +105,7 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
             location=appointment.location,
         )
 
-    def to_domain(self):
+    def to_domain(self) -> "Appointment":
         """
         Convert SQLAlchemy model instance to domain entity.
 

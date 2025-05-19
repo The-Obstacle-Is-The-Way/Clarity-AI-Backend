@@ -8,7 +8,6 @@ biometric rules in the Novamind platform.
 
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
 
 from sqlalchemy import (
     JSON,

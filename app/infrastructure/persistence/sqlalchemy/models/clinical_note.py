@@ -6,7 +6,7 @@ mapping the domain entity to the database schema.
 """
 
 import uuid
-from typing import Any, Dict, List, Optional, Set
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     JSON,
@@ -25,6 +25,9 @@ from app.infrastructure.persistence.sqlalchemy.models.base import (
     Base,
     TimestampMixin,
 )
+
+if TYPE_CHECKING:
+    from app.domain.entities.clinical_note import ClinicalNote, NoteType
 
 
 class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
@@ -100,7 +103,7 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
             parent_note_id=clinical_note.parent_note_id,
         )
 
-    def to_domain(self):
+    def to_domain(self) -> "ClinicalNote":
         """
         Convert SQLAlchemy model instance to domain entity.
 
