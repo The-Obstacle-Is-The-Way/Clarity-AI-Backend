@@ -234,7 +234,7 @@ async def create_alert_rule_from_template(
             customization=customization
         )
         
-        # Either convert or construct response
+        # Handle the response based on its type
         if isinstance(rule_data, dict):
             # Create response from dict
             return AlertRuleResponse(**rule_data)
@@ -288,8 +288,13 @@ async def update_alert_rule(
                 detail="Alert rule not found"
             )
             
-        # Convert domain entity to response schema
-        return AlertRuleResponse.from_entity(updated_rule)
+        # Check if the result is already a dictionary or an entity
+        if isinstance(updated_rule, dict):
+            # If it's already a dictionary, just use it directly with the AlertRuleResponse model
+            return AlertRuleResponse(**updated_rule)
+        else:
+            # If it's an entity, convert it using the from_entity method
+            return AlertRuleResponse.from_entity(updated_rule)
         
     except HTTPException:
         # Re-raise HTTP exceptions
@@ -389,8 +394,13 @@ async def update_rule_active_status(
                 detail="Internal server error"
             )
             
-        # Convert domain entity to response schema
-        return AlertRuleResponse.from_entity(updated_rule)
+        # Check if the result is already a dictionary or an entity
+        if isinstance(updated_rule, dict):
+            # If it's already a dictionary, just use it directly with the AlertRuleResponse model
+            return AlertRuleResponse(**updated_rule)
+        else:
+            # If it's an entity, convert it using the from_entity method
+            return AlertRuleResponse.from_entity(updated_rule)
         
     except HTTPException:
         # Re-raise HTTP exceptions
