@@ -10,7 +10,7 @@ import asyncio
 import logging
 import sys
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 
 # Import SQLAlchemy components
@@ -198,8 +198,8 @@ async def create_test_users(session: AsyncSession) -> None:
                 "is_verified": True,
                 "email_verified": True,
                 "role": "PATIENT",
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow(),
+                "created_at": datetime.now(UTC),
+                "updated_at": datetime.now(UTC),
             }
         )
     
@@ -224,8 +224,8 @@ async def create_test_users(session: AsyncSession) -> None:
                 "is_verified": True,
                 "email_verified": True,
                 "role": "CLINICIAN",
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow(),
+                "created_at": datetime.now(UTC),
+                "updated_at": datetime.now(UTC),
             }
         )
     
