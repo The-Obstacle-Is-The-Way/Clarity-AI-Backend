@@ -125,6 +125,25 @@ class AlertRuleWrapperRequest(BaseModel):
     )
 
 
+class TemplateConditionCreate(BaseModel):
+    """Model for template condition creation."""
+    metric_name: str = Field(..., description="Biometric metric name")
+    operator: str = Field(..., description="Operation (e.g., GREATER_THAN)")
+    threshold: float = Field(..., description="Threshold value")
+    unit: Optional[str] = Field(None, description="Unit of measurement")
+    duration_minutes: Optional[int] = Field(None, description="Duration in minutes")
+
+
+class AlertRuleTemplateCreate(BaseModel):
+    """Model for creating a new alert rule template."""
+    template_id: str = Field(..., description="Unique template identifier")
+    name: str = Field(..., description="Template name")
+    description: str = Field(..., description="Template description")
+    category: Optional[str] = Field(None, description="Template category")
+    conditions: List[TemplateConditionCreate] = Field(..., description="Template conditions", min_length=1)
+    priority: str = Field("MEDIUM", description="Default priority level")
+
+
 # ======== Response Models ========
 
 class RuleConditionResponse(RuleConditionBase):
