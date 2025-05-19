@@ -227,6 +227,25 @@ def _patch_test_module(mod: ModuleType) -> None:  # pragma: no cover – helper
 import pytest
 from unittest.mock import MagicMock, AsyncMock
 from datetime import datetime
+import asyncio
+
+
+# ---------------------------------------------------------------------------
+# "event_loop" - global fixture for asyncio tests to prevent redefinition warnings
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="function")
+def event_loop():
+    """
+    Yield a fresh event loop for each test case.
+    
+    This is a global fixture to prevent multiple redefinitions that cause
+    deprecation warnings from pytest-asyncio.
+    """
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    yield loop
+    loop.close()
 
 
 # ---------------------------------------------------------------------------
@@ -353,7 +372,7 @@ class _DigitalTwinsTestPatcher(importlib.abc.MetaPathFinder, importlib.abc.Loade
 
         assert (
             self._orig_loader is not None
-        ), "Original loader missing – unexpected import sequence."
+        ), "Original loader missing – unexpected import sequence."
 
         # Run the actual *test* module first so it initialises its globals &
         # fixture factories – any failure here is a genuine bug that should

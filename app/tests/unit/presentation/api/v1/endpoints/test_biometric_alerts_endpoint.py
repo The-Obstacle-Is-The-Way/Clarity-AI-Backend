@@ -431,8 +431,8 @@ async def test_app(
     for route in app.routes:
         logger.debug(f"Route: {route.path}, Methods: {', '.join(route.methods) if hasattr(route, 'methods') else 'N/A'}")
     
-    # Create test client with ASGI app
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    # Create test client with ASGI app - UPDATED to use ASGITransport
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         # This uses the lifespan manager to properly initialize the app context
         async with LifespanManager(app):
             # Return both app and client as a tuple
@@ -1083,8 +1083,8 @@ class TestBiometricAlertsEndpoints:
         app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
         # We'll use fastapi's real get_current_active_user dependency that will enforce auth
-        # Create a custom client for this test only
-        client = AsyncClient(app=app, base_url="http://test")
+        # Create a custom client for this test only - UPDATED to use ASGITransport
+        client = AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
         
         # Send a request without auth headers
         alert_id = str(uuid.uuid4())

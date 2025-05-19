@@ -74,6 +74,24 @@ class Address:
             "country": self.country
         }
     
+    def dict(self) -> dict:
+        """
+        Alias for to_dict() - for Pydantic v1 compatibility.
+        
+        Returns:
+            Dictionary representation of the address
+        """
+        return self.to_dict()
+        
+    def model_dump(self) -> dict:
+        """
+        Alias for to_dict() - for Pydantic v2 compatibility.
+        
+        Returns:
+            Dictionary representation of the address
+        """
+        return self.to_dict()
+    
     def __str__(self) -> str:
         """Get string representation."""
         return f"{self.street}, {self.city}, {self.state} {self.zip_code}"

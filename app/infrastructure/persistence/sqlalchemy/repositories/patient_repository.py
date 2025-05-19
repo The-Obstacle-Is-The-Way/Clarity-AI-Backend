@@ -323,7 +323,7 @@ class PatientRepository:
         if hasattr(patient_entity, 'model_dump'):
             # Pydantic v2 approach
             try:
-                domain_dict = patient_entity.model_dump(exclude_none=True)
+                domain_dict = patient_entity.model_dump(exclude_unset=False, exclude_none=True)
             except (TypeError, AttributeError):
                 try:
                     domain_dict = patient_entity.model_dump()
@@ -336,7 +336,7 @@ class PatientRepository:
                 domain_dict = patient_entity.dict(exclude_unset=False, exclude_none=True)
             except (TypeError, AttributeError):
                 try:
-                    domain_dict = patient_entity.dict()
+                    domain_dict = patient_entity.model_dump()
                 except (TypeError, AttributeError):
                     self.logger.warning("Failed to use dict() method")
         

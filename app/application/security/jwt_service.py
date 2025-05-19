@@ -248,7 +248,7 @@ class JWTService:
                 raise TokenExpiredException(f"{token_type.capitalize()} token has expired.")
 
             # Return payload
-            return token_payload.dict()
+            return token_payload.model_dump()
             
         except jwt.ExpiredSignatureError as e:
             self.audit_logger.log_security_event(

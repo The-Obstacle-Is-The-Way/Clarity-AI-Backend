@@ -168,7 +168,7 @@ async def create_alert_rule(
     
     try:
         # Convert schema to domain input
-        rule_dict = rule_data.dict(exclude_unset=True)
+        rule_dict = rule_data.model_dump(exclude_unset=True)
         rule_dict["provider_id"] = current_user.id
         
         # Create rule using service
@@ -208,7 +208,7 @@ async def create_alert_rule_from_template(
     
     try:
         # Get customization from request
-        customization = template_data.customization.dict(exclude_unset=True)
+        customization = template_data.customization.model_dump(exclude_unset=True)
         if current_user and current_user.id:
             customization["provider_id"] = current_user.id
         
@@ -261,7 +261,7 @@ async def update_alert_rule(
     
     try:
         # Convert schema to domain input
-        update_dict = update_data.dict(exclude_unset=True)
+        update_dict = update_data.model_dump(exclude_unset=True)
         
         # Update rule using service
         updated_rule = await rule_service.update_rule(rule_id, update_dict)
