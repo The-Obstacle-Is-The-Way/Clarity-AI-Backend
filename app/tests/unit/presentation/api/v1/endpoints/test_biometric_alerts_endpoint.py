@@ -799,9 +799,10 @@ class TestBiometricAlertsEndpoints:
         non_existent_alert_id = str(uuid.uuid4())
         
         # Use the actual enum object for status, not its string value
+        # Ensure all required fields are provided and valid
         update_payload = {
-            "status": AlertStatus.ACKNOWLEDGED,  # Send the enum object itself
-            "resolution_notes": None  
+            "status": AlertStatus.ACKNOWLEDGED  # Send the enum object itself
+            # resolution_notes is optional, no need to send it explicitly as None
         }
         
         response = await client.patch(
@@ -1034,7 +1035,7 @@ class TestBiometricAlertsEndpoints:
         # Route is now implemented, no need to skip
         alert_id = str(uuid.uuid4())
         
-        # Empty payload should be rejected
+        # Empty payload should be rejected with a validation error
         update_payload = {}
         response = await client.patch(
             f"/api/v1/biometric-alerts/{alert_id}/status",
@@ -1042,10 +1043,10 @@ class TestBiometricAlertsEndpoints:
             headers=get_valid_provider_auth_headers
         )
         
-        # Should return 422 Unprocessable Entity for invalid payload
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        # Should return 422 Unprocessable Entity for invalid/missing required fields
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         
-        # Invalid status value should also be rejected
+        # Invalid status value should also be rejected with a validation error
         update_payload = {"status": "invalid_status"}
         response = await client.patch(
             f"/api/v1/biometric-alerts/{alert_id}/status",
@@ -1053,8 +1054,8 @@ class TestBiometricAlertsEndpoints:
             headers=get_valid_provider_auth_headers
         )
         
-        # Should return 422 Unprocessable Entity for invalid status value
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        # Should return 422 Unprocessable Entity for invalid enum value
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.asyncio
     async def test_trigger_alert_manually(
