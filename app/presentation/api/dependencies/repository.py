@@ -12,24 +12,29 @@ from app.core.interfaces.services.encryption_service_interface import (
     IEncryptionService,
 )
 from app.infrastructure.di.container import get_container
-from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
+from app.infrastructure.security.encryption.base_encryption_service import (
+    BaseEncryptionService,
+)
 
 # Re-export from database.py for backward compatibility
-from app.presentation.api.dependencies.database import DatabaseSessionDep, get_repository
+from app.presentation.api.dependencies.database import (
+    DatabaseSessionDep,
+    get_repository,
+)
 
 # Maintain backward compatibility with existing imports
 get_repository_dependency = get_repository
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def get_encryption_service() -> IEncryptionService:
     """
     Get the encryption service instance.
-    
+
     This dependency function provides access to the encryption service
     for API routes, ensuring HIPAA-compliant data protection.
-    
+
     Returns:
         An instance of the encryption service
     """
@@ -46,20 +51,22 @@ def get_encryption_service() -> IEncryptionService:
 def get_patient_repository(db_session: DatabaseSessionDep):
     """
     Get the patient repository instance.
-    
+
     This dependency function provides access to the patient repository
     for working with patient data in a HIPAA-compliant manner.
     Patient data is encrypted at rest and in transit.
-    
+
     Args:
         db_session: Database session dependency
-        
+
     Returns:
         An instance of the patient repository
     """
-    from app.core.interfaces.repositories.patient_repository_interface import IPatientRepository
+    from app.core.interfaces.repositories.patient_repository_interface import (
+        IPatientRepository,
+    )
     from app.infrastructure.repositories.patient_repository import PatientRepository
-    
+
     # Use container to get or create repository
     container = get_container()
     try:
@@ -67,7 +74,7 @@ def get_patient_repository(db_session: DatabaseSessionDep):
     except KeyError:
         # Get encryption service for HIPAA compliance
         encryption_service = get_encryption_service()
-        
+
         # Create repository with proper dependencies
         repo = PatientRepository(db_session, encryption_service)
         container.register(IPatientRepository, repo)

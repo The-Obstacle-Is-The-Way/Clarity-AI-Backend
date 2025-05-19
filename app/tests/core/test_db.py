@@ -17,8 +17,9 @@ from app.core.dependencies.database import Base, get_engine, get_session, init_d
 # Define TestModel at module level
 class TestModel(Base):
     """Test model for database tests."""
+
     __tablename__ = "test_models_temp"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = {"extend_existing": True}
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
 

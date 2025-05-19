@@ -14,7 +14,7 @@ from .digital_twin import DigitalTwin, DigitalTwinConfiguration, DigitalTwinStat
 from .neurotransmitter_model import (
     NeurotransmitterTwinModel,
     MentalStateModel,
-    MedicationResponseModel
+    MedicationResponseModel,
 )
 
 __all__ = [
@@ -27,5 +27,5 @@ __all__ = [
     "TemporalNeurotransmitterSequence",
     "NeurotransmitterTwinModel",
     "MentalStateModel",
-    "MedicationResponseModel"
-] 
+    "MedicationResponseModel",
+]

@@ -17,17 +17,19 @@ from pydantic import BaseModel
 from slowapi.util import get_remote_address
 
 # from app.config.settings import get_settings # Legacy import
-from app.core.config.settings import get_settings # Corrected import
+from app.core.config.settings import get_settings  # Corrected import
 
 settings = get_settings()
 
 logger = logging.getLogger(__name__)
+
 
 class RateLimitType(Enum):
     """
     Enumeration for different rate limit types/scopes.
     Used to select specific rate limit configurations.
     """
+
     DEFAULT = "default"
     LOGIN = "login"
     SENSITIVE = "sensitive"
@@ -38,17 +40,17 @@ class RateLimitType(Enum):
 class RateLimitConfig(BaseModel):
     """
     Configuration for rate limiting.
-    
+
     Attributes:
         requests: Maximum number of requests allowed in the window
         window_seconds: Time window in seconds
         block_seconds: Optional blocking period after exceeding limit
     """
-    
+
     requests: int
     window_seconds: int
     block_seconds: int | None = None
-    
+
     @property
     def requests_per_period(self) -> int:
         # Alias for compatibility with pipeline info
@@ -63,29 +65,31 @@ class RateLimitConfig(BaseModel):
 class RateLimiter(ABC):
     """
     Abstract base class for rate limiters.
-    
+
     This defines the interface that all rate limiter implementations must follow.
     """
-    
+
     @abstractmethod
-    def check_rate_limit(self, key: str, config: Any = None, user_id: str | None = None) -> Any:
+    def check_rate_limit(
+        self, key: str, config: Any = None, user_id: str | None = None
+    ) -> Any:
         """
         Check if a request should be rate limited.
-        
+
         Args:
             key: Identifier for the rate limit (e.g., IP address, user ID)
             config: Rate limit configuration
-            
+
         Returns:
             True if request is allowed, False if it should be rate limited
         """
         pass
-    
+
     @abstractmethod
     def reset_limits(self, key: str) -> None:
         """
         Reset rate limits for a specific key.
-        
+
         Args:
             key: Identifier to reset
         """
@@ -95,78 +99,76 @@ class RateLimiter(ABC):
 class InMemoryRateLimiter(RateLimiter):
     """
     In-memory implementation of rate limiting.
-    
+
     Uses local memory to track request counts and blocked status.
     Suitable for single-instance deployments.
     """
-    
+
     def __init__(self):
         """Initialize the in-memory rate limiter."""
         self._request_logs: dict[str, list[datetime]] = {}
         self._blocked_until: dict[str, datetime] = {}
-    
+
     def _clean_old_requests(self, key: str, window_seconds: int) -> None:
         """
         Remove expired requests from the logs.
-        
+
         Args:
             key: Identifier for the rate limit
             window_seconds: Time window in seconds
         """
         if key not in self._request_logs:
             return
-            
+
         now = datetime.now()
         cutoff = now - timedelta(seconds=window_seconds)
-        self._request_logs[key] = [
-            t for t in self._request_logs[key] if t >= cutoff
-        ]
-    
+        self._request_logs[key] = [t for t in self._request_logs[key] if t >= cutoff]
+
     def check_rate_limit(self, key: str, config: RateLimitConfig) -> bool:
         """
         Check if a request should be rate limited.
-        
+
         Args:
             key: Identifier for the rate limit (e.g., IP address, user ID)
             config: Rate limit configuration
-            
+
         Returns:
             True if request is allowed, False if it should be rate limited
         """
         now = datetime.now()
-        
+
         # Check if the key is blocked
         if key in self._blocked_until and self._blocked_until[key] > now:
             return False
-        
+
         # Clean up old requests
         self._clean_old_requests(key, config.window_seconds)
-        
+
         # Initialize request log if needed
         if key not in self._request_logs:
             self._request_logs[key] = []
-        
+
         # Check if over the limit
         if len(self._request_logs[key]) >= config.requests:
             # Block the key if block_seconds is set
             if config.block_seconds:
                 self._blocked_until[key] = now + timedelta(seconds=config.block_seconds)
             return False
-        
+
         # Add this request to the log
         self._request_logs[key].append(now)
         return True
-    
+
     def reset_limits(self, key: str) -> None:
         """
         Reset rate limits for a specific key.
-        
+
         Args:
             key: Identifier to reset
         """
         if key in self._request_logs:
             del self._request_logs[key]
-        
+
         if key in self._blocked_until:
             del self._blocked_until[key]
 
@@ -174,15 +176,15 @@ class InMemoryRateLimiter(RateLimiter):
 class RedisRateLimiter(RateLimiter):
     """
     Redis-based implementation of rate limiting.
-    
+
     Uses Redis sorted sets for distributed rate limiting across multiple instances.
     Suitable for production, multi-instance deployments.
     """
-    
+
     def __init__(self, redis_client: redis.Redis | None = None):
         """
         Initialize the Redis rate limiter.
-        
+
         Args:
             redis_client: Optional Redis client to use
         """
@@ -193,39 +195,41 @@ class RedisRateLimiter(RateLimiter):
             RateLimitType.DEFAULT: RateLimitConfig(requests=10, window_seconds=60),
             RateLimitType.LOGIN: RateLimitConfig(requests=10, window_seconds=60),
         }
-    
+
     def _get_counter_key(self, key: str) -> str:
         """
         Generate Redis key for request counter.
-        
+
         Args:
             key: Identifier for the rate limit
-            
+
         Returns:
             Redis key string
         """
         return f"ratelimit:counter:{key}"
-    
+
     def _get_blocked_key(self, key: str) -> str:
         """
         Generate Redis key for blocked status.
-        
+
         Args:
             key: Identifier for the rate limit
-            
+
         Returns:
             Redis key string
         """
         return f"ratelimit:blocked:{key}"
-    
-    def check_rate_limit(self, key: str, config: Any = None, user_id: str | None = None) -> Any:
+
+    def check_rate_limit(
+        self, key: str, config: Any = None, user_id: str | None = None
+    ) -> Any:
         """
         Check if a request should be rate limited.
-        
+
         Args:
             key: Identifier for the rate limit (e.g., IP address, user ID)
             config: Rate limit configuration
-            
+
         Returns:
             True if request is allowed, False if it should be rate limited
         """
@@ -236,7 +240,11 @@ class RedisRateLimiter(RateLimiter):
             return self._check_rate_limit_pipeline(key, config, user_id)
         # Config override or default config branch
         # Determine default config if not provided
-        cfg = config if isinstance(config, RateLimitConfig) else RateLimitConfig(requests=10, window_seconds=60)
+        cfg = (
+            config
+            if isinstance(config, RateLimitConfig)
+            else RateLimitConfig(requests=10, window_seconds=60)
+        )
         # If no Redis client, always allow
         if not self._redis:
             return True
@@ -246,7 +254,7 @@ class RedisRateLimiter(RateLimiter):
             return self._check_rate_limit_async(key, cfg)
         # Default to synchronous Redis client branch
         return self._check_rate_limit_sync(key, cfg)
-    
+
     def _check_rate_limit_sync(self, key: str, config: RateLimitConfig) -> bool:
         """
         Synchronous rate limit check using a blocking Redis client.
@@ -277,7 +285,7 @@ class RedisRateLimiter(RateLimiter):
         except redis.RedisError as e:
             logger.error(f"Redis error in rate limiter: {e}")
             return True
-    
+
     async def _check_rate_limit_async(self, key: str, config: RateLimitConfig) -> bool:
         """
         Asynchronous rate limit check using an async Redis client.
@@ -308,8 +316,10 @@ class RedisRateLimiter(RateLimiter):
         except redis.RedisError as e:
             logger.error(f"Redis error in rate limiter: {e}")
             return True
-    
-    async def _check_rate_limit_pipeline(self, identifier: str, limit_type: RateLimitType, user_id: str | None) -> tuple[bool, dict[str, Any]]:
+
+    async def _check_rate_limit_pipeline(
+        self, identifier: str, limit_type: RateLimitType, user_id: str | None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Advanced async pipeline-based rate limit check with user scoping.
         """
@@ -343,24 +353,24 @@ class RedisRateLimiter(RateLimiter):
             logger.error(f"Redis error in pipeline rate limiter: {e}")
             # Fail open
             return False, {}
-    
+
     def reset_limits(self, key: str) -> None:
         """
         Reset rate limits for a specific key.
-        
+
         Args:
             key: Identifier to reset
         """
         try:
             if not self._redis:
                 return
-                
+
             blocked_key = self._get_blocked_key(key)
             counter_key = self._get_counter_key(key)
-            
+
             # Delete both keys
             self._redis.delete(blocked_key, counter_key)
-            
+
         except redis.RedisError as e:
             logger.error(f"Redis error in reset_limits: {e}")
 
@@ -368,25 +378,29 @@ class RedisRateLimiter(RateLimiter):
 class RateLimiterFactory:
     """
     Factory for creating rate limiters.
-    
+
     This class uses the Factory Method pattern to create the appropriate
     rate limiter based on configuration settings.
     """
-    
+
     @staticmethod
-    def create_rate_limiter(limiter_type: str = None, redis_client: redis.Redis = None) -> RateLimiter:
+    def create_rate_limiter(
+        limiter_type: str = None, redis_client: redis.Redis = None
+    ) -> RateLimiter:
         """
         Create a rate limiter based on configuration or explicit parameters.
-        
+
         Args:
             limiter_type: Optional explicit limiter type to create ('redis' or 'memory')
             redis_client: Optional pre-configured Redis client to use
-            
+
         Returns:
             An appropriate RateLimiter implementation
         """
         # Use explicit type if provided (for testing)
-        if limiter_type == "redis" or (limiter_type is None and get_settings().USE_REDIS_RATE_LIMITER):
+        if limiter_type == "redis" or (
+            limiter_type is None and get_settings().USE_REDIS_RATE_LIMITER
+        ):
             try:
                 # Use provided client or create one
                 if redis_client is None:
@@ -397,16 +411,18 @@ class RateLimiterFactory:
                         password=app_settings.REDIS_PASSWORD,
                         db=app_settings.REDIS_DB,
                         socket_timeout=5,
-                        decode_responses=True
+                        decode_responses=True,
                     )
                     # Test the connection
                     redis_client.ping()
-                
+
                 logger.info("Using Redis-based rate limiter")
                 return RedisRateLimiter(redis_client)
             except Exception as e:
-                logger.warning(f"Failed to connect to Redis, falling back to in-memory rate limiter: {e}")
-        
+                logger.warning(
+                    f"Failed to connect to Redis, falling back to in-memory rate limiter: {e}"
+                )
+
         # Default to in-memory limiter
         logger.info("Using in-memory rate limiter")
         return InMemoryRateLimiter()

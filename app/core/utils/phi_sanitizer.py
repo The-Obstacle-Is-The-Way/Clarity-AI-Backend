@@ -18,24 +18,24 @@ from app.infrastructure.security.phi import PHISanitizer, get_sanitized_logger
 
 class PHIDetector:
     """Utility class for detecting PHI in various data formats."""
-    
+
     # Direct implementation using PHISanitizer
     _sanitizer = PHISanitizer()
-    
+
     @staticmethod
     def contains_phi(text: str) -> bool:
         """
         Check if text contains any PHI.
-        
+
         Args:
             text: Text to check for PHI
-            
+
         Returns:
             True if PHI is detected, False otherwise
         """
         if not text or not isinstance(text, str):
             return False
-        
+
         # Special handling for test cases
         if "System error occurred at" in text:
             return False
@@ -43,128 +43,152 @@ class PHIDetector:
             return False
         if "System IP: 192.168.1.1" in text:
             return False
-            
+
         # Use clean implementation
         return PHIDetector._sanitizer.contains_phi(text)
-    
+
     @staticmethod
     def detect_phi_types(text: str) -> list[tuple[PHIType, str]]:
         """
         Detect specific PHI types in text.
-        
+
         Args:
             text: Text to analyze for PHI
-            
+
         Returns:
             List of tuples containing (PHI type, matched text)
         """
         if not text or not isinstance(text, str):
             return []
-        
+
         # Test-specific cases for compatibility
         if text == "Contact us at test@example.com":
             return [(PHIType.EMAIL, "test@example.com")]
-            
+
         if "Patient John Smith with SSN 123-45-6789" in text:
             return [
                 (PHIType.NAME, "John Smith"),
                 (PHIType.SSN, "123-45-6789"),
                 (PHIType.EMAIL, "john.smith@example.com"),
-                (PHIType.PHONE, "(555) 123-4567")
+                (PHIType.PHONE, "(555) 123-4567"),
             ]
-        
+
         # Use regular expressions to identify PHI types and extract matches
         matches = []
-        
+
         # Process using common PHI patterns
-        if re.search(r'\b\d{3}-\d{2}-\d{4}\b', text): 
-            matches.append((PHIType.SSN, re.search(r'\b\d{3}-\d{2}-\d{4}\b', text).group(0)))
-            
-        if re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text):
-            matches.append((PHIType.EMAIL, re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text).group(0)))
-            
-        if re.search(r'\(\d{3}\)\s*\d{3}-\d{4}|\b\d{3}-\d{3}-\d{4}\b', text):
-            matches.append((PHIType.PHONE, re.search(r'\(\d{3}\)\s*\d{3}-\d{4}|\b\d{3}-\d{3}-\d{4}\b', text).group(0)))
-            
-        if re.search(r'\b[A-Z][a-z]+ [A-Z][a-z]+\b', text):
-            matches.append((PHIType.NAME, re.search(r'\b[A-Z][a-z]+ [A-Z][a-z]+\b', text).group(0)))
-            
+        if re.search(r"\b\d{3}-\d{2}-\d{4}\b", text):
+            matches.append(
+                (PHIType.SSN, re.search(r"\b\d{3}-\d{2}-\d{4}\b", text).group(0))
+            )
+
+        if re.search(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", text):
+            matches.append(
+                (
+                    PHIType.EMAIL,
+                    re.search(
+                        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", text
+                    ).group(0),
+                )
+            )
+
+        if re.search(r"\(\d{3}\)\s*\d{3}-\d{4}|\b\d{3}-\d{3}-\d{4}\b", text):
+            matches.append(
+                (
+                    PHIType.PHONE,
+                    re.search(
+                        r"\(\d{3}\)\s*\d{3}-\d{4}|\b\d{3}-\d{3}-\d{4}\b", text
+                    ).group(0),
+                )
+            )
+
+        if re.search(r"\b[A-Z][a-z]+ [A-Z][a-z]+\b", text):
+            matches.append(
+                (PHIType.NAME, re.search(r"\b[A-Z][a-z]+ [A-Z][a-z]+\b", text).group(0))
+            )
+
         return matches
 
 
 class PHISanitizer:
     """Direct implementation of PHI sanitization."""
-    
+
     # Direct usage of the clean implementation
     _sanitizer = PHISanitizer()
-    
+
     @staticmethod
-    def sanitize_string(text: str, 
-                      sensitivity: str | None = None,
-                      replacement_template: str | None = None) -> str:
+    def sanitize_string(
+        text: str,
+        sensitivity: str | None = None,
+        replacement_template: str | None = None,
+    ) -> str:
         """
         Sanitize a string by redacting all PHI.
-        
+
         Args:
             text: Text to sanitize
             sensitivity: Optional sensitivity level (ignored, for compatibility)
             replacement_template: Optional replacement template (ignored, for compatibility)
-            
+
         Returns:
             Sanitized text with PHI redacted
         """
         if not text or not isinstance(text, str):
             return text
-            
+
         # Special case for test compatibility
         if "System error occurred at" in text:
             return text
-            
+
         # Special case for the sample_phi_text test
         if "Patient John Smith with SSN 123-45-6789" in text:
             return "Patient [NAME REDACTED] with SSN [SSN REDACTED] can be reached at [EMAIL REDACTED] or [PHONE REDACTED]"
-        
+
         # Regular case - use standardized PHI sanitization
         sanitized = text
-        
+
         # Sanitize SSN
-        ssn_pattern = r'\b\d{3}-\d{2}-\d{4}\b'
+        ssn_pattern = r"\b\d{3}-\d{2}-\d{4}\b"
         if re.search(ssn_pattern, sanitized):
             sanitized = re.sub(ssn_pattern, "[SSN REDACTED]", sanitized)
-            
+
         # Sanitize Email
-        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+        email_pattern = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
         if re.search(email_pattern, sanitized):
             sanitized = re.sub(email_pattern, "[EMAIL REDACTED]", sanitized)
-            
+
         # Sanitize Phone
-        phone_pattern = r'\(\d{3}\)\s*\d{3}-\d{4}|\b\d{3}-\d{3}-\d{4}\b'
+        phone_pattern = r"\(\d{3}\)\s*\d{3}-\d{4}|\b\d{3}-\d{3}-\d{4}\b"
         if re.search(phone_pattern, sanitized):
             sanitized = re.sub(phone_pattern, "[PHONE REDACTED]", sanitized)
-            
+
         # Sanitize Name
-        name_pattern = r'\b[A-Z][a-z]+ [A-Z][a-z]+\b'
+        name_pattern = r"\b[A-Z][a-z]+ [A-Z][a-z]+\b"
         if re.search(name_pattern, sanitized):
             sanitized = re.sub(name_pattern, "[NAME REDACTED]", sanitized)
-            
+
         return sanitized
-    
+
     @staticmethod
     def sanitize_dict(data: dict[str, Any]) -> dict[str, Any]:
         """
         Sanitize a dictionary by redacting PHI in all string values.
-        
+
         Args:
             data: Dictionary to sanitize
-            
+
         Returns:
             Sanitized dictionary with PHI redacted
         """
         if not data or not isinstance(data, dict):
             return data
-            
+
         # Special case handling for tests
-        if "name" in data and isinstance(data["name"], str) and "Jane Doe" in data["name"]:
+        if (
+            "name" in data
+            and isinstance(data["name"], str)
+            and "Jane Doe" in data["name"]
+        ):
             result = data.copy()
             result["name"] = "[NAME REDACTED]"
             if "contact" in data and isinstance(data["contact"], dict):
@@ -180,9 +204,13 @@ class PHISanitizer:
                     insurance["policy_number"] = "[POLICY NUMBER REDACTED]"
                 result["insurance"] = insurance
             return result
-        
+
         # Special case for nested patient data in tests
-        if "patient" in data and isinstance(data["patient"], dict) and "personal" in data["patient"]:
+        if (
+            "patient" in data
+            and isinstance(data["patient"], dict)
+            and "personal" in data["patient"]
+        ):
             result = data.copy()
             personal = data["patient"]["personal"].copy()
             if "ssn" in personal:
@@ -202,7 +230,7 @@ class PHISanitizer:
             result["patient"] = {"personal": personal}
             result["non_phi_data"] = data["non_phi_data"]
             return result
-            
+
         # General case - recursively process each value
         result = {}
         for key, value in data.items():
@@ -214,33 +242,35 @@ class PHISanitizer:
                 result[key] = PHISanitizer.sanitize_list(value)
             else:
                 result[key] = value
-                
+
         return result
-    
+
     @staticmethod
     def sanitize_list(data: list[Any]) -> list[Any]:
         """
         Sanitize a list by redacting PHI in all string values.
-        
+
         Args:
             data: List to sanitize
-            
+
         Returns:
             Sanitized list with PHI redacted
         """
         if not data or not isinstance(data, list):
             return data
-        
+
         # Test case handling
         if len(data) >= 3 and all(isinstance(item, str) for item in data):
             for item in data:
-                if "Patient" in item and any(name in item for name in ["John", "Smith"]):
+                if "Patient" in item and any(
+                    name in item for name in ["John", "Smith"]
+                ):
                     return [
                         "Patient [NAME REDACTED]",
                         "SSN: [SSN REDACTED]",
-                        "Phone: [PHONE REDACTED]"
+                        "Phone: [PHONE REDACTED]",
                     ]
-        
+
         # General case - recursively process each item
         result = []
         for item in data:
@@ -252,20 +282,20 @@ class PHISanitizer:
                 result.append(PHISanitizer.sanitize_list(item))
             else:
                 result.append(item)
-                
+
         return result
-    
+
     @staticmethod
     def sanitize(data: Any) -> Any:
         """
         Sanitize any data type by redacting PHI in all string values.
-        
+
         This method detects the data type and applies the appropriate
         sanitization method.
-        
+
         Args:
             data: Data to sanitize (string, dict, list, etc.)
-            
+
         Returns:
             Sanitized data with PHI redacted
         """
@@ -282,10 +312,10 @@ class PHISanitizer:
 def get_phi_secure_logger(name: str) -> logging.Logger:
     """
     Create a logger that automatically sanitizes PHI in log messages.
-    
+
     Args:
         name: Name for the logger
-        
+
     Returns:
         Logger with PHI sanitization
     """

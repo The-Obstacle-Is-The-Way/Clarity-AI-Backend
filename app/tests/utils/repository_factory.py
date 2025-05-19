@@ -16,10 +16,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import interfaces first (dependency layers)
 from app.core.interfaces.repositories.base import IRepository
-from app.core.interfaces.repositories.biometric_alert_repository import IBiometricAlertRepository
-from app.core.interfaces.repositories.biometric_rule_repository import IBiometricRuleRepository
-from app.core.interfaces.repositories.biometric_twin_repository import IBiometricTwinRepository
-from app.core.interfaces.repositories.digital_twin_repository import IDigitalTwinRepository
+from app.core.interfaces.repositories.biometric_alert_repository import (
+    IBiometricAlertRepository,
+)
+from app.core.interfaces.repositories.biometric_rule_repository import (
+    IBiometricRuleRepository,
+)
+from app.core.interfaces.repositories.biometric_twin_repository import (
+    IBiometricTwinRepository,
+)
+from app.core.interfaces.repositories.digital_twin_repository import (
+    IDigitalTwinRepository,
+)
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.unit_of_work import IUnitOfWork
@@ -34,14 +42,15 @@ from app.domain.entities.user import User
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')  # Generic type for entities
-RepoInterface = TypeVar('RepoInterface', bound=IRepository)
-MockRepoImpl = TypeVar('MockRepoImpl', bound='MockRepository')
+T = TypeVar("T")  # Generic type for entities
+RepoInterface = TypeVar("RepoInterface", bound=IRepository)
+MockRepoImpl = TypeVar("MockRepoImpl", bound="MockRepository")
 
 
 # Base Mock Repository
 class MockRepository(Generic[T]):
     """Generic base class for mock repositories."""
+
     def __init__(self, session: AsyncSession | None = None):
         self._session = session or AsyncMock(spec=AsyncSession)
         self._setup_mocks()
@@ -61,6 +70,7 @@ class MockRepository(Generic[T]):
 # Mock Implementations
 class MockUserRepository(MockRepository[User], IUserRepository):
     """Mock implementation of UserRepository for testing."""
+
     def __init__(self, session: AsyncSession | None = None):
         super().__init__(session)
         # Add specific mock methods for UserRepository if needed
@@ -70,6 +80,7 @@ class MockUserRepository(MockRepository[User], IUserRepository):
 
 class MockPatientRepository(MockRepository[Patient], IPatientRepository):
     """Mock implementation of PatientRepository for testing."""
+
     def __init__(self, session: AsyncSession | None = None):
         super().__init__(session)
         # Add specific mock methods if needed
@@ -78,22 +89,29 @@ class MockPatientRepository(MockRepository[Patient], IPatientRepository):
 
 class MockDigitalTwinRepository(MockRepository[DigitalTwin], IDigitalTwinRepository):
     """Mock implementation of DigitalTwinRepository for testing."""
+
     def __init__(self, session: AsyncSession | None = None):
         super().__init__(session)
         # Add specific mock methods if needed
         self.get_by_patient_id = AsyncMock(return_value=None)
 
 
-class MockBiometricRuleRepository(MockRepository[BiometricRule], IBiometricRuleRepository):
+class MockBiometricRuleRepository(
+    MockRepository[BiometricRule], IBiometricRuleRepository
+):
     """Mock implementation of BiometricRuleRepository for testing."""
+
     def __init__(self, session: AsyncSession | None = None):
         super().__init__(session)
         # Add specific mock methods if needed
         self.get_active_rules = AsyncMock(return_value=[])
 
 
-class MockBiometricAlertRepository(MockRepository[BiometricAlert], IBiometricAlertRepository):
+class MockBiometricAlertRepository(
+    MockRepository[BiometricAlert], IBiometricAlertRepository
+):
     """Mock implementation of BiometricAlertRepository for testing."""
+
     def __init__(self, session: AsyncSession | None = None):
         super().__init__(session)
         # Add specific mock methods if needed
@@ -101,8 +119,11 @@ class MockBiometricAlertRepository(MockRepository[BiometricAlert], IBiometricAle
         self.acknowledge = AsyncMock(return_value=True)
 
 
-class MockBiometricTwinRepository(MockRepository[BiometricTwinState], IBiometricTwinRepository):
+class MockBiometricTwinRepository(
+    MockRepository[BiometricTwinState], IBiometricTwinRepository
+):
     """Mock implementation of BiometricTwinRepository for testing."""
+
     def __init__(self, session: AsyncSession | None = None):
         super().__init__(session)
         # Add specific mock methods if needed
@@ -131,7 +152,9 @@ class RepositoryType(Enum):
 
 
 # Factory Function (Simplified - consider if factory class is better)
-def create_repository(repo_type: type[RepoInterface], session: AsyncSession | None = None) -> RepoInterface:
+def create_repository(
+    repo_type: type[RepoInterface], session: AsyncSession | None = None
+) -> RepoInterface:
     """
     Creates a mock repository instance based on the provided interface type.
 
@@ -155,7 +178,7 @@ def create_repository(repo_type: type[RepoInterface], session: AsyncSession | No
         f"Creating mock repository for {repo_type.__name__} using {mock_class.__name__}"
     )
     # Ignore type checker error for dynamic creation
-    return mock_class(session) # type: ignore[return-value]
+    return mock_class(session)  # type: ignore[return-value]
 
 
 # Repository Factory Class (More structured approach)
@@ -188,12 +211,13 @@ class RepositoryFactory:
             f"for {repo_interface.__name__}"
         )
         # Instantiate the mock repository with the session
-        return mock_class(self._session) # type: ignore[return-value]
+        return mock_class(self._session)  # type: ignore[return-value]
 
 
 # Mock Unit of Work
 class MockUnitOfWork(IUnitOfWork):
     """Mock implementation of the Unit of Work pattern for testing."""
+
     def __init__(self, session: AsyncSession):
         self.session = session
         self.committed = False
@@ -206,13 +230,18 @@ class MockUnitOfWork(IUnitOfWork):
         self.biometric_twins = MockBiometricTwinRepository(session)
         logger.debug("MockUnitOfWork initialized with mock repositories.")
 
-    async def __aenter__(self) -> 'MockUnitOfWork':
+    async def __aenter__(self) -> "MockUnitOfWork":
         self.committed = False
         self.rolled_back = False
         logger.debug("MockUnitOfWork entered context.")
         return self
 
-    async def __aexit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: types.TracebackType | None) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         if exc_type:
             await self.rollback()
             logger.warning(

@@ -11,18 +11,15 @@ from app.domain.exceptions.base_exceptions import (
     AuthorizationError,
     ConfigurationError,
     IntegrationError,
-    BusinessRuleError
+    BusinessRuleError,
 )
 
-from app.domain.exceptions.data_exceptions import (
-    DataIntegrityError,
-    DataNotFoundError
-)
+from app.domain.exceptions.data_exceptions import DataIntegrityError, DataNotFoundError
 
 from app.domain.exceptions.persistence_exceptions import (
     EntityNotFoundError,
     PersistenceError,
-    RepositoryError
+    RepositoryError,
 )
 
 from app.domain.exceptions.token_exceptions import (
@@ -87,16 +84,13 @@ __all__ = [
     "ConfigurationError",
     "IntegrationError",
     "BusinessRuleError",
-    
     # Persistence exceptions
     "EntityNotFoundError",
     "PersistenceError",
     "RepositoryError",
-    
     # Data exceptions
     "DataIntegrityError",
     "DataNotFoundError",
-    
     # Token exceptions
     "TokenException",
     "InvalidTokenException",
@@ -107,7 +101,6 @@ __all__ = [
     "InvalidTokenError",
     "TokenExpiredError",
     "MissingTokenError",
-    
     # Auth exceptions
     "AuthenticationException",
     "AuthorizationException",
@@ -120,7 +113,6 @@ __all__ = [
     "MaxSessionsExceededException",
     "UserNotFoundException",
     "UserAlreadyExistsException",
-    
     # Appointment exceptions
     "InvalidAppointmentStateError",
     "InvalidAppointmentTimeError",
@@ -128,7 +120,6 @@ __all__ = [
     "AppointmentNotFoundError",
     "AppointmentCancellationError",
     "AppointmentReschedulingError",
-    
     # Security exceptions
     "SecurityError",
     "PHIAccessError",
@@ -139,7 +130,6 @@ __all__ = [
     "TooManyAttemptsError",
     "InvalidSessionError",
     "SessionExpiredError",
-    
     # Backward compatibility
     "DomainException",
     "DomainError",

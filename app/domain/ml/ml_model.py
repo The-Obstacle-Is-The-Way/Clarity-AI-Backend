@@ -11,6 +11,7 @@ from uuid import UUID
 
 class ModelType(Enum):
     """Enumeration of supported machine learning model types."""
+
     XGBOOST = "xgboost"
     LLM = "llm"
     TRANSFORMER = "transformer"
@@ -26,11 +27,12 @@ class ModelType(Enum):
 @dataclass
 class MLModel:
     """Represents metadata and configuration for a machine learning model."""
+
     # Non-default fields first
     name: str
     version: str
     model_type: ModelType
-    
+
     # Fields with defaults
     model_id: UUID = field(default_factory=uuid.uuid4)
     description: str | None = None
@@ -39,7 +41,7 @@ class MLModel:
     metrics: dict[str, float] = field(default_factory=dict)  # Performance metrics
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: dict[str, Any] = field(default_factory=dict) # Other metadata
+    metadata: dict[str, Any] = field(default_factory=dict)  # Other metadata
 
     def __post_init__(self):
         if not self.name:

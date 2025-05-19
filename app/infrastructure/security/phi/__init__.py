@@ -14,7 +14,7 @@ from .sanitizer import (
     PHISafeLogger,
     get_sanitizer,
     get_sanitized_logger,
-    RedactionStrategy
+    RedactionStrategy,
 )
 
 # Middleware for API protection
@@ -24,6 +24,7 @@ from .middleware import PHIMiddleware, add_phi_middleware, get_phi_middleware
 # PHI types for categorization
 class PHIType(str, Enum):
     """Standard PHI types for categorization."""
+
     SSN = "SSN"
     NAME = "NAME"
     DOB = "DOB"
@@ -41,6 +42,7 @@ class PHIType(str, Enum):
 # Create global sanitizer instance for convenience functions
 _sanitizer = get_sanitizer()
 
+
 # Re-export commonly used functions for convenience
 def contains_phi(text: str) -> bool:
     """Check if text contains PHI."""
@@ -48,6 +50,7 @@ def contains_phi(text: str) -> bool:
         return False
     sanitized = _sanitizer.sanitize_string(text)
     return sanitized != text
+
 
 def sanitize_phi(data: any) -> any:
     """Sanitize PHI in various data formats."""
@@ -70,21 +73,18 @@ def sanitize_phi(data: any) -> any:
 
 __all__ = [
     # Core components
-    'PHISanitizer',
-    'PHISafeLogger',
-    'RedactionStrategy',
-    
+    "PHISanitizer",
+    "PHISafeLogger",
+    "RedactionStrategy",
     # Convenience functions
-    'contains_phi',
-    'sanitize_phi',
-    'get_sanitizer',
-    'get_sanitized_logger',
-    
+    "contains_phi",
+    "sanitize_phi",
+    "get_sanitizer",
+    "get_sanitized_logger",
     # Middleware components
-    'PHIMiddleware',
-    'add_phi_middleware',
-    'get_phi_middleware',
-    
+    "PHIMiddleware",
+    "add_phi_middleware",
+    "get_phi_middleware",
     # Types
-    'PHIType',
+    "PHIType",
 ]

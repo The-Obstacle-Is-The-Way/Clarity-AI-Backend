@@ -10,4 +10,4 @@ The main components include:
 - Authentication: Tools for validating authentication mechanisms
 """
 
-__version__ = "1.0.0" 
+__version__ = "1.0.0"

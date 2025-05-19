@@ -9,27 +9,34 @@ import asyncio
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout
 
-pytest.skip("Skipping symptom forecasting tests (torch unsupported in this environment)", allow_module_level=True)
+pytest.skip(
+    "Skipping symptom forecasting tests (torch unsupported in this environment)",
+    allow_module_level=True,
+)
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import numpy as np
 
-from app.infrastructure.ml.symptom_forecasting.model_service import SymptomForecastingService
+from app.infrastructure.ml.symptom_forecasting.model_service import (
+    SymptomForecastingService,
+)
 
 
 @pytest.fixture
 def mock_transformer_model():
     """Create a mock transformer model."""
     model = AsyncMock()
-    model.predict = AsyncMock(return_value={
-        "values": np.array([[5, 4, 3, 4, 5], [3, 3, 2, 2, 3]]),
-        "intervals": {
-            "lower": np.array([[4, 3, 2, 3, 4], [2, 2, 1, 1, 2]]),
-            "upper": np.array([[6, 5, 4, 5, 6], [4, 4, 3, 3, 4]]),
-        },
-        "model_type": "transformer",
-    })
+    model.predict = AsyncMock(
+        return_value={
+            "values": np.array([[5, 4, 3, 4, 5], [3, 3, 2, 2, 3]]),
+            "intervals": {
+                "lower": np.array([[4, 3, 2, 3, 4], [2, 2, 1, 1, 2]]),
+                "upper": np.array([[6, 5, 4, 5, 6], [4, 4, 3, 3, 4]]),
+            },
+            "model_type": "transformer",
+        }
+    )
     return model
 
 
@@ -37,17 +44,19 @@ def mock_transformer_model():
 def mock_xgboost_model():
     """Create a mock XGBoost model."""
     model = AsyncMock()
-    model.predict = AsyncMock(return_value={
-        "values": np.array([[4, 5, 3, 4, 6], [2, 3, 2, 3, 4]]),
-        "feature_importance": {
-            "anxiety_history": 0.3,
-            "depression_history": 0.2,
-            "sleep_quality": 0.15,
-            "medication_adherence": 0.1,
-            "social_activity": 0.05,
-        },
-        "model_type": "xgboost",
-    })
+    model.predict = AsyncMock(
+        return_value={
+            "values": np.array([[4, 5, 3, 4, 6], [2, 3, 2, 3, 4]]),
+            "feature_importance": {
+                "anxiety_history": 0.3,
+                "depression_history": 0.2,
+                "sleep_quality": 0.15,
+                "medication_adherence": 0.1,
+                "social_activity": 0.05,
+            },
+            "model_type": "xgboost",
+        }
+    )
     return model
 
 
@@ -56,10 +65,10 @@ def forecasting_service(mock_transformer_model, mock_xgboost_model):
     """Create a Symptom Forecasting Service with mock models."""
     with patch(
         "app.infrastructure.ml.symptom_forecasting.model_service.SymptomTransformerModel",
-        return_value=mock_transformer_model
+        return_value=mock_transformer_model,
     ), patch(
         "app.infrastructure.ml.symptom_forecasting.model_service.XGBoostSymptomModel",
-        return_value=mock_xgboost_model
+        return_value=mock_xgboost_model,
     ):
         service = SymptomForecastingService(
             model_dir="./test_models",
@@ -69,7 +78,7 @@ def forecasting_service(mock_transformer_model, mock_xgboost_model):
                 "sleep_quality",
                 "medication_adherence",
                 "social_activity",
-            ]
+            ],
         )
         return service
 
@@ -131,7 +140,9 @@ async def test_preprocess_patient_data(forecasting_service, patient_data):
     patient_id = uuid4()
 
     # Preprocess data
-    preprocessed_data = await forecasting_service.preprocess_patient_data(patient_id, patient_data)
+    preprocessed_data = await forecasting_service.preprocess_patient_data(
+        patient_id, patient_data
+    )
 
     # Verify shape and type
     assert isinstance(preprocessed_data, np.ndarray)
@@ -162,7 +173,9 @@ async def test_forecast_symptoms_with_ensemble(forecasting_service, patient_data
     patient_id = uuid4()
 
     # Generate forecast
-    forecast = await forecasting_service.forecast_symptoms(patient_id, patient_data, horizon=5, use_ensemble=True)
+    forecast = await forecasting_service.forecast_symptoms(
+        patient_id, patient_data, horizon=5, use_ensemble=True
+    )
 
     # Verify forecast structure
     assert "values" in forecast
@@ -190,7 +203,9 @@ async def test_forecast_symptoms_without_ensemble(forecasting_service, patient_d
     patient_id = uuid4()
 
     # Generate forecast using only transformer model
-    forecast = await forecasting_service.forecast_symptoms(patient_id, patient_data, horizon=5, use_ensemble=False)
+    forecast = await forecasting_service.forecast_symptoms(
+        patient_id, patient_data, horizon=5, use_ensemble=False
+    )
 
     # Verify forecast structure
     assert "values" in forecast
@@ -214,7 +229,9 @@ async def test_forecast_symptoms_with_insufficient_data(forecasting_service):
 
     # Verify that validation error is raised
     with pytest.raises(Exception):
-        await forecasting_service.forecast_symptoms(patient_id, insufficient_data, horizon=5)
+        await forecasting_service.forecast_symptoms(
+            patient_id, insufficient_data, horizon=5
+        )
 
 
 @pytest.mark.asyncio()
@@ -223,7 +240,9 @@ async def test_analyze_symptom_patterns(forecasting_service, patient_data):
     patient_id = uuid4()
 
     # Analyze symptom patterns
-    patterns = await forecasting_service.analyze_symptom_patterns(patient_id, patient_data)
+    patterns = await forecasting_service.analyze_symptom_patterns(
+        patient_id, patient_data
+    )
 
     # Verify patterns structure
     assert "symptom_patterns" in patterns
@@ -244,7 +263,9 @@ async def test_identify_risk_periods(forecasting_service, patient_data):
     patient_id = uuid4()
 
     # First generate a forecast
-    forecast = await forecasting_service.forecast_symptoms(patient_id, patient_data, horizon=14)
+    forecast = await forecasting_service.forecast_symptoms(
+        patient_id, patient_data, horizon=14
+    )
 
     # Identify risk periods
     risk_periods = await forecasting_service.identify_risk_periods(patient_id, forecast)
@@ -322,18 +343,24 @@ async def test_model_failure_handling(forecasting_service, patient_data):
     patient_id = uuid4()
 
     # Make transformer model fail
-    forecasting_service.transformer_model.predict.side_effect = Exception("Model failure")
+    forecasting_service.transformer_model.predict.side_effect = Exception(
+        "Model failure"
+    )
 
     # Verify that service handles the failure gracefully
     with pytest.raises(Exception):
-        await forecasting_service.forecast_symptoms(patient_id, patient_data, use_ensemble=True)
+        await forecasting_service.forecast_symptoms(
+            patient_id, patient_data, use_ensemble=True
+        )
 
     # Reset transformer model and make XGBoost model fail
     forecasting_service.transformer_model.predict.side_effect = None
     forecasting_service.xgboost_model.predict.side_effect = Exception("Model failure")
 
     # Verify that service falls back to transformer model only
-    forecast = await forecasting_service.forecast_symptoms(patient_id, patient_data, use_ensemble=True)
+    forecast = await forecasting_service.forecast_symptoms(
+        patient_id, patient_data, use_ensemble=True
+    )
 
     # Verify that forecast is still generated using transformer model
     assert forecast["model_type"] == "transformer"

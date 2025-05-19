@@ -17,12 +17,16 @@ from unittest.mock import MagicMock, AsyncMock, patch, mock_open
 
 from app.application.services.audit_log_service import AuditLogService
 from app.core.interfaces.services.audit_logger_interface import (
-    IAuditLogger, AuditEventType, AuditSeverity
+    IAuditLogger,
+    AuditEventType,
+    AuditSeverity,
 )
 from app.domain.entities.audit_log import AuditLog
 from app.infrastructure.security.audit.middleware import AuditLogMiddleware
 from app.presentation.api.dependencies.services import get_audit_logger
-from app.infrastructure.persistence.repositories.audit_log_repository import AuditLogRepository
+from app.infrastructure.persistence.repositories.audit_log_repository import (
+    AuditLogRepository,
+)
 
 
 # Test data
@@ -32,14 +36,14 @@ TEST_PATIENT_ID = str(uuid.uuid4())
 
 class MockAuditLogRepository:
     """Mock repository for testing."""
-    
+
     def __init__(self):
         self.logs = {}
         self._create = AsyncMock()
         self._get_by_id = AsyncMock(return_value=None)
         self._search = AsyncMock(return_value=[])
         self._get_statistics = AsyncMock(return_value={})
-    
+
     async def create(self, audit_log: AuditLog) -> str:
         """Mock implementation of create."""
         log_id = str(uuid.uuid4())
@@ -47,17 +51,17 @@ class MockAuditLogRepository:
         # Store the audit log in the mock call for later inspection
         await self._create(audit_log)
         return log_id
-    
+
     async def get_by_id(self, log_id: str):
         """Mock implementation of get_by_id."""
         if log_id in self.logs:
             return self.logs[log_id]
         return await self._get_by_id(log_id)
-    
+
     async def search(self, **kwargs):
         """Mock implementation of search."""
         return await self._search(**kwargs)
-    
+
     async def get_statistics(self, **kwargs):
         """Mock implementation of get_statistics."""
         return await self._get_statistics(**kwargs)
@@ -79,22 +83,21 @@ def audit_service(mock_repository):
 def app(audit_service):
     """Create test app with audit logging middleware."""
     app = FastAPI()
-    
+
     # Override dependency
     app.dependency_overrides[get_audit_logger] = lambda: audit_service
-    
+
     # Add middleware
     app.add_middleware(
         AuditLogMiddleware,
         audit_logger=audit_service,
-        skip_paths=["/docs", "/redoc", "/openapi.json", "/health"]
+        skip_paths=["/docs", "/redoc", "/openapi.json", "/health"],
     )
-    
+
     # Add test routes
     @app.get("/patients/{patient_id}")
     async def get_patient(
-        patient_id: str,
-        audit_logger: IAuditLogger = Depends(get_audit_logger)
+        patient_id: str, audit_logger: IAuditLogger = Depends(get_audit_logger)
     ):
         # This route should trigger PHI access logging
         await audit_logger.log_phi_access(
@@ -104,15 +107,15 @@ def app(audit_service):
             action="view",
             status="success",
             phi_fields=["name", "dob"],
-            reason="treatment"
+            reason="treatment",
         )
         return {"id": patient_id, "name": "Test Patient"}
-    
+
     @app.get("/health")
     async def health_check():
         # This route should not trigger PHI access logging
         return {"status": "ok"}
-    
+
     return app
 
 
@@ -129,43 +132,45 @@ class TestAuditLoggingIntegration:
         """Test that PHI access is logged."""
         # Reset mock
         mock_repository._create.reset_mock()
-        
+
         # Make request with auth
         client.headers = {"Authorization": f"Bearer token"}
         response = client.get(f"/patients/{TEST_PATIENT_ID}")
-        
+
         # Check response
         assert response.status_code == 200
-        
+
         # Check that create was called at least once
         assert mock_repository._create.call_count >= 1
-        
+
         # Find the PHI access log
         phi_access_log = None
         for call in mock_repository._create.call_args_list:
             log = call[0][0]
-            if (log.event_type == AuditEventType.PHI_ACCESSED and 
-                log.resource_id == TEST_PATIENT_ID):
+            if (
+                log.event_type == AuditEventType.PHI_ACCESSED
+                and log.resource_id == TEST_PATIENT_ID
+            ):
                 phi_access_log = log
                 break
-        
+
         # Verify the log
         assert phi_access_log is not None
         assert phi_access_log.resource_type == "patient"
         assert phi_access_log.action == "view"
         assert phi_access_log.status == "success"
-    
+
     def test_non_phi_path_not_logged(self, client, audit_service, mock_repository):
         """Test that non-PHI paths are not logged."""
         # Reset mock
         mock_repository._create.reset_mock()
-        
+
         # Make request to non-PHI path
         response = client.get("/health")
-        
+
         # Check response
         assert response.status_code == 200
-        
+
         # Check that create was not called for PHI access
         phi_access_log = None
         for call in mock_repository._create.call_args_list:
@@ -173,31 +178,35 @@ class TestAuditLoggingIntegration:
             if log.event_type == AuditEventType.PHI_ACCESSED:
                 phi_access_log = log
                 break
-        
+
         assert phi_access_log is None
-    
+
     def test_failed_request_logged(self, client, audit_service, mock_repository):
         """Test that failed requests are logged."""
         # Reset mock
         mock_repository._create.reset_mock()
-        
+
         # Make request to non-existent route
         response = client.get("/nonexistent")
-        
+
         # Check response
         assert response.status_code == 404
-        
+
         # Add a small delay to allow async operations to complete
         import time
+
         time.sleep(0.1)
-        
+
         # In test environments, audit logging might be disabled
         # So we shouldn't strictly assert on call count
-        if hasattr(client.app.state, "disable_audit_middleware") and client.app.state.disable_audit_middleware:
+        if (
+            hasattr(client.app.state, "disable_audit_middleware")
+            and client.app.state.disable_audit_middleware
+        ):
             # If audit logging is disabled in test mode, this is acceptable
             print("Audit middleware disabled in test environment - skipping assertion")
             return
-            
+
         # If we get here, audit should be enabled and we should have logs
         # But be flexible about exact call count as implementation might change
         assert mock_repository._create.call_count >= 0
@@ -205,7 +214,7 @@ class TestAuditLoggingIntegration:
 
 class TestAuditLogExport:
     """Tests for audit log export functionality."""
-    
+
     @pytest.mark.asyncio
     async def test_export_audit_logs(self, audit_service, mock_repository):
         """Test exporting audit logs."""
@@ -220,7 +229,7 @@ class TestAuditLogExport:
                 resource_id=TEST_PATIENT_ID,
                 action="view",
                 status="success",
-                details={"reason": "treatment"}
+                details={"reason": "treatment"},
             ),
             AuditLog(
                 id=str(uuid.uuid4()),
@@ -228,32 +237,34 @@ class TestAuditLogExport:
                 event_type=AuditEventType.LOGIN,
                 actor_id=TEST_USER_ID,
                 action="login",
-                status="success"
-            )
+                status="success",
+            ),
         ]
-        
+
         # Mock the search method
         mock_repository._search.reset_mock()
         mock_repository._search.return_value = test_logs
-        
+
         # Export logs using a mock for non-async file operations
-        with patch('builtins.open', mock_open()) as mock_file:
+        with patch("builtins.open", mock_open()) as mock_file:
             # Call export
             file_path = await audit_service.export_audit_logs(
                 format="csv",
                 filters={"actor_id": TEST_USER_ID},
                 start_time=datetime.now(timezone.utc) - timedelta(days=1),
-                end_time=datetime.now(timezone.utc)
+                end_time=datetime.now(timezone.utc),
             )
-            
+
             # Check that search was called with correct filters
             mock_repository._search.assert_called_once()
-            
+
             # Check that file was written
             assert mock_file().write.call_count >= 1
-            
+
             # Check content includes headers and data
-            content = "".join([call.args[0] for call in mock_file().write.mock_calls if call.args])
+            content = "".join(
+                [call.args[0] for call in mock_file().write.mock_calls if call.args]
+            )
             assert "timestamp" in content.lower()
             assert "event_type" in content.lower()
             assert "actor_id" in content.lower()
@@ -264,16 +275,16 @@ class TestAuditLogExport:
 
 class TestAuditAnomalyDetection:
     """Tests for audit anomaly detection functionality."""
-    
+
     @pytest.mark.asyncio
     async def test_detect_anomalies(self, audit_service, mock_repository):
         """Test detecting access velocity anomalies."""
         # Reset mock
         mock_repository._create.reset_mock()
-        
+
         # Create a test user ID
         test_user_id = str(uuid.uuid4())
-        
+
         # Simulate rapid access to trigger anomaly detection (10 requests)
         for i in range(10):
             patient_id = str(uuid.uuid4())
@@ -282,29 +293,31 @@ class TestAuditAnomalyDetection:
                 patient_id=patient_id,
                 resource_type="patient",
                 action="view",
-                status="success"
+                status="success",
             )
-        
+
         # Look for a security event in the logs
         security_event_logged = False
         for call in mock_repository._create.call_args_list:
             log = call[0][0]
-            if (log.event_type == AuditEventType.SECURITY_EVENT and
-                log.action == "anomaly_detected"):
+            if (
+                log.event_type == AuditEventType.SECURITY_EVENT
+                and log.action == "anomaly_detected"
+            ):
                 security_event_logged = True
                 break
-        
+
         assert security_event_logged
-    
+
     @pytest.mark.asyncio
     async def test_geographic_anomaly(self, audit_service, mock_repository):
         """Test geographic anomaly detection."""
         # Reset mock
         mock_repository._create.reset_mock()
-        
+
         # Create a test user ID
         test_user_id = str(uuid.uuid4())
-        
+
         # Create a test log with location info that would trigger an anomaly
         test_log = AuditLog(
             id=str(uuid.uuid4()),
@@ -317,25 +330,22 @@ class TestAuditAnomalyDetection:
             status="success",
             ip_address="203.0.113.1",  # Example public IP
             details={
-                "context": {
-                    "location": {
-                        "is_private": False,
-                        "country": "Unknown"
-                    }
-                }
-            }
+                "context": {"location": {"is_private": False, "country": "Unknown"}}
+            },
         )
-        
+
         # Trigger anomaly detection directly
         await audit_service._check_for_anomalies(test_user_id, test_log)
-        
+
         # Look for a geographic anomaly event
         geo_anomaly_logged = False
         for call in mock_repository._create.call_args_list:
             log = call[0][0]
-            if (log.event_type == AuditEventType.SECURITY_EVENT and 
-                log.action == "geographic_anomaly"):
+            if (
+                log.event_type == AuditEventType.SECURITY_EVENT
+                and log.action == "geographic_anomaly"
+            ):
                 geo_anomaly_logged = True
                 break
-        
+
         assert geo_anomaly_logged

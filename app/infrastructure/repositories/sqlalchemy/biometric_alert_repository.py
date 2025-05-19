@@ -7,7 +7,11 @@ from uuid import UUID
 # Import AsyncSession
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.entities.biometric_alert import AlertPriority, AlertStatusEnum, BiometricAlert
+from app.domain.entities.biometric_alert import (
+    AlertPriority,
+    AlertStatusEnum,
+    BiometricAlert,
+)
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 
 
@@ -32,7 +36,9 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
 
     async def get_by_id(self, alert_id: UUID | str) -> BiometricAlert | None:
         """Placeholder: Get a specific alert by its ID."""
-        print("\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.get_by_id\n")
+        print(
+            "\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.get_by_id\n"
+        )
         # Mock implementation: Return None or raise RepositoryError
         # In a real implementation, this would query self.db
         return None
@@ -44,10 +50,12 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         limit: int = 100,
-        offset: int = 0
+        offset: int = 0,
     ) -> list[BiometricAlert]:
         """Placeholder: Retrieve biometric alerts for a specific patient with filtering."""
-        print("\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.get_by_patient_id\n")
+        print(
+            "\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.get_by_patient_id\n"
+        )
         # Mock implementation: Return empty list or raise RepositoryError
         # In a real implementation, this would query self.db with filters
         return []
@@ -57,17 +65,21 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         priority: AlertPriority | None = None,
         patient_id: UUID | None = None,
         limit: int = 100,
-        offset: int = 0
+        offset: int = 0,
     ) -> list[BiometricAlert]:
         """Placeholder: Retrieve unacknowledged alerts with filtering."""
-        print("\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.get_unacknowledged_alerts\n")
+        print(
+            "\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.get_unacknowledged_alerts\n"
+        )
         # Mock implementation: Return empty list or raise RepositoryError
         # In a real implementation, this would query self.db
         return []
 
     async def delete(self, alert_id: UUID | str) -> bool:
         """Placeholder: Delete an alert by its ID."""
-        print("\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.delete\n")
+        print(
+            "\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.delete\n"
+        )
         # Mock implementation: Return True/False or raise RepositoryError
         # In a real implementation, this would delete from self.db
         return True  # Assume success for placeholder
@@ -77,10 +89,12 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         patient_id: UUID,
         acknowledged: bool | None = None,
         start_date: datetime | None = None,
-        end_date: datetime | None = None
+        end_date: datetime | None = None,
     ) -> int:
         """Placeholder: Count alerts for a patient with filtering."""
-        print("\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.count_by_patient\n")
+        print(
+            "\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.count_by_patient\n"
+        )
         # Mock implementation: Return 0 or raise RepositoryError
         # In a real implementation, this would count from self.db
         return 0
@@ -90,9 +104,9 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
     async def get_alerts(
         self,
         patient_id: UUID | None = None,
-        rule_id: UUID | None = None, 
-        priority: str | None = None,  
-        status: AlertStatusEnum | None = None, 
+        rule_id: UUID | None = None,
+        priority: str | None = None,
+        status: AlertStatusEnum | None = None,
         start_time: datetime | None = None,
         end_time: datetime | None = None,
         acknowledged: bool | None = None,
@@ -174,6 +188,6 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             "total_alerts": count,
             "unacknowledged_alerts": unack_count,
             "acknowledged_alerts": ack_count,
-            "priority_counts": {}, 
-            "status_counts": {} 
+            "priority_counts": {},
+            "status_counts": {},
         }

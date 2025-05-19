@@ -10,7 +10,11 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from app.domain.entities.digital_twin import DigitalTwin, DigitalTwinConfiguration, DigitalTwinState
+from app.domain.entities.digital_twin import (
+    DigitalTwin,
+    DigitalTwinConfiguration,
+    DigitalTwinState,
+)
 from app.domain.exceptions import (
     DomainError,
     ValidationError,
@@ -97,7 +101,7 @@ class DigitalTwinService:
 
         configuration = DigitalTwinConfiguration(**config_data)
         state = DigitalTwinState(**state_data)
-        current_time = datetime.now(UTC) # Use UTC explicitly
+        current_time = datetime.now(UTC)  # Use UTC explicitly
 
         # Create digital twin
         digital_twin = DigitalTwin(
@@ -106,7 +110,7 @@ class DigitalTwinService:
             state=state,
             creation_date=current_time,
             last_updated=current_time,
-            metadata=metadata_data
+            metadata=metadata_data,
         )
 
         # Save to repository
@@ -201,7 +205,9 @@ class DigitalTwinService:
 
         # # Save to repository
         # return await self._digital_twin_repo.update(digital_twin)
-        raise NotImplementedError("TwinModel functionality needs re-implementation based on entity definition.")
+        raise NotImplementedError(
+            "TwinModel functionality needs re-implementation based on entity definition."
+        )
 
     async def get_digital_twin(self, patient_id: UUID) -> DigitalTwin | None:
         """

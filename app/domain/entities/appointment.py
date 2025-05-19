@@ -20,7 +20,10 @@ from enum import Enum
 from uuid import UUID
 
 from app.domain.entities.base_entity import BaseEntity
-from app.domain.exceptions import InvalidAppointmentTimeError, InvalidAppointmentStateError
+from app.domain.exceptions import (
+    InvalidAppointmentTimeError,
+    InvalidAppointmentStateError,
+)
 
 # ---------------------------------------------------------------------------
 # Enumerations
@@ -93,7 +96,9 @@ class Appointment(BaseEntity):
 
     # Fields for cancellation details
     cancellation_reason: str | None = None
-    cancelled_by_user_id: UUID | None = None # Assuming the ID of user/provider who cancelled
+    cancelled_by_user_id: UUID | None = (
+        None  # Assuming the ID of user/provider who cancelled
+    )
     cancelled_at: datetime | None = None
 
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
@@ -122,12 +127,18 @@ class Appointment(BaseEntity):
         """Validate invariants and normalise timestamps."""
 
         # 0. Ensure start_time is not in the past
-        if self.start_time < (datetime.now(UTC) - timedelta(seconds=10)): # Allow 10s leeway for past for tests
-            raise InvalidAppointmentTimeError("Appointment start time cannot be in the past.")
+        if self.start_time < (
+            datetime.now(UTC) - timedelta(seconds=10)
+        ):  # Allow 10s leeway for past for tests
+            raise InvalidAppointmentTimeError(
+                "Appointment start time cannot be in the past."
+            )
 
         # 1. Temporal invariant – end must be strictly after start.
         if self.end_time <= self.start_time:
-            raise InvalidAppointmentTimeError("Appointment end time must be after start time.")
+            raise InvalidAppointmentTimeError(
+                "Appointment end time must be after start time."
+            )
 
         # 2. Ensure *created_at* and *last_updated* are timezone‑aware ISO‑8601
         #    datetime objects when supplied as strings (mirrors logic in the
@@ -182,12 +193,20 @@ class Appointment(BaseEntity):
         self.status = new_status
         self.touch()
 
-    def reschedule(self, new_start_time: datetime, new_end_time: datetime | None = None) -> None:
+    def reschedule(
+        self, new_start_time: datetime, new_end_time: datetime | None = None
+    ) -> None:
         """Move the appointment while maintaining its original duration."""
 
-        duration = new_end_time - new_start_time if new_end_time else self.end_time - self.start_time
+        duration = (
+            new_end_time - new_start_time
+            if new_end_time
+            else self.end_time - self.start_time
+        )
         if duration <= timedelta(0):
-            raise InvalidAppointmentTimeError("Rescheduled end time must be after start time.")
+            raise InvalidAppointmentTimeError(
+                "Rescheduled end time must be after start time."
+            )
 
         self.start_time = new_start_time
         self.end_time = new_start_time + duration
@@ -223,7 +242,11 @@ class Appointment(BaseEntity):
     def complete(self) -> None:
         """Complete the appointment."""
         # Typically, an appointment should be IN_PROGRESS or CONFIRMED to be completed.
-        if self.status not in {AppointmentStatus.CONFIRMED, AppointmentStatus.IN_PROGRESS, AppointmentStatus.SCHEDULED}:
+        if self.status not in {
+            AppointmentStatus.CONFIRMED,
+            AppointmentStatus.IN_PROGRESS,
+            AppointmentStatus.SCHEDULED,
+        }:
             raise InvalidAppointmentStateError(
                 f"Cannot complete appointment in '{self.status.value}' state. Must be '{AppointmentStatus.CONFIRMED.value}' or '{AppointmentStatus.IN_PROGRESS.value}'."
             )
@@ -232,7 +255,11 @@ class Appointment(BaseEntity):
     def mark_no_show(self) -> None:
         """Mark the appointment as a no-show."""
         # Typically, a no-show can be marked for SCHEDULED or CONFIRMED appointments.
-        if self.status not in {AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED, AppointmentStatus.IN_PROGRESS}:
+        if self.status not in {
+            AppointmentStatus.SCHEDULED,
+            AppointmentStatus.CONFIRMED,
+            AppointmentStatus.IN_PROGRESS,
+        }:
             raise InvalidAppointmentStateError(
                 f"Cannot mark no-show for appointment in '{self.status.value}' state."
             )
@@ -254,7 +281,7 @@ class Appointment(BaseEntity):
         # enum value handling is needed. For now, a manual approach.
         # Ensure dataclasses is imported if asdict is used: import dataclasses
         return {
-            "id": str(self.id), # Convert UUID to string for serialization
+            "id": str(self.id),  # Convert UUID to string for serialization
             "patient_id": str(self.patient_id),
             "provider_id": str(self.provider_id),
             "start_time": self.start_time.isoformat(),
@@ -282,14 +309,20 @@ class Appointment(BaseEntity):
                     # Handle cases where ID might be None or not a valid UUID string if that's possible
                     if data[key] is not None:
                         raise ValueError(f"Invalid UUID format for {key}: {data[key]}")
-        
+
         # Convert ISO datetime strings back to datetime objects
-        for key in ["start_time", "end_time", "created_at", "updated_at", "cancelled_at"]:
+        for key in [
+            "start_time",
+            "end_time",
+            "created_at",
+            "updated_at",
+            "cancelled_at",
+        ]:
             if key in data and isinstance(data[key], str):
                 try:
                     data[key] = datetime.fromisoformat(data[key].replace("Z", "+00:00"))
                 except ValueError:
-                     if data[key] is not None:
+                    if data[key] is not None:
                         raise ValueError(f"Invalid ISO format for {key}: {data[key]}")
 
         # Convert string enums back to Enum members
@@ -299,7 +332,7 @@ class Appointment(BaseEntity):
             data["status"] = AppointmentStatus(data["status"])
         if "priority" in data and isinstance(data["priority"], str):
             data["priority"] = AppointmentPriority(data["priority"])
-        
+
         # Handle potential missing optional fields for robustness if dict is sparse
         # Dataclass __init__ will use defaults if not provided, so this is mostly for type conversion.
         return cls(**data)
@@ -309,9 +342,7 @@ class Appointment(BaseEntity):
     # ------------------------------------------------------------------
 
     def __str__(self) -> str:  # pragma: no cover – string repr is for humans
-        return (
-            f"Appointment<{self.id}> pid={self.patient_id} prov={self.provider_id} {self.created_at.date()} type={self.appointment_type.value} status={self.status.value} {self.start_time.isoformat()}–{self.end_time.isoformat()}"
-        )
+        return f"Appointment<{self.id}> pid={self.patient_id} prov={self.provider_id} {self.created_at.date()} type={self.appointment_type.value} status={self.status.value} {self.start_time.isoformat()}–{self.end_time.isoformat()}"
 
     # For the purpose of the unit tests :pymeth:`__repr__` can simply alias
     # to :pymeth:`__str__` – they only check for a couple of substrings.
@@ -321,4 +352,3 @@ class Appointment(BaseEntity):
     # operations – required by the infrastructure repository tests.
     def __hash__(self) -> int:  # pragma: no cover – trivial
         return hash(self.id)
-

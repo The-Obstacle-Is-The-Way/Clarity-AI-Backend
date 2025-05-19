@@ -10,17 +10,23 @@ from app.domain.exceptions.base_exceptions import BaseApplicationError
 
 class AppointmentError(BaseApplicationError):
     """Base class for appointment-related exceptions."""
-    
+
     def __init__(self, message: str = "Appointment operation failed", *args, **kwargs):
         super().__init__(message, *args, **kwargs)
 
 
 class InvalidAppointmentStateError(AppointmentError):
     """Raised when an operation is attempted on an appointment in an invalid state."""
-    
-    def __init__(self, message: str = "Invalid appointment state for the requested operation", 
-                 current_state: str = None, required_state: str = None, 
-                 appointment_id: str = None, *args, **kwargs):
+
+    def __init__(
+        self,
+        message: str = "Invalid appointment state for the requested operation",
+        current_state: str = None,
+        required_state: str = None,
+        appointment_id: str = None,
+        *args,
+        **kwargs,
+    ):
         if current_state and required_state:
             message = f"{message}: current state is '{current_state}', required state is '{required_state}'"
         if appointment_id:
@@ -33,16 +39,21 @@ class InvalidAppointmentStateError(AppointmentError):
 
 class InvalidAppointmentTimeError(AppointmentError):
     """Raised when an invalid appointment time is specified."""
-    
+
     def __init__(self, message: str = "Invalid appointment time", *args, **kwargs):
         super().__init__(message, *args, **kwargs)
 
 
 class AppointmentConflictError(AppointmentError):
     """Raised when there is a scheduling conflict with another appointment."""
-    
-    def __init__(self, message: str = "Appointment scheduling conflict", 
-                 conflicting_appointment_id: str = None, *args, **kwargs):
+
+    def __init__(
+        self,
+        message: str = "Appointment scheduling conflict",
+        conflicting_appointment_id: str = None,
+        *args,
+        **kwargs,
+    ):
         if conflicting_appointment_id:
             message = f"{message} with appointment {conflicting_appointment_id}"
         super().__init__(message, *args, **kwargs)
@@ -51,9 +62,14 @@ class AppointmentConflictError(AppointmentError):
 
 class AppointmentNotFoundError(AppointmentError):
     """Raised when an appointment cannot be found."""
-    
-    def __init__(self, message: str = "Appointment not found", 
-                 appointment_id: str = None, *args, **kwargs):
+
+    def __init__(
+        self,
+        message: str = "Appointment not found",
+        appointment_id: str = None,
+        *args,
+        **kwargs,
+    ):
         if appointment_id:
             message = f"Appointment with ID {appointment_id} not found"
         super().__init__(message, *args, **kwargs)
@@ -62,9 +78,15 @@ class AppointmentNotFoundError(AppointmentError):
 
 class AppointmentCancellationError(AppointmentError):
     """Raised when an appointment cannot be cancelled."""
-    
-    def __init__(self, message: str = "Cannot cancel appointment", 
-                 appointment_id: str = None, reason: str = None, *args, **kwargs):
+
+    def __init__(
+        self,
+        message: str = "Cannot cancel appointment",
+        appointment_id: str = None,
+        reason: str = None,
+        *args,
+        **kwargs,
+    ):
         if appointment_id and reason:
             message = f"Cannot cancel appointment {appointment_id}: {reason}"
         elif appointment_id:
@@ -76,13 +98,19 @@ class AppointmentCancellationError(AppointmentError):
 
 class AppointmentReschedulingError(AppointmentError):
     """Raised when an appointment cannot be rescheduled."""
-    
-    def __init__(self, message: str = "Cannot reschedule appointment", 
-                 appointment_id: str = None, reason: str = None, *args, **kwargs):
+
+    def __init__(
+        self,
+        message: str = "Cannot reschedule appointment",
+        appointment_id: str = None,
+        reason: str = None,
+        *args,
+        **kwargs,
+    ):
         if appointment_id and reason:
             message = f"Cannot reschedule appointment {appointment_id}: {reason}"
         elif appointment_id:
             message = f"Cannot reschedule appointment {appointment_id}"
         super().__init__(message, *args, **kwargs)
         self.appointment_id = appointment_id
-        self.reason = reason 
+        self.reason = reason

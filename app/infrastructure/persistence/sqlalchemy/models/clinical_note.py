@@ -15,12 +15,16 @@ from sqlalchemy import (
     String,
     Text,
     JSON,
-    UUID as SQLAlchemyUUID
+    UUID as SQLAlchemyUUID,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.mutable import MutableDict
 
-from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
+from app.infrastructure.persistence.sqlalchemy.models.base import (
+    Base,
+    TimestampMixin,
+    AuditMixin,
+)
 from app.domain.utils.datetime_utils import now_utc
 
 
@@ -35,8 +39,18 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
     __tablename__ = "clinical_notes"
 
     id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    patient_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("patients.id"), nullable=False, index=True)
-    provider_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("providers.id"), nullable=False, index=True)
+    patient_id = Column(
+        SQLAlchemyUUID(as_uuid=True),
+        ForeignKey("patients.id"),
+        nullable=False,
+        index=True,
+    )
+    provider_id = Column(
+        SQLAlchemyUUID(as_uuid=True),
+        ForeignKey("providers.id"),
+        nullable=False,
+        index=True,
+    )
     appointment_id = Column(
         SQLAlchemyUUID(as_uuid=True), ForeignKey("appointments.id"), nullable=True
     )
@@ -46,13 +60,19 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
     note_type = Column(String(50), nullable=True)
     tags = Column(MutableDict.as_mutable(JSON), nullable=True)
     version = Column(Integer, default=1, nullable=False)
-    parent_note_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("clinical_notes.id"), nullable=True)
+    parent_note_id = Column(
+        SQLAlchemyUUID(as_uuid=True), ForeignKey("clinical_notes.id"), nullable=True
+    )
 
     # Relationships with correct model references
     patient = relationship("Patient", back_populates="clinical_notes")
-    provider = relationship("ProviderModel", foreign_keys=[provider_id], back_populates="clinical_notes")
+    provider = relationship(
+        "ProviderModel", foreign_keys=[provider_id], back_populates="clinical_notes"
+    )
     appointment = relationship("AppointmentModel", back_populates="clinical_notes")
-    parent_note = relationship("ClinicalNoteModel", remote_side=[id], backref="revisions")
+    parent_note = relationship(
+        "ClinicalNoteModel", remote_side=[id], backref="revisions"
+    )
 
     def __repr__(self) -> str:
         """Return string representation of the clinical note."""
@@ -74,7 +94,9 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
             patient_id=clinical_note.patient_id,
             provider_id=clinical_note.provider_id,
             appointment_id=clinical_note.appointment_id,
-            note_type=clinical_note.note_type.value if clinical_note.note_type else None,
+            note_type=clinical_note.note_type.value
+            if clinical_note.note_type
+            else None,
             content=clinical_note.content,
             redacted_content=clinical_note.redacted_content,
             title=clinical_note.title,

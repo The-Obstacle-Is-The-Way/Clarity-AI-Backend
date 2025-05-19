@@ -16,20 +16,23 @@ from app.core.utils.date_utils import utcnow
 
 # Value Objects and Enums
 
+
 class AlertPriority(str, Enum):
     """Priority levels for biometric alerts."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
     INFO = "info"
-    
+
     def __str__(self) -> str:
         return self.value
 
 
 class BiometricMetricType(str, Enum):
     """Types of biometric metrics that can be monitored."""
+
     HEART_RATE = "heart_rate"
     BLOOD_PRESSURE = "blood_pressure"
     BLOOD_GLUCOSE = "blood_glucose"
@@ -42,10 +45,10 @@ class BiometricMetricType(str, Enum):
     ACTIVITY_LEVEL = "activity_level"
     STRESS_LEVEL = "stress_level"
     MOOD = "mood"
-    
+
     def __str__(self) -> str:
         return self.value
-    
+
     @classmethod
     def get_display_name(cls, value: str) -> str:
         """Get a human-readable display name for a metric type."""
@@ -61,23 +64,24 @@ class BiometricMetricType(str, Enum):
             cls.WEIGHT: "Weight",
             cls.ACTIVITY_LEVEL: "Activity Level",
             cls.STRESS_LEVEL: "Stress Level",
-            cls.MOOD: "Mood"
+            cls.MOOD: "Mood",
         }
         return display_names.get(value, value)
 
 
 class ComparatorOperator(str, Enum):
     """Comparison operators for rule conditions."""
+
     GREATER_THAN = ">"
     LESS_THAN = "<"
     EQUAL_TO = "=="
     GREATER_THAN_OR_EQUAL = ">="
     LESS_THAN_OR_EQUAL = "<="
     NOT_EQUAL = "!="
-    
+
     def __str__(self) -> str:
         return self.value
-    
+
     def evaluate(self, left: Any, right: Any) -> bool:
         """Evaluate the comparison between two values."""
         if self == ComparatorOperator.GREATER_THAN:
@@ -98,12 +102,13 @@ class ComparatorOperator(str, Enum):
 
 class RuleLogicalOperator(str, Enum):
     """Logical operators for combining rule conditions."""
+
     AND = "and"
     OR = "or"
-    
+
     def __str__(self) -> str:
         return self.value
-    
+
     def evaluate(self, left: bool, right: bool) -> bool:
         """Evaluate the logical operation between two boolean values."""
         if self == RuleLogicalOperator.AND:
@@ -116,25 +121,25 @@ class RuleLogicalOperator(str, Enum):
 
 # Aggregates and Entities
 
+
 class RuleCondition(BaseModel):
     """A condition for a biometric alert rule."""
+
     metric_type: BiometricMetricType
     operator: ComparatorOperator
     threshold_value: float
     description: str | None = None
-    
+
     def evaluate(self, metric_value: float) -> bool:
         """Evaluate if the condition is met for a given metric value."""
         return self.operator.evaluate(metric_value, self.threshold_value)
-    
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        validate_assignment=True
-    )
+
+    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
 
 
 class BiometricAlertRule(BaseModel):
     """Domain entity for biometric alert rules."""
+
     id: UUID = Field(default_factory=uuid4)
     name: str
     description: str | None = None
@@ -147,21 +152,21 @@ class BiometricAlertRule(BaseModel):
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime | None = None
     template_id: UUID | None = None
-    
+
     def evaluate(self, metrics: dict[BiometricMetricType, float]) -> bool:
         """
         Evaluate if the rule is triggered based on the provided metrics.
-        
+
         Args:
             metrics: Dictionary mapping metric types to their values
-            
+
         Returns:
             bool: True if the rule conditions are met, False otherwise
         """
         # No conditions means no trigger
         if not self.conditions:
             return False
-        
+
         # Evaluate each condition
         results = []
         for condition in self.conditions:
@@ -169,20 +174,17 @@ class BiometricAlertRule(BaseModel):
             if metric_value is None:
                 # Skip this condition if the metric is not provided
                 continue
-            
+
             results.append(condition.evaluate(metric_value))
-        
+
         # No results means no metrics matched our conditions
         if not results:
             return False
-        
+
         # Evaluate all results according to the logical operator
         if self.logical_operator == RuleLogicalOperator.AND:
             return all(results)
         else:  # OR
             return any(results)
-    
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        validate_assignment=True
-    )
+
+    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)

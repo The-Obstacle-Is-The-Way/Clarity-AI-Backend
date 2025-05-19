@@ -78,7 +78,7 @@ class MockDigitalTwinService(DigitalTwinService):
             "patient_id": patient_id,
             "context": context,
             "messages": [],
-            "created_at": datetime.now().isoformat()
+            "created_at": datetime.now().isoformat(),
         }
         self._sessions[session_id] = session
         return {"session_id": session_id, "patient_id": patient_id}
@@ -93,26 +93,25 @@ class MockDigitalTwinService(DigitalTwinService):
         """Send a message to a session."""
         if session_id not in self._sessions:
             raise SessionNotFoundError(f"Session {session_id} not found")
-        
+
         session = self._sessions[session_id]
-        session["messages"].append({
-            "role": "user",
-            "content": message,
-            "timestamp": datetime.now().isoformat()
-        })
-        
+        session["messages"].append(
+            {
+                "role": "user",
+                "content": message,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
+
         # Generate a mock response
         response = {
             "role": "assistant",
             "content": f"Mock response to: {message}",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
         session["messages"].append(response)
-        
-        return {
-            "response": response["content"],
-            "session_id": session_id
-        }
+
+        return {"response": response["content"], "session_id": session_id}
 
     def create_digital_twin(self, patient_id, twin_data):
         """Create a new digital twin."""
@@ -123,7 +122,7 @@ class MockDigitalTwinService(DigitalTwinService):
             "data": twin_data,
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
-            "state": DigitalTwinState.ACTIVE.value
+            "state": DigitalTwinState.ACTIVE.value,
         }
         self._twins[twin_id] = twin
         return {"twin_id": twin_id, "patient_id": patient_id}
@@ -138,12 +137,12 @@ class MockDigitalTwinService(DigitalTwinService):
         """Update a digital twin."""
         if twin_id not in self._twins:
             return False
-            
+
         twin = self._twins[twin_id]
         for key, value in updates.items():
             if key in twin["data"]:
                 twin["data"][key] = value
-                
+
         twin["updated_at"] = datetime.now().isoformat()
         return True
 
@@ -151,7 +150,7 @@ class MockDigitalTwinService(DigitalTwinService):
         """Delete a digital twin."""
         if twin_id not in self._twins:
             return False
-            
+
         del self._twins[twin_id]
         return True
 
@@ -159,7 +158,7 @@ class MockDigitalTwinService(DigitalTwinService):
         """Start a simulation for a digital twin."""
         if twin_id not in self._twins:
             return None
-            
+
         simulation_id = f"sim-{len(self._simulations) + 1}"
         simulation = {
             "simulation_id": simulation_id,
@@ -167,7 +166,7 @@ class MockDigitalTwinService(DigitalTwinService):
             "parameters": parameters,
             "status": "running",
             "results": None,
-            "created_at": datetime.now().isoformat()
+            "created_at": datetime.now().isoformat(),
         }
         self._simulations[simulation_id] = simulation
         return {"simulation_id": simulation_id, "twin_id": twin_id}
@@ -176,32 +175,36 @@ class MockDigitalTwinService(DigitalTwinService):
         """Get the status of a simulation."""
         if simulation_id not in self._simulations:
             return None
-            
+
         return {
             "simulation_id": simulation_id,
-            "status": self._simulations[simulation_id]["status"]
+            "status": self._simulations[simulation_id]["status"],
         }
 
     def get_simulation_results(self, simulation_id):
         """Get the results of a simulation."""
         if simulation_id not in self._simulations:
             return None
-            
+
         simulation = self._simulations[simulation_id]
         if simulation["status"] != "completed":
-            return {"simulation_id": simulation_id, "status": simulation["status"], "results": None}
-            
+            return {
+                "simulation_id": simulation_id,
+                "status": simulation["status"],
+                "results": None,
+            }
+
         return {
             "simulation_id": simulation_id,
             "status": "completed",
-            "results": simulation["results"]
+            "results": simulation["results"],
         }
 
     def complete_simulation(self, simulation_id, results):
         """Complete a simulation with results."""
         if simulation_id not in self._simulations:
             return False
-            
+
         simulation = self._simulations[simulation_id]
         simulation["status"] = "completed"
         simulation["results"] = results
@@ -212,13 +215,13 @@ class MockDigitalTwinService(DigitalTwinService):
         """Create a state for a digital twin."""
         if twin_id not in self._twins:
             return None
-            
+
         state_id = f"state-{len(self._states) + 1}"
         state = {
             "state_id": state_id,
             "twin_id": twin_id,
             "data": state_data,
-            "created_at": datetime.now().isoformat()
+            "created_at": datetime.now().isoformat(),
         }
         self._states[state_id] = state
         return {"state_id": state_id, "twin_id": twin_id}
@@ -227,15 +230,12 @@ class MockDigitalTwinService(DigitalTwinService):
         """Get a twin state by ID."""
         if state_id not in self._states:
             return None
-            
+
         return self._states[state_id]
 
     def list_twin_states(self, twin_id):
         """List all states for a digital twin."""
-        return [
-            state for state in self._states.values()
-            if state["twin_id"] == twin_id
-        ]
+        return [state for state in self._states.values() if state["twin_id"] == twin_id]
 
 
 class TestMockDigitalTwinService:
@@ -256,9 +256,9 @@ class TestMockDigitalTwinService:
     def test_initialize(self, service):
         """Test initializing the service."""
         assert service.is_healthy() is False
-        
+
         result = service.initialize({"api_key": "test_key"})
-        
+
         assert result is True
         assert service.is_healthy() is True
 
@@ -272,9 +272,9 @@ class TestMockDigitalTwinService:
     def test_shutdown(self, initialized_service):
         """Test shutting down the service."""
         assert initialized_service.is_healthy() is True
-        
+
         initialized_service.shutdown()
-        
+
         assert initialized_service.is_healthy() is False
 
     @pytest.mark.standalone()
@@ -282,12 +282,12 @@ class TestMockDigitalTwinService:
         """Test creating a session."""
         patient_id = "patient-123"
         context = {"medical_history": "Test history"}
-        
+
         result = initialized_service.create_session(patient_id, context)
-        
+
         assert "session_id" in result
         assert result["patient_id"] == patient_id
-        
+
         # Verify session was created
         session = initialized_service.get_session(result["session_id"])
         assert session["patient_id"] == patient_id
@@ -306,13 +306,13 @@ class TestMockDigitalTwinService:
         patient_id = "patient-123"
         session_result = initialized_service.create_session(patient_id, {})
         session_id = session_result["session_id"]
-        
+
         message = "Test message"
         result = initialized_service.send_message(session_id, message)
-        
+
         assert result["session_id"] == session_id
         assert "response" in result
-        
+
         # Verify message was added to session
         session = initialized_service.get_session(session_id)
         assert len(session["messages"]) == 2  # User message and response
@@ -336,20 +336,20 @@ class TestMockDigitalTwinService:
             "conditions": ["anxiety", "depression"],
             "medications": [
                 {"name": "Sertraline", "dosage": "50mg", "frequency": "daily"},
-                {"name": "Lorazepam", "dosage": "0.5mg", "frequency": "as needed"}
+                {"name": "Lorazepam", "dosage": "0.5mg", "frequency": "as needed"},
             ],
             "history": {
                 "therapy_sessions": 12,
                 "hospitalizations": 0,
-                "gaba_pathway_markers": "normal"
-            }
+                "gaba_pathway_markers": "normal",
+            },
         }
-        
+
         result = initialized_service.create_digital_twin(patient_id, twin_data)
-        
+
         assert "twin_id" in result
         assert result["patient_id"] == patient_id
-        
+
         # Verify twin was created
         twin = initialized_service.get_digital_twin(result["twin_id"])
         assert twin["patient_id"] == patient_id
@@ -363,13 +363,13 @@ class TestMockDigitalTwinService:
         twin_data = {"age": 35, "gender": "female"}
         result = initialized_service.create_digital_twin(patient_id, twin_data)
         twin_id = result["twin_id"]
-        
+
         # Update twin
         updates = {"age": 36}
         update_result = initialized_service.update_digital_twin(twin_id, updates)
-        
+
         assert update_result is True
-        
+
         # Verify twin was updated
         updated_twin = initialized_service.get_digital_twin(twin_id)
         assert updated_twin["data"]["age"] == 36
@@ -382,12 +382,12 @@ class TestMockDigitalTwinService:
         twin_data = {"age": 35}
         result = initialized_service.create_digital_twin(patient_id, twin_data)
         twin_id = result["twin_id"]
-        
+
         # Delete twin
         delete_result = initialized_service.delete_digital_twin(twin_id)
-        
+
         assert delete_result is True
-        
+
         # Verify twin was deleted
         twin = initialized_service.get_digital_twin(twin_id)
         assert twin is None
@@ -400,26 +400,29 @@ class TestMockDigitalTwinService:
         twin_data = {"age": 35, "conditions": ["anxiety"]}
         twin_result = initialized_service.create_digital_twin(patient_id, twin_data)
         twin_id = twin_result["twin_id"]
-        
+
         # Start simulation
-        parameters = {"duration": 30, "medication_changes": [{"name": "Prozac", "dosage": "20mg"}]}
+        parameters = {
+            "duration": 30,
+            "medication_changes": [{"name": "Prozac", "dosage": "20mg"}],
+        }
         sim_result = initialized_service.start_simulation(twin_id, parameters)
         sim_id = sim_result["simulation_id"]
-        
+
         # Check status
         status = initialized_service.get_simulation_status(sim_id)
         assert status["status"] == "running"
-        
+
         # Complete simulation
         results = {
             "predicted_outcomes": {
                 "anxiety_level": "reduced by 30%",
                 "side_effects": ["mild insomnia", "reduced appetite"],
-                "adherence_probability": 0.85
+                "adherence_probability": 0.85,
             }
         }
         initialized_service.complete_simulation(sim_id, results)
-        
+
         # Get results
         final_results = initialized_service.get_simulation_results(sim_id)
         assert final_results["status"] == "completed"
@@ -433,19 +436,19 @@ class TestMockDigitalTwinService:
         twin_data = {"age": 35}
         twin_result = initialized_service.create_digital_twin(patient_id, twin_data)
         twin_id = twin_result["twin_id"]
-        
+
         # Create states
         state1_data = {"anxiety_level": "high", "timestamp": "2023-01-01T12:00:00Z"}
         state1_result = initialized_service.create_twin_state(twin_id, state1_data)
-        
+
         state2_data = {"anxiety_level": "medium", "timestamp": "2023-01-15T12:00:00Z"}
         state2_result = initialized_service.create_twin_state(twin_id, state2_data)
-        
+
         # Get state
         state1 = initialized_service.get_twin_state(state1_result["state_id"])
         assert state1["twin_id"] == twin_id
         assert state1["data"] == state1_data
-        
+
         # List states
         states = initialized_service.list_twin_states(twin_id)
         assert len(states) == 2

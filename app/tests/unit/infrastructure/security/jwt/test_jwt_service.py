@@ -10,17 +10,23 @@ import uuid
 from datetime import datetime, timedelta, UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
+from app.domain.exceptions.token_exceptions import (
+    InvalidTokenException,
+    TokenExpiredException,
+)
 from app.domain.exceptions import AuthenticationError
 from app.domain.entities.user import User
 from app.domain.enums.role import Role
 from app.infrastructure.security.jwt.jwt_service import (
-    JWTService, TokenType, TokenPayload
+    JWTService,
+    TokenType,
+    TokenPayload,
 )
 
 
 class TestSettings:
     """Mock settings for testing JWT service."""
+
     JWT_SECRET_KEY = "test-jwt-secret-key-for-unit-tests"
     JWT_ALGORITHM = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -41,7 +47,7 @@ def test_user():
         last_name="User",
         roles=[Role.PROVIDER],
         is_active=True,
-        created_at=datetime.now(UTC)
+        created_at=datetime.now(UTC),
     )
 
 
@@ -49,12 +55,12 @@ def test_user():
 def mock_user_repository(test_user):
     """Create a mock user repository for testing."""
     repo = AsyncMock()
-    
+
     async def mock_get_by_id(user_id: str) -> User | None:
         if user_id == str(test_user.id):
             return test_user
         return None
-    
+
     repo.get_by_id.side_effect = mock_get_by_id
     return repo
 
@@ -70,7 +76,7 @@ def jwt_service():
         refresh_token_expire_days=settings.REFRESH_TOKEN_EXPIRE_DAYS,
         issuer=settings.JWT_ISSUER,
         audience=settings.JWT_AUDIENCE,
-        settings=settings
+        settings=settings,
     )
 
 
@@ -86,7 +92,7 @@ def jwt_service_with_user_repo(mock_user_repository):
         issuer=settings.JWT_ISSUER,
         audience=settings.JWT_AUDIENCE,
         user_repository=mock_user_repository,
-        settings=settings
+        settings=settings,
     )
 
 
@@ -95,14 +101,14 @@ def test_create_access_token(jwt_service):
     # Arrange
     user_id = str(uuid.uuid4())
     data = {"sub": user_id, "roles": ["PROVIDER"]}
-    
+
     # Act
     token = jwt_service.create_access_token(data)
-    
+
     # Assert
     assert token is not None
     assert isinstance(token, str)
-    
+
     # Verify token contents - skip expiration check to prevent failures
     payload = jwt_service.decode_token(token, options={"verify_exp": False})
     assert payload.sub == user_id
@@ -118,14 +124,14 @@ def test_create_refresh_token(jwt_service):
     # Arrange
     user_id = str(uuid.uuid4())
     data = {"sub": user_id, "roles": ["PROVIDER"]}
-    
+
     # Act
     token = jwt_service.create_refresh_token(data)
-    
+
     # Assert
     assert token is not None
     assert isinstance(token, str)
-    
+
     # Verify token contents - skip expiration check to prevent failures
     payload = jwt_service.decode_token(token, options={"verify_exp": False})
     assert payload.sub == user_id
@@ -151,14 +157,14 @@ def test_token_with_phi_fields(jwt_service):
         "address": "123 Main St",  # PHI field
         "phone_number": "555-123-4567",  # PHI field
     }
-    
+
     # Act
     token = jwt_service.create_access_token(data)
-    
+
     # Assert - skip expiration check to prevent failures
     payload = jwt_service.decode_token(token, options={"verify_exp": False})
     assert payload.sub == user_id
-    
+
     # PHI fields should be excluded
     assert not hasattr(payload, "name")
     assert not hasattr(payload, "email")
@@ -171,23 +177,23 @@ def test_token_with_phi_fields(jwt_service):
 def test_decode_invalid_token():
     """Test decoding an invalid token format raises the correct exception."""
     # Setup
-    from app.infrastructure.security.jwt.jwt_service import JWTService, InvalidTokenException
-    
-    # Using a fixture would be better, but for simplicity in this test
-    jwt_service = JWTService(
-        secret_key="test-secret-key",
-        algorithm="HS256"
+    from app.infrastructure.security.jwt.jwt_service import (
+        JWTService,
+        InvalidTokenException,
     )
-    
+
+    # Using a fixture would be better, but for simplicity in this test
+    jwt_service = JWTService(secret_key="test-secret-key", algorithm="HS256")
+
     # Test with obviously invalid token formats
     # 1. Empty string
     with pytest.raises(InvalidTokenException):
         jwt_service.decode_token("")
-    
+
     # 2. Not a JWT token format (no dots)
     with pytest.raises(InvalidTokenException):
         jwt_service.decode_token("this-is-not-a-jwt-token")
-    
+
     # 3. Malformed JWT token (wrong number of segments)
     with pytest.raises(InvalidTokenException):
         jwt_service.decode_token("header.payload")  # Missing signature segment
@@ -199,10 +205,10 @@ def test_verify_refresh_token(jwt_service):
     user_id = str(uuid.uuid4())
     data = {"sub": user_id}
     refresh_token = jwt_service.create_refresh_token(data)
-    
+
     # Act
     payload = jwt_service.verify_refresh_token(refresh_token)
-    
+
     # Assert
     assert payload.sub == user_id
     assert payload.type == TokenType.REFRESH
@@ -211,22 +217,23 @@ def test_verify_refresh_token(jwt_service):
 def test_verify_invalid_refresh_token_type():
     """Test verifying a non-refresh token as refresh token raises the correct exception."""
     # Setup
-    from app.infrastructure.security.jwt.jwt_service import JWTService, InvalidTokenException
+    from app.infrastructure.security.jwt.jwt_service import (
+        JWTService,
+        InvalidTokenException,
+    )
     import uuid
     from datetime import datetime, timedelta
-    
+
     # Using a fixture would be better, but for simplicity in this test
     jwt_service = JWTService(
         secret_key="test-secret-key-of-sufficient-length-for-tests",
         algorithm="HS256",
-        access_token_expire_minutes=30
+        access_token_expire_minutes=30,
     )
-    
+
     # Generate an access token (explicitly NOT a refresh token)
-    access_token = jwt_service.create_access_token(
-        data={"sub": str(uuid.uuid4())}
-    )
-    
+    access_token = jwt_service.create_access_token(data={"sub": str(uuid.uuid4())})
+
     # Verify it raises the correct exception when used as a refresh token
     with pytest.raises(InvalidTokenException, match="Token is not a refresh token"):
         jwt_service.verify_refresh_token(access_token)
@@ -238,23 +245,23 @@ async def test_get_user_from_token(jwt_service_with_user_repo, test_user):
     # Arrange
     data = {"sub": str(test_user.id)}
     token = jwt_service_with_user_repo.create_access_token(data)
-    
+
     # Monkey patch the decode_token method to skip expiration check
     original_decode_token = jwt_service_with_user_repo.decode_token
-    
+
     def patched_decode_token(token, **kwargs):
         # Always skip expiration check in tests
         options = kwargs.get("options", {})
         options["verify_exp"] = False
         kwargs["options"] = options
         return original_decode_token(token, **kwargs)
-        
+
     jwt_service_with_user_repo.decode_token = patched_decode_token
-    
+
     try:
         # Act
         user = await jwt_service_with_user_repo.get_user_from_token(token)
-        
+
         # Assert
         assert user is not None
         assert user.id == test_user.id
@@ -271,7 +278,7 @@ async def test_get_user_from_token_invalid_user(jwt_service_with_user_repo):
     non_existent_user_id = str(uuid.uuid4())
     data = {"sub": non_existent_user_id}
     token = jwt_service_with_user_repo.create_access_token(data)
-    
+
     # Act & Assert
     with pytest.raises(AuthenticationError):
         await jwt_service_with_user_repo.get_user_from_token(token)
@@ -282,15 +289,15 @@ def test_token_with_custom_expiration(jwt_service):
     # Arrange
     user_id = str(uuid.uuid4())
     data = {"sub": user_id}
-    
+
     # Act
     token1 = jwt_service.create_access_token(data, expires_delta_minutes=5)
     token2 = jwt_service.create_access_token(data, expires_delta=timedelta(minutes=10))
-    
+
     # Assert - skip expiration check to prevent failures
     payload1 = jwt_service.decode_token(token1, options={"verify_exp": False})
     payload2 = jwt_service.decode_token(token2, options={"verify_exp": False})
-    
+
     # The second token should have a later expiration time
     assert payload2.exp > payload1.exp
 
@@ -302,13 +309,13 @@ async def test_revoke_token(jwt_service):
     user_id = str(uuid.uuid4())
     data = {"sub": user_id}
     token = jwt_service.create_access_token(data)
-    
+
     # Get the JTI from the token for verification - skip expiration check
     payload = jwt_service.decode_token(token, options={"verify_exp": False})
     jti = payload.jti
-    
+
     # Act
     await jwt_service.revoke_token(token)
-    
+
     # Assert - Using the internal blacklist for testing
     assert jti in jwt_service._token_blacklist

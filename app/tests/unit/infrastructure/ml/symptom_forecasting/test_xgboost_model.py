@@ -23,10 +23,14 @@ class TestXGBoostSymptomModel:
     def model(self):
         """Create a XGBoostSymptomModel with mocked internals."""
         # Mock the xgboost library and os.path.exists to prevent FileNotFoundError
-        with patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb') as mock_xgb, \
-             patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.os.path.exists', return_value=True), \
-             patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.joblib') as mock_joblib:
-            
+        with patch(
+            "app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb"
+        ) as mock_xgb, patch(
+            "app.infrastructure.ml.symptom_forecasting.xgboost_model.os.path.exists",
+            return_value=True,
+        ), patch(
+            "app.infrastructure.ml.symptom_forecasting.xgboost_model.joblib"
+        ) as mock_joblib:
             # Mock the joblib.load return value to simulate loading a model
             mock_model = MagicMock()
             mock_joblib.load.return_value = {
@@ -35,12 +39,12 @@ class TestXGBoostSymptomModel:
                     "symptom_history_1",
                     "symptom_history_2",
                     "medication_adherence",
-                    "sleep_quality"
+                    "sleep_quality",
                 ],
                 "target_names": ["depression_score"],
-                "params": {"n_estimators": 100}
+                "params": {"n_estimators": 100},
             }
-            
+
             # Correct instantiation
             model = XGBoostSymptomModel(
                 model_path="test_model_path",
@@ -49,14 +53,14 @@ class TestXGBoostSymptomModel:
                     "symptom_history_1",
                     "symptom_history_2",
                     "medication_adherence",
-                    "sleep_quality"
+                    "sleep_quality",
                 ],
-                target_names=["depression_score"]
+                target_names=["depression_score"],
             )
-            
+
             # Mock the internal models dictionary
             model.models = {"depression_score": MagicMock()}
-            
+
             # Return the mocked model instance
             return model
 
@@ -74,7 +78,10 @@ class TestXGBoostSymptomModel:
         }
 
         # Patch os.path.exists to return True for the test model path
-        with patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.os.path.exists', return_value=True):
+        with patch(
+            "app.infrastructure.ml.symptom_forecasting.xgboost_model.os.path.exists",
+            return_value=True,
+        ):
             # Execute
             model = XGBoostSymptomModel(model_path="test/model/path.json")
 
@@ -87,14 +94,20 @@ class TestXGBoostSymptomModel:
 
     def test_load_model_file_not_found(self):
         # Setup
-        with patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.os.path.exists', return_value=False):
+        with patch(
+            "app.infrastructure.ml.symptom_forecasting.xgboost_model.os.path.exists",
+            return_value=False,
+        ):
             # Execute
             with pytest.raises(FileNotFoundError):
                 XGBoostSymptomModel(model_path="test/model/path.json")
 
     def test_save_model(self, model, tmp_path):
         """Test that the model is saved correctly."""
-        with patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.joblib', autospec=True) as mock_joblib:
+        with patch(
+            "app.infrastructure.ml.symptom_forecasting.xgboost_model.joblib",
+            autospec=True,
+        ) as mock_joblib:
             # Execute
             model.save_model(f"{tmp_path}/model.json")
 
@@ -113,18 +126,18 @@ class TestXGBoostSymptomModel:
         """Test that the model predicts correctly."""
         # Setup
         # Correct np.array definition
-        X = np.array([
-            [3.0, 4.0, 0.8, 0.6],
-            [2.0, 3.0, 0.9, 0.5],
-            [4.0, 5.0, 0.7, 0.8]
-        ])
+        X = np.array([[3.0, 4.0, 0.8, 0.6], [2.0, 3.0, 0.9, 0.5], [4.0, 5.0, 0.7, 0.8]])
         horizon = 3
 
         # Mock the internal dmatrix and predict function
-        with patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb.DMatrix') as mock_dmatrix:
+        with patch(
+            "app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb.DMatrix"
+        ) as mock_dmatrix:
             # Setup the mock prediction
             # Correct np.array definition
-            model.models["depression_score"].predict.return_value = np.array([4.2, 3.8, 4.5])
+            model.models["depression_score"].predict.return_value = np.array(
+                [4.2, 3.8, 4.5]
+            )
 
             # Execute
             result = await model.predict(X, horizon)
@@ -145,7 +158,7 @@ class TestXGBoostSymptomModel:
             "symptom_history_1": 15.5,
             "symptom_history_2": 12.3,
             "medication_adherence": 25.7,
-            "sleep_quality": 18.2
+            "sleep_quality": 18.2,
         }
 
         # Execute
@@ -173,7 +186,7 @@ class TestXGBoostSymptomModel:
             "symptom_history_1",
             "symptom_history_2",
             "medication_adherence",
-            "sleep_quality"
+            "sleep_quality",
         ]
         assert info["target_names"] == ["depression_score"]
 
@@ -181,15 +194,15 @@ class TestXGBoostSymptomModel:
         """Test that the model trains correctly."""
         # Setup
         # Correct np.array definitions
-        X_train = np.array([
-            [3.0, 4.0, 0.8, 0.6],
-            [2.0, 3.0, 0.9, 0.5],
-            [4.0, 5.0, 0.7, 0.8]
-        ])
+        X_train = np.array(
+            [[3.0, 4.0, 0.8, 0.6], [2.0, 3.0, 0.9, 0.5], [4.0, 5.0, 0.7, 0.8]]
+        )
         y_train = np.array([4.2, 3.8, 4.5])
 
         # Mock the internal training
-        with patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb') as mock_xgb:
+        with patch(
+            "app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb"
+        ) as mock_xgb:
             mock_xgb.DMatrix.return_value = MagicMock()
             mock_train_result = MagicMock()
             mock_xgb.train.return_value = mock_train_result
@@ -199,7 +212,7 @@ class TestXGBoostSymptomModel:
                 "symptom_history_1": 15.5,
                 "symptom_history_2": 12.3,
                 "medication_adherence": 25.7,
-                "sleep_quality": 18.2
+                "sleep_quality": 18.2,
             }
 
             # Execute
@@ -211,5 +224,7 @@ class TestXGBoostSymptomModel:
             assert "target_names" in result
             assert "params" in result
             assert "depression_score" in result["training_results"]
-            assert "feature_importance" in result["training_results"]["depression_score"]
+            assert (
+                "feature_importance" in result["training_results"]["depression_score"]
+            )
             assert "params" in result["training_results"]["depression_score"]

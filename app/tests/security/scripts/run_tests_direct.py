@@ -30,8 +30,7 @@ class DirectSecurityTestRunner:
             output_path: Path to save test reports
         """
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.output_path = output_path or os.path.join(
-            self.base_dir, "test_results")
+        self.output_path = output_path or os.path.join(self.base_dir, "test_results")
 
         # Ensure output directory exists
         os.makedirs(self.output_path, exist_ok=True)
@@ -51,7 +50,10 @@ class DirectSecurityTestRunner:
             # Enhanced encryption infrastructure
             {
                 "name": "Enhanced Encryption",
-                "path": os.path.join(self.base_dir, "../unit/infrastructure/security/test_encryption_enhanced.py"),
+                "path": os.path.join(
+                    self.base_dir,
+                    "../unit/infrastructure/security/test_encryption_enhanced.py",
+                ),
             },
         ]
 
@@ -118,13 +120,7 @@ class DirectSecurityTestRunner:
         Returns:
             Dictionary with test counts and details
         """
-        results = {
-            "total": 0,
-            "passed": 0,
-            "failed": 0,
-            "errors": 0,
-            "details": []
-        }
+        results = {"total": 0, "passed": 0, "failed": 0, "errors": 0, "details": []}
 
         # Parse each line looking for test results
         for line in output.split("\n"):

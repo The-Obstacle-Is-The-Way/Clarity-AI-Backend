@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 router = APIRouter(
     prefix="/test",
     tags=["testing"],
-    include_in_schema=False  # Don't show these in OpenAPI docs
+    include_in_schema=False,  # Don't show these in OpenAPI docs
 )
 
 
@@ -21,7 +21,7 @@ router = APIRouter(
 async def force_500_error():
     """
     Test endpoint that deliberately raises a ZeroDivisionError.
-    
+
     This is an alternate error endpoint that raises a different exception
     for testing error masking and handling.
     """
@@ -38,8 +38,7 @@ async def force_404_error() -> Dict[str, Any]:
     Used to test 404 error responses.
     """
     raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="Test resource not found"
+        status_code=status.HTTP_404_NOT_FOUND, detail="Test resource not found"
     )
 
 
@@ -50,8 +49,7 @@ async def force_403_error() -> Dict[str, Any]:
     Used to test 403 error responses.
     """
     raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Test forbidden access"
+        status_code=status.HTTP_403_FORBIDDEN, detail="Test forbidden access"
     )
 
 
@@ -62,8 +60,7 @@ async def force_401_error() -> Dict[str, Any]:
     Used to test 401 error responses.
     """
     raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Test unauthorized access"
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Test unauthorized access"
     )
 
 
@@ -74,8 +71,7 @@ async def force_validation_error() -> Dict[str, Any]:
     Used to test validation error responses.
     """
     raise HTTPException(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        detail="Test validation error"
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Test validation error"
     )
 
 
@@ -88,16 +84,20 @@ async def test_hello():
 @router.get("/error")
 async def test_error():
     """Test endpoint that raises an HTTP exception."""
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Test error")
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Test error"
+    )
 
 
 @router.get("/runtime-error")
 async def test_runtime_error():
     """Test endpoint that raises a RuntimeError with sensitive information that should be masked."""
-    raise RuntimeError("This is a sensitive internal error detail that should be masked")
+    raise RuntimeError(
+        "This is a sensitive internal error detail that should be masked"
+    )
 
 
 @router.get("/value-error")
 async def test_value_error():
     """Test endpoint that raises a ValueError."""
-    raise ValueError("This is a test ValueError") 
+    raise ValueError("This is a test ValueError")

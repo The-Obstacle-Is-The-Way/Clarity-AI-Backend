@@ -12,6 +12,7 @@ from typing import Any
 from .middleware import RateLimitingMiddleware
 from .service import RateLimiterService, get_rate_limiter_service
 
+
 # Rate limiting strategy enum
 class RateLimitStrategy(str, Enum):
     """Defines different rate limiting strategies."""

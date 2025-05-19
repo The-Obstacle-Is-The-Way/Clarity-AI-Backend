@@ -16,7 +16,9 @@ pytestmark = pytest.mark.asyncio
 
 # Removed Gender, Diagnosis, Medication
 from app.domain.entities.patient import Patient
-from app.infrastructure.factories.mock_digital_twin_factory import MockDigitalTwinFactory
+from app.infrastructure.factories.mock_digital_twin_factory import (
+    MockDigitalTwinFactory,
+)
 
 
 @pytest.mark.asyncio()
@@ -43,8 +45,8 @@ async def test_digital_twin_complete_workflow():
         last_name="Doe",
         date_of_birth=datetime.now() - timedelta(days=365 * 35),  # 35 years old
         gender="female",  # Use string literal
-        email="jane.doe@example.com", # Pass email directly
-        phone="+1-555-123-4567", # Pass phone directly
+        email="jane.doe@example.com",  # Pass email directly
+        phone="+1-555-123-4567",  # Pass phone directly
         # Use strings for diagnoses as per patient.py entity
         diagnoses=[
             "F32.1: Major depressive disorder, single episode, moderate",
@@ -52,18 +54,16 @@ async def test_digital_twin_complete_workflow():
         ],
         # Use strings for medications as per patient.py entity
         medications=["Sertraline 50mg daily"],
-        allergies=["Penicillin"]
+        allergies=["Penicillin"],
     )
-    
+
     # Save the patient
     saved_patient = await patient_repo.save(patient)
     assert saved_patient.id == patient_id
 
     # 2. Initialize Digital Twin
     initial_twin_state = await digital_twin_core.initialize_digital_twin(
-        patient_id=patient_id,
-        include_genetic_data=False,
-        include_biomarkers=True
+        patient_id=patient_id, include_genetic_data=False, include_biomarkers=True
     )
 
     # Verify the initial state was created
@@ -102,7 +102,7 @@ async def test_digital_twin_complete_workflow():
     recommendations = await digital_twin_core.generate_treatment_recommendations(
         patient_id=patient_id,
         consider_current_medications=True,
-        include_therapy_options=True
+        include_therapy_options=True,
     )
 
     # Verify recommendations were generated
@@ -136,7 +136,7 @@ async def test_digital_twin_complete_workflow():
     comparison = await digital_twin_core.compare_states(
         patient_id=patient_id,
         state_id_1=initial_twin_state.id,
-        state_id_2=updated_twin_state.id
+        state_id_2=updated_twin_state.id,
     )
 
     # Verify comparison data

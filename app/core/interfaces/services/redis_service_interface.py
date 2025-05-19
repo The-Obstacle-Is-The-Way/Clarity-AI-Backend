@@ -59,7 +59,7 @@ class IRedisService(Protocol):
         pass
 
     @abstractmethod
-    async def get_client(self) -> any:  
+    async def get_client(self) -> any:
         """Get the underlying Redis client instance."""
         pass
 

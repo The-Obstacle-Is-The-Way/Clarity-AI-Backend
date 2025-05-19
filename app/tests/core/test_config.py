@@ -90,10 +90,7 @@ class TestSettings:
     def test_cors_origins_parsing(self, monkeypatch):
         """Test parsing of CORS_ORIGINS from environment variables."""
         # Test comma-separated string format
-        monkeypatch.setenv(
-            "CORS_ORIGINS",
-            "http://localhost,https://example.com"
-        )
+        monkeypatch.setenv("CORS_ORIGINS", "http://localhost,https://example.com")
 
         # Re-initialize settings to pick up CORS override
         settings_local = Settings()
@@ -103,14 +100,14 @@ class TestSettings:
 
         # Test list format
         monkeypatch.setenv(
-            "CORS_ORIGINS",
-            '["http://localhost:8000", "https://api.example.com"]'
+            "CORS_ORIGINS", '["http://localhost:8000", "https://api.example.com"]'
         )
         # Re-initialize settings to pick up list format override
         settings_local = Settings()
         assert len(settings_local.CORS_ORIGINS) == 2
         assert "http://localhost:8000" in settings_local.CORS_ORIGINS
         assert "https://api.example.com" in settings_local.CORS_ORIGINS
+
 
 # Fixture to reset the lru_cache for get_settings before each test
 @pytest.fixture(scope="function")

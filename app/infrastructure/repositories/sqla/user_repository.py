@@ -11,7 +11,9 @@ class SQLAlchemyUserRepository(IUserRepository):
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
 
-    async def get_user_by_id(self, user_id: UUID) -> User | None: # Matching middleware usage
+    async def get_user_by_id(
+        self, user_id: UUID
+    ) -> User | None:  # Matching middleware usage
         """Retrieve a user by their unique ID."""
         # Placeholder implementation - replace with actual SQLAlchemy query
         # For example:
@@ -33,7 +35,7 @@ class SQLAlchemyUserRepository(IUserRepository):
             f"SQLAlchemyUserRepository.get_user_by_id called with {user_id}. "
             f"Placeholder implementation."
         )
-        return None # Placeholder
+        return None  # Placeholder
 
     async def get_by_id(self, user_id: str | UUID) -> User | None:
         """Retrieve a user by their unique ID (Interface compliant)."""
@@ -43,7 +45,7 @@ class SQLAlchemyUserRepository(IUserRepository):
             except ValueError:
                 # Handle invalid UUID string format if necessary, e.g., log and return None
                 return None
-        return await self.get_user_by_id(user_id) # Delegate for now
+        return await self.get_user_by_id(user_id)  # Delegate for now
 
     async def get_by_email(self, email: str) -> User | None:
         raise NotImplementedError

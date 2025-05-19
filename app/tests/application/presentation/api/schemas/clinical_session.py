@@ -16,7 +16,7 @@ class ClinicalSessionBase(BaseModel):
     provider_id: UUID
     appointment_id: UUID | None = None
     session_datetime: datetime
-    duration_minutes: int = Field(gt=0) # Duration must be positive
+    duration_minutes: int = Field(gt=0)  # Duration must be positive
     session_type: SessionType
     summary: str | None = None
     subjective_notes: str | None = None
@@ -25,8 +25,10 @@ class ClinicalSessionBase(BaseModel):
     plan_notes: str | None = None
     structured_data: dict[str, Any] | None = {}
 
+
 class ClinicalSessionCreate(ClinicalSessionBase):
     pass
+
 
 class ClinicalSessionUpdate(BaseModel):
     # Allow updating specific fields, typically notes or structured data
@@ -39,12 +41,14 @@ class ClinicalSessionUpdate(BaseModel):
     structured_data: dict[str, Any] | None = None
     # Usually patient/provider/type/time are not updatable after creation
 
+
 class ClinicalSessionResponse(ClinicalSessionBase):
     id: UUID
     created_at: datetime
     last_updated: datetime
 
-    model_config = ConfigDict(from_attributes=True) # Enable ORM mode equivalent
+    model_config = ConfigDict(from_attributes=True)  # Enable ORM mode equivalent
+
 
 # Schema for listing clinical sessions with potential filters
 class ClinicalSessionListQuery(BaseModel):
@@ -56,4 +60,3 @@ class ClinicalSessionListQuery(BaseModel):
     session_type: SessionType | None = None
     limit: int = Field(default=50, ge=1, le=200)
     offset: int = Field(default=0, ge=0)
-

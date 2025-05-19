@@ -28,11 +28,11 @@ logger = logging.getLogger(__name__)
 class RateLimitingMiddleware(BaseHTTPMiddleware):
     """
     Middleware for rate limiting requests based on client IP and user ID.
-    
+
     This middleware applies rate limits to all incoming requests, with
     different limits based on the request path and user role.
     """
-    
+
     def __init__(
         self,
         app=None,
@@ -50,36 +50,37 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
     ):
         """
         Initialize the middleware.
-        
+
         Args:
             app: The FastAPI application
             rate_limiter: Optional rate limiter instance for dependency injection
         """
         # ------------------------------------------------------------------
-        # NOTE: Compatibility shim for legacy/unit‑test expectations          
+        # NOTE: Compatibility shim for legacy/unit‑test expectations
         # ------------------------------------------------------------------
-        # Historically our codebase contained several implementations of     
-        # RateLimitingMiddleware.  Numerous unit tests exercise a much more 
-        # lightweight interface that accepts keywords like `rate_limit`,     
-        # `time_window`, `redis_client`, exposes a synchronous               
+        # Historically our codebase contained several implementations of
+        # RateLimitingMiddleware.  Numerous unit tests exercise a much more
+        # lightweight interface that accepts keywords like `rate_limit`,
+        # `time_window`, `redis_client`, exposes a synchronous
         # `check_rate_limit` utility and even calls the instance directly as
-        # `await middleware(call_next, request)`.  Rather than duplicating   
-        # classes, we transparently extend this production‑grade version to  
-        # satisfy those signatures while preserving its original behaviour.  
+        # `await middleware(call_next, request)`.  Rather than duplicating
+        # classes, we transparently extend this production‑grade version to
+        # satisfy those signatures while preserving its original behaviour.
         # ------------------------------------------------------------------
-        # Accept legacy/extra kwargs via **kwargs (captured below once the   
-        # constructor signature is widened).  To maintain the public API we 
-        # keep explicit parameters and also support **kwargs through *args.  
+        # Accept legacy/extra kwargs via **kwargs (captured below once the
+        # constructor signature is widened).  To maintain the public API we
+        # keep explicit parameters and also support **kwargs through *args.
 
         # Provide a minimal ASGI app if none supplied (unit‑test convenience)
         if app is None:
             from starlette.applications import Starlette
+
             app = Starlette()
 
         super().__init__(app)
 
         # ------------------------------------------------------------------
-        # Configure underlying limiter                                        
+        # Configure underlying limiter
         # ------------------------------------------------------------------
         if limiter is not None:
             # When tests inject their own lightweight limiter mock
@@ -90,21 +91,21 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             # Default to production distributed limiter
             self._limiter = get_rate_limiter()
 
-        # Fallback primitive counter‑based limiter for unit tests when        
+        # Fallback primitive counter‑based limiter for unit tests when
         # nothing is injected. Keeps counters in‑memory per key.
         if self._limiter is None:
             self._in_memory_counters: dict[str, list[float]] = {}
 
-        # Legacy/simple numeric limits                                         
+        # Legacy/simple numeric limits
         self._simple_rate_limit = rate_limit or 100  # default 100 reqs
         self._simple_time_window = time_window or 60  # default 60 seconds
         self._redis = redis_client  # can be a mock from tests
 
-        # Advanced configuration maps                                         
+        # Advanced configuration maps
         self._default_limits = default_limits or {}
         self._path_limits = path_limits or {}
 
-        # Key extraction function                                             
+        # Key extraction function
         self._get_key = get_key or self._default_get_key
 
         # Paths that are exempt from rate limiting
@@ -121,16 +122,17 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             self.exempt_paths.extend([ml_prefix, xgb_prefix])
         except Exception:
             pass
-    
+
         # Maintain legacy attribute name expected by existing code/tests
         self.rate_limiter = self._limiter  # type: ignore
 
     # ------------------------------------------------------------------
-    # Legacy/simple limiter support                                      
+    # Legacy/simple limiter support
     # ------------------------------------------------------------------
     def _record_request(self, key: str) -> int:
         """Helper for in‑memory counters. Returns current count after increment."""
         import time  # local import to avoid unnecessary global dependency
+
         now = time.time()
         window_start = now - self._simple_time_window
 
@@ -148,7 +150,12 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
                 from app.infrastructure.security.rate_limiting.rate_limiter_enhanced import (
                     RateLimitConfig as _RC,  # lazy import
                 )
-                cfg = _RC(requests=self._simple_rate_limit, window_seconds=self._simple_time_window, block_seconds=self._simple_time_window * 5)
+
+                cfg = _RC(
+                    requests=self._simple_rate_limit,
+                    window_seconds=self._simple_time_window,
+                    block_seconds=self._simple_time_window * 5,
+                )
                 return self._limiter.check_rate_limit(key, cfg)  # type: ignore[arg-type]
             except Exception:  # pragma: no cover – fall back to simple counters
                 pass
@@ -158,7 +165,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         return count <= self._simple_rate_limit
 
     # ------------------------------------------------------------------
-    # Key resolution helpers                                             
+    # Key resolution helpers
     # ------------------------------------------------------------------
     def _default_get_key(self, request: Request) -> str:
         """Extract a key for rate‑limiting from request (IP aware)."""
@@ -174,14 +181,18 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         return "unknown"
 
     # ------------------------------------------------------------------
-    # Lightweight call interface used by legacy tests                    
+    # Lightweight call interface used by legacy tests
     # ------------------------------------------------------------------
     async def __call__(self, *args):  # type: ignore[override]
         """A minimal callable signature supporting legacy tests and ASGI calls."""
         # Legacy invocation path: (app_callable, request)
         if len(args) == 2 and not isinstance(args[0], dict):
             app_callable, request = args
-            key = self._default_get_key(request) if hasattr(request, "headers") else "unknown"
+            key = (
+                self._default_get_key(request)
+                if hasattr(request, "headers")
+                else "unknown"
+            )
             allowed = await self.check_rate_limit(key)
             if not allowed:
                 return Response(content="Too Many Requests", status_code=429)
@@ -204,11 +215,11 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         """
         Process the request through the middleware.
-        
+
         Args:
             request: The incoming request
             call_next: Function to call the next middleware/endpoint
-            
+
         Returns:
             Response: The processed response
         """
@@ -216,22 +227,22 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         if any(path.startswith(exempt_path) for exempt_path in self.exempt_paths):
             return await call_next(request)
-        
+
         # Determine rate limit type based on path
         limit_type = self._get_rate_limit_type(path)
-        
+
         # Get user ID if available in request state
         user_id = None
         if hasattr(request.state, "user") and request.state.user:
             user_id = request.state.user.get("sub") or request.state.user.get("id")
-        
+
         # Check if rate limited
         is_limited, rate_limit_info = await self.rate_limiter.process_request(
             request=request,
             limit_type=limit_type,
             user_id=user_id,
         )
-        
+
         if is_limited:
             # Create rate limited response
             content = {
@@ -243,47 +254,45 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
                 media_type="application/json",
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             )
-            
+
             # Add rate limit headers
             await self.rate_limiter.apply_rate_limit_headers(response, rate_limit_info)
-            
+
             # Log rate limit event
-            logger.warning(
-                f"Rate limit exceeded for {request.client.host} on {path}"
-            )
-            
+            logger.warning(f"Rate limit exceeded for {request.client.host} on {path}")
+
             return response
-        
+
         # Process the request
         response = await call_next(request)
-        
+
         # Add rate limit headers to response
         await self.rate_limiter.apply_rate_limit_headers(response, rate_limit_info)
-        
+
         return response
-    
+
     def _get_rate_limit_type(self, path: str) -> RateLimitType:
         """
         Determine the rate limit type based on the request path.
-        
+
         Args:
             path: The request path
-            
+
         Returns:
             RateLimitType: The appropriate rate limit type
         """
         # Login endpoints
         if path.startswith("/api/v1/auth/") and "login" in path.lower():
             return RateLimitType.LOGIN
-        
+
         # Analytics endpoints
         if path.startswith("/api/v1/analytics"):
             return RateLimitType.ANALYTICS
-        
+
         # Patient data endpoints
         if path.startswith("/api/v1/patients"):
             return RateLimitType.PATIENT_DATA
-        
+
         # Default rate limit
         return RateLimitType.DEFAULT
 
@@ -291,14 +300,15 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
 def setup_rate_limiting(app) -> None:
     """
     Configure rate limiting middleware for the application.
-    
+
     Args:
         app: The FastAPI application
     """
     app.add_middleware(RateLimitingMiddleware)
 
+
 # ----------------------------------------------------------------------
-# Lightweight config object expected by unit tests                      
+# Lightweight config object expected by unit tests
 # ----------------------------------------------------------------------
 from dataclasses import dataclass
 
@@ -319,7 +329,7 @@ class RateLimitConfig:
 
 
 # ----------------------------------------------------------------------
-# Factory helper expected by tests                                       
+# Factory helper expected by tests
 # ----------------------------------------------------------------------
 
 from .rate_limiting_middleware import RateLimitingMiddleware
@@ -336,15 +346,23 @@ def create_rate_limiting_middleware(
     middleware_instance: RateLimitingMiddleware | None = None,
 ):
     """Factory that instantiates or returns a RateLimitingMiddleware."""
-    
+
     # If an instance is provided, return it directly (DI)
     if middleware_instance is not None:
         return middleware_instance
 
     # --- Otherwise, proceed with instantiation ---
     default_limits = {
-        "global": RateLimitConfig(requests=api_rate_limit, window_seconds=api_window_seconds, block_seconds=api_block_seconds),
-        "ip": RateLimitConfig(requests=api_rate_limit // 10, window_seconds=api_window_seconds, block_seconds=api_block_seconds),
+        "global": RateLimitConfig(
+            requests=api_rate_limit,
+            window_seconds=api_window_seconds,
+            block_seconds=api_block_seconds,
+        ),
+        "ip": RateLimitConfig(
+            requests=api_rate_limit // 10,
+            window_seconds=api_window_seconds,
+            block_seconds=api_block_seconds,
+        ),
     }
 
     # Stricter limits for auth endpoints

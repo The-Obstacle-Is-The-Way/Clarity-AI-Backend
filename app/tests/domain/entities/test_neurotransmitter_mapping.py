@@ -117,10 +117,18 @@ def test_get_profiles_by_neurotransmitter():
     mapping.add_receptor_profile(gaba_profile)
 
     # Get profiles by neurotransmitter
-    serotonin_profiles = mapping.get_receptor_profiles(neurotransmitter=Neurotransmitter.SEROTONIN)
-    dopamine_profiles = mapping.get_receptor_profiles(neurotransmitter=Neurotransmitter.DOPAMINE)
-    gaba_profiles = mapping.get_receptor_profiles(neurotransmitter=Neurotransmitter.GABA)
-    glutamate_profiles = mapping.get_receptor_profiles(neurotransmitter=Neurotransmitter.GLUTAMATE)
+    serotonin_profiles = mapping.get_receptor_profiles(
+        neurotransmitter=Neurotransmitter.SEROTONIN
+    )
+    dopamine_profiles = mapping.get_receptor_profiles(
+        neurotransmitter=Neurotransmitter.DOPAMINE
+    )
+    gaba_profiles = mapping.get_receptor_profiles(
+        neurotransmitter=Neurotransmitter.GABA
+    )
+    glutamate_profiles = mapping.get_receptor_profiles(
+        neurotransmitter=Neurotransmitter.GLUTAMATE
+    )
 
     # Verify results
     assert len(serotonin_profiles) == 1
@@ -185,10 +193,16 @@ def test_get_profiles_by_brain_region():
     mapping.add_receptor_profile(hippocampus_profile)
 
     # Get profiles by brain region
-    pfc_profiles = mapping.get_receptor_profiles(brain_region=BrainRegion.PREFRONTAL_CORTEX)
+    pfc_profiles = mapping.get_receptor_profiles(
+        brain_region=BrainRegion.PREFRONTAL_CORTEX
+    )
     amygdala_profiles = mapping.get_receptor_profiles(brain_region=BrainRegion.AMYGDALA)
-    hippocampus_profiles = mapping.get_receptor_profiles(brain_region=BrainRegion.HIPPOCAMPUS)
-    pituitary_profiles = mapping.get_receptor_profiles(brain_region=BrainRegion.PITUITARY)
+    hippocampus_profiles = mapping.get_receptor_profiles(
+        brain_region=BrainRegion.HIPPOCAMPUS
+    )
+    pituitary_profiles = mapping.get_receptor_profiles(
+        brain_region=BrainRegion.PITUITARY
+    )
 
     # Verify results
     assert len(pfc_profiles) == 2
@@ -259,7 +273,7 @@ def test_calculate_regional_activity():
     assert "excitatory" in activity
     assert "inhibitory" in activity
     assert "net_activity" in activity
-    
+
     # Excitatory activity = (0.7 * 0.8 * 0.8) + (0.6 * 0.7 * 0.7) = 0.448 + 0.294 = 0.742
     # Inhibitory activity = (0.5 * 0.6 * 0.6) = 0.18
     # Net activity = 0.742 - 0.18 = 0.562
@@ -278,10 +292,16 @@ def test_create_default_mapping():
     assert len(mapping.receptor_profiles) > 0
 
     # Check that all major brain regions and neurotransmitters are represented
-    pfc_profiles = mapping.get_receptor_profiles(brain_region=BrainRegion.PREFRONTAL_CORTEX)
+    pfc_profiles = mapping.get_receptor_profiles(
+        brain_region=BrainRegion.PREFRONTAL_CORTEX
+    )
     amygdala_profiles = mapping.get_receptor_profiles(brain_region=BrainRegion.AMYGDALA)
-    hippocampus_profiles = mapping.get_receptor_profiles(brain_region=BrainRegion.HIPPOCAMPUS)
-    pituitary_profiles = mapping.get_receptor_profiles(brain_region=BrainRegion.PITUITARY)
+    hippocampus_profiles = mapping.get_receptor_profiles(
+        brain_region=BrainRegion.HIPPOCAMPUS
+    )
+    pituitary_profiles = mapping.get_receptor_profiles(
+        brain_region=BrainRegion.PITUITARY
+    )
 
     assert len(pfc_profiles) > 0
     assert len(amygdala_profiles) > 0

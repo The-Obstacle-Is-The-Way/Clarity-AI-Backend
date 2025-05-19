@@ -16,25 +16,26 @@ from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.domain.entities.biometric_twin_enhanced import BiometricTwin
 from app.domain.exceptions import DomainError
-from app.domain.services.biometric_integration_service import BiometricIntegrationService
+from app.domain.services.biometric_integration_service import (
+    BiometricIntegrationService,
+)
 from app.domain.utils.datetime_utils import UTC
+
 
 @pytest.mark.db_required()
 class TestBiometricIntegrationService:
     """Tests for the BiometricIntegrationService class."""
-    
+
     @pytest.fixture
     def mock_repository(self):
         repo = MagicMock()
         repo.get_by_patient_id = MagicMock()
         repo.save = MagicMock()
         return repo
-        
+
     @pytest.fixture
     def service(self, mock_repository):
-        return BiometricIntegrationService(
-            biometric_twin_repository=mock_repository
-        )
+        return BiometricIntegrationService(biometric_twin_repository=mock_repository)
 
     def test_get_or_create_biometric_twin_existing(self, service, mock_repository):
         patient_id = uuid4()
@@ -48,8 +49,10 @@ class TestBiometricIntegrationService:
     def test_get_or_create_biometric_twin_new(self, service, mock_repository):
         patient_id = uuid4()
         mock_repository.get_by_patient_id.return_value = None
+
         def save_side_effect(twin):
             return twin
+
         mock_repository.save.side_effect = save_side_effect
         result = service.get_or_create_biometric_twin(patient_id)
         assert isinstance(result, BiometricTwin)
@@ -76,7 +79,7 @@ class TestBiometricIntegrationService:
             value=75,
             source="wearable",
             metadata={"activity": "resting"},
-            confidence=0.95
+            confidence=0.95,
         )
         assert data_point.value == 75
         assert data_point.source.value == "wearable"
@@ -87,13 +90,15 @@ class TestBiometricIntegrationService:
 
     def test_add_biometric_data_with_error(self, service, mock_repository):
         patient_id = uuid4()
-        service.get_or_create_biometric_twin = MagicMock(side_effect=Exception("Repository error"))
+        service.get_or_create_biometric_twin = MagicMock(
+            side_effect=Exception("Repository error")
+        )
         with pytest.raises(DomainError) as exc_info:
             service.add_biometric_data(
                 patient_id=patient_id,
                 data_type="heart_rate",
                 value=75,
-                source="wearable"
+                source="wearable",
             )
         assert "Failed to add biometric data" in str(exc_info.value)
 
@@ -108,14 +113,14 @@ class TestBiometricIntegrationService:
                 "data_type": "heart_rate",
                 "value": 75,
                 "source": "wearable",
-                "timestamp": datetime.now(UTC)
+                "timestamp": datetime.now(UTC),
             },
             {
                 "data_type": "blood_pressure",
                 "value": "120/80",
                 "source": "wearable",
-                "timestamp": datetime.now(UTC)
-            }
+                "timestamp": datetime.now(UTC),
+            },
         ]
         result = service.batch_add_biometric_data(patient_id, batch_data)
         assert len(result) == 2
@@ -132,11 +137,12 @@ class TestBiometricIntegrationService:
         mock_twin.get_biometric_data = MagicMock(return_value=None)
         mock_repository.get_by_patient_id.return_value = mock_twin
         result = service.get_biometric_data(
-            patient_id=patient_id,
-            data_type="heart_rate"
+            patient_id=patient_id, data_type="heart_rate"
         )
         assert isinstance(result, list)
-        mock_twin.get_biometric_data.assert_called_with(service._to_biometric_type("heart_rate")) if hasattr(service, '_to_biometric_type') else True
+        mock_twin.get_biometric_data.assert_called_with(
+            service._to_biometric_type("heart_rate")
+        ) if hasattr(service, "_to_biometric_type") else True
 
     def test_get_biometric_data_no_twin(self, service, mock_repository):
         patient_id = uuid4()
@@ -147,16 +153,16 @@ class TestBiometricIntegrationService:
     def test_analyze_trends(self, service, mock_repository):
         patient_id = uuid4()
         now = datetime.now(UTC)
-        service.get_biometric_data = MagicMock(return_value=[
-            MagicMock(value=70),
-            MagicMock(value=75),
-            MagicMock(value=80),
-            MagicMock(value=85)
-        ])
+        service.get_biometric_data = MagicMock(
+            return_value=[
+                MagicMock(value=70),
+                MagicMock(value=75),
+                MagicMock(value=80),
+                MagicMock(value=85),
+            ]
+        )
         result = service.analyze_trends(
-            patient_id=patient_id,
-            data_type="heart_rate",
-            window_days=7
+            patient_id=patient_id, data_type="heart_rate", window_days=7
         )
         assert result["status"] == "success"
         assert result["data_type"] == "heart_rate"
@@ -169,26 +175,25 @@ class TestBiometricIntegrationService:
     def test_analyze_trends_insufficient_data(self, service, mock_repository):
         patient_id = uuid4()
         service.get_biometric_data = MagicMock(return_value=[])
-        result = service.analyze_trends(
-            patient_id=patient_id,
-            data_type="heart_rate"
-        )
+        result = service.analyze_trends(patient_id=patient_id, data_type="heart_rate")
         assert result["status"] == "insufficient_data"
 
     def test_detect_correlations(self, service, mock_repository):
         patient_id = uuid4()
         mock_twin = MagicMock(spec=BiometricTwin)
         mock_repository.get_by_patient_id.return_value = mock_twin
-        service.get_biometric_data = MagicMock(return_value=[
-            MagicMock(value=70),
-            MagicMock(value=75),
-            MagicMock(value=80),
-            MagicMock(value=85)
-        ])
+        service.get_biometric_data = MagicMock(
+            return_value=[
+                MagicMock(value=70),
+                MagicMock(value=75),
+                MagicMock(value=80),
+                MagicMock(value=85),
+            ]
+        )
         result = service.detect_correlations(
             patient_id=patient_id,
             primary_data_type="heart_rate",
-            secondary_data_types=["sleep_quality", "activity"]
+            secondary_data_types=["sleep_quality", "activity"],
         )
         assert "sleep_quality" in result
         assert isinstance(result["sleep_quality"], float)
@@ -204,7 +209,7 @@ class TestBiometricIntegrationService:
             patient_id=patient_id,
             device_id="wearable-123",
             device_type="wearable",
-            connection_metadata={"model": "Apple Watch Series 7"}
+            connection_metadata={"model": "Apple Watch Series 7"},
         )
         assert result is True
         service.add_biometric_data.assert_called_once()
@@ -217,9 +222,7 @@ class TestBiometricIntegrationService:
         mock_repository.get_by_patient_id.return_value = mock_twin
         service.add_biometric_data = MagicMock(return_value=None)
         result = await service.disconnect_device(
-            patient_id=patient_id,
-            device_id="wearable-123",
-            reason="user_requested"
+            patient_id=patient_id, device_id="wearable-123", reason="user_requested"
         )
         assert result is True
         service.add_biometric_data.assert_called_once()
@@ -230,7 +233,6 @@ class TestBiometricIntegrationService:
         patient_id = uuid4()
         mock_repository.get_by_patient_id.return_value = None
         result = await service.disconnect_device(
-            patient_id=patient_id,
-            device_id="wearable-123"
+            patient_id=patient_id, device_id="wearable-123"
         )
         assert result is False

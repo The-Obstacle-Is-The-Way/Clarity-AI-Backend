@@ -95,10 +95,15 @@ class _InMemorySageMakerClient:
         self._endpoints: dict[str, dict[str, Any]] = {}
 
     def list_endpoints(self, **_kw):
-        return {"Endpoints": [
-            {"EndpointName": name, "EndpointStatus": info.get("status", "InService")}
-            for name, info in self._endpoints.items()
-        ]}
+        return {
+            "Endpoints": [
+                {
+                    "EndpointName": name,
+                    "EndpointStatus": info.get("status", "InService"),
+                }
+                for name, info in self._endpoints.items()
+            ]
+        }
 
     def describe_endpoint(self, EndpointName):
         # If the endpoint hasn't been created yet return a default entry so that

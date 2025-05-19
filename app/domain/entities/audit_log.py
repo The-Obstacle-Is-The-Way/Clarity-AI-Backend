@@ -15,12 +15,12 @@ from pydantic import BaseModel, Field, field_validator, ConfigDict
 class AuditLog(BaseModel):
     """
     Domain entity representing an audit log entry.
-    
+
     This entity encapsulates the core business concept of an audit log entry
     in a HIPAA-compliant healthcare system, tracking access to PHI and
     system events.
     """
-    
+
     id: Optional[str] = Field(default_factory=lambda: str(uuid4()))
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     event_type: str
@@ -32,24 +32,22 @@ class AuditLog(BaseModel):
     ip_address: Optional[str] = None
     details: Optional[Dict[str, Any]] = None
     success: Optional[bool] = None
-    
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True
-    )
-    
-    @field_validator('timestamp')
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @field_validator("timestamp")
     def ensure_timezone(cls, v: datetime) -> datetime:
         """Ensure the timestamp has a timezone."""
         if v.tzinfo is None:
             return v.replace(tzinfo=timezone.utc)
         return v
-    
-    def anonymize_phi(self) -> 'AuditLog':
+
+    def anonymize_phi(self) -> "AuditLog":
         """
         Create an anonymized version of this audit log for safe export.
-        
+
         This ensures no PHI is included when exporting audit logs.
-        
+
         Returns:
             AuditLog: Anonymized audit log
         """
@@ -64,38 +62,42 @@ class AuditLog(BaseModel):
             action=self.action,
             status=self.status,
             # IP addresses can be masked for privacy
-            ip_address='.'.join(self.ip_address.split('.')[:2] + ['*', '*']) if self.ip_address else None,
+            ip_address=".".join(self.ip_address.split(".")[:2] + ["*", "*"])
+            if self.ip_address
+            else None,
             # Strip any potential PHI from details
-            details={k: v for k, v in (self.details or {}).items() if k not in ['phi', 'patient_data', 'medical_info']},
-            success=self.success
+            details={
+                k: v
+                for k, v in (self.details or {}).items()
+                if k not in ["phi", "patient_data", "medical_info"]
+            },
+            success=self.success,
         )
 
 
 class AuditLogBatch(BaseModel):
     """
     Represents a batch of audit logs.
-    
+
     Used for bulk operations and export/import.
     """
-    
+
     logs: List[AuditLog]
     start_timestamp: datetime
     end_timestamp: datetime
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     total_count: int
-    
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True
-    )
-    
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     @classmethod
-    def create_from_logs(cls, logs: List[AuditLog]) -> 'AuditLogBatch':
+    def create_from_logs(cls, logs: List[AuditLog]) -> "AuditLogBatch":
         """
         Create a batch from a list of audit logs.
-        
+
         Args:
             logs: List of audit logs to include in the batch
-            
+
         Returns:
             AuditLogBatch: The created batch
         """
@@ -104,15 +106,15 @@ class AuditLogBatch(BaseModel):
                 logs=[],
                 start_timestamp=datetime.now(timezone.utc),
                 end_timestamp=datetime.now(timezone.utc),
-                total_count=0
+                total_count=0,
             )
-        
+
         # Sort logs by timestamp
         sorted_logs = sorted(logs, key=lambda log: log.timestamp)
-        
+
         return cls(
             logs=sorted_logs,
             start_timestamp=sorted_logs[0].timestamp,
             end_timestamp=sorted_logs[-1].timestamp,
-            total_count=len(logs)
-        ) 
+            total_count=len(logs),
+        )

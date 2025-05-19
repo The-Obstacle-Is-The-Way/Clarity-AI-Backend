@@ -17,17 +17,16 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 # Base configuration that can be extended for different environments
 LOGGING_CONFIG_BASE: dict[str, Any] = {
-
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
         "standard": {
             "format": "[%(asctime)s] [%(levelname)s] [%(name)s] - %(message)s",
-            "datefmt": "%Y-%m-%d %H:%M:%S"
+            "datefmt": "%Y-%m-%d %H:%M:%S",
         },
         "detailed": {
             "format": "[%(asctime)s] [%(levelname)s] [%(name)s:%(lineno)d] - %(message)s",
-            "datefmt": "%Y-%m-%d %H:%M:%S"
+            "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     },
     "filters": {
@@ -41,7 +40,7 @@ LOGGING_CONFIG_BASE: dict[str, Any] = {
             "level": LOG_LEVEL,
             "formatter": "standard",
             "filters": ["phi_sanitizer"],
-            "stream": "ext://sys.stdout"
+            "stream": "ext://sys.stdout",
         },
         "file_handler": {
             "class": "logging.handlers.RotatingFileHandler",
@@ -51,7 +50,7 @@ LOGGING_CONFIG_BASE: dict[str, Any] = {
             "filename": str(Path(os.getenv("LOG_DIR", "logs")) / "app.log"),
             "maxBytes": 10485760,  # 10MB
             "backupCount": 10,
-            "encoding": "utf8"
+            "encoding": "utf8",
         },
         "error_file_handler": {
             "class": "logging.handlers.RotatingFileHandler",
@@ -61,41 +60,41 @@ LOGGING_CONFIG_BASE: dict[str, Any] = {
             "filename": str(Path(os.getenv("LOG_DIR", "logs")) / "error.log"),
             "maxBytes": 10485760,  # 10MB
             "backupCount": 10,
-            "encoding": "utf8"
-        }
+            "encoding": "utf8",
+        },
     },
     "loggers": {
         "root": {
             "level": LOG_LEVEL,
             "handlers": ["console", "file_handler"],
-            "propagate": False
+            "propagate": False,
         },
         "app": {
             "level": LOG_LEVEL,
             "handlers": ["console", "file_handler"],
-            "propagate": False
+            "propagate": False,
         },
         "uvicorn": {
             "level": LOG_LEVEL,
             "handlers": ["console", "file_handler"],
-            "propagate": False
+            "propagate": False,
         },
         "sqlalchemy.engine": {
             "level": "WARNING",  # Set to INFO or DEBUG for SQL query logging
             "handlers": ["console", "file_handler"],
-            "propagate": False
+            "propagate": False,
         },
         "sqlalchemy": {
             "handlers": ["console"],
             "level": os.getenv("SQL_LOG_LEVEL", "WARNING"),
-            "propagate": False
+            "propagate": False,
         },
         "alembic": {
             "handlers": ["console"],
             "level": os.getenv("SQL_LOG_LEVEL", "WARNING"),
-            "propagate": False
-        }
-    }
+            "propagate": False,
+        },
+    },
 }
 
 # Create a concrete logging configuration by copying the base config
@@ -109,20 +108,20 @@ log_dir.mkdir(parents=True, exist_ok=True)
 def setup_logging(config: dict[str, Any] | None = None) -> None:
     """
     Configure the logging system with the provided configuration or default.
-    
+
     Args:
         config: Optional logging configuration dictionary to use instead of the default
     """
     if config is None:
         config = LOGGING_CONFIG
-    
+
     # Create logs directory if it doesn't exist
     file_path = config["handlers"]["file_handler"]["filename"]
     log_dir = Path(file_path).parent
     log_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Apply the configuration
     logging.config.dictConfig(config)
-    
+
     logger = logging.getLogger(__name__)
     logger.debug("Logging configured successfully")

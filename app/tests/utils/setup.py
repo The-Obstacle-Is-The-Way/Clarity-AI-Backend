@@ -21,12 +21,14 @@ try:
 
     # Create settings instance to validate configuration
     settings = Settings()
-    
+
     # Log settings for debugging
     if os.environ.get("LOG_LEVEL") == "DEBUG":
-        print(f"Test environment configured with database: {settings.SQLALCHEMY_DATABASE_URI}")
+        print(
+            f"Test environment configured with database: {settings.SQLALCHEMY_DATABASE_URI}"
+        )
 except ImportError as e:
     print(f"Error in test setup: {e}")
     # Don't raise, as this might be called during initial container setup
     # when modules are still being installed
-    pass 
+    pass

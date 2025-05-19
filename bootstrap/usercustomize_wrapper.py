@@ -44,6 +44,6 @@ globals().update(_impl.__dict__)
 
 import boto3  # noqa: WPS433 – runtime verification
 
-assert getattr(boto3, "__shim__", False), (
-    "boto3 shim not active after importing usercustomize_wrapper"
-)
+assert getattr(
+    boto3, "__shim__", False
+), "boto3 shim not active after importing usercustomize_wrapper"

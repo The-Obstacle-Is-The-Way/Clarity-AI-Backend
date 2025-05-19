@@ -14,8 +14,12 @@ import asyncio
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout
 
-from app.infrastructure.ml.biometric_correlation.lstm_model import BiometricCorrelationModel
-from app.infrastructure.ml.biometric_correlation.model_service import BiometricCorrelationService
+from app.infrastructure.ml.biometric_correlation.lstm_model import (
+    BiometricCorrelationModel,
+)
+from app.infrastructure.ml.biometric_correlation.model_service import (
+    BiometricCorrelationService,
+)
 
 
 # Group tests within a class
@@ -28,31 +32,33 @@ class TestBiometricCorrelationService:
         model = AsyncMock(spec=BiometricCorrelationModel)
         model.is_initialized = True
         # Corrected return value dictionary
-        model.analyze_correlations = AsyncMock(return_value={
-            "correlations": [
-                {
-                    "biometric_type": "heart_rate_variability",
-                    "symptom_type": "anxiety",
-                    "coefficient": -0.72,
-                    "lag_hours": 8,
-                    "confidence": 0.85,
-                    "p_value": 0.002
+        model.analyze_correlations = AsyncMock(
+            return_value={
+                "correlations": [
+                    {
+                        "biometric_type": "heart_rate_variability",
+                        "symptom_type": "anxiety",
+                        "coefficient": -0.72,
+                        "lag_hours": 8,
+                        "confidence": 0.85,
+                        "p_value": 0.002,
+                    },
+                    {
+                        "biometric_type": "sleep_duration",
+                        "symptom_type": "mood",
+                        "coefficient": 0.65,
+                        "lag_hours": 24,
+                        "confidence": 0.82,
+                        "p_value": 0.005,
+                    },
+                ],
+                "model_metrics": {
+                    "accuracy": 0.87,
+                    "false_positive_rate": 0.08,
+                    "lag_prediction_mae": 2.3,
                 },
-                {
-                    "biometric_type": "sleep_duration",
-                    "symptom_type": "mood",
-                    "coefficient": 0.65,
-                    "lag_hours": 24,
-                    "confidence": 0.82,
-                    "p_value": 0.005
-                }
-            ],
-            "model_metrics": {
-                "accuracy": 0.87,
-                "false_positive_rate": 0.08,
-                "lag_prediction_mae": 2.3
             }
-        })
+        )
         return model
 
     @pytest.fixture
@@ -65,13 +71,13 @@ class TestBiometricCorrelationService:
         # Corrected instantiation and list definitions
         service_instance = BiometricCorrelationService(
             model_dir=model_dir,
-            model_path=None, # Let it use default path within model_dir
+            model_path=None,  # Let it use default path within model_dir
             biometric_features=[
                 "heart_rate_variability",
                 "sleep_duration",
-                "physical_activity"
+                "physical_activity",
             ],
-            mental_health_indicators=["anxiety", "mood"]
+            mental_health_indicators=["anxiety", "mood"],
         )
 
         # Replace the model with our mock
@@ -87,34 +93,37 @@ class TestBiometricCorrelationService:
         # Use fixed dates for deterministic testing
         base_date = datetime(2025, 1, 1, tzinfo=timezone.utc)
         dates = [base_date + timedelta(days=i) for i in range(30)]
-        
+
         # Create test data dictionary with proper structure
         data = {}
-        
+
         # Heart rate variability data
         data["heart_rate_variability"] = [
             {
                 "timestamp": dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "value": 45.0 + i * 0.1  # Deterministic values instead of random
-            } for i, dt in enumerate(dates)
+                "value": 45.0 + i * 0.1,  # Deterministic values instead of random
+            }
+            for i, dt in enumerate(dates)
         ]
-        
+
         # Sleep duration data
         data["sleep_duration"] = [
             {
                 "timestamp": dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "value": 7.0 + i * 0.05  # Deterministic values
-            } for i, dt in enumerate(dates)
+                "value": 7.0 + i * 0.05,  # Deterministic values
+            }
+            for i, dt in enumerate(dates)
         ]
-        
+
         # Physical activity data
         data["physical_activity"] = [
             {
                 "timestamp": dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "value": 30.0 + i * 0.5  # Deterministic values
-            } for i, dt in enumerate(dates)
+                "value": 30.0 + i * 0.5,  # Deterministic values
+            }
+            for i, dt in enumerate(dates)
         ]
-        
+
         return data
 
     @pytest.fixture
@@ -124,11 +133,8 @@ class TestBiometricCorrelationService:
 
     @pytest.mark.asyncio
     async def test_analyze_correlations_success(
-        self,
-        service,
-        mock_lstm_model,
-        sample_biometric_data,
-        sample_patient_id):
+        self, service, mock_lstm_model, sample_biometric_data, sample_patient_id
+    ):
         """Test that analyze_correlations correctly processes biometric data and returns correlations."""
         # Setup
         lookback_days = 30
@@ -140,7 +146,7 @@ class TestBiometricCorrelationService:
             patient_id=sample_patient_id,
             biometric_data=sample_biometric_data,
             lookback_days=lookback_days,
-            correlation_threshold=correlation_threshold
+            correlation_threshold=correlation_threshold,
         )
 
         # Verify
@@ -172,8 +178,9 @@ class TestBiometricCorrelationService:
             assert "action" in insight
 
     @pytest.mark.asyncio
-    async def test_analyze_correlations_empty_data( # Added async
-        self, service, sample_patient_id):
+    async def test_analyze_correlations_empty_data(  # Added async
+        self, service, sample_patient_id
+    ):
         """Test that analyze_correlations handles empty biometric data gracefully."""
         # Setup
         empty_data = {}
@@ -184,14 +191,15 @@ class TestBiometricCorrelationService:
             await service.analyze_correlations(
                 patient_id=sample_patient_id,
                 biometric_data=empty_data,
-                lookback_days=30
+                lookback_days=30,
             )
 
         assert "Empty biometric data" in str(excinfo.value)
 
     @pytest.mark.asyncio
-    async def test_analyze_correlations_insufficient_data( # Added async
-        self, service, sample_patient_id):
+    async def test_analyze_correlations_insufficient_data(  # Added async
+        self, service, sample_patient_id
+    ):
         """Test that analyze_correlations handles insufficient biometric data gracefully."""
         # Setup
         # Corrected dictionary and list structure
@@ -199,7 +207,7 @@ class TestBiometricCorrelationService:
             "heart_rate_variability": [
                 {
                     "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
-                    "value": 45
+                    "value": 45,
                 }
             ]
         }
@@ -209,14 +217,16 @@ class TestBiometricCorrelationService:
         result = await service.analyze_correlations(
             patient_id=sample_patient_id,
             biometric_data=insufficient_data,
-            lookback_days=30
+            lookback_days=30,
         )
 
         # Verify
         assert "patient_id" in result
         assert result["patient_id"] == sample_patient_id
         assert "reliability" in result
-        assert result["reliability"] == "low" # Or appropriate value for insufficient data
+        assert (
+            result["reliability"] == "low"
+        )  # Or appropriate value for insufficient data
         assert "correlations" in result
         assert len(result["correlations"]) == 0
         assert "insights" in result
@@ -225,12 +235,9 @@ class TestBiometricCorrelationService:
         assert "insufficient_data" in result["warning"]
 
     @pytest.mark.asyncio
-    async def test_analyze_correlations_model_error( # Added async
-        self,
-        service,
-        mock_lstm_model,
-        sample_biometric_data,
-        sample_patient_id):
+    async def test_analyze_correlations_model_error(  # Added async
+        self, service, mock_lstm_model, sample_biometric_data, sample_patient_id
+    ):
         """Test that analyze_correlations handles model errors gracefully."""
         # Setup
         # Corrected side_effect assignment
@@ -241,7 +248,7 @@ class TestBiometricCorrelationService:
         result = await service.analyze_correlations(
             patient_id=sample_patient_id,
             biometric_data=sample_biometric_data,
-            lookback_days=30
+            lookback_days=30,
         )
 
         # Verify
@@ -256,7 +263,9 @@ class TestBiometricCorrelationService:
 
     # Test private methods if necessary, though generally testing public interface is preferred
     @pytest.mark.asyncio
-    async def test_preprocess_biometric_data(self, service, sample_biometric_data, sample_patient_id):
+    async def test_preprocess_biometric_data(
+        self, service, sample_biometric_data, sample_patient_id
+    ):
         """Test that _preprocess_biometric_data correctly processes biometric data."""
         # Debug data coming in
         print("\n==== SAMPLE BIOMETRIC DATA =====\n")
@@ -265,17 +274,21 @@ class TestBiometricCorrelationService:
         for key in sample_biometric_data.keys():
             print(f"Key '{key}' has {len(sample_biometric_data[key])} items")
             print(f"Sample item: {sample_biometric_data[key][0]}")
-        
+
         # Setup
         lookback_days = 30
-        cutoff_date = datetime(2025, 1, 1, tzinfo=timezone.utc) - timedelta(days=lookback_days)
-        
+        cutoff_date = datetime(2025, 1, 1, tzinfo=timezone.utc) - timedelta(
+            days=lookback_days
+        )
+
         # Debug service's biometric_features list
         print(f"\nService biometric_features: {service.biometric_features}")
-        
+
         # Execute - use _preprocess_biometric_data directly for unit testing
-        processed_data = service._preprocess_biometric_data(sample_biometric_data, lookback_days)
-        
+        processed_data = service._preprocess_biometric_data(
+            sample_biometric_data, lookback_days
+        )
+
         # Debug processed output
         print("\n==== PROCESSED DATA =====\n")
         print(f"Processed data type: {type(processed_data)}")
@@ -293,51 +306,51 @@ class TestBiometricCorrelationService:
         if any(isinstance(data, MagicMock) for _, data in processed_data.items()):
             # If we're dealing with MagicMock DataFrames, just verify we have the right keys
             # and skip further assertions that would fail on mock objects
-            print("\nTest using MagicMock objects - skipping detailed DataFrame assertions")
-            assert set(processed_data.keys()) == {'heart_rate_variability', 'sleep_duration', 'physical_activity'}
+            print(
+                "\nTest using MagicMock objects - skipping detailed DataFrame assertions"
+            )
+            assert set(processed_data.keys()) == {
+                "heart_rate_variability",
+                "sleep_duration",
+                "physical_activity",
+            }
         else:
             # Only do the detailed assertions with real DataFrames
             for key, data in processed_data.items():
                 assert "timestamp" in data.columns
                 assert "value" in data.columns
                 # Check timestamp conversion
-                assert pd.api.types.is_datetime64_any_dtype(data['timestamp'])
+                assert pd.api.types.is_datetime64_any_dtype(data["timestamp"])
                 # Check sorting and filtering
                 assert len(data) > 0
-                assert all(ts >= cutoff_date for ts in data['timestamp'])
+                assert all(ts >= cutoff_date for ts in data["timestamp"])
 
-    def test_validate_biometric_data(self, service): # Added self
+    def test_validate_biometric_data(self, service):  # Added self
         """Test that _validate_biometric_data correctly validates input data."""
         # Valid data
         valid_data = {
-            "heart_rate": [ # Corrected list structure
+            "heart_rate": [  # Corrected list structure
                 {
                     "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
-                    "value": 72
+                    "value": 72,
                 }
             ]
         }
 
         # Invalid data - missing timestamp
-        invalid_data_1 = {
-            "heart_rate": [ # Corrected list structure
-                {
-                    "value": 72
-                }
-            ]
-        }
+        invalid_data_1 = {"heart_rate": [{"value": 72}]}  # Corrected list structure
 
         # Invalid data - missing value
         invalid_data_2 = {
-            "heart_rate": [ # Corrected list structure
-                {
-                    "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-                }
+            "heart_rate": [  # Corrected list structure
+                {"timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")}
             ]
         }
 
         # Verify validation works
-        assert service._validate_biometric_data(valid_data) is True # Expect True on success
+        assert (
+            service._validate_biometric_data(valid_data) is True
+        )  # Expect True on success
 
         # Verify validation fails on invalid data
         with pytest.raises(ValueError):

@@ -64,9 +64,8 @@ def sample_data_point(sample_patient_id):
         timestamp=datetime.now(UTC),
         source="apple_watch",
         metadata={"activity": "resting"},
-        confidence=0.95
+        confidence=0.95,
     )
-    
 
 
 @pytest.fixture
@@ -79,14 +78,9 @@ def sample_rule(sample_clinician_id):
         name="High Heart Rate",
         description="Alert when heart rate exceeds 100 bpm",
         priority=AlertPriority.WARNING,
-        condition={
-            "data_type": "heart_rate",
-            "operator": ">",
-            "threshold": 100.0
-        },
-        created_by=sample_clinician_id
+        condition={"data_type": "heart_rate", "operator": ">", "threshold": 100.0},
+        created_by=sample_clinician_id,
     )
-    
 
 
 @pytest.fixture
@@ -124,14 +118,9 @@ class TestAlertRule:
             name="High Heart Rate",
             description="Alert when heart rate exceeds 100 bpm",
             priority=AlertPriority.WARNING,
-            condition={
-                "data_type": "heart_rate",
-                "operator": ">",
-                "threshold": 100.0
-            },
-            created_by=sample_clinician_id
+            condition={"data_type": "heart_rate", "operator": ">", "threshold": 100.0},
+            created_by=sample_clinician_id,
         )
-        
 
         assert rule.rule_id == "test-rule-1"
         assert rule.name == "High Heart Rate"
@@ -149,7 +138,7 @@ class TestAlertRule:
         """
         # Use the fully qualified import path
         from app.domain.exceptions.base_exceptions import ValidationError
-        
+
         # Add a bad operator to force a validation error
         with pytest.raises(ValidationError):
             AlertRule(
@@ -160,9 +149,9 @@ class TestAlertRule:
                 condition={
                     "data_type": "heart_rate",
                     "operator": "BAD_OPERATOR",  # This will trigger ValidationError
-                    "threshold": 100
+                    "threshold": 100,
                 },
-                created_by=sample_clinician_id
+                created_by=sample_clinician_id,
             )
 
     @pytest.mark.standalone()
@@ -222,17 +211,19 @@ class TestBiometricEventProcessor:
         assert observer in processor.observers[AlertPriority.INFORMATIONAL]
 
     @pytest.mark.standalone()
-    def test_process_data_point_no_alert(self, processor, sample_data_point, sample_rule):
+    def test_process_data_point_no_alert(
+        self, processor, sample_data_point, sample_rule
+    ):
         """
         Test processing a data point that doesn't trigger an alert.
         """
         # Modify the data point to have a heart rate below the threshold
         sample_data_point.value = 90.0
         processor.register_rule(sample_rule)
-        
+
         # Process the data point
         alerts = processor.process_data_point(sample_data_point)
-        
+
         # Verify no alerts were generated
         assert len(alerts) == 0
         # Verify no observers were notified
@@ -241,15 +232,17 @@ class TestBiometricEventProcessor:
                 observer.notify.assert_not_called()
 
     @pytest.mark.standalone()
-    def test_process_data_point_with_alert(self, processor, sample_data_point, sample_rule, mock_observer):
+    def test_process_data_point_with_alert(
+        self, processor, sample_data_point, sample_rule, mock_observer
+    ):
         """
         Test processing a data point that triggers an alert.
         """
         processor.register_rule(sample_rule)
-        
+
         # Process the data point (value=120, which is > 100)
         alerts = processor.process_data_point(sample_data_point)
-        
+
         # Verify an alert was generated
         assert len(alerts) == 1
         alert = alerts[0]
@@ -257,7 +250,7 @@ class TestBiometricEventProcessor:
         assert alert.patient_id == sample_data_point.patient_id
         assert alert.data_point == sample_data_point
         assert alert.priority == sample_rule.priority
-        
+
         # Verify the observer was notified
         mock_observer.notify.assert_called_once()
 
@@ -280,13 +273,12 @@ class TestAlertObservers:
             patient_id=sample_data_point.patient_id,
             data_point=sample_data_point,
             timestamp=datetime.now(UTC),
-            priority=sample_rule.priority
+            priority=sample_rule.priority,
         )
-        
-        
+
         # Test the observer
         observer.notify(alert)
-        
+
         # Verify the notification service was called
         mock_notification_service.send_notification.assert_called_once()
 
@@ -297,7 +289,7 @@ class TestAlertObservers:
         """
         mock_email_service = MagicMock()
         observer = EmailAlertObserver(email_service=mock_email_service)
-        
+
         # Create alerts with different priorities
         urgent_alert = BiometricAlert(
             alert_id=UUID("00000000-0000-0000-0000-000000000001"),
@@ -305,32 +297,32 @@ class TestAlertObservers:
             patient_id=sample_data_point.patient_id,
             data_point=sample_data_point,
             timestamp=datetime.now(UTC),
-            priority=AlertPriority.URGENT
+            priority=AlertPriority.URGENT,
         )
-        
+
         warning_alert = BiometricAlert(
             alert_id=UUID("00000000-0000-0000-0000-000000000002"),
             rule_id=sample_rule.rule_id,
             patient_id=sample_data_point.patient_id,
             data_point=sample_data_point,
             timestamp=datetime.now(UTC),
-            priority=AlertPriority.WARNING
+            priority=AlertPriority.WARNING,
         )
-        
+
         info_alert = BiometricAlert(
             alert_id=UUID("00000000-0000-0000-0000-000000000003"),
             rule_id=sample_rule.rule_id,
             patient_id=sample_data_point.patient_id,
             data_point=sample_data_point,
             timestamp=datetime.now(UTC),
-            priority=AlertPriority.INFORMATIONAL
+            priority=AlertPriority.INFORMATIONAL,
         )
-        
+
         # Test the observer with different priority alerts
         observer.notify(urgent_alert)
         observer.notify(warning_alert)
         observer.notify(info_alert)
-        
+
         # Only URGENT and WARNING should trigger email
         assert mock_email_service.send_email.call_count == 2
 
@@ -347,11 +339,11 @@ class TestAlertObservers:
             patient_id=sample_data_point.patient_id,
             data_point=sample_data_point,
             timestamp=datetime.now(UTC),
-            priority=sample_rule.priority
+            priority=sample_rule.priority,
         )
-        
+
         # Mock the send_sms method
-        with patch.object(observer, 'send_sms') as mock_send:
+        with patch.object(observer, "send_sms") as mock_send:
             observer.notify(alert)
             # Only urgent alerts should trigger an SMS
             if alert.priority == AlertPriority.URGENT:
@@ -379,11 +371,11 @@ class TestClinicalRuleEngine:
             "condition": {
                 "data_type": "heart_rate",
                 "operator": ">",
-                "threshold": "${threshold}"
+                "threshold": "${threshold}",
             },
-            "default_threshold": 100.0
+            "default_threshold": 100.0,
         }
-        
+
         engine.register_rule_template(template, template_id)
         assert template_id in engine.rule_templates
         assert engine.rule_templates[template_id] == template
@@ -402,9 +394,9 @@ class TestClinicalRuleEngine:
             "condition": {
                 "data_type": "heart_rate",
                 "operator": ">",
-                "threshold": "${threshold}"
+                "threshold": "${threshold}",
             },
-            "default_threshold": 100.0
+            "default_threshold": 100.0,
         }
 
         engine.register_rule_template(template, template_id)
@@ -416,9 +408,9 @@ class TestClinicalRuleEngine:
             template_id=template_id,
             rule_id=rule_id,
             parameters=parameters,
-            created_by=sample_clinician_id
+            created_by=sample_clinician_id,
         )
-        
+
         # Verify the rule was created correctly
         assert rule.name == template["name"]
         assert rule.description == template["description"]
@@ -440,6 +432,5 @@ class TestClinicalRuleEngine:
                 template_id="nonexistent",
                 rule_id="test-nonexistent-rule",
                 parameters={},
-                created_by=sample_clinician_id
+                created_by=sample_clinician_id,
             )
-            

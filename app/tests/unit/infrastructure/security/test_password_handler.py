@@ -4,7 +4,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.infrastructure.security.password.hashing import get_password_hash, verify_password
+from app.infrastructure.security.password.hashing import (
+    get_password_hash,
+    verify_password,
+)
 
 # Correct imports: Import PasswordHandler and hashing functions
 from app.infrastructure.security.password.password_handler import PasswordHandler
@@ -15,10 +18,12 @@ from app.infrastructure.security.password.password_handler import PasswordHandle
 # Mocking COMMON_PASSWORDS if it's used and not defined/imported correctly
 COMMON_PASSWORDS = {"password123", "123456", "qwerty"}
 
+
 @pytest.fixture
 def password_handler() -> PasswordHandler:
     """Fixture to provide a PasswordHandler instance."""
     return PasswordHandler()
+
 
 class TestPasswordHashing:
     """Test suite for password hashing and verification (using standalone functions)."""
@@ -74,7 +79,7 @@ class TestPasswordHashing:
         """Test that password hashing takes a reasonable amount of time for security."""
         password = "SecurePassword123!"
         start_time = time.time()
-        get_password_hash(password) # Corrected call
+        get_password_hash(password)  # Corrected call
         duration = time.time() - start_time
         # Check if duration is reasonable (e.g., > 50ms)
         # This threshold might need adjustment based on the system running the tests
@@ -105,7 +110,10 @@ class TestPasswordStrengthValidation:
         is_valid, message = password_handler.validate_password_strength(password)
         assert is_valid is False
         assert message is not None
-        assert "must include uppercase, lowercase, digits, and special characters" in message
+        assert (
+            "must include uppercase, lowercase, digits, and special characters"
+            in message
+        )
 
     def test_common_password(self, password_handler: PasswordHandler):
         """Test that common passwords are rejected."""
@@ -126,6 +134,7 @@ class TestPasswordStrengthValidation:
     # Removed tests for _contains_personal_info, PasswordStrengthResult, PasswordStrengthError, strict mode
     # as they are not part of the current PasswordHandler.validate_password_strength implementation.
 
+
 class TestRandomPasswordGeneration:
     """Test suite for random password generation (using PasswordHandler method)."""
 
@@ -139,16 +148,22 @@ class TestRandomPasswordGeneration:
         """Test that generated passwords meet complexity requirements."""
         password = password_handler.generate_secure_password(16)
         is_valid, message = password_handler.validate_password_strength(password)
-        assert is_valid is True, f"Generated password failed strength check: {password}, Message: {message}"
+        assert (
+            is_valid is True
+        ), f"Generated password failed strength check: {password}, Message: {message}"
 
     def test_random_password_uniqueness(self, password_handler: PasswordHandler):
         """Test that generated passwords are unique."""
         num_passwords = 100
-        passwords = [password_handler.generate_secure_password(16) for _ in range(num_passwords)]
+        passwords = [
+            password_handler.generate_secure_password(16) for _ in range(num_passwords)
+        ]
         assert len(set(passwords)) == num_passwords
 
     @patch("app.infrastructure.security.password.password_handler.secrets.choice")
-    def test_uses_cryptographically_secure_rng(self, mock_choice: MagicMock, password_handler: PasswordHandler):
+    def test_uses_cryptographically_secure_rng(
+        self, mock_choice: MagicMock, password_handler: PasswordHandler
+    ):
         """Test that password generation uses cryptographically secure RNG."""
         mock_choice.side_effect = lambda x: x[0]
         password_handler.generate_secure_password(16)

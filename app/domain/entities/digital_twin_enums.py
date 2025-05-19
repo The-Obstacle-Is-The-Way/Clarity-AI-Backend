@@ -9,6 +9,7 @@ from enum import Enum
 
 class ConnectionType(Enum):
     """Types of connections between brain regions."""
+
     EXCITATORY = "excitatory"
     INHIBITORY = "inhibitory"
     MODULATORY = "modulatory"
@@ -20,6 +21,7 @@ class ConnectionType(Enum):
 
 class BrainRegion(Enum):
     """Brain regions involved in neuropsychiatric functions."""
+
     PREFRONTAL_CORTEX = "prefrontal_cortex"
     AMYGDALA = "amygdala"
     HIPPOCAMPUS = "hippocampus"
@@ -48,6 +50,7 @@ class BrainRegion(Enum):
 
 class Neurotransmitter(Enum):
     """Neurotransmitters relevant to psychiatry and mental health."""
+
     SEROTONIN = "serotonin"
     DOPAMINE = "dopamine"
     NOREPINEPHRINE = "norepinephrine"
@@ -64,6 +67,7 @@ class Neurotransmitter(Enum):
 
 class ClinicalSignificance(Enum):
     """Clinical significance levels for neurotransmitter effects."""
+
     NONE = "none"
     LOW = "low"
     MEDIUM = "medium"
@@ -79,6 +83,7 @@ class ClinicalSignificance(Enum):
 
 class BrainNetwork(Enum):
     """Major functional brain networks."""
+
     DEFAULT_MODE = "default_mode"
     SALIENCE = "salience"
     EXECUTIVE_CONTROL = "executive_control"
@@ -94,6 +99,7 @@ class BrainNetwork(Enum):
 
 class NeurotransmitterState(Enum):
     """State of neurotransmitter levels."""
+
     DEFICIENT = "deficient"
     BELOW_NORMAL = "below_normal"
     NORMAL = "normal"
@@ -103,6 +109,7 @@ class NeurotransmitterState(Enum):
 
 class TreatmentClass(Enum):
     """Classification of psychiatric treatments."""
+
     SSRI = "ssri"
     SNRI = "snri"
     NDRI = "ndri"
@@ -124,6 +131,7 @@ class TreatmentClass(Enum):
 
 class TemporalResolution(Enum):
     """Time resolution for neurotransmitter analysis."""
+
     HOURLY = "hourly"
     DAILY = "daily"
     WEEKLY = "weekly"
@@ -134,8 +142,10 @@ class TemporalResolution(Enum):
 
 # Additional enums referenced in digital_twin/__init__.py
 
+
 class ClinicalInsight(Enum):
     """Clinical insights derived from digital twin analysis."""
+
     TREATMENT_RESPONSE = "treatment_response"
     SYMPTOM_TRAJECTORY = "symptom_trajectory"
     NEUROTRANSMITTER_IMBALANCE = "neurotransmitter_imbalance"
@@ -154,6 +164,7 @@ class ClinicalInsight(Enum):
 
 class DigitalTwinState(Enum):
     """Overall state of the digital twin model."""
+
     INITIALIZING = "initializing"
     CALIBRATING = "calibrating"
     ACTIVE = "active"
@@ -168,6 +179,7 @@ class DigitalTwinState(Enum):
 
 class NeuralConnection(Enum):
     """Types of neural connections in the digital twin model."""
+
     PRIMARY = "primary"
     SECONDARY = "secondary"
     TERTIARY = "tertiary"
@@ -180,6 +192,7 @@ class NeuralConnection(Enum):
 
 class TemporalPattern(Enum):
     """Temporal patterns in neurotransmitter activity."""
+
     SUSTAINED = "sustained"
     PHASIC = "phasic"
     TONIC = "tonic"
@@ -193,6 +206,7 @@ class TemporalPattern(Enum):
 
 class BrainRegionState(Enum):
     """State of activity in brain regions."""
+
     HYPOACTIVE = "hypoactive"
     BELOW_BASELINE = "below_baseline"
     BASELINE = "baseline"

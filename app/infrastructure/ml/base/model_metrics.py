@@ -194,10 +194,10 @@ class ModelMetrics:
         # Per-medication class metrics
         class_metrics = {}
         for i, medication_class in enumerate(medication_classes):
-            class_metrics[medication_class] = (
-                ModelMetrics.calculate_classification_metrics(
-                    y_true[:, i], y_pred[:, i]
-                )
+            class_metrics[
+                medication_class
+            ] = ModelMetrics.calculate_classification_metrics(
+                y_true[:, i], y_pred[:, i]
             )
 
         return {"overall": overall_metrics, "per_medication_class": class_metrics}

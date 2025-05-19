@@ -47,17 +47,17 @@ class TestMockAsyncSession:
         test_entity = type("Entity", (), {})()
         test_entity.id = uuid4()
         test_entity.name = "Test Entity"
-        
+
         # Add and commit the entity
         mock_db.add(test_entity)
         await mock_db.commit()
-        
+
         # Mock a SELECT query result
         mock_db.set_result([test_entity])
-        
+
         # Execute a query
         result = await mock_db.execute(select(object))
-        
+
         # Verify result
         assert result.scalars().first() == test_entity
 
@@ -67,11 +67,11 @@ class TestMockAsyncSession:
         # Setup test entity
         test_entity = type("Entity", (), {})()
         test_entity.id = uuid4()
-        
+
         # Add the entity
         mock_db.add(test_entity)
         assert test_entity in mock_db._pending_objects
-        
+
         # Rollback
         await mock_db.rollback()
         assert test_entity not in mock_db._pending_objects
@@ -83,16 +83,16 @@ class TestMockAsyncSession:
         # Setup test entity
         test_entity = type("Entity", (), {})()
         test_entity.id = uuid4()
-        
+
         # Add and commit the entity
         mock_db.add(test_entity)
         await mock_db.commit()
         assert test_entity in mock_db._committed_objects
-        
+
         # Delete the entity
         mock_db.delete(test_entity)
         assert test_entity in mock_db._deleted_objects
-        
+
         # Commit the deletion
         await mock_db.commit()
         assert test_entity not in mock_db._committed_objects
@@ -105,20 +105,20 @@ class TestMockAsyncSession:
         test_entity = type("Entity", (), {})()
         test_entity.id = uuid4()
         test_entity.name = "Original Name"
-        
+
         # Add and commit the entity
         mock_db.add(test_entity)
         await mock_db.commit()
-        
+
         # Change the entity outside the session
         test_entity.name = "New Name"
-        
+
         # Set up refresh behavior
         def refresh_callback(obj):
             obj.name = "Refreshed Name"
-        
+
         mock_db.set_refresh_callback(refresh_callback)
-        
+
         # Refresh the entity
         await mock_db.refresh(test_entity)
         assert test_entity.name == "Refreshed Name"

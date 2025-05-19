@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 @dataclass(kw_only=True)
 class BaseEntity:
     """Base entity providing common fields like ID."""
+
     id: UUID = field(default_factory=uuid4)
 
     # You might add common methods or properties here later if needed

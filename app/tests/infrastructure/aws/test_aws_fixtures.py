@@ -24,8 +24,8 @@ def test_dynamodb_service(dynamodb_service):
     """Test that the dynamodb_service fixture returns the expected type."""
     assert isinstance(dynamodb_service, InMemoryDynamoDBService)
     # Verify we can perform operations
-    dynamodb_service.tables = {'test_table': {}}
-    assert 'test_table' in dynamodb_service.tables
+    dynamodb_service.tables = {"test_table": {}}
+    assert "test_table" in dynamodb_service.tables
 
 
 def test_s3_service(s3_service):
@@ -34,7 +34,9 @@ def test_s3_service(s3_service):
     # Verify we can perform operations
     test_key = "test/file.txt"
     test_content = b"test content"
-    s3_service.put_object(bucket_name="novamind-test-bucket", key=test_key, body=test_content)
+    s3_service.put_object(
+        bucket_name="novamind-test-bucket", key=test_key, body=test_content
+    )
     # Check that the object was stored - need to access the internal structure since there's no direct accessor
     assert "novamind-test-bucket" in s3_service._buckets
     assert test_key in s3_service._buckets["novamind-test-bucket"]
@@ -53,4 +55,4 @@ def test_aws_config(test_aws_config):
     assert isinstance(test_aws_config, dict)
     assert test_aws_config["aws_region"] == "us-east-1"
     assert test_aws_config["bucket_name"] == "novamind-test-bucket"
-    assert "model_mappings" in test_aws_config 
+    assert "model_mappings" in test_aws_config

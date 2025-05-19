@@ -13,10 +13,10 @@ from app.infrastructure.security.rbac.rbac_service import (
 )
 
 # Imports seem potentially incorrect - RoleAccessManager might be in rbac_service? RoleManager in roles.py?
-# from app.infrastructure.security.rbac.role_access import RoleAccessManager 
-# from app.infrastructure.security.rbac.role_manager import RoleManager 
+# from app.infrastructure.security.rbac.role_access import RoleAccessManager
+# from app.infrastructure.security.rbac.role_manager import RoleManager
 
 # Assuming only RoleBasedAccessControl is needed for export based on __all__
 # __all__ = ['RoleBasedAccessControl'] # Keep __all__ as is for now
 # Update __all__ to export the correct service class
-__all__ = ['RBACService']
+__all__ = ["RBACService"]

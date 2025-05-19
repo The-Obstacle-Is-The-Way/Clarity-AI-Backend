@@ -72,7 +72,10 @@ os.environ["TESTING"] = "1"
 
 # Import and initialize AWS service factory
 try:
-    from app.infrastructure.aws.service_factory_provider import AWSServiceFactoryProvider
+    from app.infrastructure.aws.service_factory_provider import (
+        AWSServiceFactoryProvider,
+    )
+
     AWSServiceFactoryProvider.initialize(use_in_memory=True)
 
     # Import the AWS fixtures
@@ -82,16 +85,19 @@ try:
         dynamodb_service,
         s3_service,
         sagemaker_service,
-        test_aws_config
+        test_aws_config,
     )
 except ImportError as e:
     print(f"Warning: Could not import AWS service modules: {e}")
     print(f"Python path: {sys.path}")
     print(f"Available modules in backend: {os.listdir(_backend_root)}")
-    print(f"Available modules in app: {os.listdir(_backend_root / 'app') if (_backend_root / 'app').exists() else 'app directory not found'}")
+    print(
+        f"Available modules in app: {os.listdir(_backend_root / 'app') if (_backend_root / 'app').exists() else 'app directory not found'}"
+    )
 
 # For backward compatibility, still import boto3 but no verification needed
 import boto3  # noqa: WPS433 – runtime patch verification
+
 # assert getattr(boto3, "__shim__", False), "in‑memory boto3 shim not installed"
 
 # ---------------------------------------------------------------------------
@@ -214,6 +220,7 @@ def _patch_test_module(mod: ModuleType) -> None:  # pragma: no cover – helper
     except Exception:  # pragma: no cover – schema import may fail in stubs
         pass
 
+
 # ===========================================================================
 # Generic fixtures required by **standalone** and *unit* test‑suites
 # ---------------------------------------------------------------------------
@@ -239,14 +246,15 @@ from app.infrastructure.logging.logger import get_logger
 # "event_loop" - global fixture for asyncio tests to prevent redefinition warnings
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="session")
 def event_loop_policy() -> asyncio.AbstractEventLoopPolicy:
     """
     Fixture to create a custom event loop policy.
-    
+
     This is the recommended approach in pytest-asyncio docs to handle the
     event_loop fixture deprecation warnings.
-    
+
     Returns:
         asyncio.AbstractEventLoopPolicy: The custom event loop policy.
     """
@@ -254,17 +262,18 @@ def event_loop_policy() -> asyncio.AbstractEventLoopPolicy:
     # But this approach allows for platform-specific customization if needed
     return asyncio.get_event_loop_policy()
 
+
 @pytest_asyncio.fixture
 async def async_client_session() -> AsyncGenerator:
     """
     Create a test async client session for API tests.
-    
+
     Returns:
         AsyncGenerator yielding the test session
     """
     from httpx import AsyncClient
     from app.main import app
-    
+
     async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
 
@@ -348,8 +357,6 @@ def _fixture_mock_db_session():  # noqa: D401 – fixture helper
     return session
 
 
-
-
 # ---------------------------------------------------------------------------
 # Meta‑path finder / loader – patches target module *during* import
 # ---------------------------------------------------------------------------
@@ -416,6 +423,7 @@ sys.meta_path.insert(0, _DigitalTwinsTestPatcher())
 # XGBoost Namespace Protection (from former tests_setup.py)
 # --------------------------------------------------------------------------
 
+
 # Clean architecture approach to prevent xgboost namespace collisions
 def protect_test_namespace():
     """
@@ -427,17 +435,19 @@ def protect_test_namespace():
     """
     # Clear any existing xgboost.conftest imports that might be causing conflicts
     for key in list(sys.modules.keys()):
-        if key.startswith('xgboost.') and ('conftest' in key or 'tests' in key):
+        if key.startswith("xgboost.") and ("conftest" in key or "tests" in key):
             del sys.modules[key]
 
     # Add a hook to properly identify our test modules vs. the actual library
     class NamespaceProtector:
         def find_spec(self, fullname, path=None, target=None):
             # Only intercept xgboost.conftest imports to ensure they're handled properly
-            if fullname == 'xgboost.conftest' or (fullname.startswith('xgboost.') and 'test' in fullname):
+            if fullname == "xgboost.conftest" or (
+                fullname.startswith("xgboost.") and "test" in fullname
+            ):
                 # Check if this is a test directory import vs. the actual library
-                parts = fullname.split('.')
-                if len(parts) > 1 and parts[0] == 'xgboost':
+                parts = fullname.split(".")
+                if len(parts) > 1 and parts[0] == "xgboost":
                     # This check prevents our test modules from being mistaken
                     # If the path is within our 'app/tests' directory, it's ours.
                     # Note: find_spec's 'path' argument might be None or a list of paths.
@@ -446,8 +456,8 @@ def protect_test_namespace():
                     # If it's trying to load xgboost.conftest from a path *not*
                     # related to the installed xgboost package, let our tests load.
                     # A more robust check might inspect the path if provided.
-                    return None # Let Python continue searching, potentially finding our test version
-            return None # Not our target, let other finders handle it.
+                    return None  # Let Python continue searching, potentially finding our test version
+            return None  # Not our target, let other finders handle it.
 
     # Install our protector at the beginning of sys.meta_path
     # Ensure it's not added multiple times if conftest is reloaded
@@ -457,4 +467,3 @@ def protect_test_namespace():
 
 # Apply the protection when this module is imported
 protect_test_namespace()
-

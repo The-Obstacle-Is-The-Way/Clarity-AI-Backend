@@ -17,6 +17,7 @@ class Observer(ABC):
     """
     Abstract base class for observers.
     """
+
     @abstractmethod
     def update(self, event_type: str, data: Any) -> None:
         """
@@ -33,6 +34,7 @@ class Subject:
     """
     The Subject class manages observers and notifies them of events.
     """
+
     def __init__(self) -> None:
         """Initialize the Subject with an empty list of observers."""
         self._observers: dict[str, list[Callable[[Any], None]]] = {}
@@ -64,12 +66,11 @@ class Subject:
                 self._observers[event_type].remove(observer_callback)
                 logger.debug(f"Detached observer for event: {event_type}")
                 if not self._observers[event_type]:
-                    del self._observers[event_type] # Clean up empty event types
+                    del self._observers[event_type]  # Clean up empty event types
             except ValueError:
                 logger.warning(f"Observer callback not found for event: {event_type}")
         else:
-             logger.warning(f"No observers found for event type: {event_type}")
-
+            logger.warning(f"No observers found for event type: {event_type}")
 
     def notify(self, event_type: str, data: Any = None) -> None:
         """
@@ -88,7 +89,7 @@ class Subject:
                 except Exception as e:
                     logger.error(
                         f"Error notifying observer for event {event_type}: {e}",
-                        exc_info=True
+                        exc_info=True,
                     )
         else:
             logger.debug(f"No observers to notify for event: {event_type}")

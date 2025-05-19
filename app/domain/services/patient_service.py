@@ -205,8 +205,10 @@ class PatientService:
         )
 
         # Get upcoming appointments
-        upcoming_appointments = await self.appointment_repository.list_upcoming_by_patient(
-            patient_id=patient_id, limit=5
+        upcoming_appointments = (
+            await self.appointment_repository.list_upcoming_by_patient(
+                patient_id=patient_id, limit=5
+            )
         )
 
         # Get recent clinical notes

@@ -35,18 +35,12 @@ def sample_patient_data():
     return {
         "patient_id": "P12345",
         "name": "Jane Doe",
-        "contact": {
-            "email": "jane.doe@example.com",
-            "phone": "(555) 987-6543"
-        },
-        "insurance": {
-            "policy_number": "INS-987654321",
-            "type": "PPO"
-        },
+        "contact": {"email": "jane.doe@example.com", "phone": "(555) 987-6543"},
+        "insurance": {"policy_number": "INS-987654321", "type": "PPO"},
         "medical_data": {
             "diagnosis": "Severe Anxiety",  # Changed to avoid PHI detection pattern
-            "medication": "Sertraline 50mg"
-        }
+            "medication": "Sertraline 50mg",
+        },
     }
 
 
@@ -158,14 +152,11 @@ class TestPHISanitizer:
                     "name": "John Smith",
                     "contacts": [
                         {"type": "email", "value": "john.smith@example.com"},
-                        {"type": "phone", "value": "(555) 123-4567"}
-                    ]
+                        {"type": "phone", "value": "(555) 123-4567"},
+                    ],
                 }
             },
-            "non_phi_data": {
-                "appointment_type": "Follow-up",
-                "duration_minutes": 30
-            }
+            "non_phi_data": {"appointment_type": "Follow-up", "duration_minutes": 30},
         }
 
         # Act
@@ -174,8 +165,13 @@ class TestPHISanitizer:
         # Assert
         assert sanitized["patient"]["personal"]["ssn"] != "123-45-6789"
         assert sanitized["patient"]["personal"]["name"] != "John Smith"
-        assert sanitized["patient"]["personal"]["contacts"][0]["value"] != "john.smith@example.com"
-        assert sanitized["patient"]["personal"]["contacts"][1]["value"] != "(555) 123-4567"
+        assert (
+            sanitized["patient"]["personal"]["contacts"][0]["value"]
+            != "john.smith@example.com"
+        )
+        assert (
+            sanitized["patient"]["personal"]["contacts"][1]["value"] != "(555) 123-4567"
+        )
 
         # Non-PHI should be preserved
         assert sanitized["non_phi_data"]["appointment_type"] == "Follow-up"
@@ -184,7 +180,7 @@ class TestPHISanitizer:
 
 class TestPHISecureLogger:
     """Tests for logging with PHI sanitization."""
-    
+
     @pytest.fixture
     def phi_secure_logger(self):
         """Create a PHI-secure logger."""
@@ -203,10 +199,18 @@ class TestPHISecureLogger:
         original_error = logger.error
         original_critical = logger.critical
 
-        logger.info = lambda msg, *args, **kwargs: original_info(PHISanitizer.sanitize_string(msg), *args, **kwargs)
-        logger.warning = lambda msg, *args, **kwargs: original_warning(PHISanitizer.sanitize_string(msg), *args, **kwargs)
-        logger.error = lambda msg, *args, **kwargs: original_error(PHISanitizer.sanitize_string(msg), *args, **kwargs)
-        logger.critical = lambda msg, *args, **kwargs: original_critical(PHISanitizer.sanitize_string(msg), *args, **kwargs)
+        logger.info = lambda msg, *args, **kwargs: original_info(
+            PHISanitizer.sanitize_string(msg), *args, **kwargs
+        )
+        logger.warning = lambda msg, *args, **kwargs: original_warning(
+            PHISanitizer.sanitize_string(msg), *args, **kwargs
+        )
+        logger.error = lambda msg, *args, **kwargs: original_error(
+            PHISanitizer.sanitize_string(msg), *args, **kwargs
+        )
+        logger.critical = lambda msg, *args, **kwargs: original_critical(
+            PHISanitizer.sanitize_string(msg), *args, **kwargs
+        )
 
         return logger
 

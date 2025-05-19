@@ -6,10 +6,18 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Application Core Interfaces
-from app.core.interfaces.repositories.biometric_alert_repository import IBiometricAlertRepository
-from app.core.interfaces.repositories.biometric_rule_repository import IBiometricRuleRepository
-from app.core.interfaces.repositories.biometric_twin_repository import IBiometricTwinRepository
-from app.core.interfaces.repositories.digital_twin_repository import IDigitalTwinRepository
+from app.core.interfaces.repositories.biometric_alert_repository import (
+    IBiometricAlertRepository,
+)
+from app.core.interfaces.repositories.biometric_rule_repository import (
+    IBiometricRuleRepository,
+)
+from app.core.interfaces.repositories.biometric_twin_repository import (
+    IBiometricTwinRepository,
+)
+from app.core.interfaces.repositories.digital_twin_repository import (
+    IDigitalTwinRepository,
+)
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.unit_of_work import IUnitOfWork
@@ -29,7 +37,7 @@ from app.tests.utils.repository_factory import (
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 @pytest.fixture

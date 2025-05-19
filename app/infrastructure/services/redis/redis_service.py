@@ -22,27 +22,27 @@ logger = logging.getLogger(__name__)
 class RedisService(IRedisService):
     """
     Concrete implementation of the Redis service interface.
-    
+
     This implementation uses the redis-py asyncio client to interact with Redis.
     It implements all methods defined in the IRedisService protocol.
     """
-    
+
     def __init__(self, redis_client: Redis) -> None:
         """
         Initialize the Redis service with a client.
-        
+
         Args:
             redis_client: An initialized asynchronous Redis client
         """
         self._redis = redis_client
-    
+
     async def get(self, name: str) -> str | None:
         """
         Retrieve a value from Redis by key.
-        
+
         Args:
             name: The key to retrieve
-            
+
         Returns:
             The stored value, or None if key doesn't exist
         """
@@ -52,7 +52,7 @@ class RedisService(IRedisService):
         except Exception as e:
             logger.error(f"Redis get error for key '{name}': {str(e)}")
             return None
-    
+
     async def set(
         self,
         name: str,
@@ -63,40 +63,36 @@ class RedisService(IRedisService):
     ) -> bool | None:
         """
         Set a value in Redis.
-        
+
         Args:
             name: The key name
             value: The value to set
             expire: Optional expiration time in seconds
             set_if_not_exists: (NX) Only set the key if it does not already exist
             set_if_exists: (XX) Only set the key if it already exists
-            
+
         Returns:
             True if successful, False or None otherwise based on options
         """
         try:
             nx = set_if_not_exists if set_if_not_exists is not None else False
             xx = set_if_exists if set_if_exists is not None else False
-            
-            result = await self._redis.set(
-                name, 
-                value, 
-                ex=expire, 
-                nx=nx, 
-                xx=xx
-            )
-            return result is not None  # Redis returns None if NX/XX conditions aren't met
+
+            result = await self._redis.set(name, value, ex=expire, nx=nx, xx=xx)
+            return (
+                result is not None
+            )  # Redis returns None if NX/XX conditions aren't met
         except Exception as e:
             logger.error(f"Redis set error for key '{name}': {str(e)}")
             return None
-    
+
     async def delete(self, *names: str) -> int:
         """
         Delete one or more keys from Redis.
-        
+
         Args:
             *names: One or more key names to delete
-            
+
         Returns:
             Number of keys that were deleted
         """
@@ -107,14 +103,14 @@ class RedisService(IRedisService):
         except Exception as e:
             logger.error(f"Redis delete error for keys {names}: {str(e)}")
             return 0
-    
+
     async def exists(self, *names: str) -> int:
         """
         Check if one or more keys exist in Redis.
-        
+
         Args:
             *names: One or more key names to check
-            
+
         Returns:
             Number of keys that exist
         """
@@ -125,11 +121,11 @@ class RedisService(IRedisService):
         except Exception as e:
             logger.error(f"Redis exists error for keys {names}: {str(e)}")
             return 0
-    
+
     async def ping(self) -> bool:
         """
         Ping the Redis server to check connectivity.
-        
+
         Returns:
             True if the ping was successful, False otherwise
         """
@@ -139,7 +135,7 @@ class RedisService(IRedisService):
         except Exception as e:
             logger.error(f"Redis ping error: {str(e)}")
             return False
-    
+
     async def close(self) -> None:
         """
         Close the Redis connection.
@@ -149,24 +145,24 @@ class RedisService(IRedisService):
             logger.debug("Redis connection closed")
         except Exception as e:
             logger.error(f"Redis close error: {str(e)}")
-    
+
     async def get_client(self) -> Redis:
         """
         Get the underlying Redis client instance.
-        
+
         Returns:
             The Redis client instance
         """
         return self._redis
-    
+
     async def expire(self, name: str, time: int) -> bool:
         """
         Set a key's time to live in seconds.
-        
+
         Args:
             name: The key name
             time: Time to live in seconds
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -175,14 +171,14 @@ class RedisService(IRedisService):
         except Exception as e:
             logger.error(f"Redis expire error for key '{name}': {str(e)}")
             return False
-    
+
     async def ttl(self, name: str) -> int:
         """
         Get the time to live for a key in seconds.
-        
+
         Args:
             name: The key name
-            
+
         Returns:
             TTL in seconds, -1 if key exists but has no TTL, -2 if key doesn't exist
         """
@@ -191,16 +187,16 @@ class RedisService(IRedisService):
         except Exception as e:
             logger.error(f"Redis TTL error for key '{name}': {str(e)}")
             return -2
-    
+
     async def setex(self, name: str, time: int, value: str) -> bool:
         """
         Set the value and expiration of a key.
-        
+
         Args:
             name: The key name
             time: Expiration time in seconds
             value: The value to set
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -210,15 +206,15 @@ class RedisService(IRedisService):
         except Exception as e:
             logger.error(f"Redis setex error for key '{name}': {str(e)}")
             return False
-    
+
     async def sadd(self, name: str, *values: str) -> int:
         """
         Add one or more members to a set.
-        
+
         Args:
             name: The set name
             *values: One or more values to add to the set
-            
+
         Returns:
             Number of elements added to the set
         """
@@ -229,14 +225,14 @@ class RedisService(IRedisService):
         except Exception as e:
             logger.error(f"Redis sadd error for set '{name}': {str(e)}")
             return 0
-    
+
     async def smembers(self, name: str) -> AbcSet[str]:
         """
         Get all members of a set.
-        
+
         Args:
             name: The set name
-            
+
         Returns:
             Set of all members
         """
@@ -246,15 +242,15 @@ class RedisService(IRedisService):
         except Exception as e:
             logger.error(f"Redis smembers error for set '{name}': {str(e)}")
             return set()
-    
+
     async def srem(self, name: str, *values: str) -> int:
         """
         Remove one or more members from a set.
-        
+
         Args:
             name: The set name
             *values: One or more values to remove from the set
-            
+
         Returns:
             Number of elements removed from the set
         """
@@ -265,16 +261,16 @@ class RedisService(IRedisService):
         except Exception as e:
             logger.error(f"Redis srem error for set '{name}': {str(e)}")
             return 0
-    
+
     async def hset(self, name: str, key: str, value: Any) -> int:
         """
         Set the value of a hash field.
-        
+
         Args:
             name: The hash name
             key: The field name
             value: The field value
-            
+
         Returns:
             1 if field is a new field in the hash and value was set, 0 otherwise
         """
@@ -286,15 +282,15 @@ class RedisService(IRedisService):
         except Exception as e:
             logger.error(f"Redis hset error for hash '{name}', field '{key}': {str(e)}")
             return 0
-    
+
     async def hget(self, name: str, key: str) -> str | None:
         """
         Get the value of a hash field.
-        
+
         Args:
             name: The hash name
             key: The field name
-            
+
         Returns:
             The value of the field, or None if field or hash doesn't exist
         """
@@ -309,10 +305,10 @@ class RedisService(IRedisService):
 def create_redis_service(redis_url: str) -> IRedisService:
     """
     Factory function to create a Redis service.
-    
+
     Args:
         redis_url: Redis connection URL
-        
+
     Returns:
         An initialized Redis service
     """

@@ -9,14 +9,19 @@ import asyncio
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout
 
-pytest.skip("Skipping transformer model tests (torch unsupported in this environment)", allow_module_level=True)
+pytest.skip(
+    "Skipping transformer model tests (torch unsupported in this environment)",
+    allow_module_level=True,
+)
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
 
-from app.infrastructure.ml.symptom_forecasting.transformer_model import SymptomTransformerModel
+from app.infrastructure.ml.symptom_forecasting.transformer_model import (
+    SymptomTransformerModel,
+)
 
 
 class TestTransformerTimeSeriesModel:
@@ -25,27 +30,33 @@ class TestTransformerTimeSeriesModel:
     @pytest.fixture
     def model(self):
         """Create a TransformerTimeSeriesModel with mocked internals."""
-        with patch("app.infrastructure.ml.symptom_forecasting.transformer_model.torch", autospec=True) as mock_torch, \
-             patch("app.infrastructure.ml.symptom_forecasting.transformer_model.TransformerModel", autospec=True) as mock_transformer_cls:
-            
+        with patch(
+            "app.infrastructure.ml.symptom_forecasting.transformer_model.torch",
+            autospec=True,
+        ) as mock_torch, patch(
+            "app.infrastructure.ml.symptom_forecasting.transformer_model.TransformerModel",
+            autospec=True,
+        ) as mock_transformer_cls:
             model = SymptomTransformerModel(
                 model_path="test_model_path",
                 device="cpu",
                 embedding_dim=64,
                 num_heads=4,
                 num_encoder_layers=3,
-                num_decoder_layers=3
+                num_decoder_layers=3,
             )
-            
+
             # Mock the internal PyTorch model and its predict method
             mock_pytorch_model = MagicMock()
-            mock_pytorch_model.predict = MagicMock(return_value=(
-                np.array([4.2, 4.0, 3.8, 3.5]),  # predictions
-                np.array([0.2, 0.2, 0.2, 0.2])   # std
-            ))
+            mock_pytorch_model.predict = MagicMock(
+                return_value=(
+                    np.array([4.2, 4.0, 3.8, 3.5]),  # predictions
+                    np.array([0.2, 0.2, 0.2, 0.2]),  # std
+                )
+            )
             model._model = mock_pytorch_model
             model.is_initialized = True
-            yield model # Use yield to allow cleanup if patches were started here
+            yield model  # Use yield to allow cleanup if patches were started here
 
     @pytest.fixture
     def sample_input_data(self):
@@ -65,10 +76,16 @@ class TestTransformerTimeSeriesModel:
     async def test_initialize_loads_model(self):
         """Test that initialize loads the model correctly."""
         # Setup with correct nested patching
-        with patch("app.infrastructure.ml.symptom_forecasting.transformer_model.torch", autospec=True) as mock_torch, \
-             patch("app.infrastructure.ml.symptom_forecasting.transformer_model.TransformerModel", autospec=True) as mock_transformer_cls, \
-             patch("app.infrastructure.ml.symptom_forecasting.transformer_model.os.path.exists", return_value=True):
-            
+        with patch(
+            "app.infrastructure.ml.symptom_forecasting.transformer_model.torch",
+            autospec=True,
+        ) as mock_torch, patch(
+            "app.infrastructure.ml.symptom_forecasting.transformer_model.TransformerModel",
+            autospec=True,
+        ) as mock_transformer_cls, patch(
+            "app.infrastructure.ml.symptom_forecasting.transformer_model.os.path.exists",
+            return_value=True,
+        ):
             # Create model instance
             model = SymptomTransformerModel(model_path="test_model_path")
 
@@ -80,7 +97,9 @@ class TestTransformerTimeSeriesModel:
             await model.initialize()
 
             # Verify
-            mock_torch.load.assert_called_once_with("test_model_path", map_location=model.device)
+            mock_torch.load.assert_called_once_with(
+                "test_model_path", map_location=model.device
+            )
             assert model.is_initialized
             assert model._model is mock_loaded_model
 
@@ -88,10 +107,16 @@ class TestTransformerTimeSeriesModel:
     async def test_initialize_handles_missing_model(self):
         """Test that initialize handles missing model files gracefully."""
         # Correct indentation for the with block
-        with patch("app.infrastructure.ml.symptom_forecasting.transformer_model.torch", autospec=True) as mock_torch, \
-             patch("app.infrastructure.ml.symptom_forecasting.transformer_model.TransformerModel", autospec=True) as mock_transformer_cls, \
-             patch("app.infrastructure.ml.symptom_forecasting.transformer_model.os.path.exists", return_value=False):
-            
+        with patch(
+            "app.infrastructure.ml.symptom_forecasting.transformer_model.torch",
+            autospec=True,
+        ) as mock_torch, patch(
+            "app.infrastructure.ml.symptom_forecasting.transformer_model.TransformerModel",
+            autospec=True,
+        ) as mock_transformer_cls, patch(
+            "app.infrastructure.ml.symptom_forecasting.transformer_model.os.path.exists",
+            return_value=False,
+        ):
             model = SymptomTransformerModel(model_path="nonexistent_path")
             await model.initialize()
             mock_torch.load.assert_not_called()
@@ -119,10 +144,10 @@ class TestTransformerTimeSeriesModel:
             np.array([4.2, 4.0, 3.8, 3.5]),
             np.array([0.2, 0.2, 0.2, 0.2]),
             {
-                "0.1": np.array([4.0, 3.8, 3.6, 3.3]), 
-                "0.5": np.array([4.2, 4.0, 3.8, 3.5]), 
-                "0.9": np.array([4.4, 4.2, 4.0, 3.7])
-            }
+                "0.1": np.array([4.0, 3.8, 3.6, 3.3]),
+                "0.5": np.array([4.2, 4.0, 3.8, 3.5]),
+                "0.9": np.array([4.4, 4.2, 4.0, 3.7]),
+            },
         )
         model._model.predict = MagicMock(return_value=mock_predict_output)
         result = await model.predict(sample_input_data, horizon=4, quantiles=quantiles)
@@ -143,12 +168,14 @@ class TestTransformerTimeSeriesModel:
     @pytest.mark.asyncio
     async def test_predict_handles_missing_columns(self, model):
         """Test that predict handles input data with missing required columns."""
-        incomplete_df = pd.DataFrame({
-            "date": pd.date_range(
-                start=datetime.now() - timedelta(days=5), periods=5, freq="D"
-            ),
-            "symptom_type": ["anxiety"] * 5,
-        })
+        incomplete_df = pd.DataFrame(
+            {
+                "date": pd.date_range(
+                    start=datetime.now() - timedelta(days=5), periods=5, freq="D"
+                ),
+                "symptom_type": ["anxiety"] * 5,
+            }
+        )
         with pytest.raises(ValueError, match="Missing required column"):
             await model.predict(incomplete_df, horizon=4)
 
@@ -160,7 +187,7 @@ class TestTransformerTimeSeriesModel:
         ) as mock_preprocess:
             await model.predict(sample_input_data, horizon=4)
             mock_preprocess.assert_called_once_with(sample_input_data)
-            processed_data = mock_preprocess.return_value 
+            processed_data = mock_preprocess.return_value
             assert isinstance(processed_data, np.ndarray)
             assert processed_data.ndim == 2
             assert processed_data.shape[0] == len(sample_input_data)
@@ -188,7 +215,9 @@ class TestTransformerTimeSeriesModel:
             postprocessed_result = mock_postprocess.return_value
             assert "predictions" in postprocessed_result
             assert "std" in postprocessed_result
-            np.testing.assert_array_equal(postprocessed_result["predictions"], raw_predictions)
+            np.testing.assert_array_equal(
+                postprocessed_result["predictions"], raw_predictions
+            )
             np.testing.assert_array_equal(postprocessed_result["std"], raw_std)
 
     @pytest.mark.asyncio

@@ -19,6 +19,7 @@ from app.presentation.api.schemas.base import BaseModelConfig
 
 class DigitalTwinBase(BaseModelConfig):
     """Base schema for digital twin data with common fields."""
+
     twin_type: TwinType
     name: str = Field(..., min_length=1, max_length=100)
     description: str | None = Field(None, max_length=1000)
@@ -26,12 +27,14 @@ class DigitalTwinBase(BaseModelConfig):
 
 class DigitalTwinCreateRequest(DigitalTwinBase):
     """Request schema for creating a new digital twin."""
+
     data: dict[str, Any] = Field(..., description="Digital twin model data")
     patient_id: str | None = None  # For provider-created twins
 
 
 class DigitalTwinUpdateRequest(BaseModelConfig):
     """Request schema for updating an existing digital twin."""
+
     name: str | None = Field(None, min_length=1, max_length=100)
     description: str | None = Field(None, max_length=1000)
     version: str | None = None
@@ -40,6 +43,7 @@ class DigitalTwinUpdateRequest(BaseModelConfig):
 
 class DigitalTwinResponse(DigitalTwinBase):
     """Response schema for digital twin data."""
+
     id: UUID
     created_at: datetime
     updated_at: datetime
@@ -52,13 +56,17 @@ class DigitalTwinResponse(DigitalTwinBase):
 
 class TwinSimulationRequest(BaseModelConfig):
     """Request schema for running a digital twin simulation."""
+
     simulation_type: SimulationType
     parameters: dict[str, Any] = Field(..., description="Simulation parameters")
-    timeframe_days: int = Field(30, ge=1, le=365, description="Simulation timeframe in days")
+    timeframe_days: int = Field(
+        30, ge=1, le=365, description="Simulation timeframe in days"
+    )
 
 
 class TwinSimulationResponse(BaseModelConfig):
     """Response schema for digital twin simulation results."""
+
     simulation_id: str
     twin_id: str
     simulation_type: SimulationType
@@ -69,8 +77,10 @@ class TwinSimulationResponse(BaseModelConfig):
 
 # New schemas for digital twin endpoints
 
+
 class ComponentStatus(BaseModelConfig):
     """Schema for the status of a digital twin component."""
+
     has_model: bool | None = None
     last_updated: datetime | None = None
     service_available: bool | None = None
@@ -79,23 +89,29 @@ class ComponentStatus(BaseModelConfig):
 
 class DigitalTwinStatusResponse(BaseModelConfig):
     """Response schema for digital twin status."""
+
     patient_id: str
     status: str  # "complete", "partial", "initializing", etc.
-    completeness: int = Field(..., ge=0, le=100, description="Percentage of completeness")
+    completeness: int = Field(
+        ..., ge=0, le=100, description="Percentage of completeness"
+    )
     components: Dict[str, ComponentStatus]
     last_checked: datetime
 
     # Modern Pydantic V2 configuration using ConfigDict
-    model_config = ConfigDict(json_schema_extra={
-        "json_encoders": {
-            # Format datetime fields as required by the tests
-            datetime: lambda v: v.isoformat()
+    model_config = ConfigDict(
+        json_schema_extra={
+            "json_encoders": {
+                # Format datetime fields as required by the tests
+                datetime: lambda v: v.isoformat()
+            }
         }
-    })
+    )
 
 
 class SymptomTrend(BaseModelConfig):
     """Schema for a symptom trend."""
+
     symptom: str
     trend: str  # "increasing", "decreasing", "stable"
     confidence: float = Field(..., ge=0, le=1)
@@ -104,6 +120,7 @@ class SymptomTrend(BaseModelConfig):
 
 class RiskAlert(BaseModelConfig):
     """Schema for a risk alert."""
+
     symptom: str
     risk_level: str  # "low", "moderate", "high"
     alert_text: str
@@ -112,6 +129,7 @@ class RiskAlert(BaseModelConfig):
 
 class BiometricCorrelation(BaseModelConfig):
     """Schema for a biometric correlation."""
+
     biometric_type: str
     mental_health_indicator: str
     correlation_strength: float = Field(..., ge=0, le=1)
@@ -122,6 +140,7 @@ class BiometricCorrelation(BaseModelConfig):
 
 class MedicationPrediction(BaseModelConfig):
     """Schema for a medication response prediction."""
+
     medication: str
     predicted_response: str  # "positive", "negative", "neutral"
     confidence: float = Field(..., ge=0, le=1)
@@ -129,6 +148,7 @@ class MedicationPrediction(BaseModelConfig):
 
 class Recommendation(BaseModelConfig):
     """Schema for a recommendation."""
+
     source: str  # "integrated", "forecasting", "biometric", etc.
     type: str  # "biometric_symptom", "medication_adjustment", etc.
     recommendation: str
@@ -137,27 +157,32 @@ class Recommendation(BaseModelConfig):
 
 class MedicationResponsePredictions(BaseModelConfig):
     """Schema for medication response predictions."""
+
     predictions: List[MedicationPrediction]
 
 
 class SymptomForecasting(BaseModelConfig):
     """Schema for symptom forecasting."""
+
     trending_symptoms: List[SymptomTrend]
     risk_alerts: List[RiskAlert]
 
 
 class BiometricCorrelations(BaseModelConfig):
     """Schema for biometric correlations."""
+
     strong_correlations: List[BiometricCorrelation]
 
 
 class PharmacogenomicsData(BaseModelConfig):
     """Schema for pharmacogenomics data."""
+
     medication_responses: MedicationResponsePredictions
 
 
 class PersonalizedInsightResponse(BaseModelConfig):
     """Response schema for personalized insights."""
+
     insight_id: str | None = None
     digital_twin_id: str
     patient_id: str | None = None
@@ -174,16 +199,19 @@ class PersonalizedInsightResponse(BaseModelConfig):
     integrated_recommendations: List[Recommendation] | None = None
 
     # Modern Pydantic V2 configuration using ConfigDict
-    model_config = ConfigDict(json_schema_extra={
-        "json_encoders": {
-            # Format datetime fields as required by the tests
-            datetime: lambda v: v.isoformat()
+    model_config = ConfigDict(
+        json_schema_extra={
+            "json_encoders": {
+                # Format datetime fields as required by the tests
+                datetime: lambda v: v.isoformat()
+            }
         }
-    })
+    )
 
 
 class AnalysisType(str, Enum):
     """Types of clinical text analysis."""
+
     SUMMARY = "summary"
     SYMPTOM_EXTRACTION = "symptom_extraction"
     DIAGNOSIS_SUGGESTION = "diagnosis_suggestion"
@@ -193,6 +221,7 @@ class AnalysisType(str, Enum):
 
 class ClinicalTextAnalysisRequest(BaseModelConfig):
     """Request schema for clinical text analysis."""
+
     text: str = Field(..., min_length=1)
     analysis_type: AnalysisType = Field(AnalysisType.SUMMARY)
     additional_context: dict[str, Any] | None = None
@@ -200,6 +229,7 @@ class ClinicalTextAnalysisRequest(BaseModelConfig):
 
 class ClinicalTextAnalysisResponse(BaseModelConfig):
     """Response schema for clinical text analysis."""
+
     analysis_type: AnalysisType
     result: str
     metadata: dict[str, Any] | None = None

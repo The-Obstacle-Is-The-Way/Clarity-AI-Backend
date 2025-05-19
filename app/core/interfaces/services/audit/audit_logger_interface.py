@@ -14,15 +14,15 @@ from uuid import UUID
 class IAuditLogger(ABC):
     """
     Interface for audit logging operations.
-    
+
     This interface encapsulates the functionality required for logging
     security and compliance-related events in accordance with HIPAA
     regulations and other security best practices.
-    
+
     Implementations must ensure audit logs do not contain any PHI
     or sensitive data that would violate privacy requirements.
     """
-    
+
     @abstractmethod
     async def log_auth_event(
         self,
@@ -36,7 +36,7 @@ class IAuditLogger(ABC):
     ) -> None:
         """
         Log an authentication or authorization related event.
-        
+
         Args:
             event_type: Type of auth event (login, logout, token_refresh, etc.)
             user_id: ID of the user related to the event, if available
@@ -45,15 +45,15 @@ class IAuditLogger(ABC):
             timestamp: Event timestamp, defaults to current time if None
             request_id: ID of the associated request for correlation
             ip_address: IP address of the client, if available
-            
+
         Returns:
             None
-            
+
         Raises:
             AuditLogError: If logging fails
         """
         pass
-    
+
     @abstractmethod
     async def log_data_access(
         self,
@@ -69,7 +69,7 @@ class IAuditLogger(ABC):
     ) -> None:
         """
         Log a data access event for auditing purposes.
-        
+
         Args:
             data_type: Type of data accessed (patient, provider, etc.)
             action: Action performed (read, write, delete, etc.)
@@ -80,15 +80,15 @@ class IAuditLogger(ABC):
             timestamp: Event timestamp, defaults to current time if None
             request_id: ID of the associated request for correlation
             ip_address: IP address of the client, if available
-            
+
         Returns:
             None
-            
+
         Raises:
             AuditLogError: If logging fails
         """
         pass
-    
+
     @abstractmethod
     async def log_security_event(
         self,
@@ -102,7 +102,7 @@ class IAuditLogger(ABC):
     ) -> None:
         """
         Log a security event such as suspicious activity or system change.
-        
+
         Args:
             event_type: Type of security event
             severity: Severity level (low, medium, high, critical)
@@ -111,15 +111,15 @@ class IAuditLogger(ABC):
             timestamp: Event timestamp, defaults to current time if None
             request_id: ID of the associated request for correlation
             ip_address: IP address of the client, if available
-            
+
         Returns:
             None
-            
+
         Raises:
             AuditLogError: If logging fails
         """
         pass
-    
+
     @abstractmethod
     async def get_audit_logs(
         self,
@@ -133,7 +133,7 @@ class IAuditLogger(ABC):
     ) -> list[Dict[str, Any]]:
         """
         Retrieve audit logs based on filter criteria.
-        
+
         Args:
             event_type: Filter by event type
             user_id: Filter by user ID
@@ -142,10 +142,10 @@ class IAuditLogger(ABC):
             end_time: Filter by end time
             limit: Maximum number of records to return
             offset: Offset for pagination
-            
+
         Returns:
             List of audit log entries matching the criteria
-            
+
         Raises:
             AuditLogError: If retrieval fails
         """

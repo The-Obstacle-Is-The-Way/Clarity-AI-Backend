@@ -3,14 +3,18 @@ import asyncio
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout
 
-pytest.skip("Skipping ensemble model tests (torch unsupported)", allow_module_level=True)
+pytest.skip(
+    "Skipping ensemble model tests (torch unsupported)", allow_module_level=True
+)
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import numpy as np
 import pandas as pd
 
-from app.infrastructure.ml.symptom_forecasting.ensemble_model import SymptomForecastingEnsemble
+from app.infrastructure.ml.symptom_forecasting.ensemble_model import (
+    SymptomForecastingEnsemble,
+)
 from app.infrastructure.ml.symptom_forecasting.transformer_model import (
     SymptomTransformerModel as TransformerModel,
 )
@@ -40,12 +44,7 @@ class TestEnsembleModel:
         return model
 
     @pytest.fixture
-    def ensemble_model(
-        self,
-        ml_settings,
-        mock_transformer_model,
-        mock_xgboost_model
-    ):
+    def ensemble_model(self, ml_settings, mock_transformer_model, mock_xgboost_model):
         """Create an ensemble model with mock component models."""
         # Create an ensemble model with mock component models
         ensemble = SymptomForecastingEnsemble(settings=ml_settings)
@@ -89,8 +88,8 @@ class TestEnsembleModel:
         # Verify ensemble weights are initialized
         assert isinstance(model.ensemble_weights, dict)
         assert (
-            model.ensemble_weights["transformer"] + 
-            model.ensemble_weights["xgboost"] == 1.0
+            model.ensemble_weights["transformer"] + model.ensemble_weights["xgboost"]
+            == 1.0
         )
 
     @pytest.mark.asyncio
@@ -104,9 +103,8 @@ class TestEnsembleModel:
         result = await ensemble_model.predict(
             patient_data=sample_input_data,
             symptom_type=symptom_type,
-            forecast_days=forecast_days
+            forecast_days=forecast_days,
         )
-        
 
         # Verify
         assert "predictions" in result
@@ -122,14 +120,12 @@ class TestEnsembleModel:
         assert result["contributing_models"]["xgboost"]["weight"] == 0.3
 
         # Verify predictions are a weighted average
-        expected_predictions = (
-            0.7 * np.array([4.2, 4.0, 3.8, 3.6, 3.4]) + 
-            0.3 * np.array([4.0, 3.9, 3.7, 3.5, 3.3])
-        )
+        expected_predictions = 0.7 * np.array(
+            [4.2, 4.0, 3.8, 3.6, 3.4]
+        ) + 0.3 * np.array([4.0, 3.9, 3.7, 3.5, 3.3])
         np.testing.assert_allclose(
             result["predictions"], expected_predictions, rtol=1e-5
         )
-        
 
     @pytest.mark.asyncio
     async def test_predict_with_invalid_parameters(
@@ -146,19 +142,15 @@ class TestEnsembleModel:
             await ensemble_model.predict(
                 patient_data=sample_input_data,
                 symptom_type=symptom_type,
-                forecast_days=-1
+                forecast_days=-1,
             )
-            
 
         # Test with missing required columns
         incomplete_data = sample_input_data.drop(columns=["symptom_severity"])
         with pytest.raises(ValueError, match="Missing required columns"):
             await ensemble_model.predict(
-                patient_data=incomplete_data, 
-                symptom_type=symptom_type, 
-                forecast_days=5
+                patient_data=incomplete_data, symptom_type=symptom_type, forecast_days=5
             )
-            
 
     @pytest.mark.asyncio
     async def test_predict_with_interventions(self, ensemble_model, sample_input_data):
@@ -174,7 +166,6 @@ class TestEnsembleModel:
                 "expected_effect": -0.5,  # Reduce symptom severity
             }
         ]
-        
 
         # Execute
         result = await ensemble_model.predict(
@@ -183,16 +174,21 @@ class TestEnsembleModel:
             forecast_days=forecast_days,
             interventions=interventions,
         )
-        
 
         # Verify
         assert "predictions" in result
-        assert "baseline_predictions" in result  # Should include baseline without interventions
+        assert (
+            "baseline_predictions" in result
+        )  # Should include baseline without interventions
         assert "intervention_effects" in result
 
         # The intervention should reduce the symptom severity after day 1
-        assert result["predictions"][0] == result["baseline_predictions"][0] # Day 0, no effect
-        assert result["predictions"][1] < result["baseline_predictions"][1] # Day 1+, effect applied
+        assert (
+            result["predictions"][0] == result["baseline_predictions"][0]
+        )  # Day 0, no effect
+        assert (
+            result["predictions"][1] < result["baseline_predictions"][1]
+        )  # Day 1+, effect applied
 
         # Verify intervention details are included
         assert len(result["intervention_effects"]) == 1

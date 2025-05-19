@@ -16,46 +16,55 @@ from app.infrastructure.security.encryption.base_encryption_service import (
 @pytest.mark.venv_only()
 class TestEncryptionService:
     """Tests for the HIPAA-compliant encryption service."""
-    
+
     @pytest.fixture
     def encryption_service(self):
         """Create an encryption service with a test key."""
-        with patch.dict(os.environ, {"ENCRYPTION_KEY": "test_secret_key_for_encryption_service_tests"}):
+        with patch.dict(
+            os.environ,
+            {"ENCRYPTION_KEY": "test_secret_key_for_encryption_service_tests"},
+        ):
             # Ensure a clean settings state for this service instance if get_settings() is patched elsewhere
             from app.core.config.settings import Settings as AppSettings
-            current_env_settings = AppSettings() # Reads current os.environ
-            with patch("app.infrastructure.security.encryption.base_encryption_service.get_settings", return_value=current_env_settings):
-                 return EncryptionService()
+
+            current_env_settings = AppSettings()  # Reads current os.environ
+            with patch(
+                "app.infrastructure.security.encryption.base_encryption_service.get_settings",
+                return_value=current_env_settings,
+            ):
+                return EncryptionService()
 
     def test_initialization(self):
         """Test encryption service initialization."""
-        with patch.dict(os.environ, {"ENCRYPTION_KEY": "test_key_for_encryption_abracadabra"}):
+        with patch.dict(
+            os.environ, {"ENCRYPTION_KEY": "test_key_for_encryption_abracadabra"}
+        ):
             service = EncryptionService()
             assert service.cipher is not None
 
     def test_initialization_with_missing_key(self, monkeypatch):
         """Test initialization with missing key raises error."""
-        
+
         # Monkeypatch get_encryption_key at module level to completely block any fallbacks
         monkeypatch.setattr(
-            "app.infrastructure.security.encryption.get_encryption_key", 
-            lambda: exec('raise ValueError("Primary encryption key is unavailable")')
+            "app.infrastructure.security.encryption.get_encryption_key",
+            lambda: exec('raise ValueError("Primary encryption key is unavailable")'),
         )
-        
+
         # Also patch the get_encryption_service to prevent default key fallback
         monkeypatch.setattr(
             "app.infrastructure.security.encryption.base_encryption_service.get_encryption_service",
-            lambda: exec('raise ValueError("No encryption service available")')
+            lambda: exec('raise ValueError("No encryption service available")'),
         )
-        
+
         # Clear environment variables that might provide keys
         monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
         monkeypatch.delenv("PHI_ENCRYPTION_KEY", raising=False)
-        
+
         # Now attempt to create service with no key provided
         with pytest.raises(ValueError) as excinfo:
             EncryptionService(secret_key=None)
-            
+
         # Verify the error message
         assert "Primary encryption key is unavailable" in str(excinfo.value)
 
@@ -68,7 +77,7 @@ class TestEncryptionService:
 
         # Verify the encrypted text is different from plaintext
         assert encrypted != plaintext
-        assert isinstance(encrypted, str) # Ensure it returns string
+        assert isinstance(encrypted, str)  # Ensure it returns string
 
         # Decrypt the string
         decrypted = encryption_service.decrypt_string(encrypted)
@@ -87,18 +96,18 @@ class TestEncryptionService:
         # If the requirement is for empty string to remain empty, BaseEncryptionService needs adjustment.
         # Current BaseEncryptionService with Fernet will not return empty for empty.
         # Let's assert it's not the original plaintext and is a string.
-        assert encrypted != plaintext 
+        assert encrypted != plaintext
         assert isinstance(encrypted, str)
-        
+
         # If it encrypts to non-empty, it should decrypt back to empty.
         decrypted = encryption_service.decrypt_string(encrypted)
-        assert decrypted == plaintext # Should decrypt back to empty string
+        assert decrypted == plaintext  # Should decrypt back to empty string
 
     def test_decrypt_invalid_string(self, encryption_service):
         """Test decrypting an invalid string with decrypt_string raises error."""
         with pytest.raises(ValueError) as excinfo:
             # Using a string that is not valid Fernet token
-            encryption_service.decrypt_string("invalid_fernet_token_string") 
+            encryption_service.decrypt_string("invalid_fernet_token_string")
         assert "Decryption failed" in str(excinfo.value)
 
     def test_generate_verify_hash(self, encryption_service):
@@ -106,20 +115,20 @@ class TestEncryptionService:
         data = "sensitive_data"
 
         # Generate hash
-        hash_value, salt_hex = encryption_service.generate_hash(data) # salt is now salt_hex
+        hash_value, salt_hex = encryption_service.generate_hash(
+            data
+        )  # salt is now salt_hex
 
         # Verify hash is a string and salt_hex is string (hex-encoded)
         assert isinstance(hash_value, str)
-        assert isinstance(salt_hex, str) 
+        assert isinstance(salt_hex, str)
 
         # Verify the hash
         is_valid = encryption_service.verify_hash(data, salt_hex, hash_value)
         assert is_valid is True
 
         # Verify with incorrect data
-        is_valid = encryption_service.verify_hash(
-            "wrong_data", salt_hex, hash_value
-        )
+        is_valid = encryption_service.verify_hash("wrong_data", salt_hex, hash_value)
         assert is_valid is False
 
     def test_generate_verify_hmac(self, encryption_service):

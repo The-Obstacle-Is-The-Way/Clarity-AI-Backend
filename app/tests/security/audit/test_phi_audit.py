@@ -43,7 +43,9 @@ class TestPHIAudit:
 
         # Create sample files with known PHI
         files_to_create = {
-            os.path.join(app_dir, "domain", "patient.py"): '''class Patient:
+            os.path.join(
+                app_dir, "domain", "patient.py"
+            ): '''class Patient:
     """Patient entity with PHI."""
 
     def __init__(self, name, ssn, email):
@@ -51,7 +53,9 @@ class TestPHIAudit:
         self.ssn = ssn    # 123-45-6789
         self.email = email  # john.smith@example.com
 ''',
-            os.path.join(app_dir, "infrastructure", "security", "log_sanitizer.py"): '''
+            os.path.join(
+                app_dir, "infrastructure", "security", "log_sanitizer.py"
+            ): '''
 import re
 import logging
 class PHISanitizer:
@@ -61,7 +65,9 @@ class PHISanitizer:
         # This is correct implementation
         return message.replace("SSN", "[REDACTED]")
 ''',
-            os.path.join(app_dir, "presentation", "api", "v1", "endpoints", "patients.py"): '''
+            os.path.join(
+                app_dir, "presentation", "api", "v1", "endpoints", "patients.py"
+            ): """
 from fastapi import APIRouter, Depends
 
 router = APIRouter()
@@ -70,16 +76,20 @@ router = APIRouter()
 def get_patient(patient_id: str):
     # No authentication check - this should be flagged
     return {"name": "John Smith", "phone": "(555) 123-4567"}
-''',
-            os.path.join(app_dir, "core", "config.py"): '''
+""",
+            os.path.join(
+                app_dir, "core", "config.py"
+            ): """
 # No security settings defined - should be flagged
 DEBUG = True
 DATABASE_URL = "postgresql://user:password@localhost/db"
-'''
+""",
         }
 
         # Create safe file
-        files_to_create[os.path.join(app_dir, "infrastructure", "security", "secure.py")] = '''
+        files_to_create[
+            os.path.join(app_dir, "infrastructure", "security", "secure.py")
+        ] = '''
 import logging
 from app.infrastructure.security.log_sanitizer import PHISanitizer
 
@@ -159,11 +169,16 @@ def process_user_data(data):
         # Check if specific security settings were flagged as missing
         config_found = False
         for finding in auditor.findings["configuration_issues"]:
-            if "missing_settings" in finding and "encryption" in finding["missing_settings"]:
+            if (
+                "missing_settings" in finding
+                and "encryption" in finding["missing_settings"]
+            ):
                 config_found = True
                 break
 
-        assert config_found, "Auditor failed to detect missing security settings in config"
+        assert (
+            config_found
+        ), "Auditor failed to detect missing security settings in config"
 
     def test_audit_report_generation(self, mock_app_directory, temp_dir):
         """Test that the auditor generates a proper report."""
@@ -240,7 +255,8 @@ def process_user_data(data):
         # Create a test file with PHI in the clean_app directory
         test_file_path = os.path.join(clean_app_dir, "domain", "test_patient.py")
         with open(test_file_path, "w") as f:
-            f.write('''
+            f.write(
+                '''
 class TestPatient:
     """Test patient with PHI."""
 
@@ -248,7 +264,8 @@ class TestPatient:
         # This is test PHI and should be ignored in clean_app directories
         patient = Patient(name="John Doe", ssn="123-45-6789", email="john.doe@example.com")
         assert patient.name == "John Doe"
-''')
+'''
+            )
 
         # Run the audit on this special clean_app directory
         auditor = PHIAuditor(app_dir=clean_app_dir)
@@ -256,7 +273,9 @@ class TestPatient:
 
         # The audit should pass (return True) because it's in a clean_app directory
         # even though it contains PHI
-        assert result is True, "Audit should pass for clean_app directories regardless of PHI content"
+        assert (
+            result is True
+        ), "Audit should pass for clean_app directories regardless of PHI content"
 
     def test_audit_with_clean_files(self, temp_dir, monkeypatch):
         """Test that the audit passes when given clean files (no PHI)."""
@@ -267,14 +286,18 @@ class TestPatient:
 
         # Create sample files with no PHI
         files_to_create = {
-            os.path.join(clean_dir, "domain", "user.py"): '''class User:
+            os.path.join(
+                clean_dir, "domain", "user.py"
+            ): '''class User:
     """User entity without PHI."""
 
     def __init__(self, user_id, role):
         self.user_id = user_id  # UUID like "550e8400-e29b-41d4-a716-446655440000"
         self.role = role        # "admin" or "patient"
 ''',
-            os.path.join(clean_dir, "infrastructure", "security", "sanitizer.py"): '''
+            os.path.join(
+                clean_dir, "infrastructure", "security", "sanitizer.py"
+            ): '''
 import re
 import logging
 class Sanitizer:
@@ -283,7 +306,7 @@ class Sanitizer:
     def sanitize(self, message):
         # Proper sanitization
         return message.replace("sensitive", "[REDACTED]")
-'''
+''',
         }
 
         # Write files
@@ -292,23 +315,23 @@ class Sanitizer:
             with open(file_path, "w") as f:
                 f.write(content)
 
-        # Run the audit on the clean directory but only check for PHI, 
+        # Run the audit on the clean directory but only check for PHI,
         # not API or config issues in test code
         auditor = PHIAuditor(app_dir=clean_dir)
-        
+
         # Monkey patch the audit methods to focus only on code PHI
         orig_audit_api = auditor.audit_api_endpoints
         orig_audit_config = auditor.audit_configuration
         orig_audit_logging = auditor.audit_logging_sanitization
-        
+
         # Replace with no-op functions for this test
         auditor.audit_api_endpoints = lambda: None
         auditor.audit_configuration = lambda: None
         auditor.audit_logging_sanitization = lambda: None
-        
+
         # Run the audit
         result = auditor.run_audit()
-        
+
         # Restore original methods
         auditor.audit_api_endpoints = orig_audit_api
         auditor.audit_configuration = orig_audit_config
@@ -318,13 +341,15 @@ class Sanitizer:
         assert result is True, "Audit should pass for directories with clean files"
 
         # Check if findings are empty or minimal
-        assert len(auditor.findings.get("code_phi", [])) == 0, "Should not find PHI in clean files"
+        assert (
+            len(auditor.findings.get("code_phi", [])) == 0
+        ), "Should not find PHI in clean files"
 
         # Verify summary contains correct counts
         assert auditor._count_total_issues() == 0
         assert auditor._count_files_examined() > 0
 
-    @patch('scripts.test.security.run_hipaa_phi_audit.logger')
+    @patch("scripts.test.security.run_hipaa_phi_audit.logger")
     def test_clean_app_directory_special_case_with_mock(self, mock_logger, temp_dir):
         """Test that the auditor passes when given a clean_app directory with test PHI and verifies logging."""
         # Create a special clean_app directory structure with test files
@@ -335,7 +360,8 @@ class Sanitizer:
         # Create a file with more obvious PHI pattern that will be detected
         test_file_path = os.path.join(app_dir, "domain", "test_data.py")
         with open(test_file_path, "w") as f:
-            f.write('''
+            f.write(
+                """
 # This file contains an SSN pattern that will definitely be detected
 def process_patient_data():
     # Example SSN that should be detected by the PHI pattern detection
@@ -343,28 +369,31 @@ def process_patient_data():
     # Other patient data with explicit SSN format
     patient_id = "Patient SSN: 987-65-4321"
     return "Processed"
-''')
+"""
+            )
 
         # Create PHI auditor and explicitly scan the test file
         auditor = PHIAuditor(app_dir=app_dir)
-        
+
         # Directly scan the test file to ensure PHI is detected
         with open(test_file_path, "r") as f:
             content = f.read()
             # Verify PHI detection directly
             phi_matches = auditor.phi_detector.detect_phi(content)
             assert len(phi_matches) > 0, "PHI detector should find SSN patterns"
-        
+
         # Now run the full audit to verify clean_app logic works
         result = auditor.run_audit()
-        
+
         # Verify audit passes due to clean_app directory logic regardless of PHI
         assert result is True, "Audit should pass for clean_app directories"
-        
-        # Just verify logging occurred during the audit
-        assert mock_logger.info.called or mock_logger.warning.called, "Logger should have been called"
 
-    @patch('scripts.test.security.run_hipaa_phi_audit.logger')
+        # Just verify logging occurred during the audit
+        assert (
+            mock_logger.info.called or mock_logger.warning.called
+        ), "Logger should have been called"
+
+    @patch("scripts.test.security.run_hipaa_phi_audit.logger")
     def test_ssn_pattern_detection(self, mock_logger, temp_dir):
         """Test specific SSN pattern detection capability of the auditor."""
         # Create a directory with a file containing an SSN pattern
@@ -374,7 +403,8 @@ def process_patient_data():
         # Create a file with an explicit SSN pattern
         test_file_path = os.path.join(test_dir, "ssn_example.py")
         with open(test_file_path, "w") as f:
-            f.write('''
+            f.write(
+                """
 # This file contains an SSN pattern that should be detected
 def process_patient_data():
     # Example SSN that should be detected by the PHI pattern detection
@@ -382,7 +412,8 @@ def process_patient_data():
     # Other patient data
     phone = "(555) 123-4567"
     return "Processed"
-''')
+"""
+            )
 
         # Run the audit specifically for PHI in code
         auditor = PHIAuditor(app_dir=test_dir)
@@ -395,7 +426,9 @@ def process_patient_data():
                 ssn_detected = True
                 break
 
-        assert ssn_detected, "Auditor failed to detect SSN pattern '123-45-6789' in code"
+        assert (
+            ssn_detected
+        ), "Auditor failed to detect SSN pattern '123-45-6789' in code"
 
         # Verify the detection mechanism found the right file
         file_detected = False
@@ -404,13 +437,17 @@ def process_patient_data():
                 file_detected = True
                 break
 
-        assert file_detected, "Auditor failed to identify the correct file containing SSN pattern"
+        assert (
+            file_detected
+        ), "Auditor failed to identify the correct file containing SSN pattern"
 
         # Check that PHI was still detected and logged
-        assert 'code_phi' in auditor.findings
+        assert "code_phi" in auditor.findings
 
         # Verify logger was called
-        assert mock_logger.info.called or mock_logger.warning.called, "Neither logger.info nor logger.warning was called"
+        assert (
+            mock_logger.info.called or mock_logger.warning.called
+        ), "Neither logger.info nor logger.warning was called"
 
     def test_performance_with_large_codebase(self, temp_dir):
         """Test the performance of the auditor with a large number of files."""
@@ -422,25 +459,30 @@ def process_patient_data():
         for i in range(50):
             file_path = os.path.join(app_dir, f"clean_file_{i}.py")
             with open(file_path, "w") as f:
-                f.write(f'''
+                f.write(
+                    f'''
 # Clean file {i}
 def function_{i}():
     """This is a clean function."""
     return {i}
-''')
+'''
+                )
 
         # Create 1 file with PHI
         phi_file = os.path.join(app_dir, "phi_file.py")
         with open(phi_file, "w") as f:
-            f.write('''
+            f.write(
+                '''
 def process_patient():
     """Process patient data."""
     patient_ssn = "123-45-6789"  # This should be detected
     return patient_ssn
-''')
+'''
+            )
 
         # Measure execution time
         import time
+
         start_time = time.time()
 
         auditor = PHIAuditor(app_dir=app_dir)
@@ -456,6 +498,7 @@ def process_patient():
 
         # Verify the correct number of files was examined
         assert auditor._count_files_examined() == 51
+
 
 if __name__ == "__main__":
     pytest.main(["-v", __file__])

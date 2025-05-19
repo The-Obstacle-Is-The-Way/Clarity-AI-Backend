@@ -64,7 +64,7 @@ class BiometricCorrelationService:
             "blood_pressure_systolic",
             "blood_pressure_diastolic",
             # Test data uses these keys
-            "heart_rate_variability", 
+            "heart_rate_variability",
             "physical_activity",
         ]
 
@@ -90,100 +90,125 @@ class BiometricCorrelationService:
 
     def _validate_biometric_data(self, data: dict[str, Any]) -> bool:
         """Validate biometric data structure.
-        
+
         Args:
             data: Biometric data to validate
-            
+
         Returns:
             True if data is valid, raises ValueError otherwise
         """
         # Special case detection for test_preprocess_biometric_data test
-        if isinstance(data, dict) and all(k in data for k in ['heart_rate_variability', 'sleep_duration', 'physical_activity']):
+        if isinstance(data, dict) and all(
+            k in data
+            for k in ["heart_rate_variability", "sleep_duration", "physical_activity"]
+        ):
             # This is the standard test data, validate it minimally
             for key in data:
-                if isinstance(data[key], list) and data[key] and isinstance(data[key][0], dict):
-                    if 'timestamp' not in data[key][0] or 'value' not in data[key][0]:
-                        raise ValueError(f"Missing timestamp or value in {key} measurement")
+                if (
+                    isinstance(data[key], list)
+                    and data[key]
+                    and isinstance(data[key][0], dict)
+                ):
+                    if "timestamp" not in data[key][0] or "value" not in data[key][0]:
+                        raise ValueError(
+                            f"Missing timestamp or value in {key} measurement"
+                        )
             return True
-        
+
         # Standard validation for other test cases and production code
         if not data or not isinstance(data, dict):
             raise ValueError("Biometric data must be a non-empty dictionary")
-            
+
         # Validate at least one biometric type contains valid data
         valid_found = False
         for key, measurements in data.items():
             if not isinstance(measurements, list):
                 continue
-                
+
             for entry in measurements:
                 if not isinstance(entry, dict):
                     continue
-                    
-                if 'timestamp' in entry and 'value' in entry:
+
+                if "timestamp" in entry and "value" in entry:
                     valid_found = True
                     break
-            
+
             if valid_found:
                 break
-        
+
         if not valid_found:
             raise ValueError("No valid biometric measurements found")
-            
+
         return True
-        
-    def _preprocess_biometric_data(self, data: dict[str, Any], lookback_days: int = 30) -> dict[str, pd.DataFrame]:
+
+    def _preprocess_biometric_data(
+        self, data: dict[str, Any], lookback_days: int = 30
+    ) -> dict[str, pd.DataFrame]:
         """Preprocess biometric data for correlation analysis.
-        
+
         This method converts biometric time series data into pandas DataFrames for analysis,
         handling various input formats and ensuring proper time filtering.
-        
+
         Args:
             data: Dictionary containing biometric data with keys matching biometric_features
             lookback_days: Number of days to look back for data filtering
-            
+
         Returns:
             Dictionary mapping biometric types to pandas DataFrames with 'timestamp' and 'value' columns
         """
         # Special handling for test environments - detect test data by structure
         is_test_data = False
-        if isinstance(data, dict) and 'heart_rate_variability' in data and 'sleep_duration' in data and 'physical_activity' in data:
+        if (
+            isinstance(data, dict)
+            and "heart_rate_variability" in data
+            and "sleep_duration" in data
+            and "physical_activity" in data
+        ):
             # Check structure of test data
-            if (isinstance(data['heart_rate_variability'], list) and 
-                isinstance(data['sleep_duration'], list) and 
-                isinstance(data['physical_activity'], list)):
+            if (
+                isinstance(data["heart_rate_variability"], list)
+                and isinstance(data["sleep_duration"], list)
+                and isinstance(data["physical_activity"], list)
+            ):
                 # Verify first item has expected structure
-                if len(data['heart_rate_variability']) > 0 and 'timestamp' in data['heart_rate_variability'][0]:
+                if (
+                    len(data["heart_rate_variability"]) > 0
+                    and "timestamp" in data["heart_rate_variability"][0]
+                ):
                     is_test_data = True
 
         # Direct test data handling for test_preprocess_biometric_data
         if is_test_data:
             logging.debug("Test data detected, using direct handling path")
             result = {}
-            
+
             # Process each feature directly to guarantee test success
-            for feature in ['heart_rate_variability', 'sleep_duration', 'physical_activity']:
+            for feature in [
+                "heart_rate_variability",
+                "sleep_duration",
+                "physical_activity",
+            ]:
                 if feature in data and len(data[feature]) > 0:
                     # Create DataFrame
                     df = pd.DataFrame(data[feature])
                     # Convert timestamp to datetime with UTC timezone
-                    df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
+                    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
                     # Ensure values are numeric
-                    df['value'] = pd.to_numeric(df['value'])
+                    df["value"] = pd.to_numeric(df["value"])
                     # Sort by timestamp
-                    df = df.sort_values('timestamp')
+                    df = df.sort_values("timestamp")
                     # Add to result
                     result[feature] = df
-            
+
             return result
-        
+
         # Standard production path for real data
         result: dict[str, pd.DataFrame] = {}
-        
+
         # Handle edge cases
         if data is None:
             return result
-        
+
         # Convert from SimpleNamespace if needed
         if not isinstance(data, dict):
             if hasattr(data, "__dict__"):
@@ -192,39 +217,43 @@ class BiometricCorrelationService:
                 data = data.time_series.__dict__
             else:
                 return result
-                
-        # Process each biometric feature  
+
+        # Process each biometric feature
         for feature_name in self.biometric_features:
-            if feature_name not in data or not isinstance(data[feature_name], list) or not data[feature_name]:
+            if (
+                feature_name not in data
+                or not isinstance(data[feature_name], list)
+                or not data[feature_name]
+            ):
                 continue
-                
+
             try:
                 # Convert to DataFrame
                 df = pd.DataFrame(data[feature_name])
-                
+
                 # Skip if missing required columns
                 if "timestamp" not in df.columns or "value" not in df.columns:
                     continue
-                    
+
                 # Process timestamps and values
                 df["timestamp"] = pd.to_datetime(df["timestamp"])
                 df["value"] = pd.to_numeric(df["value"], errors="coerce")
                 df = df.dropna(subset=["value"])
-                
+
                 # Apply date filtering if needed
                 if lookback_days > 0:
                     cutoff_date = datetime.now(UTC) - timedelta(days=lookback_days)
                     df = df[df["timestamp"] >= cutoff_date]
-                
+
                 # Sort and add to result
                 if not df.empty:
                     df = df.sort_values("timestamp")
                     result[feature_name] = df
             except Exception as e:
                 logging.warning(f"Error processing {feature_name}: {e!s}")
-                
+
         return result
-    
+
     async def preprocess_biometric_data(
         self, patient_id: UUID, data: dict[str, Any]
     ) -> dict[str, np.ndarray]:
@@ -305,7 +334,11 @@ class BiometricCorrelationService:
             raise ValidationError(f"Failed to preprocess biometric data: {e!s}")
 
     async def analyze_correlations(
-        self, patient_id: UUID, biometric_data: dict[str, Any], lookback_days: int = 30, correlation_threshold: float = 0.3
+        self,
+        patient_id: UUID,
+        biometric_data: dict[str, Any],
+        lookback_days: int = 30,
+        correlation_threshold: float = 0.3,
     ) -> dict[str, Any]:
         """
         Analyze correlations between biometric data and mental health indicators.
@@ -323,39 +356,45 @@ class BiometricCorrelationService:
             # Validate input data
             if not biometric_data:
                 raise ValueError("Empty biometric data")
-            
+
             # Save original data for test compatibility
             original_biometric_data = biometric_data.copy()
-            
+
             # For test compatibility - convert test data format to expected format if needed
-            if "time_series" not in biometric_data and any(isinstance(v, list) for v in biometric_data.values()):
+            if "time_series" not in biometric_data and any(
+                isinstance(v, list) for v in biometric_data.values()
+            ):
                 # Test data format detected - convert to time_series format
                 time_series = []
-                
+
                 # Get all timestamps from the first biometric type
                 first_key = next(iter(biometric_data))
                 for i, entry in enumerate(biometric_data[first_key]):
                     ts_entry = {"timestamp": entry["timestamp"]}
-                    
+
                     # Add all biometric values for this timestamp
                     for biometric_type, measurements in biometric_data.items():
                         if i < len(measurements):
                             ts_entry[biometric_type] = measurements[i]["value"]
-                    
+
                     time_series.append(ts_entry)
-                
+
                 # Create new data structure with time_series
                 biometric_data = {"time_series": time_series}
-            
+
             # Process data for the model - first preprocess the raw data
-            processed_data = self._preprocess_biometric_data(original_biometric_data, lookback_days)
-            
+            processed_data = self._preprocess_biometric_data(
+                original_biometric_data, lookback_days
+            )
+
             try:
                 # Then process for the model
-                preprocessed_data = await self.preprocess_biometric_data(patient_id, biometric_data)
+                preprocessed_data = await self.preprocess_biometric_data(
+                    patient_id, biometric_data
+                )
                 biometric_array = preprocessed_data["biometric_data"]
                 mental_health_array = preprocessed_data["mental_health_data"]
-                
+
                 # Check if we have enough data
                 if biometric_array.shape[0] < 2:
                     return {
@@ -366,47 +405,65 @@ class BiometricCorrelationService:
                         "biometric_coverage": {},
                         "model_metrics": {},
                         "warning": "insufficient_data",
-                        "timestamp": datetime.now(UTC).isoformat()
+                        "timestamp": datetime.now(UTC).isoformat(),
                     }
             except Exception as preprocess_error:
                 # Handle preprocessing errors
-                logging.error(f"Error preprocessing biometric data: {preprocess_error!s}")
+                logging.error(
+                    f"Error preprocessing biometric data: {preprocess_error!s}"
+                )
                 return {
                     "patient_id": str(patient_id),
                     "error": str(preprocess_error),
                     "correlations": [],
                     "insights": [],
-                    "timestamp": datetime.now(UTC).isoformat()
+                    "timestamp": datetime.now(UTC).isoformat(),
                 }
-            
+
             try:
                 # Mock insights for testing
                 mock_insights = [
                     {
                         "type": "correlation",
                         "message": "Strong negative correlation between heart rate variability and anxiety",
-                        "action": "Monitor heart rate variability closely"
+                        "action": "Monitor heart rate variability closely",
                     },
                     {
                         "type": "pattern",
                         "message": "Sleep duration positively affects mood with a 24-hour lag",
-                        "action": "Maintain consistent sleep schedule"
-                    }
+                        "action": "Maintain consistent sleep schedule",
+                    },
                 ]
-                
+
                 # Get correlations from model
                 model_result = await self.model.analyze_correlations()
-                
+
                 # Calculate biometric coverage
                 biometric_coverage = {}
                 for biometric_type in original_biometric_data:
-                    coverage = len(original_biometric_data[biometric_type]) / lookback_days if lookback_days > 0 else 0
-                    biometric_coverage[biometric_type] = min(coverage, 1.0)  # Cap at 100%
-                
+                    coverage = (
+                        len(original_biometric_data[biometric_type]) / lookback_days
+                        if lookback_days > 0
+                        else 0
+                    )
+                    biometric_coverage[biometric_type] = min(
+                        coverage, 1.0
+                    )  # Cap at 100%
+
                 # Determine reliability based on coverage
-                avg_coverage = sum(biometric_coverage.values()) / len(biometric_coverage) if biometric_coverage else 0
-                reliability = "high" if avg_coverage > 0.8 else "medium" if avg_coverage > 0.5 else "low"
-                
+                avg_coverage = (
+                    sum(biometric_coverage.values()) / len(biometric_coverage)
+                    if biometric_coverage
+                    else 0
+                )
+                reliability = (
+                    "high"
+                    if avg_coverage > 0.8
+                    else "medium"
+                    if avg_coverage > 0.5
+                    else "low"
+                )
+
                 # Combine results
                 result = {
                     "patient_id": str(patient_id),
@@ -415,11 +472,11 @@ class BiometricCorrelationService:
                     "insights": mock_insights,
                     "biometric_coverage": biometric_coverage,
                     "model_metrics": model_result.get("model_metrics", {}),
-                    "timestamp": datetime.now(UTC).isoformat()
+                    "timestamp": datetime.now(UTC).isoformat(),
                 }
-                
+
                 return result
-                
+
             except Exception as model_error:
                 # Handle model errors gracefully
                 logging.error(f"Model error in correlation analysis: {model_error!s}")
@@ -428,9 +485,9 @@ class BiometricCorrelationService:
                     "error": f"Model error: {model_error!s}",
                     "correlations": [],
                     "insights": [],
-                    "timestamp": datetime.now(UTC).isoformat()
+                    "timestamp": datetime.now(UTC).isoformat(),
                 }
-                
+
         except ValueError as ve:
             # Re-raise validation errors
             raise ve
@@ -758,7 +815,8 @@ class BiometricCorrelationService:
                 for time_idx, change_info in changes_by_time.items():
                     anomalies = change_info.get("anomalies", [])
                     if any(
-                        anomaly.get("feature_index") == feature_idx for anomaly in anomalies
+                        anomaly.get("feature_index") == feature_idx
+                        for anomaly in anomalies
                     ):
                         significant_changes = change_info.get("significant_changes", [])
                         related_changes.extend(significant_changes)
@@ -778,9 +836,9 @@ class BiometricCorrelationService:
                     change_texts = []
                     for indicator, changes in changes_by_indicator.items():
                         # Calculate average change
-                        avg_change = sum(c.get("percent_change", 0) for c in changes) / len(
-                            changes
-                        )
+                        avg_change = sum(
+                            c.get("percent_change", 0) for c in changes
+                        ) / len(changes)
                         direction = "increase" if avg_change > 0 else "decrease"
                         change_texts.append(
                             f"{indicator} ({direction} by {abs(avg_change):.1f}%)"
@@ -795,8 +853,7 @@ class BiometricCorrelationService:
                         "severity": severity,
                         "related_mental_health_changes": related_changes,
                         "insight_text": insight_text,
-                        "importance": anomaly_count
-                        * (1 + 0.5 * len(related_changes)),
+                        "importance": anomaly_count * (1 + 0.5 * len(related_changes)),
                     }
                 )
 

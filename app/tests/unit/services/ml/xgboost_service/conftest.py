@@ -21,8 +21,9 @@ class MockYamlModule:
     dump = dump
     _is_mocked = True
 
+
 # Install the mock when this module is imported
-sys.modules['yaml'] = MockYamlModule
+sys.modules["yaml"] = MockYamlModule
 
 from app.core.services.ml.xgboost.aws_service import AWSXGBoostService, PrivacyLevel
 from app.tests.unit.services.ml.xgboost_service.mocks import (
@@ -45,18 +46,9 @@ def sample_clinical_data():
     return {
         "feature1": 1.0,
         "feature2": "value",
-        "assessment_scores": {
-            "phq9": 15,
-            "gad7": 10
-        },
-        "demographics": {
-            "age": 45,
-            "gender": "F"
-        },
-        "medical_history": [
-            "depression",
-            "anxiety"
-        ]
+        "assessment_scores": {"phq9": 15, "gad7": 10},
+        "demographics": {"age": 45, "gender": "F"},
+        "medical_history": ["depression", "anxiety"],
     }
 
 
@@ -68,10 +60,7 @@ def sample_clinical_data_with_phi():
         "feature2": "value",
         "patient_name": "John Doe",  # PHI element
         "ssn": "123-45-6789",  # PHI element
-        "assessment_scores": {
-            "phq9": 15,
-            "gad7": 10
-        }
+        "assessment_scores": {"phq9": 15, "gad7": 10},
     }
 
 
@@ -90,7 +79,10 @@ def sample_outcome_timeframe():
 @pytest.fixture
 def sample_treatment_plan():
     """Sample treatment plan for testing."""
-    return {"plan_id": "plan-123", "treatments": [{"type": "cbt", "frequency": "weekly"}]}
+    return {
+        "plan_id": "plan-123",
+        "treatments": [{"type": "cbt", "frequency": "weekly"}],
+    }
 
 
 @pytest.fixture
@@ -108,8 +100,8 @@ def mock_settings_base():
             "risk-relapse": "risk-relapse-endpoint",
             "risk-suicide": "risk-suicide-endpoint",
             "feature-importance": "feature-importance-endpoint",
-            "digital-twin": "digital-twin-endpoint"
-        }
+            "digital-twin": "digital-twin-endpoint",
+        },
     }
 
 
@@ -117,33 +109,37 @@ def mock_settings_base():
 def mock_aws_factory():
     """Create a mock AWS service factory for testing."""
     # Default mock sagemaker endpoints
-    endpoints = [{
-        "EndpointName": "test-prefix-risk-relapse-endpoint",
-        "EndpointStatus": "InService",
-        "CreationTime": datetime.now(),
-        "LastModifiedTime": datetime.now(),
-        "EndpointArn": "arn:aws:sagemaker:us-east-1:123456789012:endpoint/test-prefix-risk-relapse-endpoint"
-    }, {
-        "EndpointName": "test-prefix-risk-suicide-endpoint",
-        "EndpointStatus": "InService",
-        "CreationTime": datetime.now(),
-        "LastModifiedTime": datetime.now(),
-        "EndpointArn": "arn:aws:sagemaker:us-east-1:123456789012:endpoint/test-prefix-risk-suicide-endpoint"
-    }, {
-        "EndpointName": "test-prefix-feature-importance-endpoint",
-        "EndpointStatus": "InService",
-        "CreationTime": datetime.now(),
-        "LastModifiedTime": datetime.now(),
-        "EndpointArn": "arn:aws:sagemaker:us-east-1:123456789012:endpoint/test-prefix-feature-importance-endpoint"
-    }]
-    
+    endpoints = [
+        {
+            "EndpointName": "test-prefix-risk-relapse-endpoint",
+            "EndpointStatus": "InService",
+            "CreationTime": datetime.now(),
+            "LastModifiedTime": datetime.now(),
+            "EndpointArn": "arn:aws:sagemaker:us-east-1:123456789012:endpoint/test-prefix-risk-relapse-endpoint",
+        },
+        {
+            "EndpointName": "test-prefix-risk-suicide-endpoint",
+            "EndpointStatus": "InService",
+            "CreationTime": datetime.now(),
+            "LastModifiedTime": datetime.now(),
+            "EndpointArn": "arn:aws:sagemaker:us-east-1:123456789012:endpoint/test-prefix-risk-suicide-endpoint",
+        },
+        {
+            "EndpointName": "test-prefix-feature-importance-endpoint",
+            "EndpointStatus": "InService",
+            "CreationTime": datetime.now(),
+            "LastModifiedTime": datetime.now(),
+            "EndpointArn": "arn:aws:sagemaker:us-east-1:123456789012:endpoint/test-prefix-feature-importance-endpoint",
+        },
+    ]
+
     # Create factory with preconfigured services
     factory = MockAWSServiceFactory(
         sagemaker_service=MockSageMakerService(endpoints),
         s3_service=MockS3Service(bucket_exists=True),
-        dynamodb_service=MockDynamoDBService()
+        dynamodb_service=MockDynamoDBService(),
     )
-    
+
     return factory
 
 
@@ -151,16 +147,16 @@ def mock_aws_factory():
 async def aws_xgboost_service(mock_aws_factory, mock_settings_base):
     """
     Fixture to provide an initialized AWSXGBoostService for testing.
-    
+
     This fixture handles full initialization of the service, including
     patching appropriate methods to avoid actual AWS calls.
     """
     # Create the service
     service = AWSXGBoostService(aws_service_factory=mock_aws_factory)
-    
+
     # Initialize the service with settings
     await service.initialize(mock_settings_base)
-    
+
     # Return the initialized service
     return service
 
@@ -168,6 +164,8 @@ async def aws_xgboost_service(mock_aws_factory, mock_settings_base):
 @pytest.fixture
 def run_async():
     """Helper fixture to run async code in sync tests."""
+
     def _run_async(coro):
         return asyncio.run(coro)
+
     return _run_async

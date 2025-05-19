@@ -14,38 +14,40 @@ from app.domain.entities.biometric_twin import BiometricDataPoint
 
 class AlertStatusEnum(str, Enum):
     """Status of a biometric alert."""
+
     NEW = "new"
     ACKNOWLEDGED = "acknowledged"
     RESOLVED = "resolved"
     MUTED = "muted"
     DISMISSED = "dismissed"
-    
+
     def __str__(self) -> str:
         return self.value
 
 
 class BiometricAlert(BaseModel):
     """Represents a biometric alert triggered by a rule."""
+
     id: UUID = Field(default_factory=uuid4, alias="alert_id")
     patient_id: UUID
     rule_id: UUID
-    rule_name: str # Denormalized for easier display
+    rule_name: str  # Denormalized for easier display
     priority: AlertPriority
     status: AlertStatusEnum = AlertStatusEnum.NEW
     triggered_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    data_point: BiometricDataPoint # The data point that triggered the alert
-    message: str # Human-readable message describing the alert
-    context: dict[str, Any] | None = None # Additional context (e.g., related events)
-    
+    data_point: BiometricDataPoint  # The data point that triggered the alert
+    message: str  # Human-readable message describing the alert
+    context: dict[str, Any] | None = None  # Additional context (e.g., related events)
+
     # Tracking acknowledgment and resolution
     acknowledged: bool = False
     acknowledged_at: datetime | None = None
-    acknowledged_by: UUID | None = None # User ID
+    acknowledged_by: UUID | None = None  # User ID
     acknowledged_notes: str | None = None
-    
+
     resolved: bool = False
     resolved_at: datetime | None = None
-    resolved_by: UUID | None = None # User ID
+    resolved_by: UUID | None = None  # User ID
     resolved_notes: str | None = None
 
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -54,7 +56,7 @@ class BiometricAlert(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         validate_assignment=True,
-        populate_by_name=True # Allows using 'alert_id' as input
+        populate_by_name=True,  # Allows using 'alert_id' as input
     )
 
     def acknowledge(self, user_id: UUID, notes: str | None = None):
@@ -66,7 +68,7 @@ class BiometricAlert(BaseModel):
             self.acknowledged_notes = notes
             self.status = AlertStatusEnum.ACKNOWLEDGED
             self.updated_at = self.acknowledged_at
-            
+
     def resolve(self, user_id: UUID, notes: str | None = None):
         """Mark the alert as resolved."""
         if not self.resolved:

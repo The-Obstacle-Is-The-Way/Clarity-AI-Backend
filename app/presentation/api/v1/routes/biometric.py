@@ -22,13 +22,16 @@ router = APIRouter(
 
 class BiometricDataPoint(BaseModel):
     """Schema for a single biometric data point."""
+
     id: UUID
     patient_id: UUID
     biometric_type: str = Field(..., description="Type of biometric measurement")
     value: float = Field(..., description="Recorded value of the measurement")
     unit: str = Field(..., description="Unit of measurement")
     timestamp: datetime = Field(..., description="When the measurement was taken")
-    source: str = Field(..., description="Source of the measurement (device, manual, etc.)")
+    source: str = Field(
+        ..., description="Source of the measurement (device, manual, etc.)"
+    )
     metadata: dict[str, Any] = Field(default={}, description="Additional metadata")
 
 
@@ -36,7 +39,7 @@ class BiometricDataPoint(BaseModel):
 async def get_biometrics() -> list[BiometricDataPoint]:
     """
     Retrieve a list of biometric measurements.
-    
+
     Returns:
         List of biometric data points
     """
@@ -48,10 +51,10 @@ async def get_biometrics() -> list[BiometricDataPoint]:
 async def get_biometric(biometric_id: UUID) -> BiometricDataPoint:
     """
     Retrieve a specific biometric measurement.
-    
+
     Args:
         biometric_id: UUID of the biometric data point
-        
+
     Returns:
         Biometric data point
     """
@@ -64,7 +67,7 @@ async def get_biometric(biometric_id: UUID) -> BiometricDataPoint:
         unit="bpm",
         timestamp=utcnow(),
         source="app",
-        metadata={}
+        metadata={},
     )
 
 
@@ -72,7 +75,7 @@ async def get_biometric(biometric_id: UUID) -> BiometricDataPoint:
 async def create_biometric() -> BiometricDataPoint:
     """
     Record a new biometric measurement.
-    
+
     Returns:
         Newly created biometric data point
     """
@@ -85,7 +88,7 @@ async def create_biometric() -> BiometricDataPoint:
         unit="bpm",
         timestamp=utcnow(),
         source="app",
-        metadata={}
+        metadata={},
     )
 
 
@@ -93,10 +96,10 @@ async def create_biometric() -> BiometricDataPoint:
 async def get_patient_biometrics(patient_id: UUID) -> list[BiometricDataPoint]:
     """
     Retrieve all biometric measurements for a specific patient.
-    
+
     Args:
         patient_id: UUID of the patient
-        
+
     Returns:
         List of biometric data points for the patient
     """
@@ -106,16 +109,15 @@ async def get_patient_biometrics(patient_id: UUID) -> list[BiometricDataPoint]:
 
 @router.get("/patient/{patient_id}/{biometric_type}")
 async def get_patient_biometric_type(
-    patient_id: UUID,
-    biometric_type: str
+    patient_id: UUID, biometric_type: str
 ) -> list[BiometricDataPoint]:
     """
     Retrieve biometric measurements of a specific type for a patient.
-    
+
     Args:
         patient_id: UUID of the patient
         biometric_type: Type of biometric measurement
-        
+
     Returns:
         List of biometric data points of the specified type for the patient
     """

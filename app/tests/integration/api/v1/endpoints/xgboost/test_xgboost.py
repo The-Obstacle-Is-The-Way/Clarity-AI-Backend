@@ -30,7 +30,11 @@ from app.core.services.ml.xgboost.exceptions import (
 from app.core.interfaces.services.ml.xgboost import XGBoostInterface
 from app.infrastructure.persistence.sqlalchemy.config.database import get_db_dependency
 from app.infrastructure.security.audit.middleware import AuditLogMiddleware
-from app.tests.utils.test_audit_utils import disable_audit_middleware, replace_middleware_with_mock, disable_authentication_middleware
+from app.tests.utils.test_audit_utils import (
+    disable_audit_middleware,
+    replace_middleware_with_mock,
+    disable_authentication_middleware,
+)
 from app.factory import create_application
 from app.presentation.api.dependencies.auth import (
     verify_provider_access,
@@ -46,10 +50,11 @@ logger = logging.getLogger(__name__)
 # Mark all tests in this module as asyncio tests
 pytestmark = pytest.mark.asyncio
 
+
 # Create a concrete implementation of XGBoostInterface for tests
 class MockXGBoostService:
     """Mock XGBoost service with AsyncMock methods for testing."""
-    
+
     def __init__(self):
         self._initialized = True  # Pre-initialize for tests
         self.predict_risk_mock = AsyncMock()
@@ -60,45 +65,74 @@ class MockXGBoostService:
         self.get_model_info_mock = AsyncMock()
         self.post_model_info_mock = AsyncMock()
         self.get_available_models_mock = AsyncMock()
-        
+
     async def predict(self, patient_id, features, model_type, **kwargs):
         """Generic prediction method required by MLServiceInterface."""
         if "risk" in model_type.lower():
             return await self.predict_risk(patient_id, model_type, features)
         elif "treatment" in model_type.lower():
-            return await self.predict_treatment_response(patient_id, model_type, {}, features)
+            return await self.predict_treatment_response(
+                patient_id, model_type, {}, features
+            )
         elif "outcome" in model_type.lower():
-            return await self.predict_outcome(patient_id, features, kwargs.get("timeframe_days", 0), clinical_data=kwargs.get("clinical_data", {}), treatment_plan=kwargs.get("treatment_plan", {}))
+            return await self.predict_outcome(
+                patient_id,
+                features,
+                kwargs.get("timeframe_days", 0),
+                clinical_data=kwargs.get("clinical_data", {}),
+                treatment_plan=kwargs.get("treatment_plan", {}),
+            )
         raise ValueError(f"Unknown model type: {model_type}")
-    
+
     async def predict_risk(self, patient_id, risk_type, features, **kwargs):
         """Mock risk prediction."""
         return await self.predict_risk_mock(patient_id, risk_type, features, **kwargs)
-    
-    async def predict_treatment_response(self, patient_id, treatment_id, treatment_plan, features, **kwargs):
+
+    async def predict_treatment_response(
+        self, patient_id, treatment_id, treatment_plan, features, **kwargs
+    ):
         """Mock treatment response prediction."""
-        return await self.predict_treatment_response_mock(patient_id, treatment_id, treatment_plan, features, **kwargs)
-    
-    async def predict_outcome(self, patient_id, features, timeframe_days, clinical_data=None, treatment_plan=None, **kwargs):
+        return await self.predict_treatment_response_mock(
+            patient_id, treatment_id, treatment_plan, features, **kwargs
+        )
+
+    async def predict_outcome(
+        self,
+        patient_id,
+        features,
+        timeframe_days,
+        clinical_data=None,
+        treatment_plan=None,
+        **kwargs,
+    ):
         """Mock outcome prediction."""
-        return await self.predict_outcome_mock(patient_id, features, timeframe_days, clinical_data=clinical_data, treatment_plan=treatment_plan, **kwargs)
-    
+        return await self.predict_outcome_mock(
+            patient_id,
+            features,
+            timeframe_days,
+            clinical_data=clinical_data,
+            treatment_plan=treatment_plan,
+            **kwargs,
+        )
+
     async def get_feature_importance(self, model_id, model_type=None, **kwargs):
         """Mock feature importance retrieval."""
         return await self.get_feature_importance_mock(model_id, model_type)
-    
+
     async def integrate_with_digital_twin(self, patient_id, digital_twin_id, features):
         """Mock digital twin integration."""
-        return await self.integrate_with_digital_twin_mock(patient_id, digital_twin_id, features)
-    
+        return await self.integrate_with_digital_twin_mock(
+            patient_id, digital_twin_id, features
+        )
+
     async def get_model_info(self, model_id=None, model_type=None):
         """Mock model info retrieval."""
         return await self.get_model_info_mock(model_id, model_type)
-    
+
     async def post_model_info(self, model_info):
         """Mock saving model information."""
         return await self.post_model_info_mock(model_info)
-    
+
     async def get_available_models(self, filter_criteria=None):
         """Mock available models retrieval."""
         return await self.get_available_models_mock(filter_criteria)
@@ -119,18 +153,20 @@ async def db_session():
         TESTING=True,
         DATABASE_URL="sqlite+aiosqlite:///:memory:",
     )
-    
+
     # Setup test database and session
     session = await setup_test_environment(settings)
-    
+
     yield session
-    
+
     # Clean up
     await session.close()
 
 
 @pytest_asyncio.fixture
-async def xgboost_test_client(mock_xgboost_service, db_session) -> AsyncGenerator[Tuple[FastAPI, AsyncClient], None]:
+async def xgboost_test_client(
+    mock_xgboost_service, db_session
+) -> AsyncGenerator[Tuple[FastAPI, AsyncClient], None]:
     """Create an HTTP client for testing the XGBoost endpoints."""
     # Create application with test settings
     settings = Settings(
@@ -140,22 +176,22 @@ async def xgboost_test_client(mock_xgboost_service, db_session) -> AsyncGenerato
         API_V1_STR="/api/v1",
         JWT_SECRET_KEY="test_secret_key_for_testing_only",
     )
-    
+
     # Override dependencies for testing
     app = create_application(
-        settings_override=settings, 
+        settings_override=settings,
         include_test_routers=True,
         disable_audit_middleware=True,  # Explicitly disable audit middleware
-        skip_auth_middleware=True       # Skip auth middleware for testing
+        skip_auth_middleware=True,  # Skip auth middleware for testing
     )
-    
+
     # Explicitly set testing and disable_audit_middleware flags
     app.state.testing = True
     app.state.disable_audit_middleware = True
-    
+
     # Mock the XGBoost service dependency
     app.dependency_overrides[get_xgboost_service] = lambda: mock_xgboost_service
-    
+
     # Mock authentication for tests
     async def mock_current_user() -> User:
         """Return a mock user for testing."""
@@ -171,19 +207,19 @@ async def xgboost_test_client(mock_xgboost_service, db_session) -> AsyncGenerato
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
         )
-    
+
     # Override the auth dependency
     app.dependency_overrides[get_current_user] = mock_current_user
-    
+
     # Create test client with minimal headers
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
         headers={"Content-Type": "application/json"},
-        timeout=3.0  # Add explicit client timeout
+        timeout=3.0,  # Add explicit client timeout
     ) as client:
         yield app, client
-    
+
     # Clean up
     app.dependency_overrides.clear()
 
@@ -197,7 +233,7 @@ def risk_prediction_request_data():
         "patient_data": {
             "age_at_intake": 35,
             "gender_identity": "female",
-            "primary_language": "English"
+            "primary_language": "English",
         },
         "clinical_data": {
             "age": 35,
@@ -210,7 +246,7 @@ def risk_prediction_request_data():
             "symptom_severity": 8,
         },
         "time_frame_days": 90,
-        "include_explainability": False
+        "include_explainability": False,
     }
 
 
@@ -284,12 +320,13 @@ def outcome_prediction_request_data():
         },
     }
 
+
 @pytest.mark.timeout(10)  # Add timeout for hanging test
 @pytest.mark.asyncio
 async def test_predict_risk(xgboost_test_client):
     """Test risk prediction endpoint with valid data."""
     app, client = xgboost_test_client
-    
+
     # Define the payload directly in the test for isolation
     test_patient_id = str(uuid.uuid4())
     direct_payload = {
@@ -298,7 +335,7 @@ async def test_predict_risk(xgboost_test_client):
         "patient_data": {
             "age_at_intake": 30,
             "gender_identity": "male",
-            "primary_language": "English"
+            "primary_language": "English",
         },
         "clinical_data": {
             "age": 30,
@@ -311,12 +348,12 @@ async def test_predict_risk(xgboost_test_client):
             "symptom_severity": 5,
         },
         "time_frame_days": 60,
-        "include_explainability": True
+        "include_explainability": True,
     }
-    
+
     # Mock the service call to return a successful response
     mock_service = app.dependency_overrides[get_xgboost_service]()
-    
+
     mock_service_response = {
         "prediction_id": str(uuid.uuid4()),
         "patient_id": test_patient_id,
@@ -329,16 +366,20 @@ async def test_predict_risk(xgboost_test_client):
         "model_version": "1.2.4",
         "time_frame_days": direct_payload["time_frame_days"],
         "feature_importance": {"symptom_severity": 0.5, "recent_life_events": 0.2},
-        "risk_factors": {"symptom_severity": 5, "recent_life_events": 1}
+        "risk_factors": {"symptom_severity": 5, "recent_life_events": 1},
     }
-    
+
     mock_service.predict_risk = AsyncMock(return_value=mock_service_response)
 
     # Add the kwargs parameter to the URL as a query parameter, since it's required
-    response = await client.post("/api/v1/xgboost/risk-prediction?kwargs={}", json=direct_payload)
-    
-    assert response.status_code == status.HTTP_200_OK, f"Failed with status {response.status_code}: {response.text}"
-    
+    response = await client.post(
+        "/api/v1/xgboost/risk-prediction?kwargs={}", json=direct_payload
+    )
+
+    assert (
+        response.status_code == status.HTTP_200_OK
+    ), f"Failed with status {response.status_code}: {response.text}"
+
     response_data = response.json()
     assert response_data["prediction_id"] is not None
     assert response_data["patient_id"] == test_patient_id
@@ -350,6 +391,10 @@ async def test_predict_risk(xgboost_test_client):
     assert response_data["model_version"] == mock_service_response["model_version"]
     assert response_data["time_frame_days"] == direct_payload["time_frame_days"]
     # Based on include_explainability=True, feature_importance should be present
-    assert response_data["feature_importance"] == mock_service_response["feature_importance"]
+    assert (
+        response_data["feature_importance"]
+        == mock_service_response["feature_importance"]
+    )
+
 
 # Add more tests for different scenarios and other endpoints

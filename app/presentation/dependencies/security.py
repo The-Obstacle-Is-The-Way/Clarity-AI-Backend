@@ -14,8 +14,9 @@ logger = get_logger(__name__)
 
 _redis_token_blacklist_repository_instance: RedisTokenBlacklistRepository | None = None
 
+
 async def get_token_blacklist_repository(
-    cache_service: CacheService = Depends(get_cache_service)
+    cache_service: CacheService = Depends(get_cache_service),
 ) -> ITokenBlacklistRepository:
     """
     Dependency provider for Token Blacklist Repository.
@@ -34,7 +35,7 @@ async def get_token_blacklist_repository(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error: Cache service misconfiguration."
+            detail="Internal server error: Cache service misconfiguration.",
         )
 
     _redis_token_blacklist_repository_instance = RedisTokenBlacklistRepository(

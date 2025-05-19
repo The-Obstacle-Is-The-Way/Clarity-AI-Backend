@@ -14,13 +14,14 @@ import pytest
 # Instead of using a standalone version, we'll import from the actual module
 
 from app.infrastructure.security.phi import (
-    PHISanitizer, 
-    RedactionStrategy, 
-    sanitize_phi, 
-    contains_phi
+    PHISanitizer,
+    RedactionStrategy,
+    sanitize_phi,
+    contains_phi,
 )
 
 # ============= TestCase Implementation =============
+
 
 class TestPHISanitizer(unittest.TestCase):
     """Test case for PHI sanitizer."""
@@ -32,7 +33,7 @@ class TestPHISanitizer(unittest.TestCase):
     @pytest.mark.standalone()
     def test_sanitize_ssn(self):
         """Test sanitizing Social Security Numbers.
-        
+
         Note: This test validates the sanitizer behavior with SSNs in a different context
         than just directly checking for presence. The context pattern detection is important.
         """
@@ -41,14 +42,11 @@ class TestPHISanitizer(unittest.TestCase):
         sanitized = self.sanitizer.sanitize_string(text)
         # Check for sanitization marker and/or original text replacement
         self.assertIn("[REDACTED", sanitized)
-        
+
         # In most cases we would also verify the SSN is not present, but
         # if the current implementation is still being refined, we can
         # check that either the SSN is removed or it's flagged with [REDACTED]
-        self.assertTrue(
-            "123-45-6789" not in sanitized or 
-            "[REDACTED" in sanitized
-        )
+        self.assertTrue("123-45-6789" not in sanitized or "[REDACTED" in sanitized)
 
     @pytest.mark.standalone()
     def test_sanitize_phone(self):
@@ -73,17 +71,14 @@ class TestPHISanitizer(unittest.TestCase):
         data = {
             "patient": {
                 "name": "John Doe",
-                "contact": {
-                    "email": "john.doe@example.com",
-                    "phone": "555-123-4567"
-                },
+                "contact": {"email": "john.doe@example.com", "phone": "555-123-4567"},
                 "notes": [
                     "Patient seems healthy",
                     "SSN: 123-45-6789",
-                    {"private": "Email: alt@example.com"}
-                ]
+                    {"private": "Email: alt@example.com"},
+                ],
             },
-            "non_phi": "This is not PHI"
+            "non_phi": "This is not PHI",
         }
 
         sanitized = self.sanitizer.sanitize_json(data)
@@ -91,7 +86,7 @@ class TestPHISanitizer(unittest.TestCase):
         # Check that PHI is sanitized
         self.assertNotIn("john.doe@example.com", json.dumps(sanitized))
         self.assertNotIn("555-123-4567", json.dumps(sanitized))
-        
+
         # If our sanitizer doesn't catch all instances of PHI yet, we can verify
         # that at least significant portions are sanitized
         self.assertIn("[REDACTED", json.dumps(sanitized))
@@ -102,14 +97,14 @@ class TestPHISanitizer(unittest.TestCase):
         # Use technical terms that should never be mistaken for PHI
         text = "HTTP_STATUS_CODE=200 RESPONSE_SUCCESS=true"
         sanitized = self.sanitizer.sanitize_string(text)
-        
+
         # Some sanitizers might be more aggressive; check that some keywords remain
         # Our primary goal is sanitizing PHI, not perfect preservation of non-PHI
         self.assertTrue(
-            "HTTP" in sanitized or
-            "STATUS" in sanitized or
-            "CODE" in sanitized or
-            "200" in sanitized
+            "HTTP" in sanitized
+            or "STATUS" in sanitized
+            or "CODE" in sanitized
+            or "200" in sanitized
         )
 
     @pytest.mark.standalone()
@@ -135,11 +130,7 @@ class TestPHISanitizer(unittest.TestCase):
     def test_redaction_format_consistency(self):
         """Test that redaction format is consistent."""
         # All of these contain different kinds of PHI
-        texts = [
-            "SSN: 123-45-6789",
-            "Email: test@example.com",
-            "Phone: 555-123-4567"
-        ]
+        texts = ["SSN: 123-45-6789", "Email: test@example.com", "Phone: 555-123-4567"]
 
         # Ensure all redacted texts have a consistent format
         for text in texts:
@@ -152,14 +143,14 @@ class TestPHISanitizer(unittest.TestCase):
         # Test with definite PHI
         text_with_phi = "SSN: 123-45-6789"
         self.assertTrue(self.sanitizer.contains_phi(text_with_phi))
-        
+
         # Test with definite PHI in structured data
         data_with_phi = {"contact": {"email": "test@example.com"}}
         sanitized = self.sanitizer.sanitize_json(data_with_phi)
         self.assertNotEqual(data_with_phi, sanitized)
-        
+
         # Test with specific non-PHI format data
-        numbers_only = "12345678" # Just numbers with no context
+        numbers_only = "12345678"  # Just numbers with no context
         self.assertFalse(self.sanitizer.contains_phi(numbers_only))
 
 

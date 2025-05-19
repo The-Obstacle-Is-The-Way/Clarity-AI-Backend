@@ -28,14 +28,14 @@ from app.domain.utils.datetime_utils import UTC
 @pytest.mark.db_required()
 class TestBiometricAlertNotificationService:
     """Tests for the BiometricAlertNotificationService."""
-    
+
     @pytest.fixture
     def mock_alert_repository(self):
         """Create a mock BiometricAlertRepository."""
         repo = AsyncMock()
         repo.save = AsyncMock()
         return repo
-        
+
     @pytest.fixture
     def mock_notification_service(self):
         """Create a mock notification service provider."""
@@ -45,30 +45,29 @@ class TestBiometricAlertNotificationService:
         service.send_in_app_notification = AsyncMock()
         service.send_push_notification = AsyncMock()
         return service
-        
+
     @pytest.fixture
     def notification_service(self, mock_alert_repository, mock_notification_service):
         """Create a BiometricAlertNotificationService with mock dependencies."""
         return BiometricAlertNotificationService(
-            mock_alert_repository,
-            mock_notification_service
+            mock_alert_repository, mock_notification_service
         )
-        
+
     @pytest.fixture
     def sample_patient_id(self):
         """Create a sample patient ID."""
-        return UUID('12345678-1234-5678-1234-567812345678')
-        
+        return UUID("12345678-1234-5678-1234-567812345678")
+
     @pytest.fixture
     def sample_provider_id(self):
         """Create a sample provider ID."""
-        return UUID('87654321-8765-4321-8765-432187654321')
-        
+        return UUID("87654321-8765-4321-8765-432187654321")
+
     @pytest.fixture
     def sample_rule_id(self):
         """Create a sample rule ID."""
-        return UUID('11111111-2222-3333-4444-555555555555')
-        
+        return UUID("11111111-2222-3333-4444-555555555555")
+
     @pytest.fixture
     def sample_urgent_alert(self, sample_patient_id, sample_rule_id):
         """Create a sample urgent BiometricAlert."""
@@ -82,12 +81,11 @@ class TestBiometricAlertNotificationService:
                     "data_type": "heart_rate",
                     "value": 130,
                     "timestamp": datetime.now(UTC).isoformat(),
-                    "source": "smartwatch"
+                    "source": "smartwatch",
                 }
             ],
-            rule_id=sample_rule_id
+            rule_id=sample_rule_id,
         )
-
 
     @pytest.fixture
     def sample_warning_alert(self, sample_patient_id, sample_rule_id):
@@ -102,11 +100,12 @@ class TestBiometricAlertNotificationService:
                     "data_type": "sleep_quality",
                     "value": 30,
                     "timestamp": datetime.now(UTC).isoformat(),
-                    "source": "sleep_tracker"
+                    "source": "sleep_tracker",
                 }
             ],
-            rule_id=sample_rule_id
+            rule_id=sample_rule_id,
         )
+
     @pytest.fixture
     def sample_info_alert(self, sample_patient_id, sample_rule_id):
         """Create a sample informational BiometricAlert."""
@@ -120,14 +119,16 @@ class TestBiometricAlertNotificationService:
                     "data_type": "step_count",
                     "value": 2000,
                     "timestamp": datetime.now(UTC).isoformat(),
-                    "source": "fitness_tracker"
+                    "source": "fitness_tracker",
                 }
             ],
-            rule_id=sample_rule_id
+            rule_id=sample_rule_id,
         )
 
     @pytest.mark.asyncio
-    async def test_notify_alert_urgent_priority(self, notification_service, mock_notification_service, sample_urgent_alert):
+    async def test_notify_alert_urgent_priority(
+        self, notification_service, mock_notification_service, sample_urgent_alert
+    ):
         """Test that notify_alert sends notifications through all channels for urgent alerts."""
         # Execute
         await notification_service.notify_alert(sample_urgent_alert)
@@ -146,19 +147,25 @@ class TestBiometricAlertNotificationService:
         assert sample_urgent_alert.patient_id.hex not in sms_message
 
     @pytest.mark.asyncio
-    async def test_notify_alert_warning_priority(self, notification_service, mock_notification_service, sample_warning_alert):
+    async def test_notify_alert_warning_priority(
+        self, notification_service, mock_notification_service, sample_warning_alert
+    ):
         """Test that notify_alert sends notifications through appropriate channels for warning alerts."""
         # Execute
         await notification_service.notify_alert(sample_warning_alert)
 
         # Verify
-        assert mock_notification_service.send_sms.call_count == 0  # SMS not used for warnings
+        assert (
+            mock_notification_service.send_sms.call_count == 0
+        )  # SMS not used for warnings
         assert mock_notification_service.send_email.call_count == 1
         assert mock_notification_service.send_in_app_notification.call_count == 1
         assert mock_notification_service.send_push_notification.call_count == 1
 
     @pytest.mark.asyncio
-    async def test_notify_alert_info_priority(self, notification_service, mock_notification_service, sample_info_alert):
+    async def test_notify_alert_info_priority(
+        self, notification_service, mock_notification_service, sample_info_alert
+    ):
         """Test that notify_alert sends notifications through in-app only for informational alerts."""
         # Execute
         await notification_service.notify_alert(sample_info_alert)
@@ -170,7 +177,9 @@ class TestBiometricAlertNotificationService:
         assert mock_notification_service.send_push_notification.call_count == 0
 
     @pytest.mark.asyncio
-    async def test_hipaa_compliant_message_creation(self, notification_service, sample_urgent_alert):
+    async def test_hipaa_compliant_message_creation(
+        self, notification_service, sample_urgent_alert
+    ):
         """Test that HIPAA-compliant messages are created correctly."""
         # Execute
         sms_message = notification_service._create_hipaa_compliant_message(
@@ -228,10 +237,14 @@ class TestBiometricAlertNotificationService:
         assert info_channels[0] == NotificationChannel.IN_APP
 
     @pytest.mark.asyncio
-    async def test_get_alert_recipients(self, notification_service, sample_urgent_alert):
+    async def test_get_alert_recipients(
+        self, notification_service, sample_urgent_alert
+    ):
         """Test that alert recipients are correctly determined."""
         # Execute
-        recipients = await notification_service._get_alert_recipients(sample_urgent_alert)
+        recipients = await notification_service._get_alert_recipients(
+            sample_urgent_alert
+        )
 
         # Verify
         assert len(recipients) == 1
@@ -242,7 +255,9 @@ class TestBiometricAlertNotificationService:
         assert "notification_preferences" in recipients[0]
 
     @pytest.mark.asyncio
-    async def test_send_notification_filters_recipients(self, notification_service, mock_notification_service, sample_urgent_alert):
+    async def test_send_notification_filters_recipients(
+        self, notification_service, mock_notification_service, sample_urgent_alert
+    ):
         """Test that send_notification filters recipients based on their preferences."""
         # Setup
         recipients = [
@@ -255,8 +270,8 @@ class TestBiometricAlertNotificationService:
                     "sms": True,
                     "email": True,
                     "in_app": True,
-                    "push": True
-                }
+                    "push": True,
+                },
             },
             {
                 "provider_id": "00000000-0000-0000-0000-000000000002",
@@ -267,16 +282,14 @@ class TestBiometricAlertNotificationService:
                     "sms": False,  # This provider doesn't want SMS
                     "email": True,
                     "in_app": True,
-                    "push": True
-                }
-            }
+                    "push": True,
+                },
+            },
         ]
 
         # Execute - SMS channel should only notify Provider 1
         await notification_service._send_notification(
-            sample_urgent_alert,
-            NotificationChannel.SMS,
-            recipients
+            sample_urgent_alert, NotificationChannel.SMS, recipients
         )
 
         # Verify
@@ -288,9 +301,7 @@ class TestBiometricAlertNotificationService:
 
         # Execute - Email channel should notify both providers
         await notification_service._send_notification(
-            sample_urgent_alert,
-            NotificationChannel.EMAIL,
-            recipients
+            sample_urgent_alert, NotificationChannel.EMAIL, recipients
         )
 
         # Verify

@@ -21,59 +21,67 @@ from app.domain.utils.datetime_utils import UTC
 # Mock all required modules explicitly and add them to sys.modules
 # This ensures they're available during test collection
 
+
 # First create the mock classes
 class MockTPESampler:
     def __init__(self, *args, **kwargs):
         pass
 
+
 class MockTrial:
     def suggest_float(self, *args, **kwargs):
         return 0.1
-    
+
     def suggest_int(self, *args, **kwargs):
         return 3
+
 
 class MockStudy:
     def optimize(self, *args, **kwargs):
         pass
 
+
 class MockOptuna:
     def __init__(self):
         self.trial = MockTrial
-    
+
     def create_study(self, *args, **kwargs):
         return MockStudy()
+
 
 class MockBooster:
     def get_score(self, *args, **kwargs):
         return {"feature1": 10.0, "feature2": 5.0}
-    
+
     def predict(self, *args, **kwargs):
         return np.array([0.5, 0.5, 0.5])
+
 
 class MockDMatrix:
     def __init__(self, *args, **kwargs):
         pass
 
+
 class MockXGB:
     def __init__(self):
         self.DMatrix = MockDMatrix
-    
+
     def train(self, *args, **kwargs):
         return MockBooster()
 
+
 # Then explicitly add them to sys.modules to make them available at import time
-if 'optuna' not in sys.modules:
-    sys.modules['optuna'] = MockOptuna()
+if "optuna" not in sys.modules:
+    sys.modules["optuna"] = MockOptuna()
 
 # Critical: Create optuna.samplers module with TPESampler
-if 'optuna.samplers' not in sys.modules:
-    samplers_module = type('module', (), {})()
+if "optuna.samplers" not in sys.modules:
+    samplers_module = type("module", (), {})()
     samplers_module.TPESampler = MockTPESampler
-    sys.modules['optuna.samplers'] = samplers_module
+    sys.modules["optuna.samplers"] = samplers_module
 
-if 'xgboost' not in sys.modules:
-    sys.modules['xgboost'] = MockXGB()
+if "xgboost" not in sys.modules:
+    sys.modules["xgboost"] = MockXGB()
 
 # Now that our mocks are in place, try the imports
 try:
@@ -157,14 +165,14 @@ class XGBoostSymptomModel:
 
         Args:
             model_path: Path to the model file
-            
+
         Raises:
             FileNotFoundError: If the model file doesn't exist
             Exception: If there's an error loading the model
         """
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model file not found: {model_path}")
-            
+
         try:
             model_data = joblib.load(model_path)
             self.models = model_data.get("models", {})

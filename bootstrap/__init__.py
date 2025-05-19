@@ -19,7 +19,7 @@ __all__: list[str] = [
 ]
 
 # Check if we are running inside a virtual environment
-if 'VIRTUAL_ENV' in os.environ:
+if "VIRTUAL_ENV" in os.environ:
     # Import the original sitecustomize only inside a venv
     import bootstrap.sitecustomize_wrapper  # noqa: F401 – side‑effects
 

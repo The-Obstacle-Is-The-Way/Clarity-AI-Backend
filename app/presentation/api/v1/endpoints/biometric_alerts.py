@@ -30,29 +30,42 @@ router = APIRouter(
     tags=["Biometric Alerts"],
 )
 
+
 @router.get("", response_model=List[AlertResponse])
 async def get_alerts(
-    status_param: Optional[AlertStatus] = Query(None, alias="status", description="Filter by alert status"),
-    priority: Optional[AlertPriority] = Query(None, description="Filter by alert priority"),
+    status_param: Optional[AlertStatus] = Query(
+        None, alias="status", description="Filter by alert status"
+    ),
+    priority: Optional[AlertPriority] = Query(
+        None, description="Filter by alert priority"
+    ),
     alert_type: Optional[AlertType] = Query(None, description="Filter by alert type"),
-    start_date: Optional[str] = Query(None, description="Filter by start date (ISO format)"),
-    end_date: Optional[str] = Query(None, description="Filter by end date (ISO format)"),
-    patient_id: Optional[str] = Query(None, description="Patient ID if accessing as provider"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
+    start_date: Optional[str] = Query(
+        None, description="Filter by start date (ISO format)"
+    ),
+    end_date: Optional[str] = Query(
+        None, description="Filter by end date (ISO format)"
+    ),
+    patient_id: Optional[str] = Query(
+        None, description="Patient ID if accessing as provider"
+    ),
+    limit: int = Query(
+        100, ge=1, le=1000, description="Maximum number of records to return"
+    ),
     offset: int = Query(0, ge=0, description="Number of records to skip"),
     alert_service: AlertServiceInterface = Depends(get_alert_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ) -> List[AlertResponse]:
     """
     Get a list of biometric alerts with optional filtering.
-    
+
     This endpoint provides alerts for biometric data that require attention,
-    such as abnormal readings or critical health indicators. For healthcare 
+    such as abnormal readings or critical health indicators. For healthcare
     providers, patient_id can be specified to access a patient's alerts.
-    
+
     Args:
         status_param: Optional filter by alert status
-        priority: Optional filter by alert priority  
+        priority: Optional filter by alert priority
         alert_type: Optional filter by alert type
         start_date: Optional filter by start date
         end_date: Optional filter by end date
@@ -61,10 +74,10 @@ async def get_alerts(
         offset: Number of records to skip
         alert_service: Injected alert service
         current_user: Current authenticated user
-        
+
     Returns:
         List of alert data
-        
+
     Raises:
         HTTPException: If user is not authorized to access this data
     """
@@ -72,7 +85,7 @@ async def get_alerts(
     try:
         # Determine if request is for self or for a patient (provider access)
         subject_id = patient_id if patient_id else str(current_user.id)
-        
+
         # Check authorization if requesting patient data
         if patient_id and str(patient_id) != str(current_user.id):
             try:
@@ -82,25 +95,25 @@ async def get_alerts(
                 logger.warning(f"Access validation failed: {str(e)}")
                 # Return empty list for unauthorized access instead of error
                 return []
-        
+
         try:
             # Get alerts from service directly using the interface parameters
             # Adapt to match the AlertServiceInterface
             start_time = None
             end_time = None
-            
+
             if start_date:
                 try:
                     start_time = datetime.fromisoformat(start_date)
                 except ValueError:
                     logger.warning(f"Invalid start_date format: {start_date}")
-                    
+
             if end_date:
                 try:
                     end_time = datetime.fromisoformat(end_date)
                 except ValueError:
                     logger.warning(f"Invalid end_date format: {end_date}")
-            
+
             alerts = await alert_service.get_alerts(
                 patient_id=subject_id,
                 alert_type=alert_type.value if alert_type else None,
@@ -109,12 +122,12 @@ async def get_alerts(
                 start_time=start_time,
                 end_time=end_time,
                 limit=limit,
-                skip=offset
+                skip=offset,
             )
-            
+
             # Handle different return types from alert service
             result = []
-            
+
             try:
                 # If alerts is a list of dicts, convert each to AlertResponse
                 if isinstance(alerts, list):
@@ -132,7 +145,7 @@ async def get_alerts(
                                     data=alert.get("data"),
                                     user_id=alert.get("user_id"),
                                     resolved_at=alert.get("resolved_at"),
-                                    resolution_notes=alert.get("resolution_notes")
+                                    resolution_notes=alert.get("resolution_notes"),
                                 )
                                 result.append(alert_response)
                             else:
@@ -147,7 +160,7 @@ async def get_alerts(
                                     data=alert.data,
                                     user_id=alert.user_id,
                                     resolved_at=alert.resolved_at,
-                                    resolution_notes=alert.resolution_notes
+                                    resolution_notes=alert.resolution_notes,
                                 )
                                 result.append(alert_response)
                         except (AttributeError, TypeError) as e:
@@ -155,41 +168,46 @@ async def get_alerts(
                             # Skip this item but continue processing
                             continue
                 else:
-                    logger.warning(f"Alert service returned unexpected type: {type(alerts)}")
+                    logger.warning(
+                        f"Alert service returned unexpected type: {type(alerts)}"
+                    )
             except (AttributeError, TypeError) as e:
                 logger.warning(f"Error processing alerts: {str(e)}")
                 # Return empty list on error
-                
+
             return result
-            
+
         except TypeError as e:
             # Handle case where the mock returns a tuple or other incorrect type
-            logger.warning(f"Alert service returned unexpected data type: {str(e)}, returning empty list")
+            logger.warning(
+                f"Alert service returned unexpected data type: {str(e)}, returning empty list"
+            )
             return []
-            
+
     except Exception as e:
         logger.error(f"Error getting alerts: {str(e)}")
         # For testing, we'll return an empty list instead of failing with 500
         # This is a more resilient approach for the API
         return []
 
+
 @router.get("/{alert_id}", response_model=AlertResponse)
 async def get_alert(
     alert_id: UUID = Path(..., description="Alert ID"),
     alert_service: AlertServiceInterface = Depends(get_alert_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ) -> AlertResponse:
     """
     Get detailed information for a specific alert.
-    
+
     Args:
         alert_id: ID of the alert to retrieve
         alert_service: Injected alert service
         current_user: Current authenticated user
-        
+
     Returns:
         Detailed alert data
-        
+
     Raises:
         HTTPException: If record not found or user not authorized
     """
@@ -197,22 +215,20 @@ async def get_alert(
         # Get the alert (includes access validation)
         try:
             alert = await alert_service.get_alert_by_id(
-                alert_id=str(alert_id),
-                user_id=str(current_user.id)
+                alert_id=str(alert_id), user_id=str(current_user.id)
             )
         except Exception as e:
             logger.error(f"Error retrieving alert {alert_id}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Alert not found or access denied"
+                detail="Alert not found or access denied",
             )
-        
+
         if not alert:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Alert not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found"
             )
-            
+
         # Convert to response model
         return AlertResponse(
             id=alert.id,
@@ -224,9 +240,9 @@ async def get_alert(
             data=alert.data,
             user_id=alert.user_id,
             resolved_at=alert.resolved_at,
-            resolution_notes=alert.resolution_notes
+            resolution_notes=alert.resolution_notes,
         )
-        
+
     except HTTPException:
         # Re-raise HTTP exceptions
         raise
@@ -235,76 +251,72 @@ async def get_alert(
         # HIPAA-compliant error handling
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Alert not found or an error occurred"
+            detail="Alert not found or an error occurred",
         )
+
 
 @router.patch("/{alert_id}/status", response_model=dict[str, Any])
 async def update_alert_status(
     alert_id: UUID = Path(..., description="Alert ID"),
     update_request: AlertUpdateRequest = Body(...),
     alert_service: AlertServiceInterface = Depends(get_alert_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
     """
     Update the status of a specific alert.
-    
+
     This endpoint allows changing the status of an alert (e.g., to 'acknowledged',
     'resolved', etc.) and optionally adding resolution notes.
-    
+
     Args:
         alert_id: ID of the alert to update
         update_request: Status update data
         alert_service: Injected alert service
         current_user: Current authenticated user
-        
+
     Returns:
         Success status and message
-        
+
     Raises:
         HTTPException: If record not found, user not authorized, or validation fails
     """
     logger.info(f"Updating alert {alert_id} status to {update_request.status}")
-    
+
     if not update_request.status:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Status update required"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Status update required"
         )
-    
+
     try:
         # Update alert status (includes access validation)
         success, error_msg = await alert_service.update_alert_status(
             alert_id=str(alert_id),
             status=update_request.status.value,
             resolution_notes=update_request.resolution_notes,
-            resolved_by=str(current_user.id)
+            resolved_by=str(current_user.id),
         )
-        
+
         if not success:
             # If the error message indicates the alert wasn't found, return 404
             if error_msg and "not found" in error_msg.lower():
                 raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=error_msg
+                    status_code=status.HTTP_404_NOT_FOUND, detail=error_msg
                 )
             else:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=error_msg or "Failed to update alert status"
+                    detail=error_msg or "Failed to update alert status",
                 )
-            
+
         return {
             "success": True,
-            "message": f"Alert status updated to {update_request.status}"
+            "message": f"Alert status updated to {update_request.status}",
         }
-        
+
     except ValueError as e:
         # Handle validation errors
         logger.warning(f"Validation error updating alert {alert_id}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except HTTPException:
         # Re-raise HTTP exceptions
         raise
@@ -313,59 +325,64 @@ async def update_alert_status(
         # HIPAA-compliant error handling with no PHI in error
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred processing the request"
+            detail="An error occurred processing the request",
         )
+
 
 @router.get("/patients/{patient_id}/summary", response_model=dict[str, Any])
 async def get_patient_alert_summary(
     patient_id: UUID = Path(..., description="Patient ID"),
-    start_date: str = Query(None, description="Start date for summary period (ISO format)"),
+    start_date: str = Query(
+        None, description="Start date for summary period (ISO format)"
+    ),
     end_date: str = Query(None, description="End date for summary period (ISO format)"),
     alert_service: AlertServiceInterface = Depends(get_alert_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
     """
     Get a summary of alerts for a specific patient.
-    
+
     This endpoint provides aggregate statistics about a patient's alerts
     within a specified time period, which is useful for clinical overview
     and trend analysis.
-    
+
     Args:
         patient_id: ID of the patient
         start_date: Optional start date for summary period (defaults to 30 days ago)
         end_date: Optional end date for summary period (defaults to now)
         alert_service: Injected alert service
         current_user: Current authenticated user
-        
+
     Returns:
         Alert summary statistics
-        
+
     Raises:
         HTTPException: If user not authorized or patient not found
     """
     logger.info(f"Getting alert summary for patient {patient_id}")
-    
+
     try:
         # Check authorization if requesting patient data
         if str(patient_id) != str(current_user.id):
             try:
                 # This will raise an exception if not authorized
-                await alert_service.validate_access(str(current_user.id), str(patient_id))
+                await alert_service.validate_access(
+                    str(current_user.id), str(patient_id)
+                )
             except Exception as e:
                 logger.warning(f"Access validation failed: {str(e)}")
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Not authorized to access this patient's data"
+                    detail="Not authorized to access this patient's data",
                 )
-                
+
         # Parse dates
         now = datetime.now(timezone.utc)
         default_start = now - timedelta(days=30)
-        
+
         start_time = default_start
         end_time = now
-        
+
         if start_date:
             try:
                 start_time = datetime.fromisoformat(start_date)
@@ -373,9 +390,9 @@ async def get_patient_alert_summary(
                 logger.warning(f"Invalid start_date format: {start_date}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid start date format. Please use ISO format (YYYY-MM-DDTHH:MM:SS)."
+                    detail="Invalid start date format. Please use ISO format (YYYY-MM-DDTHH:MM:SS).",
                 )
-                
+
         if end_date:
             try:
                 end_time = datetime.fromisoformat(end_date)
@@ -383,16 +400,14 @@ async def get_patient_alert_summary(
                 logger.warning(f"Invalid end_date format: {end_date}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid end date format. Please use ISO format (YYYY-MM-DDTHH:MM:SS)."
+                    detail="Invalid end date format. Please use ISO format (YYYY-MM-DDTHH:MM:SS).",
                 )
-                
+
         # Get summary from service
         summary = await alert_service.get_alert_summary(
-            patient_id=str(patient_id),
-            start_time=start_time,
-            end_time=end_time
+            patient_id=str(patient_id), start_time=start_time, end_time=end_time
         )
-        
+
         if not summary:
             # Return empty summary if none found
             return {
@@ -402,11 +417,11 @@ async def get_patient_alert_summary(
                 "alert_count": 0,
                 "by_status": {},
                 "by_priority": {},
-                "by_type": {}
+                "by_type": {},
             }
-            
+
         return summary
-        
+
     except HTTPException:
         # Re-raise HTTP exceptions
         raise
@@ -415,58 +430,70 @@ async def get_patient_alert_summary(
         # HIPAA-compliant error handling
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred retrieving the alert summary"
+            detail="An error occurred retrieving the alert summary",
         )
+
 
 class ManualAlertRequest(BaseModel):
     """Request schema for manually triggering an alert."""
-    
-    message: str = Field(..., min_length=1, max_length=500, description="Alert message content")
-    priority: AlertPriority = Field(default=AlertPriority.MEDIUM, description="Alert priority level")
-    alert_type: AlertType = Field(default=AlertType.BIOMETRIC_ANOMALY, description="Type of alert")
-    data: dict[str, Any] = Field(default_factory=dict, description="Additional alert data")
+
+    message: str = Field(
+        ..., min_length=1, max_length=500, description="Alert message content"
+    )
+    priority: AlertPriority = Field(
+        default=AlertPriority.MEDIUM, description="Alert priority level"
+    )
+    alert_type: AlertType = Field(
+        default=AlertType.BIOMETRIC_ANOMALY, description="Type of alert"
+    )
+    data: dict[str, Any] = Field(
+        default_factory=dict, description="Additional alert data"
+    )
+
 
 @router.post("/patients/{patient_id}/trigger", response_model=dict[str, Any])
 async def trigger_alert_manually(
     patient_id: UUID = Path(..., description="Patient ID"),
     alert_data: ManualAlertRequest = Body(...),
     alert_service: AlertServiceInterface = Depends(get_alert_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
     """
     Manually trigger an alert for a patient.
-    
+
     This endpoint allows clinicians to manually create alerts for patients
     when needed, such as for observed symptoms or concerns that aren't
     automatically detected by the system.
-    
+
     Args:
         patient_id: ID of the patient
         alert_data: Alert data including message and priority
         alert_service: Injected alert service
         current_user: Current authenticated user
-        
+
     Returns:
         Success status and created alert ID
-        
+
     Raises:
         HTTPException: If user not authorized or alert creation fails
     """
     logger.info(f"Manually triggering alert for patient {patient_id}")
-    
+
     try:
         # Check authorization
         if str(patient_id) != str(current_user.id):
             try:
                 # This will raise an exception if not authorized
-                await alert_service.validate_access(str(current_user.id), str(patient_id))
+                await alert_service.validate_access(
+                    str(current_user.id), str(patient_id)
+                )
             except Exception as e:
                 logger.warning(f"Access validation failed: {str(e)}")
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Not authorized to create alerts for this patient"
+                    detail="Not authorized to create alerts for this patient",
                 )
-                
+
         # Trigger the alert
         success, alert_id, error_msg = await alert_service.create_alert(
             patient_id=str(patient_id),
@@ -474,21 +501,21 @@ async def trigger_alert_manually(
             severity=alert_data.priority,
             description=alert_data.message,
             source_data=alert_data.data,
-            metadata={"manually_triggered_by": str(current_user.id)}
+            metadata={"manually_triggered_by": str(current_user.id)},
         )
-        
+
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=error_msg or "Failed to create alert"
+                detail=error_msg or "Failed to create alert",
             )
-            
+
         return {
             "success": True,
             "alert_id": alert_id,
-            "message": "Alert created successfully"
+            "message": "Alert created successfully",
         }
-        
+
     except HTTPException:
         # Re-raise HTTP exceptions
         raise
@@ -497,5 +524,5 @@ async def trigger_alert_manually(
         # HIPAA-compliant error handling
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred creating the alert"
-        ) 
+            detail="An error occurred creating the alert",
+        )

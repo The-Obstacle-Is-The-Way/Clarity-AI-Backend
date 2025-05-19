@@ -9,15 +9,25 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies.database import get_db_session
-from app.core.interfaces.repositories.alert_repository_interface import AlertRepositoryInterface
-from app.core.interfaces.services.encryption_service_interface import EncryptionServiceInterface
+from app.core.interfaces.repositories.alert_repository_interface import (
+    AlertRepositoryInterface,
+)
+from app.core.interfaces.services.encryption_service_interface import (
+    EncryptionServiceInterface,
+)
 from app.infrastructure.di.container import get_container
 from app.infrastructure.repositories.alert_repository import AlertRepository
 from app.presentation.api.dependencies.repository import get_encryption_service
 
-from app.application.services.biometric_alert_rule_service import BiometricAlertRuleService
-from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
-from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
+from app.application.services.biometric_alert_rule_service import (
+    BiometricAlertRuleService,
+)
+from app.domain.repositories.biometric_alert_rule_repository import (
+    BiometricAlertRuleRepository,
+)
+from app.domain.repositories.biometric_alert_template_repository import (
+    BiometricAlertTemplateRepository,
+)
 from app.infrastructure.repositories.memory.biometric_alert_template_repository import (
     InMemoryBiometricAlertTemplateRepository,
 )
@@ -29,19 +39,19 @@ from app.presentation.api.dependencies.database import get_db
 
 def get_alert_repository(
     db_session: AsyncSession = Depends(get_db_session),
-    encryption_service: EncryptionServiceInterface = Depends(get_encryption_service)
+    encryption_service: EncryptionServiceInterface = Depends(get_encryption_service),
 ) -> AlertRepositoryInterface:
     """
     Get the alert repository instance.
-    
+
     This dependency function provides access to the alert repository
     for working with alert data in a HIPAA-compliant manner.
     Alert data is encrypted at rest and in transit.
-    
+
     Args:
         db_session: Database session dependency
         encryption_service: Encryption service for HIPAA compliance
-        
+
     Returns:
         An instance of the alert repository
     """
@@ -61,10 +71,10 @@ async def get_biometric_alert_rule_repository(
 ) -> BiometricAlertRuleRepository:
     """
     Get the biometric alert rule repository implementation.
-    
+
     Args:
         db: Database session
-        
+
     Returns:
         Implementation of BiometricAlertRuleRepository
     """
@@ -74,7 +84,7 @@ async def get_biometric_alert_rule_repository(
 async def get_biometric_alert_template_repository() -> BiometricAlertTemplateRepository:
     """
     Get the biometric alert template repository implementation.
-    
+
     Returns:
         Implementation of BiometricAlertTemplateRepository
     """
@@ -84,20 +94,23 @@ async def get_biometric_alert_template_repository() -> BiometricAlertTemplateRep
 
 
 async def get_biometric_alert_rule_service(
-    rule_repository: BiometricAlertRuleRepository = Depends(get_biometric_alert_rule_repository),
-    template_repository: BiometricAlertTemplateRepository = Depends(get_biometric_alert_template_repository),
+    rule_repository: BiometricAlertRuleRepository = Depends(
+        get_biometric_alert_rule_repository
+    ),
+    template_repository: BiometricAlertTemplateRepository = Depends(
+        get_biometric_alert_template_repository
+    ),
 ) -> BiometricAlertRuleService:
     """
     Get the biometric alert rule service.
-    
+
     Args:
         rule_repository: Implementation of BiometricAlertRuleRepository
         template_repository: Implementation of BiometricAlertTemplateRepository
-        
+
     Returns:
         Instance of BiometricAlertRuleService
     """
     return BiometricAlertRuleService(
-        rule_repository=rule_repository,
-        template_repository=template_repository
+        rule_repository=rule_repository, template_repository=template_repository
     )

@@ -12,7 +12,7 @@ which serves as the single source of truth for test database sessions.
 from app.tests.integration.utils.test_db_initializer import (
     TEST_CLINICIAN_ID,
     # Test models (REMOVED - Use real models now)
-    # TestBase, 
+    # TestBase,
     # TestUser,
     # TestPatient,
     # Test data constants

@@ -14,6 +14,7 @@ from jose.exceptions import JWTClaimsError, JWSError, JWSSignatureError
 # Re-export common exceptions to avoid direct dependency on jose
 __all__ = ["encode", "decode", "JWTError", "ExpiredSignatureError", "JWTClaimsError"]
 
+
 def encode(
     claims: Dict[str, Any],
     key: str,
@@ -23,24 +24,24 @@ def encode(
 ) -> str:
     """
     Encode a set of claims into a JWT token.
-    
+
     Args:
         claims: Payload to encode
         key: Key to sign the token with
         algorithm: Algorithm to use for signing
         headers: Additional headers to include
         access_token: Whether this is an access token (for potential custom behavior)
-        
+
     Returns:
         Encoded JWT token as a string
     """
     # Implement any custom claims or headers processing here
     actual_headers = headers or {}
-    
+
     # Set token type claim for security
     if access_token:
         actual_headers.update({"typ": "JWT", "use": "access"})
-    
+
     # Encode with jose
     return jwt.encode(claims, key, algorithm=algorithm, headers=actual_headers)
 
@@ -56,7 +57,7 @@ def decode(
 ) -> Dict[str, Any]:
     """
     Decode a JWT token and return its claims.
-    
+
     Args:
         token: JWT token to decode
         key: Key to verify the token signature
@@ -65,10 +66,10 @@ def decode(
         issuer: Expected issuer
         subject: Expected subject
         options: Additional options for decoding
-        
+
     Returns:
         The decoded token claims
-        
+
     Raises:
         JWTError: If the token is invalid
         ExpiredSignatureError: If the token has expired
@@ -76,7 +77,7 @@ def decode(
     # Default algorithms
     if algorithms is None:
         algorithms = ["HS256"]
-    
+
     # Default options ensuring security
     if options is None:
         options = {
@@ -89,7 +90,7 @@ def decode(
             "verify_iat": True,
             "leeway": 0,
         }
-    
+
     # Decode with jose
     return jwt.decode(
         token,

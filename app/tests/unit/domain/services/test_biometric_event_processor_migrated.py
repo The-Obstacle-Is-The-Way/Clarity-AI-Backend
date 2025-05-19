@@ -30,12 +30,14 @@ from app.domain.utils.datetime_utils import UTC
 def sample_patient_id():
     """Create a sample patient ID."""
     return UUID("12345678-1234-5678-1234-567812345678")
-    
+
+
 @pytest.fixture
 def sample_clinician_id():
     """Create a sample clinician ID."""
     return UUID("00000000-0000-0000-0000-000000000001")
-    
+
+
 @pytest.fixture
 def sample_data_point(sample_patient_id):
     """Create a sample biometric data point."""
@@ -47,9 +49,10 @@ def sample_data_point(sample_patient_id):
         timestamp=datetime.now(UTC),
         source="apple_watch",
         metadata={"activity": "resting"},
-        confidence=0.95
+        confidence=0.95,
     )
-    
+
+
 @pytest.fixture
 def sample_rule(sample_clinician_id):
     """Create a sample alert rule."""
@@ -58,21 +61,19 @@ def sample_rule(sample_clinician_id):
         name="High Heart Rate",
         description="Alert when heart rate exceeds 100 bpm",
         priority=AlertPriority.WARNING,
-        condition={
-            "data_type": "heart_rate",
-            "operator": ">",
-            "threshold": 100.0
-        },
+        condition={"data_type": "heart_rate", "operator": ">", "threshold": 100.0},
         created_by=sample_clinician_id,
-        is_active=True
+        is_active=True,
     )
-    
+
+
 @pytest.fixture
 def mock_observer():
     """Create a mock observer."""
     observer = MagicMock(spec=AlertObserver)
     observer.notify = MagicMock()
     return observer
+
 
 # Migrated from standalone test - TestBiometricEventProcessor
 class TestBiometricEventProcessor:
@@ -85,7 +86,7 @@ class TestBiometricEventProcessor:
 
         assert sample_rule.rule_id in processor.rules
         assert processor.rules[sample_rule.rule_id] == sample_rule
-        
+
     def test_remove_rule(self, sample_rule):
         """Test that remove_rule removes a rule from the processor."""
         processor = BiometricEventProcessor()
@@ -93,7 +94,7 @@ class TestBiometricEventProcessor:
         processor.remove_rule(sample_rule.rule_id)
 
         assert sample_rule.rule_id not in processor.rules
-        
+
     def test_register_observer(self, mock_observer):
         """Test that register_observer registers an observer for specific priorities."""
         processor = BiometricEventProcessor()
@@ -102,20 +103,19 @@ class TestBiometricEventProcessor:
         assert mock_observer in processor.observers[AlertPriority.WARNING]
         assert mock_observer not in processor.observers[AlertPriority.URGENT]
         assert mock_observer not in processor.observers[AlertPriority.INFORMATIONAL]
-        
+
     def test_unregister_observer(self, mock_observer):
         """Test that unregister_observer unregisters an observer from all priorities."""
         processor = BiometricEventProcessor()
         processor.register_observer(
-            mock_observer, 
-            [AlertPriority.WARNING, AlertPriority.URGENT]
+            mock_observer, [AlertPriority.WARNING, AlertPriority.URGENT]
         )
         processor.unregister_observer(mock_observer)
 
         assert mock_observer not in processor.observers[AlertPriority.WARNING]
         assert mock_observer not in processor.observers[AlertPriority.URGENT]
         assert mock_observer not in processor.observers[AlertPriority.INFORMATIONAL]
-        
+
     def test_process_data_point_no_patient_id(self):
         """Test that process_data_point raises an error if the data point has no patient ID."""
         processor = BiometricEventProcessor()
@@ -127,12 +127,12 @@ class TestBiometricEventProcessor:
             timestamp=datetime.now(UTC),
             source="apple_watch",
             metadata={"activity": "resting"},
-            confidence=0.95
+            confidence=0.95,
         )
 
         with pytest.raises(ValidationError):
             processor.process_data_point(data_point)
-        
+
     def test_process_data_point_no_matching_rules(self, sample_data_point):
         """Test that process_data_point returns no alerts if no rules match."""
         processor = BiometricEventProcessor()
@@ -141,28 +141,26 @@ class TestBiometricEventProcessor:
             name="Low Heart Rate",
             description="Alert when heart rate is below 50 bpm",
             priority=AlertPriority.WARNING,
-            condition={
-                "data_type": "heart_rate",
-                "operator": "<",
-                "threshold": 50.0
-            },
+            condition={"data_type": "heart_rate", "operator": "<", "threshold": 50.0},
             created_by=UUID("00000000-0000-0000-0000-000000000001"),
-            is_active=True
+            is_active=True,
         )
         processor.add_rule(rule)
-        
+
         alerts = processor.process_data_point(sample_data_point)
-        
+
         assert len(alerts) == 0
 
-    def test_process_data_point_matching_rule(self, sample_data_point, sample_rule, mock_observer):
+    def test_process_data_point_matching_rule(
+        self, sample_data_point, sample_rule, mock_observer
+    ):
         """Test that process_data_point returns alerts for matching rules and notifies observers."""
         processor = BiometricEventProcessor()
         processor.add_rule(sample_rule)
         processor.register_observer(mock_observer, [AlertPriority.WARNING])
-        
+
         alerts = processor.process_data_point(sample_data_point)
-        
+
         assert len(alerts) == 1
         alert = alerts[0]
         assert isinstance(alert, BiometricAlert)
@@ -175,7 +173,9 @@ class TestBiometricEventProcessor:
         call_args, _ = mock_observer.notify.call_args
         assert call_args[0] == alert
 
-    def test_process_data_point_patient_specific_rule(self, sample_data_point, sample_rule, sample_clinician_id):
+    def test_process_data_point_patient_specific_rule(
+        self, sample_data_point, sample_rule, sample_clinician_id
+    ):
         """Test that process_data_point only applies patient-specific rules to the right patient."""
         processor = BiometricEventProcessor()
 
@@ -186,14 +186,10 @@ class TestBiometricEventProcessor:
             name="Patient-Specific High Heart Rate",
             description="Alert when heart rate exceeds 90 bpm for a specific patient",
             priority=AlertPriority.WARNING,
-            condition={
-                "data_type": "heart_rate",
-                "operator": ">",
-                "threshold": 90.0
-            },
+            condition={"data_type": "heart_rate", "operator": ">", "threshold": 90.0},
             created_by=sample_clinician_id,
             patient_id=other_patient_id,
-            is_active=True
+            is_active=True,
         )
         processor.add_rule(patient_specific_rule)
 
@@ -203,14 +199,10 @@ class TestBiometricEventProcessor:
             name="General High Heart Rate",
             description="Alert when heart rate exceeds 100 bpm",
             priority=AlertPriority.WARNING,
-            condition={
-                "data_type": "heart_rate",
-                "operator": ">",
-                "threshold": 100.0
-            },
+            condition={"data_type": "heart_rate", "operator": ">", "threshold": 100.0},
             created_by=sample_clinician_id,
             patient_id=None,
-            is_active=True
+            is_active=True,
         )
         processor.add_rule(general_rule)
 
@@ -230,13 +222,13 @@ class TestBiometricEventProcessor:
         alerts = processor.process_data_point(sample_data_point)
 
         assert len(alerts) == 0
-        
+
     # Migrated from standalone tests - additional test cases
 
     def test_evaluate_greater_than_or_equal(self, sample_rule, sample_data_point):
         """Test evaluation of 'greater than or equal to' operator."""
         sample_clinician_id = UUID("00000000-0000-0000-0000-000000000001")
-        
+
         # Create rule with 'greater than or equal to' operator and value exactly equal to data point
         rule = AlertRule(
             rule_id="test-rule-equal",
@@ -246,48 +238,49 @@ class TestBiometricEventProcessor:
             condition={
                 "data_type": "heart_rate",
                 "operator": ">=",
-                "threshold": 120.0  # Exactly equal to sample data point value
+                "threshold": 120.0,  # Exactly equal to sample data point value
             },
             created_by=sample_clinician_id,
-            is_active=True
+            is_active=True,
         )
-        
+
         # Should trigger because 120 >= 120
         assert rule.evaluate(sample_data_point)
-        
+
         # Modify the rule threshold to be higher
         rule.condition["threshold"] = 121.0
-        
+
         # Should not trigger because 120 is not >= 121
         assert not rule.evaluate(sample_data_point)
-        
+
         # Modify the rule threshold to be lower
         rule.condition["threshold"] = 119.0
-        
+
         # Should trigger because 120 >= 119
         assert rule.evaluate(sample_data_point)
+
 
 # Migrated from standalone test - TestAlertRule
 class TestAlertRule:
     """Tests for the AlertRule class."""
-    
+
     def test_evaluate_greater_than(self, sample_rule, sample_data_point):
         """Test evaluation of 'greater than' operator."""
         # Modify the rule to use the '>' operator
         sample_rule.condition["operator"] = ">"
         sample_rule.condition["threshold"] = 119.0
-        
+
         # Should trigger because 120 > 119
         assert sample_rule.evaluate(sample_data_point)
-        
+
         # Modify the threshold to equal the data point value
         sample_rule.condition["threshold"] = 120.0
-        
+
         # Should not trigger because 120 is not > 120
         assert not sample_rule.evaluate(sample_data_point)
-        
+
         # Modify the threshold to be greater than the data point value
         sample_rule.condition["threshold"] = 121.0
-        
+
         # Should not trigger because 120 is not > 121
-        assert not sample_rule.evaluate(sample_data_point) 
+        assert not sample_rule.evaluate(sample_data_point)

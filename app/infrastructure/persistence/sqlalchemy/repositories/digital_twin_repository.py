@@ -23,9 +23,10 @@ from app.infrastructure.persistence.sqlalchemy.models.digital_twin import (
 
 logger = logging.getLogger(__name__)
 
+
 class DigitalTwinRepositoryImpl(DigitalTwinRepository):
     """Concrete SQLAlchemy implementation of the DigitalTwinRepository."""
-    
+
     def __init__(self, session: AsyncSession):
         """Initialize the repository with an async session."""
         self.session = session
@@ -36,7 +37,7 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
             id=str(entity.id),
             patient_id=str(entity.patient_id),
             created_at=entity.created_at,
-            updated_at=entity.last_updated, # Map domain's last_updated
+            updated_at=entity.last_updated,  # Map domain's last_updated
             version=entity.version,
             configuration_json=self._serialize_config(entity.configuration),
             state_json=self._serialize_state(entity.state),
@@ -48,7 +49,7 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
             id=UUID(model.id),
             patient_id=UUID(model.patient_id),
             created_at=model.created_at,
-            last_updated=model.updated_at, # Map model's updated_at
+            last_updated=model.updated_at,  # Map model's updated_at
             version=model.version,
             configuration=self._deserialize_config(model.configuration_json),
             state=self._deserialize_state(model.state_json),
@@ -62,7 +63,7 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
     def _deserialize_config(self, config_json: dict | None) -> DigitalTwinConfiguration:
         """Deserialize JSON dict to Configuration dataclass."""
         if config_json is None:
-            return DigitalTwinConfiguration() # Return default if no data
+            return DigitalTwinConfiguration()  # Return default if no data
         return DigitalTwinConfiguration(**config_json)
 
     def _serialize_state(self, state: DigitalTwinState) -> dict:
@@ -70,27 +71,33 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
         # Convert dataclass to dict, handling datetime if necessary
         state_dict = state.__dict__
         if state_dict.get("last_sync_time"):
-             state_dict["last_sync_time"] = state_dict["last_sync_time"].isoformat()
+            state_dict["last_sync_time"] = state_dict["last_sync_time"].isoformat()
         # Handle potential non-serializable predicted_phq9_trajectory
         if state_dict.get("predicted_phq9_trajectory"):
             try:
                 json.dumps(state_dict["predicted_phq9_trajectory"])
             except TypeError:
-                logger.warning("predicted_phq9_trajectory contains non-serializable data, skipping.")
+                logger.warning(
+                    "predicted_phq9_trajectory contains non-serializable data, skipping."
+                )
                 state_dict["predicted_phq9_trajectory"] = None
         return state_dict
 
     def _deserialize_state(self, state_json: dict | None) -> DigitalTwinState:
         """Deserialize JSON dict to State dataclass."""
         if state_json is None:
-            return DigitalTwinState() # Return default if no data
+            return DigitalTwinState()  # Return default if no data
         # Handle datetime deserialization
         if state_json.get("last_sync_time"):
-             try:
-                 state_json["last_sync_time"] = datetime.fromisoformat(state_json["last_sync_time"])
-             except (TypeError, ValueError):
-                 logger.warning("Could not parse last_sync_time from JSON, setting to None.")
-                 state_json["last_sync_time"] = None
+            try:
+                state_json["last_sync_time"] = datetime.fromisoformat(
+                    state_json["last_sync_time"]
+                )
+            except (TypeError, ValueError):
+                logger.warning(
+                    "Could not parse last_sync_time from JSON, setting to None."
+                )
+                state_json["last_sync_time"] = None
         return DigitalTwinState(**state_json)
 
     async def add(self, digital_twin: DigitalTwin) -> DigitalTwin:
@@ -99,7 +106,7 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
         self.session.add(model)
         try:
             await self.session.flush()
-            await self.session.refresh(model) # Refresh to get DB defaults if any
+            await self.session.refresh(model)  # Refresh to get DB defaults if any
             logger.info(f"Successfully added DigitalTwin with ID: {model.id}")
             return self._to_entity(model)
         except sqlalchemy.exc.IntegrityError as e:
@@ -123,7 +130,9 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
 
     async def get_by_patient_id(self, patient_id: UUID) -> DigitalTwin | None:
         """Get a digital twin by the patient's ID."""
-        stmt = select(DigitalTwinModel).where(DigitalTwinModel.patient_id == str(patient_id))
+        stmt = select(DigitalTwinModel).where(
+            DigitalTwinModel.patient_id == str(patient_id)
+        )
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
         if model:
@@ -134,15 +143,19 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
         """Update an existing digital twin."""
         model = await self.session.get(DigitalTwinModel, str(digital_twin.id))
         if not model:
-            logger.warning(f"DigitalTwin with ID {digital_twin.id} not found for update.")
-            raise ValueError(f"DigitalTwin with ID {digital_twin.id} not found") # Or a custom domain exception
+            logger.warning(
+                f"DigitalTwin with ID {digital_twin.id} not found for update."
+            )
+            raise ValueError(
+                f"DigitalTwin with ID {digital_twin.id} not found"
+            )  # Or a custom domain exception
 
         # Update fields from the entity
         model.updated_at = digital_twin.last_updated
         model.version = digital_twin.version
         model.configuration_json = self._serialize_config(digital_twin.configuration)
         model.state_json = self._serialize_state(digital_twin.state)
-        
+
         try:
             await self.session.flush()
             await self.session.refresh(model)
@@ -150,7 +163,9 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
             return self._to_entity(model)
         except Exception as e:
             await self.session.rollback()
-            logger.error(f"Error updating DigitalTwin ID {model.id}: {e}", exc_info=True)
+            logger.error(
+                f"Error updating DigitalTwin ID {model.id}: {e}", exc_info=True
+            )
             raise
 
     async def delete(self, twin_id: UUID) -> bool:
@@ -170,6 +185,7 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
         result = await self.session.execute(stmt)
         models = result.scalars().all()
         return [self._to_entity(model) for model in models]
+
 
 # Export alias for UnitOfWorkFactory compatibility
 SQLAlchemyDigitalTwinRepository = DigitalTwinRepositoryImpl

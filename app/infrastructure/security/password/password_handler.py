@@ -44,21 +44,28 @@ class PasswordHandler:
         """
         # ADDED: Load settings within __init__
         settings = get_settings()
-        
+
         # Use schemes from settings if not provided, default to bcrypt if settings are missing
         default_schemes = ["bcrypt"]
-        self.schemes = schemes or getattr(settings, 'PASSWORD_HASHING_SCHEMES', default_schemes)
+        self.schemes = schemes or getattr(
+            settings, "PASSWORD_HASHING_SCHEMES", default_schemes
+        )
         self.deprecated = deprecated
-        
+
         try:
-            self.context = CryptContext(schemes=self.schemes, deprecated=self.deprecated)
+            self.context = CryptContext(
+                schemes=self.schemes, deprecated=self.deprecated
+            )
             logger.info(f"PasswordHandler initialized with schemes: {self.schemes}")
         except Exception as e:
-            logger.error(f"Failed to initialize CryptContext with schemes {self.schemes}: {e}", exc_info=True)
+            logger.error(
+                f"Failed to initialize CryptContext with schemes {self.schemes}: {e}",
+                exc_info=True,
+            )
             # Fallback to default context if initialization fails
             logger.warning("Falling back to default bcrypt CryptContext.")
             self.context = CryptContext(schemes=default_schemes, deprecated=deprecated)
-            self.schemes = default_schemes # Update schemes to reflect fallback
+            self.schemes = default_schemes  # Update schemes to reflect fallback
 
     def get_password_hash(self, password: str) -> str:
         """
@@ -69,7 +76,7 @@ class PasswordHandler:
 
         Returns:
             The hashed password.
-            
+
         Raises:
             ValueError: If hashing fails.
         """
@@ -94,7 +101,9 @@ class PasswordHandler:
             return self.context.verify(plain_password, hashed_password)
         except Exception as e:
             # Log potential errors during verification (e.g., malformed hash)
-            logger.warning(f"Password verification encountered an issue: {e}", exc_info=True)
+            logger.warning(
+                f"Password verification encountered an issue: {e}", exc_info=True
+            )
             return False
 
     def password_needs_rehash(self, hashed_password: str) -> bool:
@@ -185,7 +194,7 @@ class PasswordHandler:
                 False,
                 "Password must include uppercase, lowercase, digits, and special characters",
             )
-            
+
         # Check length
         if len(password) < 12:
             return False, "Password must be at least 12 characters long"
@@ -206,9 +215,11 @@ class PasswordHandler:
         # Use zxcvbn for additional strength checking
         try:
             result = zxcvbn(password)
-            if result.get('score', 0) < 3:  # Scores are 0-4, require at least 3
-                suggestions = result.get('feedback', {}).get('suggestions', [])
-                suggestion_text = '; '.join(suggestions) if suggestions else "Password is too weak"
+            if result.get("score", 0) < 3:  # Scores are 0-4, require at least 3
+                suggestions = result.get("feedback", {}).get("suggestions", [])
+                suggestion_text = (
+                    "; ".join(suggestions) if suggestions else "Password is too weak"
+                )
                 return False, suggestion_text
         except Exception as e:
             logger.warning(f"Error using zxcvbn for password strength validation: {e}")
@@ -221,85 +232,94 @@ class PasswordHandler:
     def validate_password_complexity(self, password: str) -> tuple[bool, str | None]:
         """
         Validate if a password meets complexity requirements.
-        
+
         Args:
             password: Password to validate
-            
+
         Returns:
             Tuple of (is_valid, error_message)
         """
         if len(password) < 8:
             return False, "Password must be at least 8 characters long"
-            
+
         if self.require_uppercase and not any(c.isupper() for c in password):
             return False, "Password must contain at least one uppercase letter"
-            
+
         if self.require_lowercase and not any(c.islower() for c in password):
             return False, "Password must contain at least one lowercase letter"
-            
+
         if self.require_digit and not any(c.isdigit() for c in password):
             return False, "Password must contain at least one digit"
-            
-        if self.require_special and not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/~`" for c in password):
+
+        if self.require_special and not any(
+            c in "!@#$%^&*()_+-=[]{}|;:,.<>?/~`" for c in password
+        ):
             return False, "Password must contain at least one special character"
-            
+
         return True, None
-        
+
     def check_password_breach(self, password: str) -> bool:
         """
         Check if a password has been compromised in known breaches.
-        
+
         This is a placeholder implementation. In a production system,
         this would integrate with a service like "Have I Been Pwned"
         using a k-anonymity approach for checking breached passwords.
-        
+
         Args:
             password: Password to check
-            
+
         Returns:
             True if the password appears to be breached, False otherwise
         """
         # Common password list (in a real implementation, this would use an API)
         common_passwords = {
-            "password", "123456", "qwerty", "admin", "welcome",
-            "password123", "admin123", "letmein"
+            "password",
+            "123456",
+            "qwerty",
+            "admin",
+            "welcome",
+            "password123",
+            "admin123",
+            "letmein",
         }
-        
+
         return password.lower() in common_passwords
-        
+
     def suggest_password_improvement(self, password: str) -> str:
         """
         Provide improvement suggestions for a password.
-        
+
         Args:
             password: Password to analyze
-            
+
         Returns:
             Suggestion message
         """
         suggestions = []
-        
+
         is_valid, error = self.validate_password_complexity(password)
         if not is_valid:
             suggestions.append(error)
-            
+
         if len(password) < 12:
             suggestions.append("Consider using a longer password (12+ characters)")
-            
+
         if self.check_password_breach(password):
             suggestions.append("This password appears in common password lists")
-            
+
         # Check for patterns
-        if re.search(r'(.)\1{2,}', password):  # Repeated characters
+        if re.search(r"(.)\1{2,}", password):  # Repeated characters
             suggestions.append("Avoid repeating characters")
-            
-        if re.search(r'(123|abc|qwe|asd|zxc)', password.lower()):  # Common sequences
+
+        if re.search(r"(123|abc|qwe|asd|zxc)", password.lower()):  # Common sequences
             suggestions.append("Avoid common keyboard patterns")
-            
+
         if not suggestions:
             return "Password meets complexity requirements"
-            
+
         return "Suggestions: " + "; ".join(suggestions)
+
 
 # Default instance for direct use (optional, depends on usage pattern)
 # Consider using dependency injection instead for better testability

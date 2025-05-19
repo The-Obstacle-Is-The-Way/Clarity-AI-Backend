@@ -71,9 +71,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="Run tests with verbose output"
     )
-    parser.add_argument(
-        "--failfast", action="store_true", help="Stop on first failure"
-    )
+    parser.add_argument("--failfast", action="store_true", help="Stop on first failure")
     parser.add_argument(
         "--ci-mode", action="store_true", help="Generate reports for CI/CD"
     )
@@ -91,40 +89,40 @@ def run_tests(
     """Run tests in the specified directory."""
     project_root = get_project_root()
     test_path = os.path.join(project_root, test_directory)
-    
+
     # Prepare the pytest command
     cmd = ["python", "-m", "pytest"]
-    
+
     # Add verbose flag if requested
     if verbose:
         cmd.append("-v")
-    
+
     # Add failfast flag if requested
     if failfast:
         cmd.append("--exitfirst")
-    
+
     # Add JUnit XML report output if in CI mode
     if ci_mode and report_name:
         report_dir = os.path.join(project_root, "test-results")
         os.makedirs(report_dir, exist_ok=True)
-        cmd.append(f"--junitxml={os.path.join(report_dir, f'{report_name}-results.xml')}")
-    
+        cmd.append(
+            f"--junitxml={os.path.join(report_dir, f'{report_name}-results.xml')}"
+        )
+
     # Add coverage reporting
     if coverage_dir:
         coverage_path = os.path.join(project_root, "coverage_html", coverage_dir)
         os.makedirs(coverage_path, exist_ok=True)
-        cmd.extend([
-            "--cov=app",
-            "--cov-report=term",
-            f"--cov-report=html:{coverage_path}"
-        ])
-    
+        cmd.extend(
+            ["--cov=app", "--cov-report=term", f"--cov-report=html:{coverage_path}"]
+        )
+
     # Add the test directory
     cmd.append(test_path)
-    
+
     # Print the command to be executed
     print(f"{Colors.YELLOW}Running command: {' '.join(cmd)}{Colors.NC}")
-    
+
     # Execute the pytest command
     result = subprocess.run(cmd, cwd=project_root)
     return result.returncode
@@ -134,23 +132,23 @@ def main():
     """Main function."""
     args = parse_args()
     results = []
-    
+
     print(f"\n{Colors.BLUE}{'=' * 80}{Colors.NC}")
     print(f"{Colors.BLUE}{Colors.BOLD}Novamind Backend Test Runner{Colors.NC}")
     print(f"{Colors.BLUE}{'=' * 80}{Colors.NC}")
-    
+
     for level in TEST_LEVELS:
         skip_arg = level["skip_flag"].replace("--", "").replace("-", "_")
         if getattr(args, skip_arg, False):
             print(f"\n{Colors.YELLOW}Skipping {level['name']}{Colors.NC}")
             results.append((level["name"], None))
             continue
-        
+
         print(f"\n{Colors.BLUE}{'=' * 60}{Colors.NC}")
         print(f"{Colors.BLUE}{Colors.BOLD}Running {level['name']}{Colors.NC}")
         print(f"{Colors.BLUE}{level['description']}{Colors.NC}")
         print(f"{Colors.BLUE}{'=' * 60}{Colors.NC}")
-        
+
         result = run_tests(
             level["path"],
             verbose=args.verbose,
@@ -159,19 +157,21 @@ def main():
             report_name=level["name"].lower().replace(" ", "_"),
             coverage_dir=level["name"].lower().replace(" ", "_"),
         )
-        
+
         results.append((level["name"], result))
-        
+
         # If the tests failed and --failfast is specified, stop
         if result != 0 and args.failfast:
-            print(f"\n{Colors.RED}Tests failed with exit code {result}. Stopping as requested by --failfast{Colors.NC}")
+            print(
+                f"\n{Colors.RED}Tests failed with exit code {result}. Stopping as requested by --failfast{Colors.NC}"
+            )
             break
-    
+
     # Print summary
     print(f"\n{Colors.BLUE}{'=' * 60}{Colors.NC}")
     print(f"{Colors.BLUE}{Colors.BOLD}Test Summary{Colors.NC}")
     print(f"{Colors.BLUE}{'=' * 60}{Colors.NC}")
-    
+
     for name, result in results:
         if result is None:
             print(f"{Colors.YELLOW}• {name}: SKIPPED{Colors.NC}")
@@ -179,9 +179,11 @@ def main():
             print(f"{Colors.GREEN}✓ {name}: PASSED{Colors.NC}")
         else:
             print(f"{Colors.RED}✗ {name}: FAILED{Colors.NC}")
-    
+
     # Return non-zero status if any test suite failed
-    failed_suites = [result for _, result in results if result is not None and result != 0]
+    failed_suites = [
+        result for _, result in results if result is not None and result != 0
+    ]
     return 1 if failed_suites else 0
 
 

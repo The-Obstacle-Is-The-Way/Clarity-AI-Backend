@@ -18,15 +18,15 @@ logger = logging.getLogger(__name__)
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """
     Middleware for adding security headers to HTTP responses.
-    
+
     This middleware adds HTTP security headers to responses to improve
     security against XSS, clickjacking, and other web vulnerabilities.
     """
-    
+
     def __init__(self, app, security_headers: Optional[Dict[str, str]] = None):
         """
         Initialize the security headers middleware.
-        
+
         Args:
             app: The FastAPI application
             security_headers: Optional dictionary of security headers to use instead of defaults
@@ -41,28 +41,30 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
             "Referrer-Policy": "strict-origin-when-cross-origin",
             "Cache-Control": "no-store, max-age=0",
-            "Pragma": "no-cache"
+            "Pragma": "no-cache",
         }
-        
+
         # If custom headers are provided, use those instead
-        self.headers = security_headers if security_headers is not None else self.default_headers
-        
+        self.headers = (
+            security_headers if security_headers is not None else self.default_headers
+        )
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
         Process the request and add security headers to the response.
-        
+
         Args:
             request: The incoming HTTP request
             call_next: The next middleware/endpoint in the chain
-            
+
         Returns:
             The HTTP response with added security headers
         """
         # Get response from downstream handlers
         response = await call_next(request)
-        
+
         # Add security headers to response
         for header_name, header_value in self.headers.items():
             response.headers[header_name] = header_value
-            
+
         return response

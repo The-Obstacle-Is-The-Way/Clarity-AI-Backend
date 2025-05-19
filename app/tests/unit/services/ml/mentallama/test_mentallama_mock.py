@@ -8,7 +8,10 @@ import json
 import pytest
 
 # Skip this test module as it's using an old implementation
-pytest.skip("MentaLLaMA mock tests need refactoring to match new implementation", allow_module_level=True)
+pytest.skip(
+    "MentaLLaMA mock tests need refactoring to match new implementation",
+    allow_module_level=True,
+)
 
 from app.core.exceptions import InvalidConfigurationError
 from app.core.services.ml.providers.mock import MockMentaLLaMA
@@ -222,13 +225,15 @@ def test_mock_response_parsing():
     service.initialize({"provider": "mock"})
 
     # Sample response from the mock service
-    mock_response = json.dumps({
-        "depression_indicated": True,
-        "key_indicators": ["persistent sadness", "loss of interest"],
-        "severity": "moderate",
-        "rationale": "Test rationale",
-        "confidence": 0.85,
-    })
+    mock_response = json.dumps(
+        {
+            "depression_indicated": True,
+            "key_indicators": ["persistent sadness", "loss of interest"],
+            "severity": "moderate",
+            "rationale": "Test rationale",
+            "confidence": 0.85,
+        }
+    )
 
     # Act
     parsed = service._parse_depression_detection_result(mock_response)

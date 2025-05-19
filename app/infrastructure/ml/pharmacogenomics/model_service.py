@@ -137,9 +137,7 @@ class PharmacogenomicsService:
 
         except Exception as e:
             logging.error(f"Error predicting medication responses: {e!s}")
-            raise ModelExecutionError(
-                f"Failed to predict medication responses: {e!s}"
-            )
+            raise ModelExecutionError(f"Failed to predict medication responses: {e!s}")
 
     async def _generate_medication_insights(
         self, medication_predictions: dict[str, Any]
@@ -249,10 +247,10 @@ class PharmacogenomicsService:
             interactions["interactions_by_medication"] = interactions_by_medication
 
             # Generate summary recommendations
-            interactions["recommendations"] = (
-                await self._generate_interaction_recommendations(
-                    interactions["gene_medication_interactions"]
-                )
+            interactions[
+                "recommendations"
+            ] = await self._generate_interaction_recommendations(
+                interactions["gene_medication_interactions"]
             )
 
             return interactions

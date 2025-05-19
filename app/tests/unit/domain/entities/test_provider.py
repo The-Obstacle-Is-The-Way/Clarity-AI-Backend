@@ -28,21 +28,17 @@ def valid_provider_data():
             "street": "123 Medical Plaza",
             "city": "Anytown",
             "state": "CA",
-            "zip": "12345"
+            "zip": "12345",
         },
         "bio": "Board-certified psychiatrist with 10 years of experience.",
         "education": [
-            {
-                "institution": "Medical University",
-                "degree": "M.D.",
-                "year": 2010
-            }
+            {"institution": "Medical University", "degree": "M.D.", "year": 2010}
         ],
         "certifications": [
             {
                 "name": "Board Certification in Psychiatry",
                 "issuer": "American Board of Psychiatry and Neurology",
-                "year": 2012
+                "year": 2012,
             }
         ],
         "languages": ["English", "Spanish"],
@@ -50,26 +46,26 @@ def valid_provider_data():
         "availability": {
             "monday": [
                 {"start": "09:00", "end": "12:00"},
-                {"start": "13:00", "end": "17:00"}
+                {"start": "13:00", "end": "17:00"},
             ],
             "wednesday": [
                 {"start": "09:00", "end": "12:00"},
-                {"start": "13:00", "end": "17:00"}
+                {"start": "13:00", "end": "17:00"},
             ],
-            "friday": [
-                {"start": "09:00", "end": "13:00"}
-            ]
+            "friday": [{"start": "09:00", "end": "13:00"}],
         },
         "max_patients": 50,
         "current_patient_count": 30,
         "created_at": datetime.now(),
-        "updated_at": datetime.now()
+        "updated_at": datetime.now(),
     }
+
 
 @pytest.fixture
 def valid_provider(valid_provider_data):
     """Fixture for a valid provider."""
     return Provider(**valid_provider_data)
+
 
 @pytest.mark.venv_only()
 class TestProvider:
@@ -94,7 +90,10 @@ class TestProvider:
         assert provider.status == valid_provider_data["status"]
         assert provider.availability == valid_provider_data["availability"]
         assert provider.max_patients == valid_provider_data["max_patients"]
-        assert provider.current_patient_count == valid_provider_data["current_patient_count"]
+        assert (
+            provider.current_patient_count
+            == valid_provider_data["current_patient_count"]
+        )
 
     def test_create_provider_with_string_enums(self, valid_provider_data):
         data = valid_provider_data.copy()
@@ -118,7 +117,7 @@ class TestProvider:
                 last_name="Smith",
                 provider_type=ProviderType.PSYCHIATRIST,
                 license_number="MD12345",
-                email="dr.smith@example.com"
+                email="dr.smith@example.com",
             )
         # Missing last_name
         with pytest.raises(ValidationError):
@@ -126,7 +125,7 @@ class TestProvider:
                 first_name="Dr. Jane",
                 provider_type=ProviderType.PSYCHIATRIST,
                 license_number="MD12345",
-                email="dr.smith@example.com"
+                email="dr.smith@example.com",
             )
         # Missing provider_type
         with pytest.raises(ValidationError):
@@ -134,7 +133,7 @@ class TestProvider:
                 first_name="Dr. Jane",
                 last_name="Smith",
                 license_number="MD12345",
-                email="dr.smith@example.com"
+                email="dr.smith@example.com",
             )
         # Missing both email and phone
         with pytest.raises(ValidationError):
@@ -142,7 +141,7 @@ class TestProvider:
                 first_name="Dr. Jane",
                 last_name="Smith",
                 provider_type=ProviderType.PSYCHIATRIST,
-                license_number="MD12345"
+                license_number="MD12345",
             )
 
     def test_validate_psychiatrist_license(self):
@@ -152,7 +151,7 @@ class TestProvider:
                 first_name="Dr. Jane",
                 last_name="Smith",
                 provider_type=ProviderType.PSYCHIATRIST,
-                email="dr.smith@example.com"
+                email="dr.smith@example.com",
             )
 
     def test_validate_email_format(self, valid_provider_data):
@@ -167,5 +166,6 @@ class TestProvider:
         data["phone"] = "invalid@phone"
         with pytest.raises(ValidationError):
             Provider(**data)
+
 
 # ... (rest of the test class and methods should be similarly refactored for clarity, indentation, and correctness)

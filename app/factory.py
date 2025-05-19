@@ -23,14 +23,21 @@ from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 # Application-Specific Imports
 from app.core.config import Settings, get_settings as global_get_settings
-from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface as IJWTService
+from app.core.interfaces.services.jwt_service_interface import (
+    JWTServiceInterface as IJWTService,
+)
 from app.core.interfaces.services.redis_service_interface import IRedisService
 from app.core.logging_config import LOGGING_CONFIG, setup_logging
 from app.infrastructure.persistence.sqlalchemy.database import (
-    AsyncSession, async_sessionmaker, get_session
+    AsyncSession,
+    async_sessionmaker,
+    get_session,
 )
 from app.infrastructure.security.jwt.jwt_service import get_jwt_service
-from app.infrastructure.services.redis.redis_service import RedisService, create_redis_service
+from app.infrastructure.services.redis.redis_service import (
+    RedisService,
+    create_redis_service,
+)
 from app.presentation.api.v1.api_router import api_v1_router
 from app.presentation.middleware.authentication import AuthenticationMiddleware
 from app.presentation.middleware.logging import LoggingMiddleware
@@ -68,18 +75,18 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
 
     try:
         # --- Settings Configuration ---
-        if hasattr(fastapi_app.state, 'settings') and fastapi_app.state.settings:
+        if hasattr(fastapi_app.state, "settings") and fastapi_app.state.settings:
             current_settings = fastapi_app.state.settings
             logger.info(
                 "LIFESPAN_SETTINGS_RESOLVED: Using pre-set app settings. Env: %s",
-                current_settings.ENVIRONMENT
+                current_settings.ENVIRONMENT,
             )
         else:
             current_settings = global_get_settings()
             fastapi_app.state.settings = current_settings
             logger.info(
                 "LIFESPAN_SETTINGS_RESOLVED: Using global settings. Env: %s",
-                current_settings.ENVIRONMENT
+                current_settings.ENVIRONMENT,
             )
 
         _initialize_sentry(current_settings)
@@ -87,23 +94,23 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
         # --- Database Configuration ---
         logger.info(
             "LIFESPAN_DB_INIT_START: Connecting to DB: %s",
-            current_settings.ASYNC_DATABASE_URL
+            current_settings.ASYNC_DATABASE_URL,
         )
         try:
             db_engine = create_async_engine(
                 str(current_settings.ASYNC_DATABASE_URL),
                 pool_pre_ping=True,
                 pool_recycle=3600,
-                echo=current_settings.DB_ECHO_LOG, 
+                echo=current_settings.DB_ECHO_LOG,
             )
-            fastapi_app.state.db_engine = db_engine 
+            fastapi_app.state.db_engine = db_engine
             actual_session_factory = async_sessionmaker(
                 bind=db_engine, expire_on_commit=False, class_=AsyncSession
             )
             fastapi_app.state.actual_session_factory = actual_session_factory
             logger.info(
                 "LIFESPAN_DB_INIT_SUCCESS: DB session factory created. Type: %s",
-                type(fastapi_app.state.actual_session_factory)
+                type(fastapi_app.state.actual_session_factory),
             )
 
         except Exception as e:
@@ -116,18 +123,25 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
         redis_service_instance: IRedisService | None = None
 
         # First check if a pre-configured Redis service was provided (useful for testing)
-        if hasattr(fastapi_app.state, 'redis_service_override') and fastapi_app.state.redis_service_override:
-            logger.info("LIFESPAN_REDIS_OVERRIDE: Using pre-configured Redis service from app state")
+        if (
+            hasattr(fastapi_app.state, "redis_service_override")
+            and fastapi_app.state.redis_service_override
+        ):
+            logger.info(
+                "LIFESPAN_REDIS_OVERRIDE: Using pre-configured Redis service from app state"
+            )
             fastapi_app.state.redis_service = fastapi_app.state.redis_service_override
             redis_service_instance = fastapi_app.state.redis_service_override
         # Otherwise try to create a new Redis service if URL is provided
         elif current_settings.REDIS_URL:
             logger.info(
                 "LIFESPAN_REDIS_INIT_START: Connecting to Redis: %s",
-                current_settings.REDIS_URL
+                current_settings.REDIS_URL,
             )
             try:
-                redis_service_instance = create_redis_service(redis_url=current_settings.REDIS_URL)
+                redis_service_instance = create_redis_service(
+                    redis_url=current_settings.REDIS_URL
+                )
                 if await redis_service_instance.ping():
                     fastapi_app.state.redis_service = redis_service_instance
                     logger.info(
@@ -145,6 +159,7 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
                         )
                         # In test environment, create a mock Redis service
                         from unittest.mock import AsyncMock, MagicMock
+
                         mock_redis = MagicMock()
                         mock_redis.ping = AsyncMock(return_value=True)
                         mock_redis.close = AsyncMock(return_value=None)
@@ -165,7 +180,7 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
                     "LIFESPAN_REDIS_INIT_FAILURE: Failed to connect to Redis: %s. Error: %s",
                     current_settings.REDIS_URL,
                     e,
-                    exc_info=True
+                    exc_info=True,
                 )
                 if current_settings.ENVIRONMENT == "test":
                     logger.warning(
@@ -174,6 +189,7 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
                     )
                     # Create a mock Redis service for testing
                     from unittest.mock import AsyncMock, MagicMock
+
                     mock_redis = MagicMock()
                     mock_redis.ping = AsyncMock(return_value=True)
                     mock_redis.close = AsyncMock(return_value=None)
@@ -196,25 +212,29 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
         try:
             # Ensure we have a valid JWT service with proper secret key
             jwt_service: IJWTService = get_jwt_service(current_settings)
-            fastapi_app.state.jwt_service = jwt_service  # Store the JWT service in app state
-            
+            fastapi_app.state.jwt_service = (
+                jwt_service  # Store the JWT service in app state
+            )
+
             # Check if auth middleware should be skipped (for testing)
-            skip_auth = getattr(fastapi_app.state, 'skip_auth_middleware', False)
-            
+            skip_auth = getattr(fastapi_app.state, "skip_auth_middleware", False)
+
             if not skip_auth:
                 fastapi_app.add_middleware(
                     AuthenticationMiddleware,
                     jwt_service=jwt_service,
-                    settings=current_settings
+                    settings=current_settings,
                 )
                 logger.info("AuthenticationMiddleware added.")
             else:
-                logger.info("AuthenticationMiddleware SKIPPED due to skip_auth_middleware flag.")
+                logger.info(
+                    "AuthenticationMiddleware SKIPPED due to skip_auth_middleware flag."
+                )
         except Exception as e:
             logger.error(
-                "LIFESPAN_JWT_INIT_FAILURE: Failed to initialize JWT service: %s", 
-                e, 
-                exc_info=True
+                "LIFESPAN_JWT_INIT_FAILURE: Failed to initialize JWT service: %s",
+                e,
+                exc_info=True,
             )
             if current_settings.ENVIRONMENT == "test":
                 logger.warning(
@@ -227,7 +247,10 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
 
     finally:
         logger.info("LIFESPAN_SHUTDOWN_START: Cleaning up resources...")
-        if hasattr(fastapi_app.state, 'redis_service') and fastapi_app.state.redis_service:
+        if (
+            hasattr(fastapi_app.state, "redis_service")
+            and fastapi_app.state.redis_service
+        ):
             try:
                 await fastapi_app.state.redis_service.close()
                 logger.info("LIFESPAN_REDIS_SHUTDOWN_SUCCESS: Redis connection closed.")
@@ -235,9 +258,9 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
                 logger.error(
                     "LIFESPAN_REDIS_SHUTDOWN_FAILURE: Error closing Redis: %s",
                     e,
-                    exc_info=True
+                    exc_info=True,
                 )
-        if hasattr(fastapi_app.state, 'db_engine') and fastapi_app.state.db_engine:
+        if hasattr(fastapi_app.state, "db_engine") and fastapi_app.state.db_engine:
             try:
                 await fastapi_app.state.db_engine.dispose()
                 logger.info("LIFESPAN_DB_SHUTDOWN_SUCCESS: DB engine disposed.")
@@ -245,7 +268,7 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
                 logger.error(
                     "LIFESPAN_DB_SHUTDOWN_FAILURE: Error disposing DB engine: %s",
                     e,
-                    exc_info=True
+                    exc_info=True,
                 )
         logger.info("LIFESPAN_COMPLETE: Lifespan context manager finished.")
 
@@ -256,7 +279,7 @@ def create_application(
     jwt_service_override: IJWTService | None = None,
     skip_auth_middleware: bool = False,
     disable_audit_middleware: bool = False,
-    skip_redis_middleware: bool = False
+    skip_redis_middleware: bool = False,
 ) -> FastAPI:
     """
     Application factory function to create and configure a FastAPI application instance.
@@ -277,10 +300,12 @@ def create_application(
     """
     logger.info("CREATE_APPLICATION_START: Starting application factory process...")
 
-    current_settings: Settings = settings_override if settings_override else global_get_settings()
+    current_settings: Settings = (
+        settings_override if settings_override else global_get_settings()
+    )
     logger.info(
         "CREATE_APPLICATION_SETTINGS_RESOLVED: Using env: %s",
-        current_settings.ENVIRONMENT
+        current_settings.ENVIRONMENT,
     )
 
     logging.config.dictConfig(LOGGING_CONFIG)
@@ -295,28 +320,28 @@ def create_application(
         redoc_url="/redoc",
         lifespan=lifespan,
     )
-    logger.info(
-        f"FastAPI app instance created for '{current_settings.PROJECT_NAME}'."
-    )
+    logger.info(f"FastAPI app instance created for '{current_settings.PROJECT_NAME}'.")
     app_instance.state.settings = current_settings
-    
+
     # Store authentication middleware flag in app state
     app_instance.state.skip_auth_middleware = skip_auth_middleware
     if skip_auth_middleware:
         logger.info("Authentication middleware will be skipped (test mode)")
-    
+
     # Handle JWT service override for testing
     if jwt_service_override:
         app_instance.state.jwt_service = jwt_service_override
         logger.info("Using JWT service override for testing")
-    
+
     # Store Redis middleware flag in app state
     app_instance.state.skip_redis_middleware = skip_redis_middleware
     if skip_redis_middleware:
         logger.info("Redis rate limiting middleware will be skipped (test mode)")
 
     @app_instance.exception_handler(Exception)
-    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    async def unhandled_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
         """Global exception handler for unhandled errors."""
         logger.error(
             "Unhandled exception: %s",
@@ -325,7 +350,7 @@ def create_application(
             extra={
                 "url": str(request.url),
                 "method": request.method,
-            }
+            },
         )
         sentry_sdk.capture_exception(exc)
         return JSONResponse(
@@ -346,9 +371,9 @@ def create_application(
         )
         logger.info(
             "CORSMiddleware added for origins: %s",
-            [str(origin) for origin in current_settings.BACKEND_CORS_ORIGINS]
+            [str(origin) for origin in current_settings.BACKEND_CORS_ORIGINS],
         )
-        
+
     # Add logging middleware (goes near beginning of chain to log everything)
     app_instance.add_middleware(LoggingMiddleware)
     logger.info("LoggingMiddleware added.")
@@ -359,30 +384,37 @@ def create_application(
         try:
             # Create a minimal Redis service just for middleware initialization
             # The full Redis service will be properly setup in lifespan
-            from app.infrastructure.services.redis.redis_service import create_redis_service
-            rate_limit_redis = create_redis_service(redis_url=current_settings.REDIS_URL)
-            
+            from app.infrastructure.services.redis.redis_service import (
+                create_redis_service,
+            )
+
+            rate_limit_redis = create_redis_service(
+                redis_url=current_settings.REDIS_URL
+            )
+
             # Create a rate limiter instance using the Redis service
-            rate_limiter = RateLimiter(requests_per_minute=current_settings.RATE_LIMIT_DEFAULT_RPM or 60)
-            
+            rate_limiter = RateLimiter(
+                requests_per_minute=current_settings.RATE_LIMIT_DEFAULT_RPM or 60
+            )
+
             # Add rate limiting middleware
             from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
+
             app_instance.add_middleware(
-                RateLimitingMiddleware, 
+                RateLimitingMiddleware,
                 limiter=rate_limiter,  # Pass limiter as named parameter
-                exclude_paths=["/health", "/metrics", "/docs", "/redoc"]
+                exclude_paths=["/health", "/metrics", "/docs", "/redoc"],
             )
             logger.info("RateLimitingMiddleware added during app initialization.")
         except Exception as e:
             logger.warning(
-                "RateLimitingMiddleware NOT added: Redis initialization failed: %s", 
-                e
+                "RateLimitingMiddleware NOT added: Redis initialization failed: %s", e
             )
             if current_settings.ENVIRONMENT != "test":
                 logger.error(
                     "Redis service initialization failed in production environment: %s",
                     e,
-                    exc_info=True
+                    exc_info=True,
                 )
     elif skip_redis_middleware:
         logger.info("RateLimitingMiddleware skipped due to skip_redis_middleware flag.")
@@ -391,9 +423,7 @@ def create_application(
 
     # API Routers
     app_instance.include_router(api_v1_router, prefix=current_settings.API_V1_STR)
-    logger.info(
-        "API v1 router included at prefix: %s", current_settings.API_V1_STR
-    )
+    logger.info("API v1 router included at prefix: %s", current_settings.API_V1_STR)
 
     if include_test_routers:
         logger.info("Test-specific routers included (placeholder).")
@@ -412,7 +442,7 @@ def create_application(
             "status": "healthy",
             "message": f"Welcome to {app_settings.PROJECT_NAME}!",
             "environment": app_settings.ENVIRONMENT,
-            "version": app_settings.API_VERSION
+            "version": app_settings.API_VERSION,
         }
 
     logger.info("CREATE_APPLICATION_COMPLETE: Application factory complete.")

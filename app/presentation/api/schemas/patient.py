@@ -1,6 +1,12 @@
-import uuid # Add import for uuid
-from datetime import date, datetime # Add import for date and datetime
-from pydantic import BaseModel, Field, EmailStr, computed_field, ConfigDict # Add EmailStr and computed_field
+import uuid  # Add import for uuid
+from datetime import date, datetime  # Add import for date and datetime
+from pydantic import (
+    BaseModel,
+    Field,
+    EmailStr,
+    computed_field,
+    ConfigDict,
+)  # Add EmailStr and computed_field
 
 
 class PatientBase(BaseModel):
@@ -19,22 +25,36 @@ class PatientCreateRequest(PatientBase):
 
 
 class PatientRead(PatientBase):
-    id: uuid.UUID = Field(..., description="Unique identifier for the patient") # Changed to uuid.UUID
+    id: uuid.UUID = Field(
+        ..., description="Unique identifier for the patient"
+    )  # Changed to uuid.UUID
     # Inherits first_name, last_name, dob, email, phone_number from PatientBase
-    created_at: datetime | None = Field(None, description="When the patient record was created")
-    updated_at: datetime | None = Field(None, description="When the patient record was last updated")
-    created_by: uuid.UUID | None = Field(None, description="ID of the user who created the patient record")
+    created_at: datetime | None = Field(
+        None, description="When the patient record was created"
+    )
+    updated_at: datetime | None = Field(
+        None, description="When the patient record was last updated"
+    )
+    created_by: uuid.UUID | None = Field(
+        None, description="ID of the user who created the patient record"
+    )
 
     @computed_field
     @property
     def name(self) -> str:
         return f"{self.first_name} {self.last_name}"
 
-    model_config = ConfigDict(from_attributes=True) # orm_mode = True for Pydantic v1
+    model_config = ConfigDict(from_attributes=True)  # orm_mode = True for Pydantic v1
+
 
 # Create a specific response for patient creation
 class PatientCreateResponse(PatientRead):
     """Response model for patient creation endpoint."""
+
     created_at: datetime = Field(..., description="When the patient record was created")
-    updated_at: datetime = Field(..., description="When the patient record was last updated")
-    created_by: uuid.UUID = Field(..., description="ID of the user who created the patient record")
+    updated_at: datetime = Field(
+        ..., description="When the patient record was last updated"
+    )
+    created_by: uuid.UUID = Field(
+        ..., description="ID of the user who created the patient record"
+    )

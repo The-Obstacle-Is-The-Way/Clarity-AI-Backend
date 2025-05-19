@@ -25,8 +25,10 @@ class RateLimitDependency:
     Rate limiting dependency for FastAPI endpoints.
     Supports both dependency injection via Depends and decorator usage.
     """
+
     # Class-level default limiter for decorator usage when no limiter is provided
     _default_limiter: RateLimiter | None = None
+
     def __init__(
         self,
         requests: int = 10,
@@ -54,12 +56,16 @@ class RateLimitDependency:
             # Set class-level default limiter for subsequent decorator usage
             self.__class__._default_limiter = limiter
         # Use provided limiter, or class-level default, or a new RateLimiter stub
-        self.limiter = limiter if limiter is not None else (self.__class__._default_limiter or RateLimiter())
+        self.limiter = (
+            limiter
+            if limiter is not None
+            else (self.__class__._default_limiter or RateLimiter())
+        )
         self.scope_key = scope_key
         self.error_message = error_message
         # Key extraction function
         self.key_func = self._default_key_func
-    
+
     def _default_key_func(self, request: Request) -> str:
         """Default function to extract client key from request."""
         forwarded = request.headers.get("X-Forwarded-For")
@@ -68,7 +74,7 @@ class RateLimitDependency:
         if getattr(request, "client", None) and getattr(request.client, "host", None):
             return request.client.host
         return "unknown"
-    
+
     async def _get_rate_limit_key(self, request: Request) -> str:
         """Get the raw client key via key_func (for tests)."""
         return self.key_func(request)
@@ -79,9 +85,11 @@ class RateLimitDependency:
         If used via Depends, enforces limit on the incoming Request.
         """
         import types
+
         # Decorator usage
         if isinstance(request, types.FunctionType):
             original_func = request
+
             async def wrapper(request: Request):
                 # Decorator branch: extract key and enforce limit
                 key = self.key_func(request)
@@ -91,9 +99,10 @@ class RateLimitDependency:
                 if not allowed:
                     raise HTTPException(
                         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                        detail=self.error_message
+                        detail=self.error_message,
                     )
                 return await original_func(request)
+
             return wrapper
         # Dependency injection usage: perform synchronous check
         # Extract client key
@@ -104,15 +113,16 @@ class RateLimitDependency:
         allowed = self.limiter.check_rate_limit(key, self)
         if not allowed:
             raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=self.error_message
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=self.error_message
             )
+
         # Return an awaitable for compatibility with direct await calls
         class _AwaitableNone:
             def __await__(self):
                 if False:
                     yield
                 return None
+
         return _AwaitableNone()
 
     def _apply_limit(self, request: Request) -> None:
@@ -132,30 +142,31 @@ class RateLimitDependency:
         allowed = self.limiter.check_rate_limit(key, self)
         if not allowed:
             raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=self.error_message
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=self.error_message
             )
+
 
 def rate_limit(
     requests: int = 10,
     window_seconds: int = 60,
     block_seconds: int | None = 300,
-    scope_key: str = "standard"
+    scope_key: str = "standard",
 ) -> RateLimitDependency:
     """Factory for standard rate limit dependency."""
     return RateLimitDependency(
         requests=requests,
         window_seconds=window_seconds,
         block_seconds=block_seconds,
-        scope_key=scope_key
+        scope_key=scope_key,
     )
+
 
 def sensitive_rate_limit(
     requests: int = 5,
     window_seconds: int = 60,
     block_seconds: int | None = 300,
     error_message: str = "Too many attempts. Please try again later.",
-    scope_key: str = "sensitive"
+    scope_key: str = "sensitive",
 ) -> RateLimitDependency:
     """Factory for sensitive operation rate limit dependency."""
     return RateLimitDependency(
@@ -163,19 +174,20 @@ def sensitive_rate_limit(
         window_seconds=window_seconds,
         block_seconds=block_seconds,
         error_message=error_message,
-        scope_key=scope_key
+        scope_key=scope_key,
     )
+
 
 def admin_rate_limit(
     requests: int = 100,
     window_seconds: int = 60,
     block_seconds: int | None = None,
-    scope_key: str = "admin"
+    scope_key: str = "admin",
 ) -> RateLimitDependency:
     """Factory for admin operation rate limit dependency."""
     return RateLimitDependency(
         requests=requests,
         window_seconds=window_seconds,
         block_seconds=block_seconds,
-        scope_key=scope_key
+        scope_key=scope_key,
     )

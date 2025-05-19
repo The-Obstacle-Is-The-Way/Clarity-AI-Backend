@@ -11,8 +11,12 @@ from fastapi import Depends
 
 # Import Interfaces (adjust paths as needed based on final structure)
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
-from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
-from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
+from app.domain.repositories.biometric_alert_rule_repository import (
+    BiometricAlertRuleRepository,
+)
+from app.domain.repositories.biometric_alert_template_repository import (
+    BiometricAlertTemplateRepository,
+)
 from app.domain.services.biometric_event_processor import BiometricEventProcessor
 
 # TODO: Import actual factory functions for implementations when available
@@ -24,11 +28,13 @@ from app.domain.services.biometric_event_processor import BiometricEventProcesso
 # --- Placeholder Dependency Functions --- #
 # These will be replaced by functions that inject actual implementations
 
+
 async def get_alert_repository() -> BiometricAlertRepository | None:
     """Placeholder dependency for BiometricAlertRepository."""
     print("Warning: Using placeholder get_alert_repository")
     # In a real scenario: return get_biometric_alert_repository(session=Depends(get_async_session))
     return None
+
 
 async def get_rule_repository() -> BiometricAlertRuleRepository | None:
     """Placeholder dependency for BiometricAlertRuleRepository."""
@@ -36,17 +42,20 @@ async def get_rule_repository() -> BiometricAlertRuleRepository | None:
     # In a real scenario: return get_biometric_alert_rule_repository(session=Depends(get_async_session))
     return None
 
+
 async def get_template_repository() -> BiometricAlertTemplateRepository | None:
     """Placeholder dependency for BiometricAlertTemplateRepository."""
     print("Warning: Using placeholder get_template_repository")
     # In a real scenario: return get_biometric_alert_template_repository(session=Depends(get_async_session))
     return None
 
+
 async def get_event_processor() -> BiometricEventProcessor | None:
     """Placeholder dependency for BiometricEventProcessor."""
     print("Warning: Using placeholder get_event_processor")
     # In a real scenario: return get_biometric_event_processor(...)
     return None
+
 
 # --- Type Hinted Dependencies --- #
 # Use 'any' for now until concrete implementations are provided

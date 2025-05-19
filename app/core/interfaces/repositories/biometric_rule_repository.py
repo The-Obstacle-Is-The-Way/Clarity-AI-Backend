@@ -11,6 +11,7 @@ try:
     from app.domain.entities.biometric_rule import BiometricRule
 except ImportError:
     from typing import Any
+
     BiometricRule = Any
 
 
@@ -23,7 +24,9 @@ class IBiometricRuleRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_patient_id(self, patient_id: UUID, limit: int = 100, skip: int = 0) -> list[BiometricRule]:
+    async def get_by_patient_id(
+        self, patient_id: UUID, limit: int = 100, skip: int = 0
+    ) -> list[BiometricRule]:
         """Retrieve biometric rules for a specific patient."""
         pass
 
@@ -46,8 +49,10 @@ class IBiometricRuleRepository(ABC):
     async def list_all(self, skip: int = 0, limit: int = 100) -> list[BiometricRule]:
         """List all biometric rules with pagination."""
         pass
-    
+
     @abstractmethod
-    async def get_active_rules(self, patient_id: UUID | None = None) -> list[BiometricRule]:
+    async def get_active_rules(
+        self, patient_id: UUID | None = None
+    ) -> list[BiometricRule]:
         """Retrieve active (enabled) rules, optionally filtered by patient."""
         pass

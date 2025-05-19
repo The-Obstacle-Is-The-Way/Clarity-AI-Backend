@@ -37,7 +37,7 @@ class IAppointmentRepository(ABC):
         patient_id: UUID,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
-        status: AppointmentStatus | None = None
+        status: AppointmentStatus | None = None,
     ) -> list[Appointment]:
         """List appointments for a specific patient, optionally filtered by date range and status."""
         pass
@@ -48,7 +48,7 @@ class IAppointmentRepository(ABC):
         provider_id: UUID,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
-        status: AppointmentStatus | None = None
+        status: AppointmentStatus | None = None,
     ) -> list[Appointment]:
         """List appointments for a specific provider, optionally filtered by date range and status."""
         pass
@@ -59,7 +59,7 @@ class IAppointmentRepository(ABC):
         provider_id: UUID,
         start_time: datetime,
         end_time: datetime,
-        exclude_appointment_id: UUID | None = None
+        exclude_appointment_id: UUID | None = None,
     ) -> list[Appointment]:
         """Find appointments for a provider that overlap with a given time slot, excluding a specific appointment."""
         pass
@@ -77,4 +77,3 @@ class IAppointmentRepository(ABC):
 
 
 AppointmentRepository = IAppointmentRepository
-

@@ -21,10 +21,12 @@ Design Principles:
 
 from fastapi import Depends
 
-from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
+from app.domain.repositories.biometric_alert_rule_repository import (
+    BiometricAlertRuleRepository,
+)
 
 # Removed unused domain repositories
-# from app.domain.repositories.patient_repository import PatientRepository 
+# from app.domain.repositories.patient_repository import PatientRepository
 from app.infrastructure.persistence.sqlalchemy.config.database import (
     DBSessionDep,
     get_db_session,
@@ -49,6 +51,7 @@ def get_rule_repository(
 ) -> BiometricAlertRuleRepository:
     """Dependency provider for BiometricRuleRepository."""
     return SQLAlchemyBiometricRuleRepository(session=session)
+
 
 # Placeholder for other potential dependencies
 # e.g., get_user_repository, get_patient_repository etc.

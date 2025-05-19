@@ -8,8 +8,12 @@ in accordance with clean architecture principles.
 # Import from security package
 from app.infrastructure.services.security import JWTTokenService
 
-# Import from redis package 
-from app.infrastructure.services.redis import RedisService, create_redis_service, RedisCacheService
+# Import from redis package
+from app.infrastructure.services.redis import (
+    RedisService,
+    create_redis_service,
+    RedisCacheService,
+)
 
 # Import mock services for testing
 from app.infrastructure.services.mocks import (
@@ -17,22 +21,20 @@ from app.infrastructure.services.mocks import (
     MockEnhancedDigitalTwinCoreService,
     MockMentalLLaMAService,  # Note the capitalization: Mental not Menta
     MockPATService,
-    MockXGBoostService
+    MockXGBoostService,
 )
 
 __all__ = [
     # Security services
-    "JWTTokenService", 
-    
+    "JWTTokenService",
     # Redis services
     "RedisService",
     "create_redis_service",
     "RedisCacheService",
-    
     # Mock services
     "MockDigitalTwinCoreService",
     "MockEnhancedDigitalTwinCoreService",
     "MockMentalLLaMAService",
     "MockPATService",
-    "MockXGBoostService"
+    "MockXGBoostService",
 ]

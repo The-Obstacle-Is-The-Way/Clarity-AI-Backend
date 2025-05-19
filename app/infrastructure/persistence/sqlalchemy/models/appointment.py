@@ -8,10 +8,24 @@ mapping the domain entity to the database schema.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Enum as SQLAlchemyEnum, Integer, UUID as SQLAlchemyUUID
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+    Enum as SQLAlchemyEnum,
+    Integer,
+    UUID as SQLAlchemyUUID,
+)
 from sqlalchemy.orm import relationship
 
-from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
+from app.infrastructure.persistence.sqlalchemy.models.base import (
+    Base,
+    TimestampMixin,
+    AuditMixin,
+)
 from app.domain.entities.appointment import AppointmentStatus
 from app.domain.utils.datetime_utils import now_utc
 
@@ -27,8 +41,18 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
     __tablename__ = "appointments"
 
     id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    patient_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("patients.id"), nullable=False, index=True)
-    provider_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("providers.id"), nullable=False, index=True)
+    patient_id = Column(
+        SQLAlchemyUUID(as_uuid=True),
+        ForeignKey("patients.id"),
+        nullable=False,
+        index=True,
+    )
+    provider_id = Column(
+        SQLAlchemyUUID(as_uuid=True),
+        ForeignKey("providers.id"),
+        nullable=False,
+        index=True,
+    )
     start_time = Column(DateTime(timezone=True), nullable=False)
     end_time = Column(DateTime(timezone=True), nullable=False)
     appointment_type = Column(String(50), nullable=False)
@@ -47,7 +71,9 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
     # Relationships - aligned to match the actual database schema and foreign keys
     patient = relationship("Patient", back_populates="appointments")
     provider = relationship("ProviderModel", back_populates="appointments")
-    clinical_notes = relationship("ClinicalNoteModel", back_populates="appointment", cascade="all, delete-orphan")
+    clinical_notes = relationship(
+        "ClinicalNoteModel", back_populates="appointment", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         """Return string representation of the appointment."""

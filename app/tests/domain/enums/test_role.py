@@ -9,7 +9,7 @@ from app.domain.enums.role import Role
 
 class TestRole:
     """Test suite for the Role enumeration."""
-    
+
     def test_role_values(self):
         """Test that all expected roles exist with correct values."""
         assert Role.ADMIN.value == "ADMIN"
@@ -20,34 +20,34 @@ class TestRole:
         assert Role.PATIENT.value == "PATIENT"
         assert Role.USER.value == "USER"
         assert Role.PROVIDER.value == "PROVIDER"
-    
+
     def test_str_representation(self):
         """Test that the string representation of roles works correctly."""
         assert str(Role.ADMIN) == "ADMIN"
         assert str(Role.CLINICIAN) == "CLINICIAN"
         assert str(Role.DOCTOR) == "DOCTOR"
-    
+
     def test_role_equality(self):
         """Test role equality operations."""
         assert Role.ADMIN == Role.ADMIN
         assert Role.ADMIN == "ADMIN"
         assert Role.ADMIN != Role.USER
         assert Role.ADMIN != "USER"
-    
+
     def test_role_in_operations(self):
         """Test that roles work correctly in collections."""
         roles = [Role.ADMIN, Role.DOCTOR]
         assert Role.ADMIN in roles
         assert Role.DOCTOR in roles
         assert Role.USER not in roles
-        
+
         # Test with string comparison
         assert "ADMIN" in [r.value for r in roles]
         assert "DOCTOR" in [str(r) for r in roles]
-        
+
     def test_role_serialization(self):
         """Test that roles can be serialized to strings."""
         # This tests the primary purpose of using str enum
         roles_list = [Role.ADMIN, Role.CLINICIAN]
         serialized = [str(r) for r in roles_list]
-        assert serialized == ["ADMIN", "CLINICIAN"] 
+        assert serialized == ["ADMIN", "CLINICIAN"]

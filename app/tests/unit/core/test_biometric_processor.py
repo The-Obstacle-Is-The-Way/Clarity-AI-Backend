@@ -50,7 +50,7 @@ def sample_data_point(sample_patient_id):
         timestamp=datetime.now(UTC),
         source="apple_watch",
         metadata={"activity": "resting"},
-        confidence=0.95
+        confidence=0.95,
     )
 
 
@@ -62,12 +62,8 @@ def sample_rule(sample_clinician_id):
         name="High Heart Rate",
         description="Alert when heart rate exceeds 100 bpm",
         priority=AlertPriority.WARNING,
-        condition={
-            "data_type": "heart_rate",
-            "operator": ">",
-            "threshold": 100.0
-        },
-        created_by=sample_clinician_id
+        condition={"data_type": "heart_rate", "operator": ">", "threshold": 100.0},
+        created_by=sample_clinician_id,
     )
 
 
@@ -95,12 +91,8 @@ class TestAlertRule:
             name="High Heart Rate",
             description="Alert when heart rate exceeds 100 bpm",
             priority=AlertPriority.WARNING,
-            condition={
-                "data_type": "heart_rate",
-                "operator": ">",
-                "threshold": 100.0
-            },
-            created_by=sample_clinician_id
+            condition={"data_type": "heart_rate", "operator": ">", "threshold": 100.0},
+            created_by=sample_clinician_id,
         )
 
         assert rule.rule_id == "test-rule-1"
@@ -123,9 +115,9 @@ class TestAlertRule:
                 condition={
                     "data_type": "heart_rate",
                     "operator": "BAD_OPERATOR",  # This will trigger ValidationError
-                    "threshold": 100
+                    "threshold": 100,
                 },
-                created_by=sample_clinician_id
+                created_by=sample_clinician_id,
             )
 
     def test_evaluate_true(self, sample_data_point, sample_rule):
@@ -166,17 +158,13 @@ class TestBiometricEventProcessor:
             name="Low Heart Rate",
             description="Alert when heart rate drops below 50 bpm",
             priority=AlertPriority.WARNING,
-            condition={
-                "data_type": "heart_rate",
-                "operator": "<",
-                "threshold": 50.0
-            },
-            created_by=rule1.created_by
+            condition={"data_type": "heart_rate", "operator": "<", "threshold": 50.0},
+            created_by=rule1.created_by,
         )
-        
+
         processor.add_rule(rule1)
         processor.add_rule(rule2)
-        
+
         # Actual implementation stores rules in a dict with rule_id as key
         assert rule1.rule_id in processor.rules
         assert rule2.rule_id in processor.rules
@@ -197,33 +185,37 @@ class TestBiometricEventProcessor:
         assert mock_observer in processor.observers[AlertPriority.WARNING]
         assert mock_observer in processor.observers[AlertPriority.INFORMATIONAL]
 
-    def test_process_data_point_no_alert(self, processor, sample_data_point, sample_rule):
+    def test_process_data_point_no_alert(
+        self, processor, sample_data_point, sample_rule
+    ):
         """Test processing a data point that doesn't trigger an alert."""
         # Modify the data point to have a heart rate below the threshold
         sample_data_point.value = 90.0
         processor.register_rule(sample_rule)
-        
+
         # Process the data point
         alerts = processor.process_data_point(sample_data_point)
-        
+
         # Verify no alerts were generated
         assert len(alerts) == 0
 
-    def test_process_data_point_with_alert(self, processor, sample_data_point, sample_rule, mock_observer):
+    def test_process_data_point_with_alert(
+        self, processor, sample_data_point, sample_rule, mock_observer
+    ):
         """Test processing a data point that triggers an alert."""
         processor.register_observer(mock_observer)
         processor.register_rule(sample_rule)
-        
+
         # Process the data point (value=120, which is > 100)
         alerts = processor.process_data_point(sample_data_point)
-        
+
         # Verify an alert was generated
         assert len(alerts) == 1
         alert = alerts[0]
         assert alert.rule_id == sample_rule.rule_id
         assert alert.patient_id == sample_data_point.patient_id
         assert alert.data_point == sample_data_point
-        
+
         # Verify the observer was notified
         mock_observer.notify.assert_called_once()
 
@@ -235,7 +227,7 @@ class TestAlertObservers:
         """Test the InAppAlertObserver."""
         mock_notification_service = MagicMock()
         observer = InAppAlertObserver(notification_service=mock_notification_service)
-        
+
         # Create an alert using the proper constructor signature for BiometricAlert
         alert = BiometricAlert(
             patient_id=sample_data_point.patient_id,
@@ -243,11 +235,11 @@ class TestAlertObservers:
             rule_name=sample_rule.name,
             priority=sample_rule.priority,
             data_point=sample_data_point,
-            message="Test alert message"
+            message="Test alert message",
         )
-        
+
         # Replace the send_in_app_notification method with a mock to avoid making actual calls
-        with patch.object(observer, 'send_in_app_notification') as mock_send:
+        with patch.object(observer, "send_in_app_notification") as mock_send:
             observer.notify(alert)
             mock_send.assert_called_once_with(alert)
 
@@ -255,7 +247,7 @@ class TestAlertObservers:
         """Test the EmailAlertObserver."""
         mock_email_service = MagicMock()
         observer = EmailAlertObserver(email_service=mock_email_service)
-        
+
         # Create alerts with different priorities
         urgent_alert = BiometricAlert(
             patient_id=sample_data_point.patient_id,
@@ -263,11 +255,11 @@ class TestAlertObservers:
             rule_name=sample_rule.name,
             priority=AlertPriority.URGENT,
             data_point=sample_data_point,
-            message="Urgent alert"
+            message="Urgent alert",
         )
-        
+
         # Replace the send_email method with a mock
-        with patch.object(observer, 'send_email') as mock_send:
+        with patch.object(observer, "send_email") as mock_send:
             observer.notify(urgent_alert)
             mock_send.assert_called_once_with(urgent_alert)
 
@@ -275,19 +267,19 @@ class TestAlertObservers:
         """Test the SMSAlertObserver."""
         mock_sms_service = MagicMock()
         observer = SMSAlertObserver(sms_service=mock_sms_service)
-        
+
         # Create an urgent alert to trigger SMS
         alert = BiometricAlert(
             patient_id=sample_data_point.patient_id,
-            rule_id=sample_rule.rule_id, 
+            rule_id=sample_rule.rule_id,
             rule_name=sample_rule.name,
             priority=AlertPriority.URGENT,
             data_point=sample_data_point,
-            message="Urgent test alert"
+            message="Urgent test alert",
         )
-        
+
         # Mock the send_sms method
-        with patch.object(observer, 'send_sms') as mock_send:
+        with patch.object(observer, "send_sms") as mock_send:
             observer.notify(alert)
             mock_send.assert_called_once_with(alert)
 
@@ -306,11 +298,11 @@ class TestClinicalRuleEngine:
             "condition": {
                 "data_type": "heart_rate",
                 "operator": ">",
-                "threshold": "${threshold}"
+                "threshold": "${threshold}",
             },
-            "default_threshold": 100.0
+            "default_threshold": 100.0,
         }
-        
+
         engine.register_rule_template(template, template_id)
         assert template_id in engine.rule_templates
         assert engine.rule_templates[template_id] == template
@@ -326,9 +318,9 @@ class TestClinicalRuleEngine:
             "condition": {
                 "data_type": "heart_rate",
                 "operator": ">",
-                "threshold": "${threshold}"
+                "threshold": "${threshold}",
             },
-            "default_threshold": 100.0
+            "default_threshold": 100.0,
         }
 
         engine.register_rule_template(template, template_id)
@@ -340,9 +332,9 @@ class TestClinicalRuleEngine:
             template_id=template_id,
             rule_id=rule_id,
             parameters=parameters,
-            created_by=sample_clinician_id
+            created_by=sample_clinician_id,
         )
-        
+
         # Verify the rule was created correctly
         assert rule.name == template["name"]
         assert rule.description == template["description"]
@@ -360,5 +352,5 @@ class TestClinicalRuleEngine:
                 template_id="nonexistent",
                 rule_id="test-nonexistent-rule",
                 parameters={},
-                created_by=sample_clinician_id
+                created_by=sample_clinician_id,
             )

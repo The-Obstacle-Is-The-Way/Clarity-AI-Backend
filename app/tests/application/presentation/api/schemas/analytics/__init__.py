@@ -18,11 +18,11 @@ from app.presentation.api.schemas.analytics.responses import (
 )
 
 __all__ = [
-    'AnalyticsAggregateResponse',
-    'AnalyticsAggregatesListResponse',
-    'AnalyticsAggregationRequest',
-    'AnalyticsEventCreateRequest',
-    'AnalyticsEventResponse',
-    'AnalyticsEventsBatchRequest',
-    'AnalyticsEventsBatchResponse',
+    "AnalyticsAggregateResponse",
+    "AnalyticsAggregatesListResponse",
+    "AnalyticsAggregationRequest",
+    "AnalyticsEventCreateRequest",
+    "AnalyticsEventResponse",
+    "AnalyticsEventsBatchRequest",
+    "AnalyticsEventsBatchResponse",
 ]

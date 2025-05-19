@@ -17,7 +17,9 @@ from app.core.exceptions import (
     ServiceUnavailableError,
     ResourceNotFoundError,
 )
-from app.infrastructure.ml.digital_twin.mock import MockDigitalTwinService  # Corrected import path
+from app.infrastructure.ml.digital_twin.mock import (
+    MockDigitalTwinService,
+)  # Corrected import path
 
 # Import the correct interface
 
@@ -25,7 +27,7 @@ from app.infrastructure.ml.digital_twin.mock import MockDigitalTwinService  # Co
 @pytest.mark.unit()
 class TestMockDigitalTwinService:
     """Test suite for MockDigitalTwinService class."""
-    
+
     @pytest.fixture
     def service(self) -> MockDigitalTwinService:
         """Fixture to provide an instance of the MockDigitalTwinService."""
@@ -37,7 +39,7 @@ class TestMockDigitalTwinService:
         service = MockDigitalTwinService()
         service.initialize({"mock_config": True})
         return service
-        
+
     @pytest.fixture
     def sample_patient_id(self) -> str:
         """Create a sample patient ID for testing."""
@@ -59,7 +61,7 @@ class TestMockDigitalTwinService:
         service = MockDigitalTwinService()
         with pytest.raises(InvalidConfigurationError):
             service.initialize({})
-            
+
         # Test initialization with invalid config
         service = MockDigitalTwinService()
         with pytest.raises(InvalidConfigurationError):
@@ -145,7 +147,7 @@ class TestMockDigitalTwinService:
         result = mock_service.send_message(session_id, message)
         assert result["response"] is not None
 
-        # Test sending to a non-existent session 
+        # Test sending to a non-existent session
         non_existent_id = str(uuid.uuid4())
         with pytest.raises(ResourceNotFoundError):
             mock_service.send_message(non_existent_id, "Test message")
@@ -172,7 +174,9 @@ class TestMockDigitalTwinService:
 
         # Test medication questions
         for med_term in ["medication", "meds", "pills", "prescription"]:
-            result = mock_service.send_message(session_id, f"Question about my {med_term}")
+            result = mock_service.send_message(
+                session_id, f"Question about my {med_term}"
+            )
             assert "medication" in result["response"].lower()
 
         # Test appointment questions
@@ -180,34 +184,27 @@ class TestMockDigitalTwinService:
             result = mock_service.send_message(session_id, f"Need to {appt_term}")
             assert "appointment" in result["response"].lower()
             assert re.search(
-                r"\b[A-Z][a-z]+day, [A-Z][a-z]+ \d+\b",
-                result["response"])  # Date format
+                r"\b[A-Z][a-z]+day, [A-Z][a-z]+ \d+\b", result["response"]
+            )  # Date format
 
         # Test symptom questions
         for symptom_term in ["symptom", "feeling", "pain", "hurt", "sick"]:
             result = mock_service.send_message(session_id, f"I'm {symptom_term}")
-            assert ("symptom" in result["response"].lower() or 
-                   "feeling" in result["response"].lower())
+            assert (
+                "symptom" in result["response"].lower()
+                or "feeling" in result["response"].lower()
+            )
 
         # Test wellness questions
-        for wellness_term in [
-            "wellness",
-            "exercise",
-            "diet",
-            "sleep",
-            "stress"
-        ]:
+        for wellness_term in ["wellness", "exercise", "diet", "sleep", "stress"]:
             result = mock_service.send_message(session_id, f"About my {wellness_term}")
-            assert ("wellness" in result["response"].lower() or 
-                   "sleep" in result["response"].lower())
+            assert (
+                "wellness" in result["response"].lower()
+                or "sleep" in result["response"].lower()
+            )
 
         # Test therapy questions
-        for therapy_term in [
-            "therapy",
-            "therapist",
-            "counseling",
-            "counselor"
-        ]:
+        for therapy_term in ["therapy", "therapist", "counseling", "counselor"]:
             result = mock_service.send_message(session_id, f"My {therapy_term}")
             assert "therapy" in result["response"].lower()
 
@@ -263,14 +260,10 @@ class TestMockDigitalTwinService:
         assert "recommendations" in insights["summary"]
 
         # Test specific insight types
-        for insight_type in [
-            "mood",
-            "activity",
-            "sleep",
-            "medication",
-            "treatment"
-        ]:
-            result = mock_service.get_insights(sample_patient_id, insight_type=insight_type)
+        for insight_type in ["mood", "activity", "sleep", "medication", "treatment"]:
+            result = mock_service.get_insights(
+                sample_patient_id, insight_type=insight_type
+            )
             assert result["insight_type"] == insight_type
             assert "data" in result["insights"]
 
@@ -288,7 +281,7 @@ class TestMockDigitalTwinService:
         result = mock_service.get_insights(sample_patient_id, insight_type="mood")
         assert result["insights"]["type"] == "mood"
         mood_data = result["insights"]["data"]
-    
+
         # Verify structure within the 'data' dict
         assert "daily_values" in mood_data
         assert "average" in mood_data
@@ -301,7 +294,7 @@ class TestMockDigitalTwinService:
         result = mock_service.get_insights(sample_patient_id, insight_type="activity")
         assert result["insights"]["type"] == "activity"
         activity_data = result["insights"]["data"]
-    
+
         # Verify structure within the 'data' dict
         assert "daily_values" in activity_data
         assert "average" in activity_data
@@ -314,7 +307,7 @@ class TestMockDigitalTwinService:
         result = mock_service.get_insights(sample_patient_id, insight_type="sleep")
         assert result["insights"]["type"] == "sleep"
         sleep_data = result["insights"]["data"]
-    
+
         # Verify structure within the 'data' dict
         assert "daily_values" in sleep_data
         assert "average_hours" in sleep_data
@@ -328,7 +321,7 @@ class TestMockDigitalTwinService:
         result = mock_service.get_insights(sample_patient_id, insight_type="medication")
         assert result["insights"]["type"] == "medication"
         med_data = result["insights"]["data"]
-    
+
         # Verify structure within the 'data' dict
         assert "daily_values" in med_data
         assert "adherence_rate" in med_data
@@ -342,7 +335,7 @@ class TestMockDigitalTwinService:
         result = mock_service.get_insights(sample_patient_id, insight_type="treatment")
         assert result["insights"]["type"] == "treatment"
         treatment_data = result["insights"]["data"]
-    
+
         # Verify structure within the 'data' dict
         assert "engagement_score" in treatment_data
         assert "engagement_label" in treatment_data

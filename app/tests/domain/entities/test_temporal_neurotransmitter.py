@@ -39,8 +39,7 @@ class TestTemporalEvents:
         """Test creation of correlated events."""
         # Create a root event
         root_event = CorrelatedEvent(
-            event_type="test_event", 
-            metadata={"test_key": "test_value"}
+            event_type="test_event", metadata={"test_key": "test_value"}
         )
 
         # Verify root event properties
@@ -191,7 +190,9 @@ class TestTemporalNeurotransmitterMapping:
         assert extended_mapping.patient_id == patient_id
         assert hasattr(extended_mapping, "temporal_sequences")
         assert hasattr(extended_mapping, "event_chains")
-        assert len(extended_mapping.receptor_profiles) == len(base_mapping.receptor_profiles)
+        assert len(extended_mapping.receptor_profiles) == len(
+            base_mapping.receptor_profiles
+        )
 
     def test_temporal_receptor_response(self):
         """Test temporal response of receptors to neurotransmitter changes."""
@@ -246,7 +247,9 @@ class TestTemporalNeurotransmitterMapping:
         assert response is not None
         assert "activation_level" in response
         assert "clinical_significance" in response
-        assert response["activation_level"] > 0.5  # Should be activated by increased serotonin
+        assert (
+            response["activation_level"] > 0.5
+        )  # Should be activated by increased serotonin
 
     def test_temporal_cascade_effects(self):
         """Test cascade effects over time between connected neurotransmitter systems."""
@@ -299,10 +302,12 @@ class TestTemporalNeurotransmitterMapping:
         assert cascade_result is not None
         assert "result_sequence" in cascade_result
         result_sequence = cascade_result["result_sequence"]
-        
+
         # Check that dopamine was affected after the delay
         dopamine_at_36h = result_sequence.interpolate_at_time(36)
-        assert dopamine_at_36h[Neurotransmitter.DOPAMINE.value] < 0.5  # Should be inhibited
+        assert (
+            dopamine_at_36h[Neurotransmitter.DOPAMINE.value] < 0.5
+        )  # Should be inhibited
 
         # Verify the event chain was created
         assert "event_chain" in cascade_result
@@ -339,15 +344,15 @@ class TestNeurotransmitterVisualization:
         assert processed_data is not None
         assert "neurotransmitters" in processed_data
         assert "metadata" in processed_data
-        
+
         # Check neurotransmitter data
         nt_data = processed_data["neurotransmitters"]
         assert len(nt_data) == 4
-        
+
         # Check normalization
         max_value = max(level["level"] for level in nt_data)
         assert math.isclose(max_value, 1.0, abs_tol=0.01)
-        
+
         # Check metadata
         metadata = processed_data["metadata"]
         assert "max_original_value" in metadata
@@ -413,4 +418,6 @@ class TestNeurotransmitterVisualization:
         assert len(timeline["timeline"]) > 1
         # Initial effect size
         assert timeline["timeline"][0]["effect_size"] == 0.8
-        assert timeline["timeline"][-1]["is_prediction"] is True  # Last point is a prediction
+        assert (
+            timeline["timeline"][-1]["is_prediction"] is True
+        )  # Last point is a prediction

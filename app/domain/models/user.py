@@ -13,6 +13,7 @@ from pydantic import UUID4, BaseModel, ConfigDict
 
 class UserRole(str, Enum):
     """Enumeration of user roles within the Novamind platform."""
+
     ADMIN = "admin"
     PROVIDER = "provider"
     PATIENT = "patient"
@@ -22,6 +23,7 @@ class UserRole(str, Enum):
 
 class User(BaseModel):
     """Core user entity representing a platform user."""
+
     id: UUID4 | str | None = None
     email: str
     hashed_password: str | None = None

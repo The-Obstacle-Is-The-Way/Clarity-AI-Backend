@@ -70,7 +70,9 @@ class _QueryBuilder:
     # ------------------------------------------------------------------
     def filter_by(self, **filters: Any) -> _QueryBuilder:
         def _matches(obj: Any) -> bool:
-            return all(getattr(obj, key, None) == value for key, value in filters.items())
+            return all(
+                getattr(obj, key, None) == value for key, value in filters.items()
+            )
 
         self._data = [obj for obj in self._data if _matches(obj)]
         return self
@@ -188,7 +190,9 @@ class MockAsyncSession:  # pylint: disable=too-many-instance-attributes
         lowered = query_str.lower().strip()
         # SELECT ---------------------------------------------------------
         if lowered.startswith("select"):
-            items = self.query_results.get(query_str) or self.query_results.get("unknown_query", [])
+            items = self.query_results.get(query_str) or self.query_results.get(
+                "unknown_query", []
+            )
             return _ExecutionResult(items if isinstance(items, list) else [items])
 
         # INSERT / UPDATE / DELETE --------------------------------------

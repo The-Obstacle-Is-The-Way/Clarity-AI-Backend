@@ -32,7 +32,7 @@ _repo_root = _Path(__file__).resolve().parent.parent
 # Delegate to the actual implementation and re‑export its public symbols
 # ---------------------------------------------------------------------------
 
-_impl = _importlib.import_module("sitecustomize") # Changed module path
+_impl = _importlib.import_module("sitecustomize")  # Changed module path
 
 # Guarantee singleton behaviour across alias imports.
 _sys.modules.setdefault("sitecustomize", _impl)

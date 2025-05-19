@@ -10,22 +10,23 @@ from enum import Enum
 class Role(str, Enum):
     """
     User roles in the Novamind Digital Twin Platform.
-    
+
     These roles define different levels of access and permissions within the system.
     Each role has specific capabilities and restrictions.
     """
+
     # Basic user role - limited access to their own data
     USER = "user"
-    
+
     # Admin role - full system access and configuration
     ADMIN = "admin"
-    
+
     # Clinician role - access to patient data and treatment tools
     CLINICIAN = "clinician"
-    
+
     # Researcher role - access to anonymized data and analysis tools
     RESEARCHER = "researcher"
-    
+
     # Supervisor role - oversight capabilities for clinicians
     SUPERVISOR = "supervisor"
 
@@ -92,10 +93,10 @@ ROLE_PERMISSIONS: dict[Role, list[str]] = {
 def get_permissions_for_role(role: Role) -> list[str]:
     """
     Get the list of permissions for a specific role.
-    
+
     Args:
         role: The role to get permissions for
-        
+
     Returns:
         List of permission strings for the given role
     """
@@ -105,10 +106,10 @@ def get_permissions_for_role(role: Role) -> list[str]:
 def get_all_permissions_for_roles(roles: list[Role]) -> list[str]:
     """
     Get the combined set of permissions for multiple roles.
-    
+
     Args:
         roles: List of roles to get permissions for
-        
+
     Returns:
         Combined list of unique permissions from all specified roles
     """
@@ -121,11 +122,11 @@ def get_all_permissions_for_roles(roles: list[Role]) -> list[str]:
 def has_permission(roles: list[Role], permission: str) -> bool:
     """
     Check if a user with the given roles has a specific permission.
-    
+
     Args:
         roles: List of roles the user has
         permission: The permission to check for
-        
+
     Returns:
         True if the user has the permission, False otherwise
     """

@@ -41,7 +41,7 @@ class ITokenRepository(ABC):
             RepositoryException: If the operation fails
         """
         pass
-    
+
     @abstractmethod
     async def blacklist_user_tokens(self, user_id: str) -> None:
         """
@@ -54,7 +54,7 @@ class ITokenRepository(ABC):
             RepositoryException: If the operation fails
         """
         pass
-    
+
     @abstractmethod
     async def blacklist_session_tokens(self, session_id: str) -> None:
         """
@@ -67,7 +67,7 @@ class ITokenRepository(ABC):
             RepositoryException: If the operation fails
         """
         pass
-    
+
     @abstractmethod
     async def cleanup_expired_tokens(self) -> int:
         """
@@ -80,7 +80,7 @@ class ITokenRepository(ABC):
             RepositoryException: If the operation fails
         """
         pass
-    
+
     @abstractmethod
     async def get_active_sessions(self, user_id: str) -> list[str]:
         """
@@ -95,4 +95,4 @@ class ITokenRepository(ABC):
         Raises:
             RepositoryException: If the operation fails
         """
-        pass 
+        pass

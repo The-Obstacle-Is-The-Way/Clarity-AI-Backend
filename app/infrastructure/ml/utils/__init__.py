@@ -11,8 +11,4 @@ from app.infrastructure.ml.utils.preprocessing import (
     sanitize_text,
 )
 
-__all__ = [
-    'extract_clinical_entities',
-    'format_as_clinical_prompt',
-    'sanitize_text'
-]
+__all__ = ["extract_clinical_entities", "format_as_clinical_prompt", "sanitize_text"]

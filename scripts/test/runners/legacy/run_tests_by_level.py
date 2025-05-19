@@ -28,7 +28,11 @@ BACKUP_DIR = ROOT_DIR / "backup"
 TEST_LEVELS = {
     "standalone": [str(TEST_DIR / "standalone")],
     "venv_only": [str(TEST_DIR / "unit"), str(TEST_DIR / "venv_only")],
-    "db_required": [str(TEST_DIR / "integration"), str(TEST_DIR / "api"), str(TEST_DIR / "e2e")]
+    "db_required": [
+        str(TEST_DIR / "integration"),
+        str(TEST_DIR / "api"),
+        str(TEST_DIR / "e2e"),
+    ],
 }
 
 # Template for standalone clinical rule engine
@@ -306,76 +310,88 @@ def get_backup_codes_patch(self, count: int = 10) -> List[str]:
     return ["ABCDEF1234"] * count
 """
 
+
 def ensure_dirs():
     """Make sure necessary directories exist."""
     RESULTS_DIR.mkdir(exist_ok=True, parents=True)
     BACKUP_DIR.mkdir(exist_ok=True, parents=True)
 
+
 def backup_file(file_path: Path, timestamp: str) -> None:
     """Back up a file before modifying it."""
     backup_path = BACKUP_DIR / timestamp / file_path.relative_to(ROOT_DIR)
     backup_path.parent.mkdir(exist_ok=True, parents=True)
-    
+
     if file_path.exists():
         shutil.copy2(file_path, backup_path)
         print(f"Backed up {file_path} to {backup_path}")
 
+
 def create_patches(timestamp: str) -> None:
     """Create patched files for standalone test fixes."""
     # Create standalone clinical rule engine
-    standalone_rule_engine = DOMAIN_DIR / "services" / "standalone_clinical_rule_engine.py"
+    standalone_rule_engine = (
+        DOMAIN_DIR / "services" / "standalone_clinical_rule_engine.py"
+    )
     backup_file(standalone_rule_engine, timestamp)
     standalone_rule_engine.parent.mkdir(exist_ok=True, parents=True)
     standalone_rule_engine.write_text(STANDALONE_CLINICAL_RULE_ENGINE)
     print(f"Created {standalone_rule_engine}")
-    
+
     # Create __init__.py if it doesn't exist
     init_file = DOMAIN_DIR / "services" / "__init__.py"
     if not init_file.exists():
         init_file.touch()
-    
+
     # Create standalone utils patch
     utils_file = DOMAIN_DIR / "utils" / "standalone_test_utils.py"
     backup_file(utils_file, timestamp)
     utils_file.parent.mkdir(exist_ok=True, parents=True)
     utils_file.write_text(UTILS_PATCH)
     print(f"Created {utils_file}")
-    
+
     init_file = DOMAIN_DIR / "utils" / "__init__.py"
     if not init_file.exists():
         init_file.touch()
-    
+
     # Create provider patch
     provider_patch = DOMAIN_DIR / "entities" / "provider_patch.py"
     backup_file(provider_patch, timestamp)
     provider_patch.parent.mkdir(exist_ok=True, parents=True)
     provider_patch.write_text(PROVIDER_PATCH)
     print(f"Created {provider_patch}")
-    
+
     # Create biometric data point patch
-    biometric_patch = DOMAIN_DIR / "entities" / "digital_twin" / "biometric_data_point_patch.py"
+    biometric_patch = (
+        DOMAIN_DIR / "entities" / "digital_twin" / "biometric_data_point_patch.py"
+    )
     backup_file(biometric_patch, timestamp)
     biometric_patch.parent.mkdir(exist_ok=True, parents=True)
     biometric_patch.write_text(BIOMETRIC_DATA_POINT_PATCH)
     print(f"Created {biometric_patch}")
-    
+
     # Create biometric twin model patch
-    twin_model_patch = DOMAIN_DIR / "entities" / "digital_twin" / "biometric_twin_model_patch.py"
+    twin_model_patch = (
+        DOMAIN_DIR / "entities" / "digital_twin" / "biometric_twin_model_patch.py"
+    )
     backup_file(twin_model_patch, timestamp)
     twin_model_patch.write_text(BIOMETRIC_TWIN_MODEL_PATCH)
     print(f"Created {twin_model_patch}")
-    
+
     # Create MFA service patch
-    mfa_patch = ROOT_DIR / "app" / "infrastructure" / "security" / "mfa_service_patch.py"
+    mfa_patch = (
+        ROOT_DIR / "app" / "infrastructure" / "security" / "mfa_service_patch.py"
+    )
     backup_file(mfa_patch, timestamp)
     mfa_patch.parent.mkdir(exist_ok=True, parents=True)
     mfa_patch.write_text(MFA_SERVICE_PATCH)
     print(f"Created {mfa_patch}")
 
+
 def create_patch_import_file() -> None:
     """Create a file to import the patches in the tests."""
     patch_import = TEST_DIR / "standalone" / "patches.py"
-    
+
     content = """
 # -*- coding: utf-8 -*-
 \"\"\"
@@ -430,20 +446,21 @@ patch("app.domain.entities.digital_twin.biometric_data_point.BiometricDataPoint.
 
 print("Applied standalone test patches")
 """
-    
+
     patch_import.parent.mkdir(exist_ok=True, parents=True)
     patch_import.write_text(content)
     print(f"Created {patch_import}")
-    
+
     # Make sure there's an __init__.py
     init_file = patch_import.parent / "__init__.py"
     if not init_file.exists():
         init_file.touch()
 
+
 def create_conftest():
     """Create a simplified conftest for standalone tests."""
     conftest = ROOT_DIR / "conftest.py"
-    
+
     if not conftest.exists():
         content = """
 # -*- coding: utf-8 -*-
@@ -483,6 +500,7 @@ def sample_appointment_id():
         conftest.write_text(content)
         print(f"Created {conftest}")
 
+
 def run_tests(level: str, timeout: int = 300) -> int:
     """Run tests for a specific level."""
     # Build command
@@ -490,22 +508,28 @@ def run_tests(level: str, timeout: int = 300) -> int:
     if not test_dirs:
         print(f"Unknown test level: {level}")
         return 1
-    
+
     # Create results directory
     RESULTS_DIR.mkdir(exist_ok=True, parents=True)
-    
+
     # Build command
-    cmd = [
-        "python", "-m", "pytest",
-    ] + test_dirs + [
-        "-v",
-        f"--junitxml={RESULTS_DIR}/{level}-results.xml",
-    ]
-    
+    cmd = (
+        [
+            "python",
+            "-m",
+            "pytest",
+        ]
+        + test_dirs
+        + [
+            "-v",
+            f"--junitxml={RESULTS_DIR}/{level}-results.xml",
+        ]
+    )
+
     # Execute and capture output
     print(f"\n=== Running {level.upper()} tests with {timeout}s timeout ===\n")
     print(f"Command: {' '.join(cmd)}")
-    
+
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         print(result.stdout)
@@ -516,49 +540,56 @@ def run_tests(level: str, timeout: int = 300) -> int:
         print(f"Tests timed out after {timeout} seconds")
         return 1
 
+
 def main():
     """Main function to run the script."""
-    parser = argparse.ArgumentParser(description='Run tests by dependency level')
-    parser.add_argument('level', choices=['standalone', 'venv_only', 'db_required', 'all'], 
-                        help='Test level to run')
-    parser.add_argument('--timeout', type=int, default=300,
-                        help='Timeout in seconds for test execution')
-    parser.add_argument('--fix', action='store_true',
-                        help='Apply fixes for standalone tests')
+    parser = argparse.ArgumentParser(description="Run tests by dependency level")
+    parser.add_argument(
+        "level",
+        choices=["standalone", "venv_only", "db_required", "all"],
+        help="Test level to run",
+    )
+    parser.add_argument(
+        "--timeout", type=int, default=300, help="Timeout in seconds for test execution"
+    )
+    parser.add_argument(
+        "--fix", action="store_true", help="Apply fixes for standalone tests"
+    )
     args = parser.parse_args()
-    
+
     # Ensure necessary directories exist
     ensure_dirs()
-    
+
     # Create timestamp for backups
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
+
     # Apply fixes if requested for standalone tests
-    if args.fix and (args.level == 'standalone' or args.level == 'all'):
+    if args.fix and (args.level == "standalone" or args.level == "all"):
         print("\n=== Applying fixes for standalone tests ===\n")
         create_patches(timestamp)
         create_patch_import_file()
         create_conftest()
-    
+
     # Run tests
-    if args.level == 'all':
+    if args.level == "all":
         # Run all test levels in order
         results = {}
         for level in ["standalone", "venv_only", "db_required"]:
             result = run_tests(level, args.timeout)
             results[level] = result
-            
+
         # Print summary
         print("\n=== Test Run Summary ===\n")
         for level, result in results.items():
             status = "PASSED" if result == 0 else "FAILED"
             print(f"{level}: {status} (exit code {result})")
-            
+
         # Return worst result
         return max(results.values())
     else:
         # Run specific level
         return run_tests(args.level, args.timeout)
+
 
 if __name__ == "__main__":
     sys.exit(main())

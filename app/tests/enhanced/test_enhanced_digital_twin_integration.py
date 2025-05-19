@@ -43,12 +43,14 @@ from app.infrastructure.factories.enhanced_mock_digital_twin_factory import (
 
 
 @pytest.fixture
-def enhanced_services() -> tuple[
-    EnhancedDigitalTwinCoreService,
-    EnhancedMentalLLaMAService,
-    EnhancedXGBoostService,
-    EnhancedPATService,
-]:
+def enhanced_services() -> (
+    tuple[
+        EnhancedDigitalTwinCoreService,
+        EnhancedMentalLLaMAService,
+        EnhancedXGBoostService,
+        EnhancedPATService,
+    ]
+):
     """Fixture to create enhanced mock services for testing."""
     return EnhancedMockDigitalTwinFactory.create_enhanced_mock_services()
 
@@ -103,13 +105,12 @@ def initial_data() -> dict:
 async def test_digital_twin_initialization(enhanced_services, patient_id, initial_data):
     """Test initialization of the Enhanced Digital Twin."""
     digital_twin_service, _, _, _ = enhanced_services
-    
+
     # Initialize the Digital Twin
     result = await digital_twin_service.initialize_digital_twin(
-        patient_id=patient_id,
-        initial_data=initial_data
+        patient_id=patient_id, initial_data=initial_data
     )
-    
+
     # Verify initialization was successful
     assert result is not None
     assert result["patient_id"] == patient_id
@@ -117,7 +118,7 @@ async def test_digital_twin_initialization(enhanced_services, patient_id, initia
     assert result["status"] == "initialized"
     assert "knowledge_graph" in result
     assert "belief_network" in result
-    
+
     # Verify the Digital Twin exists in the service
     twin_exists = await digital_twin_service.digital_twin_exists(patient_id)
     assert twin_exists is True
@@ -127,13 +128,12 @@ async def test_digital_twin_initialization(enhanced_services, patient_id, initia
 async def test_knowledge_graph_operations(enhanced_services, patient_id, initial_data):
     """Test operations on the knowledge graph component."""
     digital_twin_service, _, _, _ = enhanced_services
-    
+
     # Initialize the Digital Twin
     await digital_twin_service.initialize_digital_twin(
-        patient_id=patient_id,
-        initial_data=initial_data
+        patient_id=patient_id, initial_data=initial_data
     )
-    
+
     # Add a new node to the knowledge graph
     node_id = await digital_twin_service.add_knowledge_node(
         patient_id=patient_id,
@@ -144,10 +144,10 @@ async def test_knowledge_graph_operations(enhanced_services, patient_id, initial
             "onset_date": datetime.datetime.now() - datetime.timedelta(days=14),
         },
     )
-    
+
     # Verify node was added
     assert node_id is not None
-    
+
     # Add a relationship between nodes
     relationship_id = await digital_twin_service.add_knowledge_relationship(
         patient_id=patient_id,
@@ -156,17 +156,17 @@ async def test_knowledge_graph_operations(enhanced_services, patient_id, initial
         relationship_type="symptom_of",
         relationship_data={"strength": 0.8, "evidence": "clinical_observation"},
     )
-    
+
     # Verify relationship was added
     assert relationship_id is not None
-    
+
     # Query the knowledge graph
     query_result = await digital_twin_service.query_knowledge_graph(
         patient_id=patient_id,
         query_type="node_relationships",
         parameters={"node_id": node_id, "relationship_types": ["symptom_of"]},
     )
-    
+
     # Verify query results
     assert query_result is not None
     assert "relationships" in query_result
@@ -177,13 +177,12 @@ async def test_knowledge_graph_operations(enhanced_services, patient_id, initial
 async def test_belief_network_operations(enhanced_services, patient_id, initial_data):
     """Test operations on the Bayesian belief network component."""
     digital_twin_service, _, _, _ = enhanced_services
-    
+
     # Initialize the Digital Twin
     await digital_twin_service.initialize_digital_twin(
-        patient_id=patient_id,
-        initial_data=initial_data
+        patient_id=patient_id, initial_data=initial_data
     )
-    
+
     # Update a belief in the network
     await digital_twin_service.update_belief(
         patient_id=patient_id,
@@ -191,14 +190,14 @@ async def test_belief_network_operations(enhanced_services, patient_id, initial_
         evidence={"medication": "Escitalopram", "duration_weeks": 6},
         probability=0.75,
     )
-    
+
     # Query the belief network
     query_result = await digital_twin_service.query_belief_network(
         patient_id=patient_id,
         query_node="remission",
         evidence={"treatment_response": "positive", "adherence": "high"},
     )
-    
+
     # Verify query results
     assert query_result is not None
     assert "probability" in query_result
@@ -209,13 +208,12 @@ async def test_belief_network_operations(enhanced_services, patient_id, initial_
 async def test_neurotransmitter_simulation(enhanced_services, patient_id, initial_data):
     """Test neurotransmitter simulation capabilities."""
     digital_twin_service, _, xgboost_service, _ = enhanced_services
-    
+
     # Initialize the Digital Twin
     await digital_twin_service.initialize_digital_twin(
-        patient_id=patient_id,
-        initial_data=initial_data
+        patient_id=patient_id, initial_data=initial_data
     )
-    
+
     # Run a neurotransmitter simulation
     simulation_result = await digital_twin_service.simulate_neurotransmitter_dynamics(
         patient_id=patient_id,
@@ -228,14 +226,14 @@ async def test_neurotransmitter_simulation(enhanced_services, patient_id, initia
         duration_days=28,
         time_resolution_hours=24,
     )
-    
+
     # Verify simulation results
     assert simulation_result is not None
     assert "timeline" in simulation_result
     assert len(simulation_result["timeline"]) > 0
     assert "neurotransmitter_levels" in simulation_result["timeline"][0]
     assert "clinical_effects" in simulation_result
-    
+
     # Test the cascade effect analysis
     cascade_result = await xgboost_service.simulate_treatment_cascade(
         patient_id=patient_id,
@@ -244,7 +242,7 @@ async def test_neurotransmitter_simulation(enhanced_services, patient_id, initia
         treatment_effect=0.3,
         baseline_data=initial_data["neurotransmitter_baseline"],
     )
-    
+
     # Verify cascade results
     assert cascade_result is not None
     assert "direct_effects" in cascade_result
@@ -256,13 +254,12 @@ async def test_neurotransmitter_simulation(enhanced_services, patient_id, initia
 async def test_temporal_sequence_analysis(enhanced_services, patient_id, initial_data):
     """Test temporal sequence analysis capabilities."""
     digital_twin_service, _, _, _ = enhanced_services
-    
+
     # Initialize the Digital Twin
     await digital_twin_service.initialize_digital_twin(
-        patient_id=patient_id,
-        initial_data=initial_data
+        patient_id=patient_id, initial_data=initial_data
     )
-    
+
     # Create a temporal sequence
     sequence = TemporalNeurotransmitterSequence(
         patient_id=patient_id,
@@ -270,23 +267,23 @@ async def test_temporal_sequence_analysis(enhanced_services, patient_id, initial
         end_time=datetime.datetime.now(),
         resolution_hours=24,
     )
-    
+
     # Add data points to the sequence
     for day in range(30):
-        timestamp = datetime.datetime.now() - datetime.timedelta(days=30-day)
+        timestamp = datetime.datetime.now() - datetime.timedelta(days=30 - day)
         sequence.add_data_point(
             timestamp=timestamp,
             neurotransmitter=Neurotransmitter.SEROTONIN,
             brain_region=BrainRegion.PREFRONTAL_CORTEX,
             value=0.4 + (day * 0.01),  # Gradually increasing
         )
-    
+
     # Add the sequence to the Digital Twin
     await digital_twin_service.add_temporal_sequence(
         patient_id=patient_id,
         sequence=sequence,
     )
-    
+
     # Analyze the temporal sequence
     analysis_result = await digital_twin_service.analyze_temporal_patterns(
         patient_id=patient_id,
@@ -294,7 +291,7 @@ async def test_temporal_sequence_analysis(enhanced_services, patient_id, initial
         analysis_type="trend",
         parameters={"smoothing": "moving_average", "window_size": 3},
     )
-    
+
     # Verify analysis results
     assert analysis_result is not None
     assert "trend" in analysis_result
@@ -306,13 +303,12 @@ async def test_temporal_sequence_analysis(enhanced_services, patient_id, initial
 async def test_clinical_insight_generation(enhanced_services, patient_id, initial_data):
     """Test generation of clinical insights from the Digital Twin."""
     digital_twin_service, mental_llama_service, _, _ = enhanced_services
-    
+
     # Initialize the Digital Twin
     await digital_twin_service.initialize_digital_twin(
-        patient_id=patient_id,
-        initial_data=initial_data
+        patient_id=patient_id, initial_data=initial_data
     )
-    
+
     # Generate clinical insights
     insights = await digital_twin_service.generate_clinical_insights(
         patient_id=patient_id,
@@ -325,11 +321,11 @@ async def test_clinical_insight_generation(enhanced_services, patient_id, initia
             datetime.datetime.now(),
         ),
     )
-    
+
     # Verify insights
     assert insights is not None
     assert len(insights) > 0
-    
+
     # Check insight structure
     insight = insights[0]
     assert "type" in insight
@@ -337,21 +333,21 @@ async def test_clinical_insight_generation(enhanced_services, patient_id, initia
     assert "significance" in insight
     assert "confidence" in insight
     assert "supporting_evidence" in insight
-    
+
     # Verify significance is valid
     assert insight["significance"] in [
         ClinicalSignificance.HIGH.value,
         ClinicalSignificance.MEDIUM.value,
         ClinicalSignificance.LOW.value,
     ]
-    
+
     # Test LLM-generated explanation
     explanation = await mental_llama_service.generate_insight_explanation(
         patient_id=patient_id,
         insight=insight,
         detail_level="detailed",
     )
-    
+
     # Verify explanation
     assert explanation is not None
     assert "explanation" in explanation
@@ -359,16 +355,17 @@ async def test_clinical_insight_generation(enhanced_services, patient_id, initia
 
 
 @pytest.mark.asyncio
-async def test_treatment_response_prediction(enhanced_services, patient_id, initial_data):
+async def test_treatment_response_prediction(
+    enhanced_services, patient_id, initial_data
+):
     """Test prediction of treatment response using the Digital Twin."""
     digital_twin_service, _, xgboost_service, _ = enhanced_services
-    
+
     # Initialize the Digital Twin
     await digital_twin_service.initialize_digital_twin(
-        patient_id=patient_id,
-        initial_data=initial_data
+        patient_id=patient_id, initial_data=initial_data
     )
-    
+
     # Predict treatment response
     prediction = await digital_twin_service.predict_treatment_response(
         patient_id=patient_id,
@@ -380,14 +377,14 @@ async def test_treatment_response_prediction(enhanced_services, patient_id, init
         },
         prediction_timeframe_weeks=8,
     )
-    
+
     # Verify prediction
     assert prediction is not None
     assert "response_probability" in prediction
     assert "confidence" in prediction
     assert "expected_symptom_changes" in prediction
     assert "expected_neurotransmitter_changes" in prediction
-    
+
     # Verify XGBoost service integration
     xgboost_prediction = await xgboost_service.predict_treatment_response(
         patient_id=patient_id,
@@ -395,7 +392,7 @@ async def test_treatment_response_prediction(enhanced_services, patient_id, init
         neurotransmitter=Neurotransmitter.SEROTONIN,
         treatment_effect=0.4,
     )
-    
+
     # Verify XGBoost prediction
     assert xgboost_prediction is not None
     assert "predicted_response" in xgboost_prediction
@@ -404,16 +401,17 @@ async def test_treatment_response_prediction(enhanced_services, patient_id, init
 
 
 @pytest.mark.asyncio
-async def test_digital_twin_event_processing(enhanced_services, patient_id, initial_data):
+async def test_digital_twin_event_processing(
+    enhanced_services, patient_id, initial_data
+):
     """Test event processing in the Digital Twin."""
     digital_twin_service, _, _, _ = enhanced_services
-    
+
     # Initialize the Digital Twin
     await digital_twin_service.initialize_digital_twin(
-        patient_id=patient_id,
-        initial_data=initial_data
+        patient_id=patient_id, initial_data=initial_data
     )
-    
+
     # Process a clinical event
     event_result = await digital_twin_service.process_clinical_event(
         patient_id=patient_id,
@@ -426,14 +424,14 @@ async def test_digital_twin_event_processing(enhanced_services, patient_id, init
             "timestamp": datetime.datetime.now(),
         },
     )
-    
+
     # Verify event processing
     assert event_result is not None
     assert "event_id" in event_result
     assert "status" in event_result
     assert "effects" in event_result
     assert len(event_result["effects"]) > 0
-    
+
     # Verify the event was recorded in the Digital Twin
     events = await digital_twin_service.get_clinical_events(
         patient_id=patient_id,
@@ -443,7 +441,7 @@ async def test_digital_twin_event_processing(enhanced_services, patient_id, init
             datetime.datetime.now() + datetime.timedelta(hours=1),
         ),
     )
-    
+
     # Check events
     assert events is not None
     assert len(events) > 0
@@ -455,13 +453,12 @@ async def test_digital_twin_event_processing(enhanced_services, patient_id, init
 async def test_clinical_summary_generation(enhanced_services, patient_id, initial_data):
     """Test generation of a comprehensive clinical summary."""
     digital_twin_service, _, _, _ = enhanced_services
-    
+
     # Initialize the Digital Twin
     await digital_twin_service.initialize_digital_twin(
-        patient_id=patient_id,
-        initial_data=initial_data
+        patient_id=patient_id, initial_data=initial_data
     )
-    
+
     # Generate the summary
     summary = await digital_twin_service.generate_multimodal_clinical_summary(
         patient_id=patient_id,
@@ -472,41 +469,42 @@ async def test_clinical_summary_generation(enhanced_services, patient_id, initia
         ),
         detail_level="standard",
     )
-    
+
     # Check summary structure
     assert summary is not None
     assert "metadata" in summary
     assert "sections" in summary
     assert "integrated_summary" in summary
-    
+
     # Check that requested sections are present
     assert "status" in summary["sections"]
     assert "trajectory" in summary["sections"]
 
 
 @pytest.mark.asyncio
-async def test_visualization_data_generation(enhanced_services, patient_id, initial_data):
+async def test_visualization_data_generation(
+    enhanced_services, patient_id, initial_data
+):
     """Test generation of visualization data."""
     digital_twin_service, _, _, _ = enhanced_services
-    
+
     # Initialize the Digital Twin
     await digital_twin_service.initialize_digital_twin(
-        patient_id=patient_id,
-        initial_data=initial_data
+        patient_id=patient_id, initial_data=initial_data
     )
-    
+
     # Generate brain model visualization data
     brain_viz = await digital_twin_service.generate_visualization_data(
         patient_id=patient_id,
         visualization_type="brain_model",
         parameters={"highlight_significant": True, "show_connections": True},
     )
-    
+
     # Check visualization data
     assert brain_viz is not None
     assert "regions" in brain_viz
     assert len(brain_viz["regions"]) > 0
-    
+
     # Check region data structure
     region = brain_viz["regions"][0]
     assert "id" in region

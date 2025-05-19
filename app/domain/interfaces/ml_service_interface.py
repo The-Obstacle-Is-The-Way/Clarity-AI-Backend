@@ -14,7 +14,9 @@ class MLServiceInterface(ABC):
     """Abstract base class for ML services."""
 
     @abstractmethod
-    async def predict(self, patient_id: UUID, features: dict[str, Any], model_type: str, **kwargs) -> dict[str, Any]:
+    async def predict(
+        self, patient_id: UUID, features: dict[str, Any], model_type: str, **kwargs
+    ) -> dict[str, Any]:
         """Generic prediction method."""
         pass
 
@@ -28,7 +30,7 @@ class MLServiceInterface(ABC):
         """Check the health status of the ML service."""
         pass
 
-    # Add other common ML operations as needed, e.g., 
+    # Add other common ML operations as needed, e.g.,
     # - get_feature_importance
     # - analyze_text (for NLP models)
 
@@ -85,11 +87,11 @@ class PharmacogenomicsInterface(ABC):
 
     @abstractmethod
     async def recommend_treatment_plan(
-        self, 
-        patient_id: UUID, 
-        patient_data: dict[str, Any], 
-        diagnosis: str, 
-        current_medications: list[str]
+        self,
+        patient_id: UUID,
+        patient_data: dict[str, Any],
+        diagnosis: str,
+        current_medications: list[str],
     ) -> dict[str, Any]:
         """Recommend a treatment plan based on pharmacogenomic data."""
         pass
@@ -107,4 +109,3 @@ class SymptomForecastingInterface(ABC):
     ) -> dict[str, Any]:
         """Forecast patient symptoms based on historical data."""
         pass
-

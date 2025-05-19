@@ -38,8 +38,7 @@ class ISymptomAssessmentRepository(ABC):
         patient_id: UUID,
         assessment_type: AssessmentType | None = None,
         start_date: datetime | None = None,
-        end_date: datetime | None = None
+        end_date: datetime | None = None,
     ) -> list[SymptomAssessment]:
         """List symptom assessments for a specific patient, optionally filtered by type and date range."""
         pass
-

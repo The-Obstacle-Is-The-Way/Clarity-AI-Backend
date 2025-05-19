@@ -17,13 +17,15 @@ from sqlalchemy.orm import declarative_base
 # Create a new Base for these test-specific models
 TestMockBase = declarative_base()
 
+
 class MockUser(TestMockBase):
     """
     Simplified User model for testing purposes.
     """
+
     __tablename__ = "users"
     # __table_args__ = {'extend_existing': True} # Not needed if using a separate Base/metadata
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String(64), unique=True, nullable=False)
     email = Column(String(255), unique=True, nullable=False)
@@ -32,8 +34,12 @@ class MockUser(TestMockBase):
     is_verified = Column(Boolean, default=False, nullable=False)
     email_verified = Column(Boolean, default=False, nullable=False)
     role = Column(String(50), nullable=False)
-    created_at = Column(String, default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
-    updated_at = Column(String, default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
+    created_at = Column(
+        String, default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False
+    )
+    updated_at = Column(
+        String, default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False
+    )
     last_login = Column(String, nullable=True)
     failed_login_attempts = Column(Integer, default=0)
     account_locked_until = Column(String, nullable=True)
@@ -45,19 +51,25 @@ class MockUser(TestMockBase):
     last_name = Column(String(100), nullable=True)
     preferences = Column(String(1000), nullable=True)
 
+
 class TestPatient(TestMockBase):
     """
     Simplified Patient model for testing purposes.
     """
+
     __tablename__ = "patients"
     # __table_args__ = {'extend_existing': True} # Not needed if using a separate Base/metadata
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    created_at = Column(String, default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
-    updated_at = Column(String, default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
+    created_at = Column(
+        String, default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False
+    )
+    updated_at = Column(
+        String, default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False
+    )
     is_active = Column(Boolean, default=True, nullable=False)
-    
+
     # Regular fields - no encryption in test models for simplicity
     first_name = Column(String(100), nullable=True)
     last_name = Column(String(100), nullable=True)

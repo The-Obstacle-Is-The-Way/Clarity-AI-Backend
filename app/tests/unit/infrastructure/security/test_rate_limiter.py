@@ -29,7 +29,7 @@ from app.infrastructure.security.rate_limiting.rate_limiter_enhanced import (
 try:
     from app.domain.utils.datetime_utils import UTC
 except ImportError:
-    UTC = timezone.utc # Fallback for older Python versions
+    UTC = timezone.utc  # Fallback for older Python versions
 
 
 @pytest.fixture
@@ -37,17 +37,18 @@ def in_memory_rate_limiter():
     """Create an in-memory rate limiter for testing."""
     return InMemoryRateLimiter()
 
+
 @pytest.fixture
 def mock_redis():
     """Create a mock Redis client."""
-    mock = MagicMock(spec=redis.Redis) # Use spec for better mocking
+    mock = MagicMock(spec=redis.Redis)  # Use spec for better mocking
     # Set default return values for common methods used by RedisRateLimiter
     mock.zcard.return_value = 0
-    mock.zadd.return_value = 1 # Typically returns number of elements added
-    mock.zremrangebyscore.return_value = 0 # Number of elements removed
-    mock.exists.return_value = 0 # Redis returns 0 if key doesn't exist
+    mock.zadd.return_value = 1  # Typically returns number of elements added
+    mock.zremrangebyscore.return_value = 0  # Number of elements removed
+    mock.exists.return_value = 0  # Redis returns 0 if key doesn't exist
     mock.setex.return_value = True
-    mock.delete.return_value = 1 # Number of keys deleted
+    mock.delete.return_value = 1  # Number of keys deleted
     mock.zcount.return_value = 0
     return mock
 
@@ -55,21 +56,23 @@ def mock_redis():
 @pytest_asyncio.fixture
 async def async_mock_patch():
     """Handle non-awaited coroutines in tests by patching AsyncMock."""
+
     # Create a helper for safely awaiting coroutines
     async def safe_await(coro_or_value):
         if asyncio.iscoroutine(coro_or_value):
             return await coro_or_value
         return coro_or_value
-    
+
     # Patch AsyncMock.__call__ to handle both awaited and non-awaited calls
     original_call = AsyncMock.__call__
-    
+
     async def patched_call(self, *args, **kwargs):
         result = original_call(self, *args, **kwargs)
         return await safe_await(result)
-    
-    with patch.object(AsyncMock, '__call__', patched_call):
+
+    with patch.object(AsyncMock, "__call__", patched_call):
         yield
+
 
 @pytest.fixture
 def redis_rate_limiter(mock_redis):
@@ -82,11 +85,7 @@ class TestRateLimitConfig:
 
     def test_init(self):
         """Test initialization of RateLimitConfig."""
-        config = RateLimitConfig(
-            requests=100,
-            window_seconds=60,
-            block_seconds=300
-        )
+        config = RateLimitConfig(requests=100, window_seconds=60, block_seconds=300)
         assert config.requests == 100
         assert config.window_seconds == 60
         assert config.block_seconds == 300
@@ -113,7 +112,9 @@ class TestInMemoryRateLimiter:
     # Remove tests for internal methods (_add_request, _clean_old_requests, etc.)
     # Tests should focus on the public interface (check_rate_limit, reset_limits)
 
-    def test_check_rate_limit_under_limit(self, in_memory_rate_limiter: InMemoryRateLimiter):
+    def test_check_rate_limit_under_limit(
+        self, in_memory_rate_limiter: InMemoryRateLimiter
+    ):
         """Test check_rate_limit when under the limit."""
         config = RateLimitConfig(requests=5, window_seconds=60)
         key = "test-key-under"
@@ -121,7 +122,9 @@ class TestInMemoryRateLimiter:
             assert in_memory_rate_limiter.check_rate_limit(key, config) is True
         assert len(in_memory_rate_limiter._request_logs[key]) == 4
 
-    def test_check_rate_limit_at_limit(self, in_memory_rate_limiter: InMemoryRateLimiter):
+    def test_check_rate_limit_at_limit(
+        self, in_memory_rate_limiter: InMemoryRateLimiter
+    ):
         """Test check_rate_limit when reaching the limit."""
         config = RateLimitConfig(requests=5, window_seconds=60)
         key = "test-key-at"
@@ -129,7 +132,9 @@ class TestInMemoryRateLimiter:
             assert in_memory_rate_limiter.check_rate_limit(key, config) is True
         assert len(in_memory_rate_limiter._request_logs[key]) == 5
 
-    def test_check_rate_limit_over_limit(self, in_memory_rate_limiter: InMemoryRateLimiter):
+    def test_check_rate_limit_over_limit(
+        self, in_memory_rate_limiter: InMemoryRateLimiter
+    ):
         """Test check_rate_limit when over the limit."""
         config = RateLimitConfig(requests=5, window_seconds=60, block_seconds=300)
         key = "test-key-over"
@@ -140,7 +145,9 @@ class TestInMemoryRateLimiter:
         # Check the internal state used for blocking
         assert key in in_memory_rate_limiter._blocked_until
 
-    def test_check_rate_limit_blocked_key(self, in_memory_rate_limiter: InMemoryRateLimiter):
+    def test_check_rate_limit_blocked_key(
+        self, in_memory_rate_limiter: InMemoryRateLimiter
+    ):
         """Test check_rate_limit with a blocked key."""
         config = RateLimitConfig(requests=5, window_seconds=60, block_seconds=300)
         key = "test-key-blocked"
@@ -153,7 +160,9 @@ class TestInMemoryRateLimiter:
         """Test resetting limits for a key."""
         key = "test-key-reset"
         in_memory_rate_limiter._request_logs[key] = [time.time()]
-        in_memory_rate_limiter._blocked_until[key] = datetime.now() + timedelta(seconds=300)
+        in_memory_rate_limiter._blocked_until[key] = datetime.now() + timedelta(
+            seconds=300
+        )
         in_memory_rate_limiter.reset_limits(key)
         assert key not in in_memory_rate_limiter._request_logs
         assert key not in in_memory_rate_limiter._blocked_until
@@ -186,7 +195,9 @@ class TestInMemoryRateLimiter:
         assert in_memory_rate_limiter.check_rate_limit(api_key, api_config) is False
 
         for _ in range(3):
-            assert in_memory_rate_limiter.check_rate_limit(auth_key, auth_config) is True
+            assert (
+                in_memory_rate_limiter.check_rate_limit(auth_key, auth_config) is True
+            )
         assert in_memory_rate_limiter.check_rate_limit(auth_key, auth_config) is False
 
 
@@ -202,29 +213,35 @@ class TestRedisRateLimiter:
     # Remove test_init_without_redis as constructor only takes redis_client
     # Remove tests for internal methods (_add_request, _clean_old_requests, etc.)
 
-    def test_check_rate_limit(self, redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock):
+    def test_check_rate_limit(
+        self, redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock
+    ):
         """Test check_rate_limit with Redis (under limit)."""
         config = RateLimitConfig(requests=5, window_seconds=60)
         key = "test-key-redis-check"
         mock_redis.exists.return_value = 0
-        mock_redis.zcard.return_value = 3 # Check zcard is called
+        mock_redis.zcard.return_value = 3  # Check zcard is called
         assert redis_rate_limiter.check_rate_limit(key, config) is True
-        mock_redis.zadd.assert_called_once() # Verify zadd is called
-        mock_redis.zremrangebyscore.assert_called_once() # Verify cleanup is called
-        mock_redis.expire.assert_called_once() # Verify expire is called
+        mock_redis.zadd.assert_called_once()  # Verify zadd is called
+        mock_redis.zremrangebyscore.assert_called_once()  # Verify cleanup is called
+        mock_redis.expire.assert_called_once()  # Verify expire is called
 
-    def test_check_rate_limit_over_limit(self, redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock):
+    def test_check_rate_limit_over_limit(
+        self, redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock
+    ):
         """Test check_rate_limit with Redis when over the limit."""
         config = RateLimitConfig(requests=5, window_seconds=60, block_seconds=300)
         key = "test-key-redis-over"
         mock_redis.exists.return_value = 0
-        mock_redis.zcard.return_value = 6 # Check zcard is called
+        mock_redis.zcard.return_value = 6  # Check zcard is called
         assert redis_rate_limiter.check_rate_limit(key, config) is False
-        mock_redis.setex.assert_called_once() # Verify setex is called for blocking
-        mock_redis.zremrangebyscore.assert_called_once() # Verify cleanup is called
-        mock_redis.zadd.assert_not_called() # zadd should NOT be called if over limit
+        mock_redis.setex.assert_called_once()  # Verify setex is called for blocking
+        mock_redis.zremrangebyscore.assert_called_once()  # Verify cleanup is called
+        mock_redis.zadd.assert_not_called()  # zadd should NOT be called if over limit
 
-    def test_reset_limits(self, redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock):
+    def test_reset_limits(
+        self, redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock
+    ):
         """Test resetting limits for a key in Redis."""
         key = "test-key-redis-reset"
         redis_rate_limiter.reset_limits(key)
@@ -241,46 +258,58 @@ class TestRateLimiterFactory:
     def test_create_in_memory_rate_limiter(self):
         """Test creating an in-memory rate limiter."""
         # Mock get_settings to control the factory's decision
-        with patch("app.infrastructure.security.rate_limiting.rate_limiter_enhanced.get_settings") as mock_get_settings:
+        with patch(
+            "app.infrastructure.security.rate_limiting.rate_limiter_enhanced.get_settings"
+        ) as mock_get_settings:
             mock_settings = MagicMock()
-            mock_settings.USE_REDIS_RATE_LIMITER = False # Force in-memory
+            mock_settings.USE_REDIS_RATE_LIMITER = False  # Force in-memory
             mock_get_settings.return_value = mock_settings
 
-            rate_limiter = RateLimiterFactory.create_rate_limiter() # No args needed
+            rate_limiter = RateLimiterFactory.create_rate_limiter()  # No args needed
             assert isinstance(rate_limiter, InMemoryRateLimiter)
 
-    @patch("app.infrastructure.security.rate_limiting.rate_limiter_enhanced.redis.Redis")
-    @patch("app.infrastructure.security.rate_limiting.rate_limiter_enhanced.get_settings")
-    def test_create_redis_rate_limiter(self, mock_get_settings: MagicMock, mock_redis_constructor: MagicMock):
+    @patch(
+        "app.infrastructure.security.rate_limiting.rate_limiter_enhanced.redis.Redis"
+    )
+    @patch(
+        "app.infrastructure.security.rate_limiting.rate_limiter_enhanced.get_settings"
+    )
+    def test_create_redis_rate_limiter(
+        self, mock_get_settings: MagicMock, mock_redis_constructor: MagicMock
+    ):
         """Test creating a Redis rate limiter using the factory with explicit type."""
         # Create a mock Redis client
         mock_redis = MagicMock()
-        
+
         # Directly create with the test client - no settings or ping needed
         rate_limiter = RateLimiterFactory.create_rate_limiter(
-            limiter_type="redis", 
-            redis_client=mock_redis
+            limiter_type="redis", redis_client=mock_redis
         )
-        
+
         # Verify we got a Redis rate limiter with our mock client
         assert isinstance(rate_limiter, RedisRateLimiter)
         assert rate_limiter._redis is mock_redis
-        
+
         # The constructor and ping shouldn't be called since we provided the client
         mock_redis_constructor.assert_not_called()
 
     def test_invalid_limiter_type(self):
         """Test fallback when Redis connection fails."""
         # Test the fallback mechanism using an explicit limiter type
-        with patch("app.infrastructure.security.rate_limiting.rate_limiter_enhanced.redis.Redis") as mock_redis_constructor:
+        with patch(
+            "app.infrastructure.security.rate_limiting.rate_limiter_enhanced.redis.Redis"
+        ) as mock_redis_constructor:
             # Setup Redis to fail on ping
             mock_redis_instance = MagicMock()
-            mock_redis_instance.ping.side_effect = redis.exceptions.ConnectionError("Connection failed")
+            mock_redis_instance.ping.side_effect = redis.exceptions.ConnectionError(
+                "Connection failed"
+            )
             mock_redis_constructor.return_value = mock_redis_instance
-            
+
             # Should fall back to InMemoryRateLimiter when Redis connection fails
             rate_limiter = RateLimiterFactory.create_rate_limiter(limiter_type="redis")
             assert isinstance(rate_limiter, InMemoryRateLimiter)
+
 
 @pytest.fixture
 def mock_redis_client():
@@ -291,22 +320,29 @@ def mock_redis_client():
     pipeline_mock = AsyncMock()
     pipeline_mock.incr.return_value = pipeline_mock
     pipeline_mock.expire.return_value = pipeline_mock
-    pipeline_mock.execute.return_value = [1, True] # Example: Simulate INCR returning 1, EXPIRE returning True
-    client.pipeline.return_value.__aenter__.return_value = pipeline_mock # For async with context
+    pipeline_mock.execute.return_value = [
+        1,
+        True,
+    ]  # Example: Simulate INCR returning 1, EXPIRE returning True
+    client.pipeline.return_value.__aenter__.return_value = (
+        pipeline_mock  # For async with context
+    )
     client.ping = AsyncMock(return_value=True)
-    client.exists = AsyncMock(return_value=0) # Default to key not existing
+    client.exists = AsyncMock(return_value=0)  # Default to key not existing
     client.get = AsyncMock(return_value=None)
     client.set = AsyncMock(return_value=True)
     client.zadd = AsyncMock()
     client.zremrangebyscore = AsyncMock()
     client.zcard = AsyncMock(return_value=0)
-    client.pttl = AsyncMock(return_value=-2) # Simulate key does not exist or no expiry
+    client.pttl = AsyncMock(return_value=-2)  # Simulate key does not exist or no expiry
     return client
+
 
 @pytest.fixture
 def redis_rate_limiter(mock_redis: MagicMock):
     """Fixture for creating a RedisRateLimiter instance with mocked client."""
     return RedisRateLimiter(redis_client=mock_redis)
+
 
 @pytest.fixture
 def distributed_rate_limiter(mock_redis_client: AsyncMock) -> RedisRateLimiter:
@@ -314,25 +350,33 @@ def distributed_rate_limiter(mock_redis_client: AsyncMock) -> RedisRateLimiter:
     # Reuse the redis_rate_limiter fixture logic if preferred, or instantiate directly
     return RedisRateLimiter(redis_client=mock_redis_client)
 
+
 @pytest.mark.asyncio
-async def test_redis_limiter_initialization(distributed_rate_limiter: RedisRateLimiter, mock_redis_client: AsyncMock):
+async def test_redis_limiter_initialization(
+    distributed_rate_limiter: RedisRateLimiter, mock_redis_client: AsyncMock
+):
     """Test RedisRateLimiter initialization."""
-    assert distributed_rate_limiter._redis == mock_redis_client # Check private attribute
+    assert (
+        distributed_rate_limiter._redis == mock_redis_client
+    )  # Check private attribute
     # Remove checks for internal .configs attribute
     # assert RateLimitType.DEFAULT in distributed_rate_limiter.configs
     # assert isinstance(distributed_rate_limiter.configs[RateLimitType.DEFAULT], RateLimitConfig)
     mock_redis_client.ping.assert_not_called()
 
+
 @pytest.mark.asyncio
-async def test_check_rate_limit_redis_new_identifier(distributed_rate_limiter: RedisRateLimiter, mock_redis_client: AsyncMock):
+async def test_check_rate_limit_redis_new_identifier(
+    distributed_rate_limiter: RedisRateLimiter, mock_redis_client: AsyncMock
+):
     """Test check_rate_limit for a new identifier using Redis."""
     identifier = "new_user:192.168.1.1"
     # Pass config directly to check_rate_limit
     config = RateLimitConfig(requests=10, window_seconds=60)
 
     # Simulate Redis state for a new identifier
-    mock_redis_client.exists.return_value = 0 # Blocked key doesn't exist
-    mock_redis_client.zcard.return_value = 0 # Counter key is empty or doesn't exist
+    mock_redis_client.exists.return_value = 0  # Blocked key doesn't exist
+    mock_redis_client.zcard.return_value = 0  # Counter key is empty or doesn't exist
 
     # Call the method
     allowed = await distributed_rate_limiter.check_rate_limit(identifier, config)
@@ -341,18 +385,23 @@ async def test_check_rate_limit_redis_new_identifier(distributed_rate_limiter: R
     assert allowed is True
     # Verify Redis calls made within check_rate_limit
     mock_redis_client.exists.assert_called_once_with(f"ratelimit:blocked:{identifier}")
-    mock_redis_client.zremrangebyscore.assert_called_once() # Cleanup called
-    mock_redis_client.zcard.assert_called_once_with(f"ratelimit:counter:{identifier}") # Count checked
-    mock_redis_client.zadd.assert_called_once() # Request added
-    mock_redis_client.expire.assert_called_once() # Expiry set
+    mock_redis_client.zremrangebyscore.assert_called_once()  # Cleanup called
+    mock_redis_client.zcard.assert_called_once_with(
+        f"ratelimit:counter:{identifier}"
+    )  # Count checked
+    mock_redis_client.zadd.assert_called_once()  # Request added
+    mock_redis_client.expire.assert_called_once()  # Expiry set
+
 
 @pytest.mark.asyncio
-async def test_check_rate_limit_redis_existing_identifier_allowed(distributed_rate_limiter: RedisRateLimiter, mock_redis_client: AsyncMock):
+async def test_check_rate_limit_redis_existing_identifier_allowed(
+    distributed_rate_limiter: RedisRateLimiter, mock_redis_client: AsyncMock
+):
     """Test check_rate_limit for an existing identifier that is allowed."""
     identifier = "existing_user:192.168.1.2"
     # Pass config directly
     config = RateLimitConfig(requests=10, window_seconds=60)
-    current_count = config.requests // 2 # Simulate being under the limit
+    current_count = config.requests // 2  # Simulate being under the limit
 
     # Simulate Redis state: not blocked, count is below limit
     mock_redis_client.exists.return_value = 0
@@ -369,13 +418,16 @@ async def test_check_rate_limit_redis_existing_identifier_allowed(distributed_ra
     mock_redis_client.zadd.assert_called_once()
     mock_redis_client.expire.assert_called_once()
 
+
 @pytest.mark.asyncio
-async def test_check_rate_limit_redis_existing_identifier_denied(distributed_rate_limiter: RedisRateLimiter, mock_redis_client: AsyncMock):
+async def test_check_rate_limit_redis_existing_identifier_denied(
+    distributed_rate_limiter: RedisRateLimiter, mock_redis_client: AsyncMock
+):
     """Test check_rate_limit for an existing identifier that is denied (at limit)."""
     identifier = "limited_user:192.168.1.3"
     # Pass config directly, include block_seconds
     config = RateLimitConfig(requests=10, window_seconds=60, block_seconds=300)
-    current_count = config.requests # Simulate being exactly at the limit
+    current_count = config.requests  # Simulate being exactly at the limit
 
     # Simulate Redis state: not blocked, count is at the limit
     mock_redis_client.exists.return_value = 0
@@ -385,15 +437,13 @@ async def test_check_rate_limit_redis_existing_identifier_denied(distributed_rat
     allowed = await distributed_rate_limiter.check_rate_limit(identifier, config)
 
     # Assertions
-    assert allowed is False # Should be denied
+    assert allowed is False  # Should be denied
     mock_redis_client.exists.assert_called_once()
     mock_redis_client.zremrangebyscore.assert_called_once()
     mock_redis_client.zcard.assert_called_once()
-    mock_redis_client.zadd.assert_not_called() # zadd should NOT be called
-    mock_redis_client.setex.assert_called_once_with( # setex should be called to block
-        f"ratelimit:blocked:{identifier}",
-        config.block_seconds,
-        1
+    mock_redis_client.zadd.assert_not_called()  # zadd should NOT be called
+    mock_redis_client.setex.assert_called_once_with(  # setex should be called to block
+        f"ratelimit:blocked:{identifier}", config.block_seconds, 1
     )
 
 
@@ -401,28 +451,40 @@ async def test_check_rate_limit_redis_existing_identifier_denied(distributed_rat
 # The original burst test doesn't map directly, as RedisRateLimiter uses a sliding window.
 # We'll skip explicitly testing 'burst' as a separate concept here, as it's covered by allowing 'requests_per_period'.
 
+
 @pytest.mark.asyncio
-async def test_check_rate_limit_redis_unavailable(distributed_rate_limiter: RedisRateLimiter, mock_redis_client: AsyncMock):
+async def test_check_rate_limit_redis_unavailable(
+    distributed_rate_limiter: RedisRateLimiter, mock_redis_client: AsyncMock
+):
     """Test check_rate_limit when Redis connection fails (simulated)."""
     identifier = "fail_user:192.168.1.5"
     config = RateLimitConfig(requests=10, window_seconds=60)
 
     # Simulate Redis connection error on the first call (e.g., exists)
-    mock_redis_client.exists.side_effect = redis.exceptions.ConnectionError("Redis down")
+    mock_redis_client.exists.side_effect = redis.exceptions.ConnectionError(
+        "Redis down"
+    )
 
     # The implementation should catch RedisError and return True (allow)
     allowed = await distributed_rate_limiter.check_rate_limit(identifier, config)
 
-    assert allowed is True # Fallback: allow request if cache fails
+    assert allowed is True  # Fallback: allow request if cache fails
     # Optionally assert logs captured the warning/error if logging is implemented in the except block
 
+
 @pytest.mark.asyncio
-async def test_check_rate_limit_redis_with_user_id(distributed_rate_limiter: RedisRateLimiter, mock_redis_client: AsyncMock, async_mock_patch):
+async def test_check_rate_limit_redis_with_user_id(
+    distributed_rate_limiter: RedisRateLimiter,
+    mock_redis_client: AsyncMock,
+    async_mock_patch,
+):
     """Test check_rate_limit with a specific user ID using a different limit type."""
     identifier = "ip:192.168.1.6"
     user_id = "user_123"
-    limit_type = RateLimitType.LOGIN # Use a different limit type
-    combined_key = f"{limit_type.value}:{user_id}:{identifier}" # Key used by RedisRateLimiter
+    limit_type = RateLimitType.LOGIN  # Use a different limit type
+    combined_key = (
+        f"{limit_type.value}:{user_id}:{identifier}"  # Key used by RedisRateLimiter
+    )
     config = distributed_rate_limiter.configs[limit_type]
 
     # Simulate Redis returning 0 for count (new identifier/user combo)
@@ -436,7 +498,12 @@ async def test_check_rate_limit_redis_with_user_id(distributed_rate_limiter: Red
     pipeline_mock.zcard.return_value = pipeline_mock
     pipeline_mock.pttl.return_value = pipeline_mock
     # Make execute return a list with the expected results
-    pipeline_mock.execute.return_value = [1, 0, 1, config.period_seconds * 1000] # zadd=1, zrem=0, zcard=1, pttl=period_ms
+    pipeline_mock.execute.return_value = [
+        1,
+        0,
+        1,
+        config.period_seconds * 1000,
+    ]  # zadd=1, zrem=0, zcard=1, pttl=period_ms
     # Configure the pipeline context manager
     mock_redis_client.pipeline.return_value.__aenter__.return_value = pipeline_mock
 
@@ -455,7 +522,9 @@ async def test_check_rate_limit_redis_with_user_id(distributed_rate_limiter: Red
     assert zadd_args[0] == combined_key
 
 
-def test_rate_limit_config_override_redis(redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock):
+def test_rate_limit_config_override_redis(
+    redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock
+):
     """Test overriding default config by passing RateLimitConfig directly."""
     identifier = "special_user:192.168.1.7"
     # Define a specific config for this check
@@ -466,9 +535,7 @@ def test_rate_limit_config_override_redis(redis_rate_limiter: RedisRateLimiter, 
     mock_redis.zcard.return_value = 40
 
     # Check limit using the override config passed directly
-    allowed = redis_rate_limiter.check_rate_limit(
-        identifier, config=override_config
-    )
+    allowed = redis_rate_limiter.check_rate_limit(identifier, config=override_config)
 
     assert allowed is True
     # Verify Redis calls used the override config's window
@@ -480,4 +547,6 @@ def test_rate_limit_config_override_redis(redis_rate_limiter: RedisRateLimiter, 
     mock_redis.expire.assert_called_once()
     expire_call_args = mock_redis.expire.call_args[0]
     assert expire_call_args[0] == f"ratelimit:counter:{identifier}"
-    assert expire_call_args[1] == override_config.window_seconds * 2 # Check expire time
+    assert (
+        expire_call_args[1] == override_config.window_seconds * 2
+    )  # Check expire time

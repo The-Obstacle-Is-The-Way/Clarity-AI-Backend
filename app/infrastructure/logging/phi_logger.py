@@ -11,14 +11,19 @@ import sys
 from typing import Any
 
 # from app.config.settings import get_settings # Legacy import
-from app.core.config.settings import get_settings # Corrected import
+from app.core.config.settings import get_settings  # Corrected import
 
-settings = get_settings() # Restore to original position
+settings = get_settings()  # Restore to original position
 
 # Import directly from consolidated PHI sanitizer implementation
-from app.infrastructure.security.phi import PHISafeLogger, get_sanitized_logger, PHISanitizer
+from app.infrastructure.security.phi import (
+    PHISafeLogger,
+    get_sanitized_logger,
+    PHISanitizer,
+)
 
-from .audit_logger import AuditLogger # Restore to original position
+from .audit_logger import AuditLogger  # Restore to original position
+
 
 class PHILogger:
     """
@@ -39,7 +44,7 @@ class PHILogger:
         self.settings = get_settings()
         # Use the sanitized logger directly
         self.logger = get_sanitized_logger(name)
-        
+
         # Use getattr to safely get the log level with a default if not present
         log_level = getattr(self.settings, "LOG_LEVEL", "INFO")
         self.logger.setLevel(getattr(logging, log_level))

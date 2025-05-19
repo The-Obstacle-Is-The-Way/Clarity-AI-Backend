@@ -113,4 +113,4 @@ class IPatientRepository(ABC):
         Raises:
             RepositoryError: If there was an error searching for patients.
         """
-        pass 
+        pass

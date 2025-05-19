@@ -12,7 +12,7 @@ from uuid import UUID
 
 # Use canonical config path
 # from app.config.settings import get_settings # Legacy import
-from app.core.config.settings import get_settings # Corrected import
+from app.core.config.settings import get_settings  # Corrected import
 from app.domain.interfaces.ml_services import SymptomForecastingService
 from app.infrastructure.ml.symptom_forecasting.ensemble_model import (
     SymptomEnsembleModel,
@@ -132,9 +132,7 @@ class SymptomForecastingServiceImpl(SymptomForecastingService):
             return result
 
         except Exception as e:
-            logger.error(
-                f"Error generating forecast for patient {patient_id}: {e!s}"
-            )
+            logger.error(f"Error generating forecast for patient {patient_id}: {e!s}")
             raise RuntimeError(f"Failed to generate symptom forecast: {e!s}")
 
     async def analyze_symptom_patterns(
@@ -227,9 +225,7 @@ class SymptomForecastingServiceImpl(SymptomForecastingService):
             return result
 
         except Exception as e:
-            logger.error(
-                f"Error detecting anomalies for patient {patient_id}: {e!s}"
-            )
+            logger.error(f"Error detecting anomalies for patient {patient_id}: {e!s}")
             raise RuntimeError(f"Failed to detect symptom anomalies: {e!s}")
 
     def _generate_pattern_summary(

@@ -55,15 +55,17 @@ class MedicationDosage:
     def validate_dosage(self) -> None:
         """
         Validate that the dosage amount and unit are valid.
-        
+
         Raises:
             ValueError: If dosage amount is negative or unit is invalid
         """
         if self.value < 0:
             raise ValueError("Dosage amount cannot be negative")
-            
+
         if self.unit not in DosageUnit:
-            raise ValueError(f"Invalid dosage unit. Must be one of: {', '.join([unit.value for unit in DosageUnit])}")
+            raise ValueError(
+                f"Invalid dosage unit. Must be one of: {', '.join([unit.value for unit in DosageUnit])}"
+            )
 
     @property
     def daily_value(self) -> float:

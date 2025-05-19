@@ -14,7 +14,7 @@ import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout
 
 # Removed unused import for non-existent entity
-# from app.domain.entities.clinical_impression import ClinicalImpression, ImpressionSection 
+# from app.domain.entities.clinical_impression import ClinicalImpression, ImpressionSection
 from app.domain.entities.biometric_rule import (
     AlertPriority,
     BiometricRule,
@@ -75,15 +75,10 @@ class TestClinicalRuleEngine:
             "name": "High Heart Rate Alert",
             "description": "Alert when heart rate exceeds 100 BPM",
             "data_type": "heart_rate",
-            "conditions": [
-                {
-                    "operator": RuleOperator.GREATER_THAN,
-                    "value": 100
-                }
-            ],
+            "conditions": [{"operator": RuleOperator.GREATER_THAN, "value": 100}],
             "logical_operator": LogicalOperator.AND,
             "alert_priority": AlertPriority.MEDIUM,
-            "is_active": True
+            "is_active": True,
         }
 
         # Set up mocks
@@ -96,7 +91,7 @@ class TestClinicalRuleEngine:
             conditions=rule_data["conditions"],
             logical_operator=rule_data["logical_operator"],
             alert_priority=rule_data["alert_priority"],
-            is_active=rule_data["is_active"]
+            is_active=rule_data["is_active"],
         )
         mock_rule_repository.save.return_value = created_rule
 
@@ -127,11 +122,11 @@ class TestClinicalRuleEngine:
                     "data_type": "heart_rate",
                     "operator": RuleOperator.GREATER_THAN,
                     "threshold_value": 100,
-                    "time_window_hours": 1
+                    "time_window_hours": 1,
                 }
             ],
             "logical_operator": LogicalOperator.AND,
-            "alert_priority": AlertPriority.WARNING
+            "alert_priority": AlertPriority.WARNING,
         }
 
     @pytest.fixture
@@ -141,10 +136,10 @@ class TestClinicalRuleEngine:
             data_type="heart_rate",
             operator=RuleOperator.GREATER_THAN,
             threshold_value=100,
-            time_window_hours=1
+            time_window_hours=1,
         )
         return BiometricRule(
-            rule_id=uuid4(), # Add rule_id
+            rule_id=uuid4(),  # Add rule_id
             name="Elevated Heart Rate",
             description="Alert when heart rate is above 100",
             conditions=[condition],
@@ -152,12 +147,18 @@ class TestClinicalRuleEngine:
             alert_priority=AlertPriority.WARNING,
             patient_id=sample_patient_id,
             provider_id=sample_provider_id,
-            is_active=True
+            is_active=True,
         )
 
     @pytest.mark.asyncio
-    async def test_create_rule_from_data(self, engine, mock_rule_repository, # Renamed test for clarity
-                                         sample_rule_data, sample_patient_id, sample_provider_id):
+    async def test_create_rule_from_data(
+        self,
+        engine,
+        mock_rule_repository,  # Renamed test for clarity
+        sample_rule_data,
+        sample_patient_id,
+        sample_provider_id,
+    ):
         """Test that create_rule correctly creates a rule from the provided data."""
         # Setup
         mock_rule_repository.save.return_value = MagicMock()  # Return a mock object
@@ -170,7 +171,7 @@ class TestClinicalRuleEngine:
             logical_operator=sample_rule_data["logical_operator"],
             alert_priority=sample_rule_data["alert_priority"],
             patient_id=sample_patient_id,
-            provider_id=sample_provider_id
+            provider_id=sample_provider_id,
         )
 
         # Verify
@@ -191,8 +192,9 @@ class TestClinicalRuleEngine:
         assert saved_rule.is_active is True
 
     @pytest.mark.asyncio
-    async def test_create_rule_with_invalid_operator(self, engine, sample_rule_data,
-                                                     sample_patient_id, sample_provider_id):
+    async def test_create_rule_with_invalid_operator(
+        self, engine, sample_rule_data, sample_patient_id, sample_provider_id
+    ):
         """Test that create_rule raises ValidationError for invalid operators."""
         # Modify the sample data to have an invalid operator
         sample_rule_data["conditions"][0]["operator"] = "INVALID_OPERATOR"
@@ -206,12 +208,13 @@ class TestClinicalRuleEngine:
                 logical_operator=sample_rule_data["logical_operator"],
                 alert_priority=sample_rule_data["alert_priority"],
                 patient_id=sample_patient_id,
-                provider_id=sample_provider_id
+                provider_id=sample_provider_id,
             )
 
     @pytest.mark.asyncio
-    async def test_create_rule_with_invalid_logical_operator(self, engine, sample_rule_data,
-                                                             sample_patient_id, sample_provider_id):
+    async def test_create_rule_with_invalid_logical_operator(
+        self, engine, sample_rule_data, sample_patient_id, sample_provider_id
+    ):
         """Test that create_rule raises ValidationError for invalid logical operators."""
         # Execute and verify
         with pytest.raises(ValidationError):
@@ -222,12 +225,13 @@ class TestClinicalRuleEngine:
                 logical_operator="INVALID_OPERATOR",
                 alert_priority=sample_rule_data["alert_priority"],
                 patient_id=sample_patient_id,
-                provider_id=sample_provider_id
+                provider_id=sample_provider_id,
             )
 
     @pytest.mark.asyncio
-    async def test_create_rule_with_invalid_priority(self, engine, sample_rule_data,
-                                                     sample_patient_id, sample_provider_id):
+    async def test_create_rule_with_invalid_priority(
+        self, engine, sample_rule_data, sample_patient_id, sample_provider_id
+    ):
         """Test that create_rule raises ValidationError for invalid priorities."""
         # Execute and verify
         with pytest.raises(ValidationError):
@@ -238,16 +242,11 @@ class TestClinicalRuleEngine:
                 logical_operator=sample_rule_data["logical_operator"],
                 alert_priority="INVALID_PRIORITY",
                 patient_id=sample_patient_id,
-                provider_id=sample_provider_id
+                provider_id=sample_provider_id,
             )
 
     @pytest.mark.asyncio
-    async def test_update_rule(
-        self,
-        engine,
-        mock_rule_repository,
-        sample_rule
-    ):
+    async def test_update_rule(self, engine, mock_rule_repository, sample_rule):
         """Test that update_rule correctly updates an existing rule."""
         # Setup
         rule_id = sample_rule.rule_id
@@ -259,7 +258,7 @@ class TestClinicalRuleEngine:
             rule_id=rule_id,
             name="Updated Rule Name",
             description="Updated description",
-            is_active=False
+            is_active=False,
         )
 
         # Verify
@@ -287,23 +286,23 @@ class TestClinicalRuleEngine:
         new_conditions = [
             {
                 "data_type": "heart_rate",
-                "operator": RuleOperator.GREATER_THAN, # Use enum
+                "operator": RuleOperator.GREATER_THAN,  # Use enum
                 "threshold_value": 120,
-                "time_window_hours": 2
+                "time_window_hours": 2,
             },
             {
                 "data_type": "blood_pressure_systolic",
-                "operator": RuleOperator.GREATER_THAN, # Use enum
+                "operator": RuleOperator.GREATER_THAN,  # Use enum
                 "threshold_value": 140,
-                "time_window_hours": 2
-            }
+                "time_window_hours": 2,
+            },
         ]
 
         # Execute
         result = await engine.update_rule(
             rule_id=rule_id,
             conditions=new_conditions,
-            logical_operator=LogicalOperator.OR # Use enum
+            logical_operator=LogicalOperator.OR,  # Use enum
         )
 
         # Verify
@@ -316,9 +315,7 @@ class TestClinicalRuleEngine:
         assert updated_rule.logical_operator == LogicalOperator.OR
 
     @pytest.mark.asyncio
-    async def test_update_nonexistent_rule(
-        self, engine, mock_rule_repository
-    ):
+    async def test_update_nonexistent_rule(self, engine, mock_rule_repository):
         """Test that update_rule raises ValidationError for nonexistent rules."""
         # Setup
         rule_id = uuid4()
@@ -326,25 +323,24 @@ class TestClinicalRuleEngine:
 
         # Execute and verify
         with pytest.raises(ValidationError):
-            await engine.update_rule(
-                rule_id=rule_id,
-                name="Updated Rule Name"
-            )
+            await engine.update_rule(rule_id=rule_id, name="Updated Rule Name")
 
     @pytest.mark.asyncio
-    async def test_create_standard_rules(self, engine, mock_rule_repository,
-                                         sample_provider_id, sample_patient_id):
+    async def test_create_standard_rules(
+        self, engine, mock_rule_repository, sample_provider_id, sample_patient_id
+    ):
         """Test that create_standard_rules creates a set of predefined rules."""
+
         # Setup
         # Make save return the rule passed to it
         async def save_side_effect(rule):
             return rule
+
         mock_rule_repository.save.side_effect = save_side_effect
 
         # Execute
         result = await engine.create_standard_rules(
-            provider_id=sample_provider_id,
-            patient_id=sample_patient_id
+            provider_id=sample_provider_id, patient_id=sample_patient_id
         )
 
         # Verify
@@ -365,12 +361,13 @@ class TestClinicalRuleEngine:
             assert rule.is_active is True
 
     @pytest.mark.asyncio
-    async def test_get_active_rules_for_patient(self, engine, mock_rule_repository,
-                                                sample_patient_id, sample_rule):
+    async def test_get_active_rules_for_patient(
+        self, engine, mock_rule_repository, sample_patient_id, sample_rule
+    ):
         """Test that get_active_rules_for_patient returns all active rules for a patient."""
         # Setup
         patient_specific_rule = sample_rule
-        
+
         # Create a unique ID for the global rule so we can find it later
         global_rule_id = uuid4()
         global_rule = BiometricRule(
@@ -381,14 +378,14 @@ class TestClinicalRuleEngine:
                 RuleCondition(
                     data_type="anxiety_level",
                     operator=RuleOperator.GREATER_THAN,
-                    threshold_value=8
+                    threshold_value=8,
                 )
             ],
             logical_operator=LogicalOperator.AND,
             alert_priority=AlertPriority.URGENT,
             patient_id=None,  # Global rule
             provider_id=uuid4(),
-            is_active=True
+            is_active=True,
         )
 
         mock_rule_repository.get_by_patient_id.return_value = [patient_specific_rule]
@@ -399,11 +396,13 @@ class TestClinicalRuleEngine:
 
         # Verify
         assert len(result) == 2
-        
+
         # Find each rule by ID instead of using 'in' operator
         result_rule_ids = [r.rule_id for r in result]
         assert patient_specific_rule.rule_id in result_rule_ids
         assert global_rule_id in result_rule_ids
-        
-        mock_rule_repository.get_by_patient_id.assert_called_once_with(sample_patient_id)
+
+        mock_rule_repository.get_by_patient_id.assert_called_once_with(
+            sample_patient_id
+        )
         mock_rule_repository.get_all_active.assert_called_once()

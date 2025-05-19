@@ -12,11 +12,14 @@ import asyncio
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout
 
-from app.infrastructure.ml.digital_twin_integration_service import DigitalTwinIntegrationService
+from app.infrastructure.ml.digital_twin_integration_service import (
+    DigitalTwinIntegrationService,
+)
 
 # Mock missing exception classes
 ModelInferenceError = MagicMock()
 ValidationError = MagicMock()
+
 
 @pytest.fixture
 def mock_symptom_forecasting_service():
@@ -24,10 +27,7 @@ def mock_symptom_forecasting_service():
     service = AsyncMock()
     service.forecast_symptoms = AsyncMock()
     service.forecast_symptoms.return_value = {
-        "forecasts": {
-            "anxiety": [5, 4, 3, 4, 5], 
-            "depression": [3, 3, 2, 2, 3]
-        },
+        "forecasts": {"anxiety": [5, 4, 3, 4, 5], "depression": [3, 3, 2, 2, 3]},
         "risk_levels": {
             "anxiety": ["medium", "medium", "low", "medium", "medium"],
             "depression": ["low", "low", "low", "low", "low"],
@@ -46,7 +46,7 @@ def mock_symptom_forecasting_service():
         ],
         "risk_alerts": [],
     }
-    
+
     return service
 
 
@@ -78,7 +78,7 @@ def mock_biometric_correlation_service():
             }
         ],
     }
-    
+
     return service
 
 
@@ -114,7 +114,7 @@ def mock_pharmacogenomics_service():
             }
         ],
     }
-    
+
     return service
 
 
@@ -149,7 +149,7 @@ def mock_recommendation_engine():
             }
         ],
     }
-    
+
     return service
 
 
@@ -207,57 +207,59 @@ def integration_service(
 
 
 @pytest.mark.asyncio
-async def test_generate_comprehensive_patient_insights(integration_service, patient_data):
+async def test_generate_comprehensive_patient_insights(
+    integration_service, patient_data
+):
     """Test generating comprehensive patient insights."""
     patient_id = uuid4()
-    
+
     # Generate insights
     insights = await integration_service.generate_comprehensive_patient_insights(
         patient_id=patient_id, patient_data=patient_data
     )
-    
+
     # Verify all components were called
     integration_service.symptom_forecasting_service.forecast_symptoms.assert_called_once()
     integration_service.biometric_correlation_service.analyze_correlations.assert_called_once()
     integration_service.pharmacogenomics_service.analyze_medication_response.assert_called_once()
     integration_service.recommendation_engine.generate_recommendations.assert_called_once()
-    
+
     # Verify insights structure
     assert "symptom_forecasting" in insights
     assert "biometric_correlation" in insights
     assert "pharmacogenomics" in insights
     assert "integrated_recommendations" in insights
-    
+
     # Verify symptom forecasting data
     forecasting = insights["symptom_forecasting"]
     assert "forecasts" in forecasting
     assert "risk_levels" in forecasting
     assert "confidence_intervals" in forecasting
-    
+
     # Verify biometric correlation data
     correlation = insights["biometric_correlation"]
     assert "key_indicators" in correlation
     assert "lag_correlations" in correlation
     assert "insights" in correlation
-    
+
     # Verify pharmacogenomics data
     pharma = insights["pharmacogenomics"]
     assert "medication_efficacy" in pharma
     assert "side_effect_risks" in pharma
     assert "drug_interactions" in pharma
-    
+
     # Verify recommendations
     recommendations = insights["integrated_recommendations"]
     assert "lifestyle_recommendations" in recommendations
     assert "clinical_recommendations" in recommendations
     assert "monitoring_recommendations" in recommendations
-    
+
     # Verify recommendations are sorted by importance
     lifestyle_recs = recommendations["lifestyle_recommendations"]
     assert len(lifestyle_recs) > 0
     if len(lifestyle_recs) > 1:
         assert lifestyle_recs[0]["importance"] >= lifestyle_recs[1]["importance"]
-    
+
     clinical_recs = recommendations["clinical_recommendations"]
     assert len(clinical_recs) > 0
     if len(clinical_recs) > 1:
@@ -271,10 +273,10 @@ async def test_handle_microservice_failure(integration_service, patient_data):
 
     # Make symptom forecasting service fail
     original_method = integration_service.symptom_forecasting_service.forecast_symptoms
-    
+
     async def failing_forecast(*args, **kwargs):
         raise ModelInferenceError("Test error")
-    
+
     integration_service.symptom_forecasting_service.forecast_symptoms = failing_forecast
 
     try:
@@ -290,7 +292,9 @@ async def test_handle_microservice_failure(integration_service, patient_data):
         assert "integrated_recommendations" in insights
     finally:
         # Restore the original method
-        integration_service.symptom_forecasting_service.forecast_symptoms = original_method
+        integration_service.symptom_forecasting_service.forecast_symptoms = (
+            original_method
+        )
 
 
 @pytest.mark.asyncio
@@ -303,9 +307,7 @@ async def test_sanitize_patient_data(integration_service, patient_data):
     patient_data_with_phi["ssn"] = "123-45-6789"
 
     # Sanitize data
-    sanitized_data = integration_service._sanitize_patient_data(
-        patient_data_with_phi
-    )
+    sanitized_data = integration_service._sanitize_patient_data(patient_data_with_phi)
 
     # Verify that PHI is removed
     assert "name" not in sanitized_data

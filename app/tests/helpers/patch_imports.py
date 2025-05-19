@@ -19,7 +19,7 @@ def patch_imports():
     """
     # Store original import
     original_import = __import__
-    
+
     # Define the patched import function with proper indentation
     def patched_import(name, *args, **kwargs):
         # Skip problematic modules during test collection
@@ -30,11 +30,11 @@ def patch_imports():
             return dummy_module
         # Use the original import for everything else
         return original_import(name, *args, **kwargs)
-    
+
     # Apply the patch before entering context
     builtins_module = __import__("builtins")
     builtins_module.__import__ = patched_import
-    
+
     try:
         # Enter the context
         yield

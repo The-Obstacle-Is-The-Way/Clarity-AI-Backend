@@ -21,10 +21,14 @@ from app.core.services.ml.xgboost.exceptions import (
     PredictionError,
     ServiceConnectionError,
 )
-from app.presentation.api.schemas.xgboost import XGBoostPredictionRequest, XGBoostPredictionResponse
+from app.presentation.api.schemas.xgboost import (
+    XGBoostPredictionRequest,
+    XGBoostPredictionResponse,
+)
 from app.infrastructure.di.container import get_service
 from app.presentation.api.dependencies.auth import get_current_user
 from app.presentation.api.v1.routes.xgboost import router
+
 
 # Mock user for authentication
 class MockUser:
@@ -57,17 +61,17 @@ class MockXGBoostService:
                 "factors": [
                     "previous_suicide_attempt",
                     "severe_depression",
-                    "social_isolation"
+                    "social_isolation",
                 ],
                 "probability": 0.75,
                 "next_steps": [
                     "Immediate safety planning",
                     "Consider hospitalization",
-                    "Increase session frequency"
-                ]
+                    "Increase session frequency",
+                ],
             },
             "timestamp": datetime.now().isoformat(),
-            "model_version": "1.2.3"
+            "model_version": "1.2.3",
         }
 
         # Treatment response prediction
@@ -81,11 +85,11 @@ class MockXGBoostService:
                 "expected_response_time_weeks": 4,
                 "alternative_treatments": [
                     {"name": "bupropion", "expected_response": ResponseLevel.EXCELLENT},
-                    {"name": "cbt", "expected_response": ResponseLevel.GOOD}
-                ]
+                    {"name": "cbt", "expected_response": ResponseLevel.GOOD},
+                ],
             },
             "timestamp": datetime.now().isoformat(),
-            "model_version": "1.1.0"
+            "model_version": "1.1.0",
         }
 
         # Outcome prediction
@@ -100,11 +104,11 @@ class MockXGBoostService:
                 "key_factors": [
                     "treatment_adherence",
                     "social_support",
-                    "sleep_quality"
-                ]
+                    "sleep_quality",
+                ],
             },
             "timestamp": datetime.now().isoformat(),
-            "model_version": "1.0.5"
+            "model_version": "1.0.5",
         }
 
         # Feature importance
@@ -115,9 +119,9 @@ class MockXGBoostService:
                 {"name": "phq9_score", "importance": 0.18},
                 {"name": "social_isolation", "importance": 0.15},
                 {"name": "substance_abuse", "importance": 0.12},
-                {"name": "sleep_quality", "importance": 0.10}
+                {"name": "sleep_quality", "importance": 0.10},
             ],
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         # Digital twin simulation
@@ -132,8 +136,8 @@ class MockXGBoostService:
                     "neurotransmitter_levels": {
                         "serotonin": 0.4,
                         "dopamine": 0.5,
-                        "norepinephrine": 0.6
-                    }
+                        "norepinephrine": 0.6,
+                    },
                 },
                 {
                     "week": 4,
@@ -142,8 +146,8 @@ class MockXGBoostService:
                     "neurotransmitter_levels": {
                         "serotonin": 0.5,
                         "dopamine": 0.55,
-                        "norepinephrine": 0.65
-                    }
+                        "norepinephrine": 0.65,
+                    },
                 },
                 {
                     "week": 8,
@@ -152,12 +156,12 @@ class MockXGBoostService:
                     "neurotransmitter_levels": {
                         "serotonin": 0.6,
                         "dopamine": 0.6,
-                        "norepinephrine": 0.7
-                    }
-                }
+                        "norepinephrine": 0.7,
+                    },
+                },
             ],
             "timestamp": datetime.now().isoformat(),
-            "model_version": "1.0.0"
+            "model_version": "1.0.0",
         }
 
         # Model info
@@ -170,26 +174,32 @@ class MockXGBoostService:
                 "auc": 0.85,
                 "accuracy": 0.82,
                 "sensitivity": 0.78,
-                "specificity": 0.86
+                "specificity": 0.86,
             },
-            "last_updated": datetime.now().isoformat()
+            "last_updated": datetime.now().isoformat(),
         }
 
     def setup_error_responses(self):
         """Set up mock responses for error cases."""
+
         # Configuration and ModelNotFound errors based on risk_type
         def risk_side_effect(patient_id, risk_type, clinical_data, time_frame_days):
-            if risk_type == 'nonexistent':
+            if risk_type == "nonexistent":
                 raise ModelNotFoundError(f"Model type '{risk_type}' not found")
             # Default to configuration error for other risk types
             raise ConfigurationError("Invalid configuration")
+
         self.predict_risk.side_effect = risk_side_effect
-        
+
         # Prediction error
-        self.predict_treatment_response.side_effect = PredictionError("Failed to predict response for treatment 'ssri'")
-        
+        self.predict_treatment_response.side_effect = PredictionError(
+            "Failed to predict response for treatment 'ssri'"
+        )
+
         # Service connection error
-        self.predict_outcome.side_effect = ServiceConnectionError("Failed to connect to prediction service")
+        self.predict_outcome.side_effect = ServiceConnectionError(
+            "Failed to connect to prediction service"
+        )
 
 
 @pytest.fixture
@@ -255,15 +265,12 @@ class TestXGBoostEndpoints:
             "clinical_data": {
                 "phq9_score": 18,
                 "previous_attempts": 1,
-                "social_isolation": True
-            }
+                "social_isolation": True,
+            },
         }
 
         # Make the request
-        response = client.post(
-            "/api/v1/ml/xgboost/risk-prediction",
-            json=request_data
-        )
+        response = client.post("/api/v1/ml/xgboost/risk-prediction", json=request_data)
 
         # Verify response
         assert response.status_code == 200
@@ -286,19 +293,18 @@ class TestXGBoostEndpoints:
             "treatment_details": {
                 "medication": "Escitalopram",
                 "dose": "10mg",
-                "frequency": "daily"
+                "frequency": "daily",
             },
             "clinical_data": {
                 "phq9_score": 18,
                 "gad7_score": 15,
-                "previous_treatments": ["cbt"]
-            }
+                "previous_treatments": ["cbt"],
+            },
         }
 
         # Make the request
         response = client.post(
-            "/api/v1/ml/xgboost/treatment-response",
-            json=request_data
+            "/api/v1/ml/xgboost/treatment-response", json=request_data
         )
 
         # Verify response
@@ -325,21 +331,20 @@ class TestXGBoostEndpoints:
                 "phq9_score": 18,
                 "gad7_score": 15,
                 "sleep_quality": "poor",
-                "social_support": "moderate"
+                "social_support": "moderate",
             },
             "treatment_plan": {
                 "medications": [
                     {"name": "Escitalopram", "dose": "10mg", "frequency": "daily"}
                 ],
                 "therapies": ["cbt"],
-                "expected_adherence": "high"
-            }
+                "expected_adherence": "high",
+            },
         }
 
         # Make the request
         response = client.post(
-            "/api/v1/ml/xgboost/outcome-prediction",
-            json=request_data
+            "/api/v1/ml/xgboost/outcome-prediction", json=request_data
         )
 
         # Verify response
@@ -359,9 +364,7 @@ class TestXGBoostEndpoints:
     def test_feature_importance(self, client, mock_dependencies):
         """Test feature importance endpoint."""
         # Make the request
-        response = client.get(
-            "/api/v1/ml/xgboost/feature-importance/risk"
-        )
+        response = client.get("/api/v1/ml/xgboost/feature-importance/risk")
 
         # Verify response
         assert response.status_code == 200
@@ -385,7 +388,7 @@ class TestXGBoostEndpoints:
                     {"name": "Escitalopram", "dose": "10mg", "frequency": "daily"}
                 ],
                 "therapies": ["cbt"],
-                "expected_adherence": "high"
+                "expected_adherence": "high",
             },
             "baseline_metrics": {
                 "phq9_score": 18,
@@ -393,15 +396,14 @@ class TestXGBoostEndpoints:
                 "neurotransmitter_levels": {
                     "serotonin": 0.4,
                     "dopamine": 0.5,
-                    "norepinephrine": 0.6
-                }
-            }
+                    "norepinephrine": 0.6,
+                },
+            },
         }
 
         # Make the request
         response = client.post(
-            "/api/v1/ml/xgboost/digital-twin-simulation",
-            json=request_data
+            "/api/v1/ml/xgboost/digital-twin-simulation", json=request_data
         )
 
         # Verify response
@@ -421,9 +423,7 @@ class TestXGBoostEndpoints:
     def test_model_info(self, client, mock_dependencies):
         """Test model info endpoint."""
         # Make the request
-        response = client.get(
-            "/api/v1/ml/xgboost/model-info/risk"
-        )
+        response = client.get("/api/v1/ml/xgboost/model-info/risk")
 
         # Verify response
         assert response.status_code == 200
@@ -444,14 +444,11 @@ class TestXGBoostEndpoints:
         request_data = {
             "patient_id": "patient-123",
             "risk_type": "suicide",
-            "clinical_data": {}
+            "clinical_data": {},
         }
 
         # Make the request
-        response = client.post(
-            "/api/v1/ml/xgboost/risk-prediction",
-            json=request_data
-        )
+        response = client.post("/api/v1/ml/xgboost/risk-prediction", json=request_data)
 
         # Verify response
         assert response.status_code == 500
@@ -465,14 +462,11 @@ class TestXGBoostEndpoints:
         request_data = {
             "patient_id": "patient-123",
             "risk_type": "nonexistent",  # This will trigger ModelNotFoundError
-            "clinical_data": {}
+            "clinical_data": {},
         }
 
         # Make the request
-        response = client.post(
-            "/api/v1/ml/xgboost/risk-prediction",
-            json=request_data
-        )
+        response = client.post("/api/v1/ml/xgboost/risk-prediction", json=request_data)
 
         # Verify response
         assert response.status_code == 404
@@ -487,13 +481,12 @@ class TestXGBoostEndpoints:
             "patient_id": "patient-123",
             "treatment_type": "ssri",
             "treatment_details": {"medication": "Escitalopram"},
-            "clinical_data": {}
+            "clinical_data": {},
         }
 
         # Make the request
         response = client.post(
-            "/api/v1/ml/xgboost/treatment-response",
-            json=request_data
+            "/api/v1/ml/xgboost/treatment-response", json=request_data
         )
 
         # Verify response
@@ -509,13 +502,12 @@ class TestXGBoostEndpoints:
             "patient_id": "patient-123",
             "outcome_timeframe": {"weeks": 12},
             "clinical_data": {"phq9_score": 15},
-            "treatment_plan": {}
+            "treatment_plan": {},
         }
 
         # Make the request
         response = client.post(
-            "/api/v1/ml/xgboost/outcome-prediction",
-            json=request_data
+            "/api/v1/ml/xgboost/outcome-prediction", json=request_data
         )
 
         # Verify response
@@ -530,14 +522,11 @@ class TestXGBoostEndpoints:
         request_data = {
             "patient_id": "patient-123",
             # Missing risk_type
-            "clinical_data": {}
+            "clinical_data": {},
         }
 
         # Make the request
-        response = client.post(
-            "/api/v1/ml/xgboost/risk-prediction",
-            json=request_data
-        )
+        response = client.post("/api/v1/ml/xgboost/risk-prediction", json=request_data)
 
         # Verify response
         assert response.status_code == 422  # Unprocessable Entity

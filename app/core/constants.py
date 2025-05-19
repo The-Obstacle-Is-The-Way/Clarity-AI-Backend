@@ -10,7 +10,7 @@ from enum import Enum
 
 class Environment(str, Enum):
     """Application environment types."""
-    
+
     DEVELOPMENT = "development"
     TESTING = "testing"
     STAGING = "staging"
@@ -19,7 +19,7 @@ class Environment(str, Enum):
 
 class LogLevel(Enum):
     """Log level constants for structured logging."""
-    
+
     DEBUG = 10
     INFO = 20
     WARNING = 30
@@ -29,43 +29,43 @@ class LogLevel(Enum):
 
 class CacheNamespace:
     """Cache key namespaces to prevent key collisions."""
-    
+
     # User-related caches
     USER = "user"
     SESSION = "session"
-    
+
     # Rate limiting
     RATE_LIMIT = "rate_limit"
-    
+
     # Feature flags
     FEATURE_FLAGS = "feature_flags"
-    
+
     # Analytics
     ANALYTICS = "analytics"
-    
+
     # Content caching
     CONTENT = "content"
-    
+
     # API caching
     API = "api"
 
 
 class EventType:
     """Analytics event types."""
-    
+
     # User events
     USER_LOGIN = "user.login"
     USER_LOGOUT = "user.logout"
     USER_REGISTER = "user.register"
     USER_UPDATE = "user.update"
-    
+
     # Content events
     CONTENT_VIEW = "content.view"
     CONTENT_SEARCH = "content.search"
-    
+
     # Feature events
     FEATURE_USE = "feature.use"
-    
+
     # API events
     API_REQUEST = "api.request"
     API_ERROR = "api.error"
@@ -73,7 +73,7 @@ class EventType:
 
 class LogCategory:
     """Log message categories for structured logging."""
-    
+
     SECURITY = "security"
     PERFORMANCE = "performance"
     ERROR = "error"
@@ -84,7 +84,7 @@ class LogCategory:
 
 class HeaderName:
     """HTTP header names used by the application."""
-    
+
     REQUEST_ID = "X-Request-ID"
     CORRELATION_ID = "X-Correlation-ID"
     API_KEY = "X-API-Key"
@@ -100,10 +100,10 @@ class HeaderName:
 def get_content_type(file_extension: str) -> str:
     """
     Get the content type for a file extension.
-    
+
     Args:
         file_extension: File extension without the dot
-        
+
     Returns:
         Content type string
     """
@@ -131,5 +131,5 @@ def get_content_type(file_extension: str) -> str:
         "wav": "audio/wav",
         "webp": "image/webp",
     }
-    
+
     return content_types.get(file_extension.lower(), "application/octet-stream")

@@ -11,10 +11,11 @@ from enum import Enum
 class ModelType(Enum):
     """
     Enumeration of supported ML model types in the system.
-    
+
     This enum centralizes all model type definitions to ensure consistency
     across domain, application, and infrastructure layers.
     """
+
     RISK = "risk"
     TREATMENT_RESPONSE = "treatment_response"
     SYMPTOM_PREDICTION = "symptom_prediction"
@@ -24,7 +25,7 @@ class ModelType(Enum):
     PHARMACOGENOMICS = "pharmacogenomics"
     XGBOOST = "xgboost"
     CUSTOM = "custom"
-    
+
     def __str__(self) -> str:
         """String representation of the model type."""
         return self.value

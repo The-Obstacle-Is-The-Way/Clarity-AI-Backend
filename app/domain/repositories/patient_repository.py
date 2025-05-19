@@ -8,7 +8,7 @@ from app.domain.entities.patient import Patient
 
 
 # Rename class to match import in DI container -> Renaming back to PatientRepository
-class PatientRepository(ABC): # Renamed from PatientRepositoryInterface
+class PatientRepository(ABC):  # Renamed from PatientRepositoryInterface
     """Abstract base class defining the patient repository interface."""
 
     @abstractmethod
@@ -41,4 +41,3 @@ class PatientRepository(ABC): # Renamed from PatientRepositoryInterface
     # async def find_by_email(self, email: str) -> Optional[Patient]:
     #     """Find a patient by email address."""
     #     pass
-

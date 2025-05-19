@@ -9,7 +9,10 @@ import asyncio
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout
 
-pytest.skip("Skipping pharmacogenomics model service tests (torch unsupported)", allow_module_level=True)
+pytest.skip(
+    "Skipping pharmacogenomics model service tests (torch unsupported)",
+    allow_module_level=True,
+)
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -24,7 +27,9 @@ from app.domain.entities.pgx import PGXReport  # Correct import path
 from app.domain.utils.datetime_utils import UTC
 
 # Corrected import
-from app.infrastructure.ml.pharmacogenomics.gene_medication_model import GeneMedicationModel
+from app.infrastructure.ml.pharmacogenomics.gene_medication_model import (
+    GeneMedicationModel,
+)
 from app.infrastructure.ml.pharmacogenomics.model_service import PharmacogenomicsService
 
 
@@ -38,33 +43,35 @@ class TestPharmacogenomicsService:
         model = AsyncMock(spec=GeneMedicationModel)
         model.is_initialized = True
         # Corrected return value dictionary structure
-        model.predict_medication_interactions = AsyncMock(return_value={
-            "gene_medication_interactions": [
-                {
-                    "gene": "CYP2D6",
-                    "variant": "*1/*1",
-                    "medication": "fluoxetine",
-                    "interaction_type": "metabolism",
-                    "effect": "normal",
-                    "evidence_level": "high",
-                    "recommendation": "standard_dosing",
+        model.predict_medication_interactions = AsyncMock(
+            return_value={
+                "gene_medication_interactions": [
+                    {
+                        "gene": "CYP2D6",
+                        "variant": "*1/*1",
+                        "medication": "fluoxetine",
+                        "interaction_type": "metabolism",
+                        "effect": "normal",
+                        "evidence_level": "high",
+                        "recommendation": "standard_dosing",
+                    },
+                    {
+                        "gene": "CYP2C19",
+                        "variant": "*1/*2",
+                        "medication": "escitalopram",  # Corrected medication name if intended
+                        "interaction_type": "metabolism",
+                        "effect": "reduced",
+                        "evidence_level": "high",
+                        "recommendation": "dose_reduction",
+                    },
+                ],
+                "metabolizer_status": {
+                    "CYP2D6": "normal",
+                    "CYP2C19": "intermediate",
+                    "CYP1A2": "rapid",
                 },
-                {
-                    "gene": "CYP2C19",
-                    "variant": "*1/*2",
-                    "medication": "escitalopram", # Corrected medication name if intended
-                    "interaction_type": "metabolism",
-                    "effect": "reduced",
-                    "evidence_level": "high",
-                    "recommendation": "dose_reduction",
-                },
-            ],
-            "metabolizer_status": {
-                "CYP2D6": "normal",
-                "CYP2C19": "intermediate",
-                "CYP1A2": "rapid",
-            },
-        })
+            }
+        )
         return model
 
     @pytest.fixture
@@ -73,53 +80,55 @@ class TestPharmacogenomicsService:
         model = AsyncMock(spec=PharmacogenomicsModel)
         model.is_initialized = True
         # Corrected return value dictionary structure
-        model.predict_treatment_response = AsyncMock(return_value={
-            "medication_predictions": {
-                "fluoxetine": {
-                    "efficacy": {
-                        "score": 0.72,
-                        "confidence": 0.85,
-                        "percentile": 75,
-                    },
-                    "side_effects": [
-                        {
-                            "name": "nausea",
-                            "risk": 0.35,
-                            "severity": "mild",
-                            "onset_days": 7,
+        model.predict_treatment_response = AsyncMock(
+            return_value={
+                "medication_predictions": {
+                    "fluoxetine": {
+                        "efficacy": {
+                            "score": 0.72,
+                            "confidence": 0.85,
+                            "percentile": 75,
                         },
-                        {
-                            "name": "insomnia",
-                            "risk": 0.28,
-                            "severity": "mild",
-                            "onset_days": 14,
-                        },
-                    ],
-                },
-                "sertraline": {
-                    "efficacy": {
-                        "score": 0.65,
-                        "confidence": 0.80,
-                        "percentile": 65,
+                        "side_effects": [
+                            {
+                                "name": "nausea",
+                                "risk": 0.35,
+                                "severity": "mild",
+                                "onset_days": 7,
+                            },
+                            {
+                                "name": "insomnia",
+                                "risk": 0.28,
+                                "severity": "mild",
+                                "onset_days": 14,
+                            },
+                        ],
                     },
-                    "side_effects": [
-                        {
-                            "name": "nausea",
-                            "risk": 0.42,
-                            "severity": "moderate",
-                            "onset_days": 5,
-                        }
-                    ],
+                    "sertraline": {
+                        "efficacy": {
+                            "score": 0.65,
+                            "confidence": 0.80,
+                            "percentile": 65,
+                        },
+                        "side_effects": [
+                            {
+                                "name": "nausea",
+                                "risk": 0.42,
+                                "severity": "moderate",
+                                "onset_days": 5,
+                            }
+                        ],
+                    },
                 },
-            },
-            "comparative_analysis": {
-                "highest_efficacy": {"medication": "fluoxetine", "score": 0.72},
-                "lowest_side_effects": {
-                    "medication": "bupropion", # Assuming bupropion might be compared even if not predicted
-                    "highest_risk": 0.25,
+                "comparative_analysis": {
+                    "highest_efficacy": {"medication": "fluoxetine", "score": 0.72},
+                    "lowest_side_effects": {
+                        "medication": "bupropion",  # Assuming bupropion might be compared even if not predicted
+                        "highest_risk": 0.25,
+                    },
                 },
-            },
-        })
+            }
+        )
         return model
 
     @pytest.fixture
@@ -153,15 +162,8 @@ class TestPharmacogenomicsService:
         # Corrected dictionary structure
         return {
             "id": str(uuid4()),
-            "demographics": {
-                "age": 42,
-                "gender": "female",
-                "ethnicity": "caucasian"
-            },
-            "conditions": [
-                "major_depressive_disorder",
-                "generalized_anxiety_disorder"
-            ],
+            "demographics": {"age": 42, "gender": "female", "ethnicity": "caucasian"},
+            "conditions": ["major_depressive_disorder", "generalized_anxiety_disorder"],
             "medication_history": [
                 {
                     "name": "citalopram",
@@ -169,10 +171,7 @@ class TestPharmacogenomicsService:
                     "start_date": "2024-01-15",
                     "end_date": "2024-03-01",
                     "efficacy": "moderate",
-                    "side_effects": [
-                        "nausea",
-                        "insomnia"
-                    ],
+                    "side_effects": ["nausea", "insomnia"],
                     "reason_for_discontinuation": "insufficient_efficacy",
                 }
             ],
@@ -220,14 +219,20 @@ class TestPharmacogenomicsService:
 
         # Verify model arguments
         # Corrected argument access
-        gene_model_call_args = mock_gene_medication_model.predict_medication_interactions.call_args[0]
+        gene_model_call_args = (
+            mock_gene_medication_model.predict_medication_interactions.call_args[0]
+        )
         assert gene_model_call_args[0] == sample_genetic_data
         assert gene_model_call_args[1] == medications
 
-        treatment_model_call_args = mock_treatment_model.predict_treatment_response.call_args[0]
+        treatment_model_call_args = (
+            mock_treatment_model.predict_treatment_response.call_args[0]
+        )
         assert treatment_model_call_args[0] == sample_patient_data
         assert treatment_model_call_args[1] == medications
-        assert "metabolizer_status" in treatment_model_call_args[2] # Status passed as third arg
+        assert (
+            "metabolizer_status" in treatment_model_call_args[2]
+        )  # Status passed as third arg
 
     @pytest.mark.asyncio
     async def test_predict_medication_response_no_genetic_data(
@@ -271,7 +276,8 @@ class TestPharmacogenomicsService:
 
     @pytest.mark.asyncio
     async def test_predict_medication_response_no_medications(
-        self, service, sample_genetic_data, sample_patient_data, sample_patient_id):
+        self, service, sample_genetic_data, sample_patient_data, sample_patient_id
+    ):
         """Test that predict_medication_response handles empty medications list."""
         # Execute/Assert
         with pytest.raises(ValueError) as excinfo:
@@ -298,7 +304,9 @@ class TestPharmacogenomicsService:
         # Setup
         medications = ["fluoxetine", "sertraline"]
         # Corrected side_effect assignment
-        mock_gene_medication_model.predict_medication_interactions.side_effect = Exception("Model error")
+        mock_gene_medication_model.predict_medication_interactions.side_effect = (
+            Exception("Model error")
+        )
 
         # Execute/Assert
         # Expecting RuntimeError or a custom service error
@@ -314,7 +322,7 @@ class TestPharmacogenomicsService:
         assert "prediction failed" in str(excinfo.value).lower()
 
     @patch("app.infrastructure.ml.pharmacogenomics.model_service.log_phi_access")
-    @pytest.mark.asyncio # Add async
+    @pytest.mark.asyncio  # Add async
     async def test_phi_access_logging(
         self,
         mock_log_phi_access,
@@ -343,7 +351,7 @@ class TestPharmacogenomicsService:
         assert log_args[0] == "PharmacogenomicsService.predict_medication_response"
         assert log_args[1] == sample_patient_id
 
-    @pytest.mark.asyncio # Add async
+    @pytest.mark.asyncio  # Add async
     async def test_analyze_medication_interactions(
         self, service, mock_gene_medication_model, sample_genetic_data
     ):
@@ -362,10 +370,10 @@ class TestPharmacogenomicsService:
         assert "metabolizer_status" in result
         mock_gene_medication_model.predict_medication_interactions.assert_called_once()
 
-    @pytest.mark.asyncio # Add async
+    @pytest.mark.asyncio  # Add async
     async def test_analyze_medication_interactions_no_genetic_data(
-        self,
-        service): # Removed unused parameter
+        self, service
+    ):  # Removed unused parameter
         """Test analyze_medication_interactions with no genetic data."""
         # Setup
         medications = ["fluoxetine", "sertraline"]
@@ -379,7 +387,7 @@ class TestPharmacogenomicsService:
 
         assert "genetic data is required" in str(excinfo.value).lower()
 
-    @pytest.mark.asyncio # Add async
+    @pytest.mark.asyncio  # Add async
     async def test_is_model_healthy(
         self, service, mock_gene_medication_model, mock_treatment_model
     ):
@@ -400,24 +408,28 @@ class TestPharmacogenomicsService:
         mock_treatment_model.is_initialized = True
         assert await service.is_model_healthy() is True
 
-    @pytest.mark.asyncio # Add async
+    @pytest.mark.asyncio  # Add async
     async def test_get_model_info(
         self, service, mock_gene_medication_model, mock_treatment_model
     ):
         """Test the get_model_info method."""
         # Setup mock responses
         # Corrected return value structure
-        mock_gene_medication_model.get_model_info = AsyncMock(return_value={
-            "name": "GeneMedicationModel",
-            "version": "1.0.0",
-            "description": "Predicts medication interactions based on genetic variants",
-        })
+        mock_gene_medication_model.get_model_info = AsyncMock(
+            return_value={
+                "name": "GeneMedicationModel",
+                "version": "1.0.0",
+                "description": "Predicts medication interactions based on genetic variants",
+            }
+        )
 
-        mock_treatment_model.get_model_info = AsyncMock(return_value={
-            "name": "PharmacogenomicsModel",
-            "version": "1.0.0",
-            "description": "Predicts treatment response based on genetic and patient data",
-        })
+        mock_treatment_model.get_model_info = AsyncMock(
+            return_value={
+                "name": "PharmacogenomicsModel",
+                "version": "1.0.0",
+                "description": "Predicts treatment response based on genetic and patient data",
+            }
+        )
 
         # Execute
         result = await service.get_model_info()
@@ -440,7 +452,9 @@ class TestPharmacogenomicsService:
     ):
         # Mock the model's predict method
         mock_predict = mocker.patch.object(
-            pharmacogenomics_service.model, "predict_treatment_response", new_callable=AsyncMock
+            pharmacogenomics_service.model,
+            "predict_treatment_response",
+            new_callable=AsyncMock,
         )
         mock_predict.return_value = {
             "medication_recommendations": [
@@ -465,7 +479,11 @@ class TestPharmacogenomicsService:
         mock_patient_service.get_patient_by_id.return_value = test_patient
 
         # Create mock patient data (simplified)
-        patient_data = {"age": 30, "sex": "Female", "genetic_markers": test_report.genetic_markers}
+        patient_data = {
+            "age": 30,
+            "sex": "Female",
+            "genetic_markers": test_report.genetic_markers,
+        }
 
         result = await pharmacogenomics_service.predict_treatment_response(
             test_patient.id, patient_data
@@ -545,7 +563,9 @@ class TestPharmacogenomicsService:
     ):
         # Mock the model's predict_side_effects method
         mock_predict_se = mocker.patch.object(
-            pharmacogenomics_service.model, "predict_side_effects", new_callable=AsyncMock
+            pharmacogenomics_service.model,
+            "predict_side_effects",
+            new_callable=AsyncMock,
         )
         mock_predict_se.return_value = {
             "medication": "fluoxetine",
@@ -567,7 +587,11 @@ class TestPharmacogenomicsService:
         ).get_patient_by_id.return_value = test_patient
 
         # Create mock patient data
-        patient_data = {"age": 30, "sex": "Female", "genetic_markers": test_report.genetic_markers}
+        patient_data = {
+            "age": 30,
+            "sex": "Female",
+            "genetic_markers": test_report.genetic_markers,
+        }
         medication_name = "fluoxetine"
 
         result = await pharmacogenomics_service.predict_side_effects(
@@ -582,8 +606,8 @@ class TestPharmacogenomicsService:
         mock_predict_se.assert_called_once()
         call_args, _ = mock_predict_se.call_args
         assert call_args[0] == test_patient.id
-        assert "genetic_markers" in call_args[1] # Check patient_data arg
-        assert call_args[2] == medication_name # Check medication arg
+        assert "genetic_markers" in call_args[1]  # Check patient_data arg
+        assert call_args[2] == medication_name  # Check medication arg
 
     @pytest.mark.asyncio
     async def test_pharmacogenomics_service_handles_model_execution_error(
@@ -594,7 +618,9 @@ class TestPharmacogenomicsService:
     ):
         # Mock the model's predict method to raise ModelExecutionError
         mock_predict = mocker.patch.object(
-            pharmacogenomics_service.model, "predict_treatment_response", new_callable=AsyncMock
+            pharmacogenomics_service.model,
+            "predict_treatment_response",
+            new_callable=AsyncMock,
         )
         mock_predict.side_effect = ModelExecutionError("Model prediction failed")
 
@@ -636,7 +662,9 @@ class TestPharmacogenomicsService:
         # Provide invalid patient data (e.g., missing genetic_markers for analysis)
         invalid_patient_data = {"age": 30, "sex": "Female"}
 
-        with pytest.raises(ValidationError, match="Patient data must include genetic markers"):
+        with pytest.raises(
+            ValidationError, match="Patient data must include genetic markers"
+        ):
             await pharmacogenomics_service.analyze_gene_medication_interactions(
                 test_patient.id, invalid_patient_data
             )

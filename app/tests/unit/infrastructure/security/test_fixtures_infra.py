@@ -23,11 +23,13 @@ def get_test_key() -> bytes:
     """Return a deterministic encryption key for tests."""
     return TEST_KEY
 
-def get_test_salt() -> bytes: 
-    """Return a deterministic salt for tests."""
-    return TEST_SALT 
 
-def setup_test_environment() -> dict[str, str]: 
+def get_test_salt() -> bytes:
+    """Return a deterministic salt for tests."""
+    return TEST_SALT
+
+
+def setup_test_environment() -> dict[str, str]:
     """
     Setup the test environment with deterministic encryption keys.
 
@@ -42,12 +44,13 @@ def setup_test_environment() -> dict[str, str]:
     }
 
     # Set environment variables
-    for key, value in env_vars.items(): 
+    for key, value in env_vars.items():
         os.environ[key] = value
 
-    return env_vars 
+    return env_vars
 
-def teardown_test_environment(env_vars: dict[str, str]) -> None: 
+
+def teardown_test_environment(env_vars: dict[str, str]) -> None:
     """
     Teardown the test environment, restoring original values.
 
@@ -55,18 +58,19 @@ def teardown_test_environment(env_vars: dict[str, str]) -> None:
         env_vars: Dict of environment variables to restore
     """
     # Remove test environment variables
-    for key in env_vars: 
+    for key in env_vars:
         if key in os.environ:
             del os.environ[key]
 
-def get_test_phi_data() -> dict[str, Any]: 
+
+def get_test_phi_data() -> dict[str, Any]:
     """
     Get a test PHI data dictionary with various nested fields.
 
     Returns:
         Dictionary with test PHI data
     """
-    return { 
+    return {
         "patient_id": "PT12345",
         "name": "John Smith",
         "date_of_birth": "1970-01-01",
@@ -82,14 +86,14 @@ def get_test_phi_data() -> dict[str, Any]:
             },
         },
         "medical": {
-            "diagnosis": [ 
+            "diagnosis": [
                 {"code": "F41.1", "description": "Generalized Anxiety Disorder"},
                 {
                     "code": "F32.1",
                     "description": "Major Depressive Disorder, Recurrent",
                 },
             ],
-            "medications": [ 
+            "medications": [
                 {"name": "Sertraline", "dosage": "50mg", "frequency": "Daily"},
                 {"name": "Lorazepam", "dosage": "1mg", "frequency": "As needed"},
             ],
@@ -103,14 +107,14 @@ def get_test_phi_data() -> dict[str, Any]:
     }
 
 
-def get_test_client_data() -> dict[str, Any]: 
+def get_test_client_data() -> dict[str, Any]:
     """
     Get test client metadata that should not contain PHI.
 
     Returns:
         Dictionary with test client data
     """
-    return { 
+    return {
         "client_id": "CL67890",
         "source_system": "Electronic Health Record",
         "access_level": "provider",
@@ -121,7 +125,7 @@ def get_test_client_data() -> dict[str, Any]:
     }
 
 
-def generate_test_key_pair() -> tuple[bytes, bytes]: 
+def generate_test_key_pair() -> tuple[bytes, bytes]:
     """
     Generate a deterministic key pair for testing.
 
@@ -129,9 +133,9 @@ def generate_test_key_pair() -> tuple[bytes, bytes]:
         Tuple of (encryption_key, previous_encryption_key)
     """
     # Generate current key from test bytes (ensure proper Fernet format)
-    current_key = Fernet.generate_key() 
+    current_key = Fernet.generate_key()
 
     # Generate previous key from rotated test bytes (ensure proper Fernet format)
-    previous_key = Fernet.generate_key() 
+    previous_key = Fernet.generate_key()
 
-    return current_key, previous_key 
+    return current_key, previous_key

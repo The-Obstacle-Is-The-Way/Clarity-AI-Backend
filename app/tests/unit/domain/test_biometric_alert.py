@@ -37,16 +37,18 @@ def sample_data_points() -> list[dict[str, Any]]:
             "data_type": "heart_rate",
             "value": 120.0,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "source": "apple_watch"
+            "source": "apple_watch",
         }
     ]
 
 
 @pytest.fixture
-def sample_biometric_alert(sample_patient_id, sample_alert_id, sample_rule_id, sample_data_points) -> BiometricAlert:
+def sample_biometric_alert(
+    sample_patient_id, sample_alert_id, sample_rule_id, sample_data_points
+) -> BiometricAlert:
     """Create a sample biometric alert for testing."""
     now = datetime.now(timezone.utc)
-    
+
     return BiometricAlert(
         patient_id=sample_patient_id,
         alert_id=sample_alert_id,
@@ -57,18 +59,20 @@ def sample_biometric_alert(sample_patient_id, sample_alert_id, sample_rule_id, s
         rule_id=sample_rule_id,
         created_at=now,
         updated_at=now,
-        status=AlertStatus.NEW
+        status=AlertStatus.NEW,
     )
 
 
 class TestBiometricAlert:
     """Tests for the BiometricAlert domain entity."""
-    
-    def test_biometric_alert_creation(self, sample_patient_id, sample_alert_id, sample_rule_id, sample_data_points):
+
+    def test_biometric_alert_creation(
+        self, sample_patient_id, sample_alert_id, sample_rule_id, sample_data_points
+    ):
         """Test that a BiometricAlert can be properly created."""
         # Arrange
         now = datetime.now(timezone.utc)
-        
+
         # Act
         alert = BiometricAlert(
             patient_id=sample_patient_id,
@@ -80,9 +84,9 @@ class TestBiometricAlert:
             rule_id=sample_rule_id,
             created_at=now,
             updated_at=now,
-            status=AlertStatus.NEW
+            status=AlertStatus.NEW,
         )
-        
+
         # Assert
         assert alert.patient_id == sample_patient_id
         assert alert.alert_id == sample_alert_id
@@ -94,31 +98,31 @@ class TestBiometricAlert:
         assert alert.created_at == now
         assert alert.updated_at == now
         assert alert.status == AlertStatus.NEW
-    
+
     def test_biometric_alert_acknowledged(self, sample_biometric_alert):
         """Test that a BiometricAlert can be acknowledged."""
         # Arrange
         provider_id = str(uuid4())
         ack_time = datetime.now(timezone.utc)
-        
+
         # Act
         sample_biometric_alert.acknowledge(provider_id, ack_time)
-        
+
         # Assert
         assert sample_biometric_alert.status == AlertStatus.ACKNOWLEDGED
         assert sample_biometric_alert.acknowledged_by == provider_id
         assert sample_biometric_alert.acknowledged_at == ack_time
-    
+
     def test_biometric_alert_resolved(self, sample_biometric_alert):
         """Test that a BiometricAlert can be resolved."""
         # Arrange
         provider_id = str(uuid4())
         resolution_time = datetime.now(timezone.utc)
         resolution_note = "Issue addressed with patient"
-        
+
         # Act
         sample_biometric_alert.resolve(provider_id, resolution_time, resolution_note)
-        
+
         # Assert
         assert sample_biometric_alert.status == AlertStatus.RESOLVED
         assert sample_biometric_alert.resolved_by == provider_id

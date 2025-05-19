@@ -55,39 +55,36 @@ class JWTTokenService(ITokenService):
         """
         try:
             # Create payload for access token
-            access_token_expires = datetime.now(datetime.UTC) + timedelta(minutes=self.access_token_expire_minutes)
+            access_token_expires = datetime.now(datetime.UTC) + timedelta(
+                minutes=self.access_token_expire_minutes
+            )
             access_token_payload = {
                 "sub": str(user.id),
                 "email": user.email,
                 "role": user.role,
                 "exp": access_token_expires,
-                "type": "access"
+                "type": "access",
             }
 
             # Create payload for refresh token
-            refresh_token_expires = datetime.now(datetime.UTC) + timedelta(days=self.refresh_token_expire_days)
+            refresh_token_expires = datetime.now(datetime.UTC) + timedelta(
+                days=self.refresh_token_expire_days
+            )
             refresh_token_payload = {
                 "sub": str(user.id),
                 "exp": refresh_token_expires,
-                "type": "refresh"
+                "type": "refresh",
             }
 
             # Generate tokens
             access_token = jwt.encode(
-                access_token_payload,
-                self.secret_key,
-                algorithm=self.algorithm
+                access_token_payload, self.secret_key, algorithm=self.algorithm
             )
             refresh_token = jwt.encode(
-                refresh_token_payload,
-                self.secret_key,
-                algorithm=self.algorithm
+                refresh_token_payload, self.secret_key, algorithm=self.algorithm
             )
 
-            return {
-                "access_token": access_token,
-                "refresh_token": refresh_token
-            }
+            return {"access_token": access_token, "refresh_token": refresh_token}
         except Exception as e:
             raise TokenGenerationException(f"Failed to generate tokens: {e!s}")
 
@@ -113,11 +110,11 @@ class JWTTokenService(ITokenService):
 
             # Decode the token
             payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
-            
+
             # Verify token type
             if payload.get("type") != "access":
                 raise InvalidTokenException("Invalid token type")
-                
+
             return payload
         except jwt.ExpiredSignatureError:
             raise TokenExpiredException()
@@ -148,11 +145,11 @@ class JWTTokenService(ITokenService):
 
             # Decode the token
             payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
-            
+
             # Verify token type
             if payload.get("type") != "refresh":
                 raise InvalidTokenException("Invalid token type")
-                
+
             return payload
         except jwt.ExpiredSignatureError:
             raise TokenExpiredException()
@@ -180,10 +177,10 @@ class JWTTokenService(ITokenService):
         """
         # Validate the refresh token
         self.validate_refresh_token(refresh_token)
-        
+
         # Revoke the old refresh token
         self.revoke_token(refresh_token)
-        
+
         # Generate new tokens
         return self.generate_tokens(user)
 
@@ -201,10 +198,10 @@ class JWTTokenService(ITokenService):
             # Decode the token without verification to get the expiration
             payload = jwt.decode(token, options={"verify_signature": False})
             exp_timestamp = payload.get("exp")
-            
+
             if not exp_timestamp:
                 raise InvalidTokenException("Token has no expiration")
-                
+
             # Add token to blacklist
             expiry = datetime.fromtimestamp(exp_timestamp)
             self.token_blacklist_repository.blacklist_token(token, expiry)
@@ -236,12 +233,12 @@ class JWTTokenService(ITokenService):
             TokenBlacklistedException: If token has been blacklisted
         """
         payload = self.validate_access_token(token)
-        
+
         # Extract user information
         user_info = {
             "id": payload.get("sub"),
             "email": payload.get("email"),
-            "role": payload.get("role")
+            "role": payload.get("role"),
         }
-        
-        return user_info 
+
+        return user_info

@@ -42,7 +42,7 @@ class DataAnonymizer:
             def get_encryption_service():
                 test_key = "test_encryption_key_for_anonymizer_default"
                 return EncryptionService(secret_key=test_key)
-            
+
             self.encryption_service = get_encryption_service()
 
         # PHI field patterns for detection
@@ -55,9 +55,7 @@ class DataAnonymizer:
             "name": r"\b([A-Z][a-z]+)\s+([A-Z][a-z]+)\b",
         }
 
-    def anonymize_patient_id(
-        self, patient_id: str, salt: bytes | None = None
-    ) -> str:
+    def anonymize_patient_id(self, patient_id: str, salt: bytes | None = None) -> str:
         """
         Create a consistent anonymized identifier for a patient.
 

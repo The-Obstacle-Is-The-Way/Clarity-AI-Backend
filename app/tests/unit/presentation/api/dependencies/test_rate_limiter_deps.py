@@ -20,15 +20,15 @@ from app.presentation.api.dependencies.rate_limiter_deps import (
 
 class MockRateLimiter(IRateLimiter):
     """Mock implementation of IRateLimiter for testing."""
-    
+
     def __init__(self):
         self.check_rate_limit = MagicMock(return_value=True)
         self.track_request = AsyncMock(return_value=(1, 60))
-    
+
     def check_rate_limit(self, key: str, config: RateLimitConfig) -> bool:
         """Mock implementation."""
         return True
-    
+
     async def track_request(self, key: str, config: RateLimitConfig):
         """Mock implementation."""
         return 1, 60
@@ -47,24 +47,19 @@ def app_with_rate_limited_routes(mock_limiter):
 
     # Create rate limit dependencies with the mock limiter
     basic_rate_limit = RateLimitDependency(
-        requests=10, 
-        window_seconds=60, 
-        limiter=mock_limiter
+        requests=10, window_seconds=60, limiter=mock_limiter
     )
-    
+
     sensitive_limit = RateLimitDependency(
-        requests=5, 
-        window_seconds=60, 
-        block_seconds=300, 
-        scope_key="sensitive", 
-        limiter=mock_limiter
+        requests=5,
+        window_seconds=60,
+        block_seconds=300,
+        scope_key="sensitive",
+        limiter=mock_limiter,
     )
-    
+
     admin_limit = RateLimitDependency(
-        requests=100, 
-        window_seconds=60, 
-        scope_key="admin", 
-        limiter=mock_limiter
+        requests=100, window_seconds=60, scope_key="admin", limiter=mock_limiter
     )
 
     # Define routes with different rate limits
@@ -82,7 +77,9 @@ def app_with_rate_limited_routes(mock_limiter):
 
     # Test route with factory function
     @app.get("/api/factory")
-    async def factory_endpoint(rate_check=Depends(rate_limit(requests=15, window_seconds=30))):
+    async def factory_endpoint(
+        rate_check=Depends(rate_limit(requests=15, window_seconds=30))
+    ):
         return {"message": "factory"}
 
     return app  # Return the FastAPI app directly instead of a TestClient
@@ -93,7 +90,7 @@ async def client(app_with_rate_limited_routes):
     """Create a test client for the FastAPI app."""
     async with AsyncClient(
         transport=ASGITransport(app=app_with_rate_limited_routes),
-        base_url="http://testserver"
+        base_url="http://testserver",
     ) as async_client:
         yield async_client
 
@@ -113,10 +110,7 @@ class TestRateLimitDependency:
 
         # Test with custom values
         custom = RateLimitDependency(
-            requests=5, 
-            window_seconds=30, 
-            block_seconds=600, 
-            scope_key="custom"
+            requests=5, window_seconds=30, block_seconds=600, scope_key="custom"
         )
         assert custom.requests == 5
         assert custom.window_seconds == 30
@@ -188,15 +182,18 @@ class TestRateLimitDependency:
     async def test_call_over_limit(self, mock_limiter):
         """Test the __call__ method when over the rate limit."""
         dependency = RateLimitDependency(
-            limiter=mock_limiter, 
-            window_seconds=60, 
-            error_message="Custom error message"
+            limiter=mock_limiter,
+            window_seconds=60,
+            error_message="Custom error message",
         )
         mock_request = MagicMock(spec=Request)
         mock_request.url.path = "/test/path"
 
         # Configure limiter to return over limit
-        mock_limiter.track_request.return_value = (11, 30)  # 11 requests, 30 seconds left
+        mock_limiter.track_request.return_value = (
+            11,
+            30,
+        )  # 11 requests, 30 seconds left
 
         # Call should raise HTTPException
         with pytest.raises(Exception) as excinfo:
@@ -233,7 +230,10 @@ class TestRateLimitDependencyIntegration:
     async def test_basic_route_blocked(self, client, mock_limiter):
         """Test a basic route that exceeds the rate limit."""
         # Configure limiter to return over limit
-        mock_limiter.track_request.return_value = (11, 30)  # 11 requests, 30 seconds left
+        mock_limiter.track_request.return_value = (
+            11,
+            30,
+        )  # 11 requests, 30 seconds left
 
         # Make request
         response = await client.get("/api/basic")
@@ -251,7 +251,7 @@ class TestRateLimitDependencyIntegration:
         # Get the key used in limiter.track_request
         args, _ = mock_limiter.track_request.call_args
         key = args[0]
-        
+
         # Verify correct scope was used
         assert "sensitive:" in key
 
@@ -263,18 +263,18 @@ class TestRateLimitDependencyIntegration:
 
         # Get the config passed to limiter.track_request
         call_args = mock_limiter.track_request.call_args
-        
+
         # Extract the config parameter (the second positional argument)
         # Handle the fact that AsyncMock stores args differently
         config = None
         if call_args and len(call_args) >= 2:
-            if isinstance(call_args[1], dict) and 'config' in call_args[1]:
+            if isinstance(call_args[1], dict) and "config" in call_args[1]:
                 # It was passed as a keyword argument
-                config = call_args[1]['config']
+                config = call_args[1]["config"]
             elif len(call_args[0]) >= 2:
                 # It was passed as a positional argument
                 config = call_args[0][1]
-        
+
         # Verify higher limits
         assert config is not None
         assert config.requests == 100
@@ -284,10 +284,10 @@ class TestRateLimitDependencyIntegration:
         """Test a route using the factory function."""
         # Configure limiter behavior (even though it may not be used)
         mock_limiter.track_request.return_value = (5, 60)
-        
+
         # Make request
         response = await client.get("/api/factory")
-        
+
         # Since we've injected a rate limit factory, we should expect a successful response
         # rather than focusing on the mock limiter being called
         assert response.status_code == 200
@@ -297,7 +297,9 @@ class TestRateLimitDependencyIntegration:
 @pytest.fixture
 def mock_dependency_class():
     """Create a mock for the dependency class."""
-    with patch('app.presentation.api.dependencies.rate_limiter_deps.RateLimitDependency') as mock:
+    with patch(
+        "app.presentation.api.dependencies.rate_limiter_deps.RateLimitDependency"
+    ) as mock:
         yield mock
 
 
@@ -308,40 +310,40 @@ class TestRateLimitFactoryFunctions:
         """Test the regular rate_limit factory function."""
         # Call the factory with custom parameters
         rate_limit(requests=15, window_seconds=45, block_seconds=400, scope_key="test")
-        
+
         # Verify dependency was created with correct parameters
         mock_dependency_class.assert_called_once_with(
             requests=15,
             window_seconds=45,
             block_seconds=400,
             scope_key="test",
-            error_message="Rate limit exceeded. Please try again later."
+            error_message="Rate limit exceeded. Please try again later.",
         )
 
     def test_sensitive_rate_limit(self, mock_dependency_class):
         """Test the sensitive_rate_limit factory function."""
         # Call the factory with custom parameters
         sensitive_rate_limit(requests=3, window_seconds=30)
-        
+
         # Verify dependency was created with correct parameters
         mock_dependency_class.assert_called_once_with(
             requests=3,
             window_seconds=30,
             block_seconds=600,
             scope_key="sensitive",
-            error_message="Rate limit exceeded for sensitive operation. Please try again later."
+            error_message="Rate limit exceeded for sensitive operation. Please try again later.",
         )
 
     def test_admin_rate_limit(self, mock_dependency_class):
         """Test the admin_rate_limit factory function."""
         # Call the factory with default parameters
         admin_rate_limit()
-        
+
         # Verify dependency was created with correct parameters
         mock_dependency_class.assert_called_once_with(
             requests=100,
             window_seconds=60,
             block_seconds=300,
             scope_key="admin",
-            error_message="Admin rate limit exceeded. Please try again later."
+            error_message="Admin rate limit exceeded. Please try again later.",
         )

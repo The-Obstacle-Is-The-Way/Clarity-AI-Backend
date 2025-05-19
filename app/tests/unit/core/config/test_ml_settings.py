@@ -18,6 +18,7 @@ from app.domain.ml.ml_model import ModelType  # Import located ModelType
 
 # --- Fixtures ---
 
+
 @pytest.fixture
 def sample_ml_config():
     """Create a sample ML configuration dictionary (structure might differ from MLSettings)."""
@@ -25,19 +26,19 @@ def sample_ml_config():
     # has nested structures (MentalLlamaSettings, XGBoostSettings, etc.).
     # Keep for reference but tests should use the new structure from settings.py.
     return {
-        "model_path": "/models/symptom_prediction/", # Now likely MLSettings.models_path
-        "model_type": "ensemble", # No longer directly on MLSettings
-        "framework": "pytorch", # No longer directly on MLSettings
-        "batch_size": 32, # No longer directly on MLSettings (might be per-model)
-        "use_gpu": True, # No longer directly on MLSettings (might be per-model)
-        "precision": "float16", # No longer directly on MLSettings (might be per-model)
-        "quantized": False, # No longer directly on MLSettings (might be per-model)
-        "inference_timeout": 5.0, # No longer directly on MLSettings (might be per-model)
-        "confidence_threshold": 0.75, # No longer directly on MLSettings (might be per-model)
-        "cache_results": True, # No longer directly on MLSettings (might be per-model)
-        "cache_ttl": 3600, # No longer directly on MLSettings (might be per-model)
-        "version": "1.2.3", # No longer directly on MLSettings (might be per-model)
-        "components": { # No longer directly on MLSettings
+        "model_path": "/models/symptom_prediction/",  # Now likely MLSettings.models_path
+        "model_type": "ensemble",  # No longer directly on MLSettings
+        "framework": "pytorch",  # No longer directly on MLSettings
+        "batch_size": 32,  # No longer directly on MLSettings (might be per-model)
+        "use_gpu": True,  # No longer directly on MLSettings (might be per-model)
+        "precision": "float16",  # No longer directly on MLSettings (might be per-model)
+        "quantized": False,  # No longer directly on MLSettings (might be per-model)
+        "inference_timeout": 5.0,  # No longer directly on MLSettings (might be per-model)
+        "confidence_threshold": 0.75,  # No longer directly on MLSettings (might be per-model)
+        "cache_results": True,  # No longer directly on MLSettings (might be per-model)
+        "cache_ttl": 3600,  # No longer directly on MLSettings (might be per-model)
+        "version": "1.2.3",  # No longer directly on MLSettings (might be per-model)
+        "components": {  # No longer directly on MLSettings
             "transformer": {
                 "model_path": "/models/symptom_prediction/transformer/",
                 "num_heads": 8,
@@ -51,6 +52,7 @@ def sample_ml_config():
         },
     }
 
+
 @pytest.fixture
 def ml_settings_instance():
     """Create an MLSettings instance using its default factory."""
@@ -61,6 +63,7 @@ def ml_settings_instance():
 
 
 # --- Test Classes ---
+
 
 class TestMLSettingsStructure:
     """Test the structure and defaults of the new MLSettings model."""
@@ -100,7 +103,9 @@ class TestMLSettingsStructure:
 
     # Add similar tests for PATSettings, LSTMSettings, PHIDetectionSettings defaults
 
+
 # --- Tests for potentially moved functions/enums --- #
+
 
 class TestEnums:
     def test_model_type_enum(self):
@@ -121,6 +126,7 @@ class TestEnums:
         assert ModelType("transformer") == ModelType.TRANSFORMER
         assert ModelType("xgboost") == ModelType.XGBOOST
         assert ModelType("pat") == ModelType.PAT
+
 
 #     def test_framework_enum(self): # Keep commented out
 #         """Test the MLFramework enum (if found)."""

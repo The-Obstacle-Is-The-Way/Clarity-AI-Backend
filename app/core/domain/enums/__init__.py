@@ -1,3 +1,3 @@
 from .gender import Gender
 
-__all__ = ['Gender']
+__all__ = ["Gender"]

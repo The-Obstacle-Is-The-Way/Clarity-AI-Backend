@@ -1,4 +1,3 @@
-
 """
 ML Service Interfaces.
 
@@ -11,30 +10,30 @@ from typing import Any
 
 class BaseMLInterface(ABC):
     """Base interface for all ML services."""
-    
+
     @abstractmethod
     def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the service with configuration.
-        
+
         Args:
             config: Configuration dictionary
-            
+
         Raises:
             InvalidConfigurationError: If configuration is invalid
         """
         pass
-    
+
     @abstractmethod
     def is_healthy(self) -> bool:
         """
         Check if the service is healthy.
-        
+
         Returns:
             True if healthy, False otherwise
         """
         pass
-    
+
     @abstractmethod
     def shutdown(self) -> None:
         """Shutdown the service and release resources."""
@@ -43,41 +42,39 @@ class BaseMLInterface(ABC):
 
 class MentaLLaMAInterface(BaseMLInterface):
     """Interface for MentaLLaMA ML services."""
-    
+
     @abstractmethod
     def process(
-        self, 
+        self,
         text: str,
         model_type: str | None = None,
-        options: dict[str, Any] | None = None
+        options: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Process text using the MentaLLaMA model.
-        
+
         Args:
             text: Text to process
             model_type: Type of model to use
             options: Additional processing options
-            
+
         Returns:
             Processing results
-            
+
         Raises:
             ServiceUnavailableError: If service is not initialized
             InvalidRequestError: If text is empty or invalid
             ModelNotFoundError: If model type is not found
         """
         pass
-    
+
     @abstractmethod
     def detect_depression(
-        self, 
-        text: str,
-        options: dict[str, Any] | None = None
+        self, text: str, options: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
         Detect depression signals in text.
-        
+
         Args:
             text: Text to analyze
         """
@@ -129,7 +126,9 @@ class DigitalTwinInterface(BaseMLInterface):
     """Interface for Digital Twin services."""
 
     @abstractmethod
-    def create_digital_twin(self, patient_id: str, initial_data: dict[str, Any]) -> dict[str, Any]:
+    def create_digital_twin(
+        self, patient_id: str, initial_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Create a new digital twin for a patient.
 
@@ -184,7 +183,9 @@ class DigitalTwinInterface(BaseMLInterface):
         pass
 
     @abstractmethod
-    def interact(self, twin_id: str, query: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+    def interact(
+        self, twin_id: str, query: str, context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Interact with the digital twin, potentially asking questions or running simulations.
 
@@ -202,4 +203,4 @@ class DigitalTwinInterface(BaseMLInterface):
 # ... (all other interface/class definitions remain unchanged)
 
 # Export MLService as a canonical alias for BaseMLInterface for compatibility and clarity
-MLService = BaseMLInterface # Keep this alias for now if other parts rely on it
+MLService = BaseMLInterface  # Keep this alias for now if other parts rely on it

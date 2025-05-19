@@ -54,17 +54,20 @@ logger = logging.getLogger(__name__)
 if __name__ == "__main__":
     # This block runs only when the script is executed directly (e.g., by Uvicorn)
     # Load settings when running as main
-    from app.core.config.settings import get_settings as get_core_settings # Ensure correct get_settings
-    settings = get_core_settings() 
-    
+    from app.core.config.settings import (
+        get_settings as get_core_settings,
+    )  # Ensure correct get_settings
+
+    settings = get_core_settings()
+
     # Create application instance using the factory
     app = create_application(settings_override=settings)
-    
+
     logger.info(
         f"Starting Uvicorn server. Host: {settings.SERVER_HOST}, Port: {settings.SERVER_PORT}, LogLevel: {settings.LOG_LEVEL.lower()}"
     )
     uvicorn.run(
-        "app.main:app", # Point to the app instance within this block
+        "app.main:app",  # Point to the app instance within this block
         host=settings.SERVER_HOST,
         port=settings.SERVER_PORT,
         log_level=settings.LOG_LEVEL.lower(),

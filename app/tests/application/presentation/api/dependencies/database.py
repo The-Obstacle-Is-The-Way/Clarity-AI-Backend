@@ -30,12 +30,17 @@ try:
     from app.core.interfaces.repositories.biometric_alert_repository import (
         IBiometricAlertRepository,
     )
-    from app.core.interfaces.repositories.biometric_rule_repository import IBiometricRuleRepository
+    from app.core.interfaces.repositories.biometric_rule_repository import (
+        IBiometricRuleRepository,
+    )
 except ImportError:
     # If these interfaces don't exist yet, use placeholders for now
     # This allows the app to start while we implement these interfaces
-    logger.warning("Biometric repository interfaces not found, using Any as placeholder")
+    logger.warning(
+        "Biometric repository interfaces not found, using Any as placeholder"
+    )
     from typing import Any
+
     IBiometricAlertRepository = Any
     IBiometricRuleRepository = Any
 
@@ -43,29 +48,39 @@ except ImportError:
 # For biometric alert and rule repositories, we'll use Any as placeholder if they don't exist yet
 from typing import Any
 
-from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
+    SQLAlchemyUserRepository,
+)
 
 # Try to import concrete repository implementations, use placeholders if not found
 try:
-    from app.infrastructure.repositories.biometric_alert_repository import BiometricAlertRepository
+    from app.infrastructure.repositories.biometric_alert_repository import (
+        BiometricAlertRepository,
+    )
 except ImportError:
     logger.warning("BiometricAlertRepository not found, using placeholder")
     BiometricAlertRepository = Any  # type: ignore
 
 try:
-    from app.infrastructure.repositories.biometric_rule_repository import BiometricRuleRepository
+    from app.infrastructure.repositories.biometric_rule_repository import (
+        BiometricRuleRepository,
+    )
 except ImportError:
     logger.warning("BiometricRuleRepository not found, using placeholder")
     BiometricRuleRepository = Any  # type: ignore
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 _repository_map: dict[type[T], type[T]] = {}
 
+
 def register_repository(interface: type[T], implementation: type[T]) -> None:
     global _repository_map
-    logger.debug(f"Registering repository: {interface.__name__} -> {implementation.__name__}")
+    logger.debug(
+        f"Registering repository: {interface.__name__} -> {implementation.__name__}"
+    )
     _repository_map[interface] = implementation
+
 
 # --- Register Concrete Implementations ---
 
@@ -73,6 +88,7 @@ def register_repository(interface: type[T], implementation: type[T]) -> None:
 register_repository(IUserRepository, SQLAlchemyUserRepository)
 register_repository(IBiometricRuleRepository, BiometricRuleRepository)
 register_repository(IBiometricAlertRepository, BiometricAlertRepository)
+
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
@@ -83,9 +99,10 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         try:
             yield session
         except Exception as e:
-             logger.error(f"Exception during DB session yield: {e}", exc_info=True)
-             raise 
+            logger.error(f"Exception during DB session yield: {e}", exc_info=True)
+            raise
         # Session closing/rollback is handled by the context manager in get_session_from_config
+
 
 def get_repository(repo_type: type[T]) -> Callable[[AsyncSession], T]:
     """
@@ -94,13 +111,19 @@ def get_repository(repo_type: type[T]) -> Callable[[AsyncSession], T]:
     The lookup of the implementation is deferred until the dependency is actually called.
     """
     # === DEBUG PRINT ===
-    print(f"---> [DEBUG] Original get_repository called for repo_type: {repo_type.__name__}")
+    print(
+        f"---> [DEBUG] Original get_repository called for repo_type: {repo_type.__name__}"
+    )
     # === END DEBUG PRINT ===
 
     # This inner function will be returned and called by FastAPI's dependency injection
-    def _get_repo_instance_deferred_lookup(session: AsyncSession = Depends(get_db)) -> T:
+    def _get_repo_instance_deferred_lookup(
+        session: AsyncSession = Depends(get_db),
+    ) -> T:
         # === DEBUG PRINT ===
-        print(f"------> [DEBUG] Inner _get_repo_instance_deferred_lookup executing for repo_type: {repo_type.__name__}")
+        print(
+            f"------> [DEBUG] Inner _get_repo_instance_deferred_lookup executing for repo_type: {repo_type.__name__}"
+        )
         # === END DEBUG PRINT ===
 
         # Lookup happens here, when the dependency is resolved for a request
@@ -108,9 +131,13 @@ def get_repository(repo_type: type[T]) -> Callable[[AsyncSession], T]:
             implementation = _repository_map.get(repo_type)
             if implementation is None:
                 # === DEBUG PRINT ===
-                print(f"---------> [DEBUG] FAILURE: No implementation found for {repo_type.__name__} in _repository_map: {_repository_map}")
+                print(
+                    f"---------> [DEBUG] FAILURE: No implementation found for {repo_type.__name__} in _repository_map: {_repository_map}"
+                )
                 # === END DEBUG PRINT ===
-                logger.error(f"Failed to find repository implementation for {repo_type.__name__}")
+                logger.error(
+                    f"Failed to find repository implementation for {repo_type.__name__}"
+                )
                 # Log current map state for debugging
                 logger.debug(f"Current repository map: {_repository_map}")
                 raise NotImplementedError(
@@ -122,11 +149,16 @@ def get_repository(repo_type: type[T]) -> Callable[[AsyncSession], T]:
         try:
             # Instantiate the concrete repository, passing the session
             instance = implementation(db_session=session)
-            logger.debug(f"Successfully instantiated repository {implementation.__name__} for {repo_type.__name__}")
+            logger.debug(
+                f"Successfully instantiated repository {implementation.__name__} for {repo_type.__name__}"
+            )
             return instance
         except Exception as e:
-            logger.error(f"Error instantiating repository {implementation.__name__}: {e}", exc_info=True)
-            raise  
+            logger.error(
+                f"Error instantiating repository {implementation.__name__}: {e}",
+                exc_info=True,
+            )
+            raise
 
     # Return the inner function which performs the deferred lookup and instantiation
     return _get_repo_instance_deferred_lookup
