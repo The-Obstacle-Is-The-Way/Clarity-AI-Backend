@@ -12,14 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from sqlalchemy.orm import declarative_base
 
 from app.core.config.settings import get_settings
-from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session as _get_db_session
 
 logger = logging.getLogger(__name__)
 
 # Create the base class for models
 Base = declarative_base()
 
-# Re-export for backward compatibility
+# Re-export get_db_session from the database config module
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency that yields a SQLAlchemy async session.
@@ -31,7 +30,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         AsyncSession: SQLAlchemy async session for DB operations
     """
     logger.debug("Using get_db from sqlalchemy.session")
-    async for session in _get_db_session():
+    async for session in get_db_session():
         yield session
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -65,4 +64,7 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
         try:
             yield session
         finally:
-            await session.close() 
+            await session.close()
+
+# Export the get_db_session function directly
+__all__ = ["Base", "get_db", "get_db_session"] 

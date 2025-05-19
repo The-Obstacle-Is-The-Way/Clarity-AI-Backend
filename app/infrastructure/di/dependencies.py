@@ -20,65 +20,75 @@ from app.infrastructure.persistence.sqlalchemy.session import get_db_session
 
 logger = logging.getLogger(__name__)
 
-class ServiceFactory:
-    """Factory for creating application services."""
-    
-    def __init__(self):
-        """Initialize the service factory."""
-        self._services = {}
-    
-    async def get_temporal_neurotransmitter_service(self) -> TemporalNeurotransmitterService:
-        """
-        Get or create a TemporalNeurotransmitterService instance.
-        
-        Returns:
-            An initialized TemporalNeurotransmitterService instance
-        """
-        # Use a cache key for the service
-        cache_key = "temporal_neurotransmitter_service"
-        
-        # Return cached instance if available
-        if cache_key in self._services:
-            return self._services[cache_key]
-        
-        # Create new instance
-        # Get a database session
-        db_session = await anext(get_db_session())
-        
-        # Create required repositories
-        sequence_repository = SqlAlchemyTemporalSequenceRepository(session=db_session)
-        event_repository = SqlAlchemyEventRepository(session=db_session)
-        
-        # Create visualization preprocessor
-        visualization_preprocessor = NeurotransmitterVisualizationPreprocessor()
-        
-        # Create XGBoost service if available (using dynamic import to avoid circular imports)
-        xgboost_service = None
-        try:
-            from app.core.services.ml.xgboost.factory import get_xgboost_service
-            xgboost_service = get_xgboost_service()
-        except ImportError:
-            logger.warning("XGBoost service not available, continuing without it")
-        
-        # Create and initialize service
-        service = TemporalNeurotransmitterService(
-            sequence_repository=sequence_repository,
-            event_repository=event_repository,
-            visualization_preprocessor=visualization_preprocessor,
-            xgboost_service=xgboost_service
-        )
-        
-        # Cache the instance
-        self._services[cache_key] = service
-        
-        return service
-
-@lru_cache(maxsize=1)
-def get_service_factory() -> ServiceFactory:
+@lru_cache
+def get_service_factory():
     """
-    Get the service factory singleton.
+    Get a factory for creating service instances.
     
     Returns:
-        The ServiceFactory instance
+        Factory function for creating service instances
     """
-    return ServiceFactory() 
+    return ServiceFactory()
+
+class ServiceFactory:
+    """Factory for creating service instances with proper dependencies."""
+    
+    async def create_temporal_neurotransmitter_service(self) -> TemporalNeurotransmitterService:
+        """
+        Create a TemporalNeurotransmitterService instance with proper dependencies.
+        
+        Returns:
+            Initialized service instance
+        """
+        logger.debug("Creating TemporalNeurotransmitterService")
+        
+        # Create repository instances
+        event_repo = await self._create_event_repository()
+        sequence_repo = await self._create_temporal_sequence_repository()
+        
+        # Create visualization preprocessor
+        neurotransmitter_mapping = create_default_neurotransmitter_mapping()
+        preprocessor = NeurotransmitterVisualizationPreprocessor(neurotransmitter_mapping)
+        
+        # Create and return service instance
+        return TemporalNeurotransmitterService(
+            event_repository=event_repo,
+            sequence_repository=sequence_repo,
+            visualization_preprocessor=preprocessor
+        )
+        
+    async def _create_event_repository(self) -> EventRepository:
+        """
+        Create an EventRepository implementation.
+        
+        Returns:
+            EventRepository instance
+        """
+        logger.debug("Creating EventRepository")
+        
+        # Get database session
+        session = None
+        async for sess in get_db_session():
+            session = sess
+            break
+            
+        # Create repository with session
+        return SqlAlchemyEventRepository(session)
+        
+    async def _create_temporal_sequence_repository(self) -> TemporalSequenceRepository:
+        """
+        Create a TemporalSequenceRepository implementation.
+        
+        Returns:
+            TemporalSequenceRepository instance
+        """
+        logger.debug("Creating TemporalSequenceRepository")
+        
+        # Get database session
+        session = None
+        async for sess in get_db_session():
+            session = sess
+            break
+            
+        # Create repository with session
+        return SqlAlchemyTemporalSequenceRepository(session) 
