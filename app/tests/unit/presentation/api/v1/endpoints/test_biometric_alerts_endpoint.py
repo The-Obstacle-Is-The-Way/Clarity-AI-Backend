@@ -10,7 +10,8 @@ import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, AsyncGenerator, Dict, List, Tuple, TypeVar, Union
-from unittest.mock import AsyncMock, MagicMock, create_autospec, patch, ANY
+from unittest.mock import AsyncMock, MagicMock
+from datetime import datetime, timezone, create_autospec, patch, ANY
 from enum import Enum
 
 import asyncio
@@ -70,7 +71,7 @@ from app.presentation.api.dependencies.biometric_alert import (
     get_rule_repository,
     get_template_repository,
 )
-from app.presentation.api.dependencies.auth import get_current_user, get_jwt_service as get_jwt_service_dependency, get_auth_service as get_auth_service_dependency
+from app.presentation.api.dependencies.auth import get_current_user, get_current_active_user, get_jwt_service as get_jwt_service_dependency, get_auth_service as get_auth_service_dependency
 from app.presentation.api.v1.dependencies.biometric import get_alert_service as get_alert_service_dependency, get_biometric_rule_repository
 from app.infrastructure.di.container import get_container, reset_container, DIContainer
 
@@ -229,6 +230,7 @@ def mock_alert_service() -> MagicMock:
     service.update_alert_status = AsyncMock()
     service.get_patient_alert_summary = AsyncMock(return_value=None)
     service.trigger_alert_manually = AsyncMock()
+    service.trigger_manual_alert = AsyncMock()
     return service
 
 @pytest.fixture
@@ -401,7 +403,9 @@ async def test_app(
     app.dependency_overrides[get_biometric_rule_repository] = lambda: mock_biometric_rule_repository
     app.dependency_overrides[get_template_repository] = lambda: mock_template_repository
     app.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
+    # For tests with authentication, use the mock user
     app.dependency_overrides[get_current_user] = lambda: mock_current_user
+    app.dependency_overrides[get_current_active_user] = lambda: mock_current_user
     
     # Override the rule service dependency in the endpoints
     from app.presentation.api.v1.endpoints.biometric_alert_rules import get_rule_service
@@ -761,7 +765,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         # Skip this test until we fix the authentication issue
-        pytest.skip("Skipping test until authentication issues are fixed")
+        # Authentication issues fixed, continue with test
         headers = get_valid_provider_auth_headers
         non_existent_alert_id = str(uuid.uuid4())
         update_payload = {"status": "acknowledged"}
@@ -830,7 +834,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         # Skip this test until we fix the authentication issue
-        pytest.skip("Skipping test until authentication issues are fixed")
+        # Authentication issues fixed, continue with test
         headers = get_valid_provider_auth_headers
         non_existent_patient_id = str(uuid.uuid4()) 
         response = await client.get(
@@ -873,32 +877,122 @@ class TestBiometricAlertsEndpoints:
 
     @pytest.mark.asyncio
     async def test_update_alert_status_unauthorized(
-        self, client: AsyncClient, sample_patient_id: uuid.UUID # No get_valid_provider_auth_headers here
+        self,
+        test_app: tuple[FastAPI, AsyncClient],
+        sample_patient_id: uuid.UUID # No get_valid_provider_auth_headers here
     ) -> None:
-        pytest.skip("Skipping test as PATCH /alerts/{id}/status route not implemented") # MOVED TO TOP
-        # ... (rest of original test if any)
+        # Route is now implemented, no need to skip
+        # Create a new client without any auth override
+        app, _ = test_app
+        
+        # Create a special override to enforce auth check
+        app.dependency_overrides[get_current_active_user] = None  # Remove override
+        
+        # Reset auth middleware for this test to enforce auth
+        client = AsyncClient(app=app, base_url="http://test")
+        
+        # No auth headers provided - should receive 401
+        alert_id = str(uuid.uuid4())
+        update_payload = {"status": "acknowledged"}
+        response = await client.patch(
+            f"/api/v1/biometric-alerts/{alert_id}/status",
+            json=update_payload
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        
+        # Restore the override after test
+        app.dependency_overrides[get_current_active_user] = lambda: app.dependency_overrides[get_current_user]()
 
     @pytest.mark.asyncio
     async def test_update_alert_status_invalid_payload(
-        self,
-        client: AsyncClient,
-        get_valid_provider_auth_headers: dict[str, str],
-        sample_patient_id: uuid.UUID
+        self, client: AsyncClient, sample_patient_id: uuid.UUID,
+        get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        pytest.skip("Skipping test as PATCH /alerts/{id}/status route not implemented") # MOVED TO TOP
-        # headers = get_valid_provider_auth_headers # Original code was just a skip
-        # ... (rest of original test if any)
+        # Route is now implemented, no need to skip
+        alert_id = str(uuid.uuid4())
+        
+        # Empty payload should be rejected
+        update_payload = {}
+        response = await client.patch(
+            f"/api/v1/biometric-alerts/{alert_id}/status",
+            json=update_payload,
+            headers=get_valid_provider_auth_headers
+        )
+        
+        # Should return 422 Unprocessable Entity for invalid payload
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        
+        # Invalid status value should also be rejected
+        update_payload = {"status": "invalid_status"}
+        response = await client.patch(
+            f"/api/v1/biometric-alerts/{alert_id}/status",
+            json=update_payload,
+            headers=get_valid_provider_auth_headers
+        )
+        
+        # Should return 422 Unprocessable Entity for invalid status value
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.asyncio
-    async def test_trigger_alert_manually_success(
-        self,
-        client: AsyncClient,
-        get_valid_provider_auth_headers: dict[str, str],
+    async def test_trigger_alert_manually(
+        self, 
+        client: AsyncClient, 
         sample_patient_id: uuid.UUID,
+        get_valid_provider_auth_headers: dict[str, str],
+        mock_alert_service: MockAlertService
     ) -> None:
-        pytest.skip("Skipping test as POST /patients/{id}/trigger route not implemented") # MOVED TO TOP
-        # headers = get_valid_provider_auth_headers # Original code was just a skip
-        # ... (rest of original test if any)
+        # Set up the mock to return a created alert
+        mock_alert = Alert(
+            id=uuid.uuid4(),
+            patient_id=sample_patient_id,
+            rule_id=uuid.uuid4(),
+            source_type="manual",
+            status="new",
+            severity="high",
+            message="Manual alert created by test",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+            data={},
+            metadata={}
+        )
+        mock_alert_service.trigger_manual_alert.return_value = mock_alert
+        
+        # Create alert trigger payload
+        trigger_payload = {
+            "severity": "high",
+            "message": "Manual alert created by test",
+            "data": {"key": "value"}
+        }
+        
+        # Make the request
+        response = await client.post(
+            f"/api/v1/patients/{sample_patient_id}/trigger",
+            json=trigger_payload,
+            headers=get_valid_provider_auth_headers
+        )
+        
+        # Should be created successfully
+        assert response.status_code == status.HTTP_201_CREATED
+        
+        # Verify response structure
+        response_data = response.json()
+        assert "id" in response_data
+        assert response_data["patient_id"] == str(sample_patient_id)
+        assert response_data["source_type"] == "manual"
+        assert response_data["severity"] == trigger_payload["severity"]
+        assert response_data["message"] == trigger_payload["message"]
+        
+        # Verify the service was called with correct args
+        mock_alert_service.trigger_manual_alert.assert_called_once_with(
+            patient_id=sample_patient_id,
+            severity=trigger_payload["severity"],
+            message=trigger_payload["message"],
+            data=trigger_payload["data"],
+            created_by=mock_alert_service.trigger_manual_alert.call_args[1]["created_by"]
+        )
+
+    # Removed duplicate test_trigger_alert_manually_success
+    # The test_trigger_alert_manually function already provides comprehensive testing for this functionality
 
     @pytest.mark.asyncio
     async def test_hipaa_compliance_no_phi_in_url_or_errors(
@@ -907,7 +1001,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         # Skip this test until we fix the authentication issue
-        pytest.skip("Skipping test until authentication issues are fixed")
+        # Authentication issues fixed, continue with test
         headers = get_valid_provider_auth_headers
         # Use an invalid UUID format to potentially trigger error messages
         # that should NOT contain the original PHI data
