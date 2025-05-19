@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
-from typing import Optional
+from typing import Optional, List
 
 from app.application.services.patient_service import PatientService
 from app.domain.repositories.patient_repository import PatientRepository
@@ -21,6 +21,8 @@ from app.presentation.api.schemas.patient import (
 )
 from app.core.domain.entities.patient import Patient
 from app.core.domain.entities.user import UserRole, UserStatus
+from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
+from app.presentation.api.v1.endpoints.biometric_alert_rules import get_patient_alert_rules, get_rule_service
 
 # Placeholder dependency - replace with actual service implementation later
 def get_patient_service(
@@ -109,3 +111,27 @@ async def create_patient_endpoint(
 #     if updated_patient is None:
 #         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
 #     return updated_patient
+
+@router.get("/{patient_id}/biometric-alert-rules")
+async def get_patient_biometric_alert_rules(
+    patient_id: UUID = Path(..., description="Patient ID"),
+    current_user: CurrentUserDep = None,
+    rule_service = Depends(get_rule_service)
+):
+    """
+    Get biometric alert rules for a specific patient.
+    
+    This endpoint forwards requests to the biometric alert rules service.
+    
+    Args:
+        patient_id: Patient ID
+        current_user: Authenticated user
+        rule_service: Alert rule service
+        
+    Returns:
+        List of alert rules for the patient
+    """
+    logger.info(f"Forwarding request for patient {patient_id} alert rules")
+    
+    # Forward to the existing implementation
+    return await get_patient_alert_rules(patient_id, current_user, rule_service)
