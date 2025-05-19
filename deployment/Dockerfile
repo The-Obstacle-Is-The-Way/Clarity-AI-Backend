@@ -9,25 +9,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy backend requirements
-COPY backend/requirements.txt ./requirements.txt
-COPY backend/requirements-security.txt ./requirements-security.txt
-COPY backend/requirements-analytics.txt ./requirements-analytics.txt
+# Copy requirements
+COPY requirements.txt ./requirements.txt
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir -r requirements-security.txt
-RUN pip install --no-cache-dir -r requirements-analytics.txt
 
-# Copy backend application code
-COPY backend/ ./backend/
+# Copy application code
+COPY app/ ./app/
 COPY deployment/ ./deployment/
-COPY reports/ ./reports/
-COPY security-reports/ ./security-reports/
 COPY tools/ ./tools/
-
-# Set working directory to backend
-WORKDIR /app/backend
+COPY alembic/ ./alembic/
+COPY alembic.ini ./alembic.ini
+COPY main.py ./main.py
 
 # Run the application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
