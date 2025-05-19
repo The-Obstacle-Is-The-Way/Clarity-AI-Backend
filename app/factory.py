@@ -31,9 +31,9 @@ from app.core.interfaces.services.jwt_service_interface import (
 from app.core.interfaces.services.redis_service_interface import IRedisService
 from app.core.logging_config import LOGGING_CONFIG
 from app.core.security.rate_limiting.limiter import RateLimiter
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.infrastructure.persistence.sqlalchemy.database import (
-    AsyncSession,
-    async_sessionmaker,
+    get_session,
 )
 from app.infrastructure.security.jwt.jwt_service import get_jwt_service
 from app.infrastructure.services.redis.redis_service import (
