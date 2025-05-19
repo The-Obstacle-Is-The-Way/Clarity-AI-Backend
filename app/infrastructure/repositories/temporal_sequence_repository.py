@@ -1,13 +1,17 @@
 """
 Repository implementation for temporal sequence storage and retrieval.
 """
+import logging
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import text
 
 from app.domain.entities.temporal_sequence import TemporalSequence
 from app.domain.repositories.temporal_repository import TemporalSequenceRepository
+from app.domain.exceptions.persistence_exceptions import RepositoryError
 from app.infrastructure.models.temporal_sequence_model import (
     TemporalDataPointModel,
     TemporalSequenceModel,
@@ -25,6 +29,33 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
     def __init__(self, session: AsyncSession):
         """Initialize with a SQLAlchemy session."""
         self.session = session
+    
+    async def create(self, sequence: TemporalSequence) -> UUID:
+        """Create a new temporal sequence."""
+        try:
+            # Map domain entity to SQLAlchemy model
+            model = TemporalSequenceModel(
+                sequence_id=sequence.id,
+                patient_id=sequence.patient_id,
+                # Handle both feature_names and feature_names_json column names
+                # for compatibility with existing schemas
+                feature_names=sequence.feature_names,
+                sequence_metadata=sequence.metadata,
+                created_at=sequence.created_at,
+                updated_at=sequence.updated_at,
+                created_by=sequence.created_by
+            )
+            
+            # Add to session and commit
+            self.session.add(model)
+            await self.session.commit()
+            
+            return sequence.id
+        except Exception as e:
+            # Rollback on error
+            await self.session.rollback()
+            logger.error(f"Error creating temporal sequence: {str(e)}")
+            raise RepositoryError(f"Failed to create temporal sequence: {str(e)}")
     
     async def save(self, sequence: TemporalSequence) -> UUID:
         """

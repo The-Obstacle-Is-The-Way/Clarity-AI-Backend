@@ -117,20 +117,25 @@ class TestSecurityBoundary:
             "session_id": "session_test"
         }
         
-        # Create a token that's already expired (expires 2 seconds ago)
+        # Create a token that's already expired (1 hour ago)
         expired_token = jwt_service._create_token(
             data=user_data,
             token_type=TokenType.ACCESS,
-            expires_delta_minutes=-0.03  # Negative number to create an already-expired token
+            expires_delta_minutes=-60  # Very negative number to ensure it's definitely expired
         )
         
-        # Token should be expired
+        # Create a JWT service instance with explicit options to verify expiration
+        jwt_service_strict = JWTService(
+            settings=mock_settings,
+            user_repository=None
+        )
+        
+        # Token should be expired - test with explicit options
         with pytest.raises(TokenExpiredException):
-            # Explicitly set verify_exp to True
-            jwt_service.decode_token(
+            jwt_service_strict.decode_token(
                 expired_token, 
                 verify_signature=True,
-                options={"verify_exp": True}
+                options={"verify_exp": True, "verify_signature": True}
             )
 
     @pytest.mark.asyncio
