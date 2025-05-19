@@ -552,8 +552,43 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID,
+        test_app: tuple[FastAPI, AsyncClient],
     ) -> None:
-        pytest.skip("Skipping test until AlertRuleService is implemented") # MOVED TO TOP
+        # pytest.skip("Skipping test until AlertRuleService is implemented") # Remove this skip
+        
+        # Setup mock rule service and repository
+        app, _ = test_app
+        
+        # Create a mock for the BiometricAlertRuleService with expected result
+        rule_id = uuid.uuid4()
+        expected_result = {
+            "id": str(rule_id),
+            "name": "Custom Low Oxygen Rule",
+            "description": "Alert when SpO2 drops below 92%",
+            "patient_id": str(sample_patient_id),
+            "priority": "critical",
+            "conditions": [
+                {
+                    "metric_name": "blood_oxygen",
+                    "comparator_operator": "less_than",
+                    "threshold_value": 92.0,
+                    "duration_minutes": 10
+                }
+            ],
+            "logical_operator": "and",
+            "is_active": True,
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat()
+        }
+        
+        rule_service_mock = MagicMock(spec=AlertRuleServiceInterface)
+        rule_service_mock.create_rule = AsyncMock(return_value=expected_result)
+        
+        # Override dependencies
+        from app.presentation.api.v1.endpoints.biometric_alert_rules import get_rule_service
+        app.dependency_overrides[get_rule_service] = lambda: rule_service_mock
+        
+        # Prepare and send request
         headers = get_valid_provider_auth_headers
         payload = {
             "name": "Custom Low Oxygen Rule",
@@ -571,23 +606,88 @@ class TestBiometricAlertsEndpoints:
             "logical_operator": "and",
             "is_active": True
         }
+        
         response = await client.post(
-            "/api/v1/biometric-alerts/rules",
+            "/api/v1/biometric-alert-rules",
             headers=headers,
             json=payload
         )
-        # pytest.skip("Skipping test until AlertRuleService is implemented") # Original position
+        
+        # Debug info if needed
+        if response.status_code != 201:
+            print(f"Response: {response.status_code} - {response.text}")
+        
+        # Verify response
+        assert response.status_code == 201
+        response_data = response.json()
+        assert response_data["name"] == payload["name"]
+        assert response_data["patient_id"] == str(sample_patient_id)
+        assert response_data["priority"] == "critical"
+        
+        # Verify service called with correct data
+        rule_service_mock.create_rule.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_create_alert_rule_validation_error(
         self,
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str],
-        sample_patient_id: uuid.UUID
+        sample_patient_id: uuid.UUID,
+        test_app: tuple[FastAPI, AsyncClient]
     ) -> None:
-        pytest.skip("Skipping test as validation path doesn't exist and relies on AlertRuleService") # MOVED TO TOP
-        # headers = get_valid_provider_auth_headers # Original code was just a skip
-        # ... (rest of original test if any, assumed it was only a skip)
+        # pytest.skip("Skipping test as validation path doesn't exist and relies on AlertRuleService") # Remove this skip
+        
+        # Setup mock rule service that raises a validation error
+        app, _ = test_app
+        
+        rule_service_mock = MagicMock(spec=AlertRuleServiceInterface)
+        # Configure create_rule to raise an ApplicationError with validation error
+        error = ApplicationError(
+            code=ErrorCode.VALIDATION_ERROR,
+            message="Invalid rule data: Conditions must include a valid metric_name"
+        )
+        rule_service_mock.create_rule = AsyncMock(side_effect=error)
+        
+        # Override dependencies
+        from app.presentation.api.v1.endpoints.biometric_alert_rules import get_rule_service
+        app.dependency_overrides[get_rule_service] = lambda: rule_service_mock
+        
+        # Create an invalid payload (missing required metric_name)
+        headers = get_valid_provider_auth_headers
+        invalid_payload = {
+            "name": "Invalid Rule",
+            "description": "This rule has invalid conditions",
+            "patient_id": str(sample_patient_id),
+            "priority": "medium",
+            "conditions": [
+                {
+                    # Missing metric_name
+                    "comparator_operator": "greater_than",
+                    "threshold_value": 100.0
+                }
+            ],
+            "logical_operator": "and",
+            "is_active": True
+        }
+        
+        response = await client.post(
+            "/api/v1/biometric-alert-rules",
+            headers=headers,
+            json=invalid_payload
+        )
+        
+        # Debug info if needed
+        if response.status_code != 400:
+            print(f"Response: {response.status_code} - {response.text}")
+        
+        # Verify response indicates validation error
+        assert response.status_code == 400
+        response_data = response.json()
+        assert "detail" in response_data
+        assert "Invalid rule data" in response_data["detail"]
+        
+        # Verify service was called
+        rule_service_mock.create_rule.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_alert_rule(
@@ -595,15 +695,64 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str], 
         sample_patient_id: uuid.UUID,
+        test_app: tuple[FastAPI, AsyncClient],
     ) -> None:
-        pytest.skip("Skipping test until AlertRuleService is implemented") # MOVED TO TOP
+        # pytest.skip("Skipping test until AlertRuleService is implemented") # Remove this skip
+        
+        # Setup mock rule service and repository
+        app, _ = test_app
+        
+        # Create a mock for the BiometricAlertRuleService with expected result
+        rule_id = uuid.uuid4()
+        expected_result = {
+            "id": str(rule_id),
+            "name": "Sample Heart Rate Rule",
+            "description": "Alert when heart rate exceeds threshold",
+            "patient_id": str(sample_patient_id),
+            "priority": "high",
+            "conditions": [
+                {
+                    "metric_name": "heart_rate",
+                    "comparator_operator": "greater_than",
+                    "threshold_value": 120.0,
+                    "duration_minutes": 5
+                }
+            ],
+            "logical_operator": "and",
+            "is_active": True,
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat()
+        }
+        
+        rule_service_mock = MagicMock(spec=AlertRuleServiceInterface)
+        rule_service_mock.get_rule_by_id = AsyncMock(return_value=expected_result)
+        
+        # Override dependencies
+        from app.presentation.api.v1.endpoints.biometric_alert_rules import get_rule_service
+        app.dependency_overrides[get_rule_service] = lambda: rule_service_mock
+        
+        # Make request to get rule by ID
         headers = get_valid_provider_auth_headers
-        rule_id_str = str(sample_patient_id) # Using sample_patient_id as rule_id for test purposes
+        rule_id_str = str(rule_id)
         response = await client.get(
-            f"/api/v1/biometric-alerts/rules/{rule_id_str}",
+            f"/api/v1/biometric-alert-rules/{rule_id_str}",
             headers=headers
         )
-        # pytest.skip("Skipping test until AlertRuleService is implemented") # Original position
+        
+        # Debug info if needed
+        if response.status_code != 200:
+            print(f"Response: {response.status_code} - {response.text}")
+        
+        # Verify response
+        assert response.status_code == 200
+        response_data = response.json()
+        assert response_data["id"] == rule_id_str
+        assert response_data["name"] == expected_result["name"]
+        assert response_data["patient_id"] == str(sample_patient_id)
+        assert response_data["priority"] == "high"
+        
+        # Verify service was called with the correct ID
+        rule_service_mock.get_rule_by_id.assert_called_once_with(rule_id)
 
     @pytest.mark.asyncio
     async def test_get_alert_rule_not_found(
