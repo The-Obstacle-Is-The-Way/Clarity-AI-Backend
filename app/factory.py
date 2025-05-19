@@ -191,24 +191,12 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
             logger.info("LIFESPAN_REDIS_SKIP: REDIS_URL not set, skipping Redis initialization.")
             fastapi_app.state.redis_service = None
 
-        # --- State-Dependent Middleware Setup (Post-Resource Initialization) ---
+        # --- JWT Service Configuration (But NOT adding middleware) ---
         try:
             # Ensure we have a valid JWT service with proper secret key
             jwt_service: IJWTService = get_jwt_service(current_settings)
             fastapi_app.state.jwt_service = jwt_service  # Store the JWT service in app state
-
-            # Check if auth middleware should be skipped (for testing)
-            skip_auth = getattr(fastapi_app.state, "skip_auth_middleware", False)
-
-            if not skip_auth:
-                fastapi_app.add_middleware(
-                    AuthenticationMiddleware,
-                    jwt_service=jwt_service,
-                    settings=current_settings,
-                )
-                logger.info("AuthenticationMiddleware added.")
-            else:
-                logger.info("AuthenticationMiddleware SKIPPED due to skip_auth_middleware flag.")
+            logger.info("JWT service initialized successfully and stored in app state.")
         except Exception as e:
             logger.error(
                 "LIFESPAN_JWT_INIT_FAILURE: Failed to initialize JWT service: %s",
@@ -297,13 +285,28 @@ def create_application(
 
     # Store authentication middleware flag in app state
     app_instance.state.skip_auth_middleware = skip_auth_middleware
-    if skip_auth_middleware:
-        logger.info("Authentication middleware will be skipped (test mode)")
 
     # Handle JWT service override for testing
     if jwt_service_override:
         app_instance.state.jwt_service = jwt_service_override
         logger.info("Using JWT service override for testing")
+    elif not skip_auth_middleware:
+        # Add AuthenticationMiddleware during app creation
+        # This avoids the middleware timing issue
+        try:
+            jwt_service = get_jwt_service(current_settings)
+            app_instance.add_middleware(
+                AuthenticationMiddleware,
+                jwt_service=jwt_service,
+                settings=current_settings,
+            )
+            logger.info("AuthenticationMiddleware added during app creation.")
+        except Exception as e:
+            logger.error("Failed to add auth middleware: %s", e)
+            if current_settings.ENVIRONMENT != "test":
+                raise RuntimeError(f"Authentication middleware initialization failed: {e}") from e
+    else:
+        logger.info("Authentication middleware will be skipped (test mode)")
 
     # Store Redis middleware flag in app state
     app_instance.state.skip_redis_middleware = skip_redis_middleware
@@ -360,7 +363,7 @@ def create_application(
 
             # Create a rate limiter instance using the Redis service
             rate_limiter = RateLimiter(
-                requests_per_minute=current_settings.RATE_LIMIT_DEFAULT_RPM or 60
+                requests_per_minute=getattr(current_settings, "RATE_LIMIT_DEFAULT_RPM", 60)
             )
 
             # Add rate limiting middleware
