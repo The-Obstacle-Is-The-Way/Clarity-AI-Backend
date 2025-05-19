@@ -773,10 +773,10 @@ class TestBiometricAlertsEndpoints:
         test_app: tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        # Mock alert service to return a tuple with False, error message and HTTP 404 status code
+        # Mock alert service to return False to indicate an alert wasn't found
         alert_service_mock = MagicMock(spec=AlertServiceInterface)
-        # Return (False, "Alert not found", 404) to ensure 404 status code
-        alert_service_mock.update_alert_status = AsyncMock(return_value=(False, "Alert not found", 404))
+        # Return (False, "Alert not found") without status code as the endpoint handles HTTP status
+        alert_service_mock.update_alert_status = AsyncMock(return_value=(False, "Alert not found"))
         alert_service_mock.validate_access = AsyncMock(return_value=True)
         
         # Add missing abstract methods
@@ -793,8 +793,8 @@ class TestBiometricAlertsEndpoints:
         headers = get_valid_provider_auth_headers
         non_existent_alert_id = str(uuid.uuid4())
         
-        # Correctly format the payload according to the AlertUpdateRequest schema
-        update_payload = {"update_request": {"status": "acknowledged", "resolution_notes": ""}}
+        # Send payload directly as the endpoint expects (not wrapped in an update_request object)
+        update_payload = {"status": "acknowledged", "resolution_notes": ""}
         
         response = await client.patch(
             f"/api/v1/biometric-alerts/{non_existent_alert_id}/status",
