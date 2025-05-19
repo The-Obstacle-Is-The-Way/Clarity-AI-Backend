@@ -226,37 +226,43 @@ async def client(
 
         app_instance.dependency_overrides[get_current_user] = lambda: mock_user
 
-        # Create a custom client class that adds the required query parameters
-        class TestClientWithQueryParams(AsyncClient):
-            async def post(self, url, **kwargs):
-                # Add query parameters needed for tests
-                if "params" not in kwargs:
-                    kwargs["params"] = {}
-
-                # Add required query params to fix validation errors
-                if "kwargs" not in kwargs["params"]:
-                    kwargs["params"]["kwargs"] = "test"
-
-                # Add auth headers if not present
-                if "headers" not in kwargs:
-                    kwargs["headers"] = auth_headers
-
-                return await super().post(url, **kwargs)
-
-            async def get(self, url, **kwargs):
-                # Add auth headers if not present
-                if "headers" not in kwargs:
-                    kwargs["headers"] = auth_headers
-
-                return await super().get(url, **kwargs)
-
-        # Use the custom client with the app
-        async with TestClientWithQueryParams(
-            app=app_instance,
-            base_url="http://testserver",
-            transport=ASGITransport(app=app_instance),  # Use ASGITransport explicitly
+        # Create a test client using the ASGI transport for httpx 0.28.1
+        transport = ASGITransport(app=app_instance)
+        
+        # Use a standard AsyncClient with the transport
+        async with AsyncClient(
+            transport=transport,
+            base_url="http://testserver"
         ) as async_client:
-            yield async_client
+            # Create a wrapper with the custom behavior
+            class ClientWrapper:
+                def __init__(self, client):
+                    self.client = client
+                
+                async def post(self, url, **kwargs):
+                    # Add query parameters needed for tests
+                    if "params" not in kwargs:
+                        kwargs["params"] = {}
+
+                    # Add required query params to fix validation errors
+                    if "kwargs" not in kwargs["params"]:
+                        kwargs["params"]["kwargs"] = "test"
+
+                    # Add auth headers if not present
+                    if "headers" not in kwargs:
+                        kwargs["headers"] = auth_headers
+
+                    return await self.client.post(url, **kwargs)
+
+                async def get(self, url, **kwargs):
+                    # Add auth headers if not present
+                    if "headers" not in kwargs:
+                        kwargs["headers"] = auth_headers
+
+                    return await self.client.get(url, **kwargs)
+            
+            # Yield the wrapped client
+            yield ClientWrapper(async_client)
 
         # Clear overrides after test
         app_instance.dependency_overrides.clear()
