@@ -272,10 +272,9 @@ def test_jwt_token(test_user):
         "id": test_user["id"],
         "role": test_user["role"],
         "permissions": test_user["permissions"],
-# Fix JWT encoding with SecretStr - around line 277
-# Convert JWT_SECRET_KEY to string before using it
-return jwt.encode(data, str(settings.JWT_SECRET_KEY), algorithm="HS256")
-
+    }
+    # Convert JWT_SECRET_KEY to string before using it
+    return jwt.encode(data, str(settings.JWT_SECRET_KEY), algorithm="HS256")
 
 
 @pytest.fixture
