@@ -10,7 +10,6 @@ All other implementations should be considered deprecated.
 
 import logging
 import uuid
-from typing import Optional, Union, Any, Callable
 
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -38,7 +37,11 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
     interface for domain entities while abstracting the persistence details.
     """
 
-    def __init__(self, session_factory: Optional[async_sessionmaker] = None, db_session: Optional[AsyncSession] = None):
+    def __init__(
+        self,
+        session_factory: async_sessionmaker | None = None,
+        db_session: AsyncSession | None = None,
+    ):
         """
         Initialize the UserRepository with a SQLAlchemy session factory or session.
 
@@ -479,7 +482,10 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
         """
         return UserMapper.to_persistence(user)
 
-def get_user_repository(session_factory: Optional[async_sessionmaker] = None, db_session: Optional[AsyncSession] = None) -> SQLAlchemyUserRepository:
+
+def get_user_repository(
+    session_factory: async_sessionmaker | None = None, db_session: AsyncSession | None = None
+) -> SQLAlchemyUserRepository:
     """
     Factory function to create a properly configured SQLAlchemyUserRepository.
 

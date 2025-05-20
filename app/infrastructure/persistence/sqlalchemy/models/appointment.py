@@ -10,14 +10,18 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    UUID as SQLAlchemyUUID,
+)
+from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
-    Enum as SQLAlchemyEnum,
     ForeignKey,
     String,
     Text,
-    UUID as SQLAlchemyUUID,
+)
+from sqlalchemy import (
+    Enum as SQLAlchemyEnum,
 )
 from sqlalchemy.orm import relationship
 

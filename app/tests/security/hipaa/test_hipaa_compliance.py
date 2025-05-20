@@ -127,7 +127,7 @@ except ImportError as e:
     def decode_token(token):
         # For invalid token test
         if token == "invalid.token.format":
-            raise jwt.JWTError("Invalid token format")
+            raise jwt.JWTError("Invalid token format")  # type: ignore
 
         # For expired token test - check if this specific token structure exists
         try:
@@ -272,9 +272,9 @@ def test_jwt_token(test_user):
         "id": test_user["id"],
         "role": test_user["role"],
         "permissions": test_user["permissions"],
-        "exp": datetime.now(UTC) + expires_delta,
     }
-    return jwt.encode(data, settings.JWT_SECRET_KEY, algorithm="HS256")
+    # Convert JWT_SECRET_KEY to string before using it
+    return jwt.encode(data, str(settings.JWT_SECRET_KEY), algorithm="HS256")
 
 
 @pytest.fixture

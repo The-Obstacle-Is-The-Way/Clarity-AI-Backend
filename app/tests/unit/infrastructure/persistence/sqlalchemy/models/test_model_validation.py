@@ -32,6 +32,8 @@ class TestUserModelValidation:
             "id": str(uuid.uuid4()),
             "username": "test_user",
             "email": "test@example.com",
+            "first_name": "Test",
+            "last_name": "User",
             "roles": ["admin"],
             "is_active": True,
         }

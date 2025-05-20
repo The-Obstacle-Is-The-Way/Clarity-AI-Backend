@@ -1,234 +1,153 @@
 """
-Audit Logger Interface.
+Interface for Audit Logger classes.
 
-This module defines the interface for audit logging services in compliance with HIPAA requirements.
-Following the Interface Segregation Principle from SOLID and Clean Architecture patterns,
-this interface decouples the audit logging contract from its implementations.
+This module defines the interface for audit logging services that record security,
+access, and system events for compliance with HIPAA and other regulatory requirements.
 """
-
 from abc import ABC, abstractmethod
-from datetime import datetime
-from enum import Enum
 from typing import Any
 
+from app.core.constants.audit import AuditEventType, AuditSeverity
 
-class AuditEventType(str, Enum):
-    """Types of auditable events in the system."""
-
-    # Authentication events
-    LOGIN = "login"
-    LOGOUT = "logout"
-    LOGIN_FAILED = "login_failed"
-    PASSWORD_CHANGED = "password_changed"
-    PASSWORD_RESET = "password_reset"
-    MFA_ENABLED = "mfa_enabled"
-    MFA_DISABLED = "mfa_disabled"
-
-    # Authorization events
-    ACCESS_DENIED = "access_denied"
-    PERMISSION_CHANGED = "permission_changed"
-    ROLE_ASSIGNED = "role_assigned"
-    ROLE_REVOKED = "role_revoked"
-
-    # Data access events
-    PHI_ACCESSED = "phi_accessed"
-    PHI_MODIFIED = "phi_modified"
-    PHI_DELETED = "phi_deleted"
-    PHI_EXPORTED = "phi_exported"
-
-    # System events
-    SYSTEM_STARTUP = "system_startup"
-    SYSTEM_SHUTDOWN = "system_shutdown"
-    CONFIGURATION_CHANGED = "configuration_changed"
-
-    # User management
-    USER_CREATED = "user_created"
-    USER_MODIFIED = "user_modified"
-    USER_DEACTIVATED = "user_deactivated"
-
-    # API events
-    API_REQUEST = "api_request"
-    API_RESPONSE = "api_response"
-
-    # ML model events
-    MODEL_INFERENCE = "model_inference"
-    MODEL_TRAINED = "model_trained"
-    MODEL_DEPLOYED = "model_deployed"
-
-    # Security events
-    SECURITY_EVENT = "security_event"
-    ANOMALY_DETECTED = "anomaly_detected"
-
-    # Fallback for other events
-    OTHER = "other"
-
-
-class AuditSeverity(str, Enum):
-    """Severity level of audit events."""
-
-    CRITICAL = "critical"
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
-    INFO = "info"
+# Export these constants for use by implementations
+__all__ = ["AuditEventType", "AuditSeverity", "IAuditLogger"]
 
 
 class IAuditLogger(ABC):
-    """Interface for audit logging services.
+    """
+    Interface for audit logging services.
 
-    This interface defines the contract that all audit logging implementations
-    must fulfill to ensure HIPAA compliance and proper security tracking.
+    Implementations of this interface should handle the logging of security,
+    access, and system events in a manner that complies with HIPAA and other
+    regulatory requirements.
     """
 
     @abstractmethod
-    async def log_event(
+    def log_security_event(
         self,
-        event_type: AuditEventType,
+        event_type: str,
+        description: str = None,
+        user_id: str | None = None,
         actor_id: str | None = None,
-        target_resource: str | None = None,
-        target_id: str | None = None,
-        action: str | None = None,
-        status: str | None = None,
-        details: dict[str, Any] | None = None,
         severity: AuditSeverity = AuditSeverity.INFO,
-        metadata: dict[str, Any] | None = None,
-        timestamp: datetime | None = None,
-        request: Any | None = None,
-    ) -> str:
-        """Log an audit event in the system.
-
-        Args:
-            event_type: Type of audit event
-            actor_id: ID of the user/system performing the action
-            target_resource: Type of resource being acted upon (e.g., "patient")
-            target_id: ID of the specific resource instance
-            action: Specific action taken (e.g., "view", "update")
-            status: Result status of the action (e.g., "success", "failure")
-            details: Additional details about the event
-            severity: Severity level of the event
-            metadata: Additional metadata for the event
-            timestamp: When the event occurred (defaults to now if None)
-            request: Optional request object for extracting context information
-
-        Returns:
-            str: Unique identifier for the audit log entry
-        """
-        pass
-
-    @abstractmethod
-    async def log_security_event(
-        self,
-        description: str,
-        actor_id: str | None = None,
+        details: str | None = None,
         status: str | None = None,
-        severity: AuditSeverity = AuditSeverity.HIGH,
-        details: dict[str, Any] | None = None,
-        request: Any | None = None,
-    ) -> str:
-        """Log a security-related event.
-
-        Convenience method for security events like authentication failures.
+        metadata: dict[str, Any] | None = None,
+        ip_address: str | None = None,
+    ) -> None:
+        """
+        Log a security-related event.
 
         Args:
-            description: Description of the security event
-            actor_id: ID of the user/system involved
-            status: Status of the security event
+            event_type: Type of security event (e.g., "LOGIN_SUCCESS", "ACCESS_DENIED")
+            description: Human-readable description of the event
+            user_id: ID of the user associated with the event (if applicable)
+            actor_id: Alternative identifier for the actor causing the event (alias for user_id)
             severity: Severity level of the event
-            details: Additional details about the event
-            request: Optional request object for extracting context information
-
-        Returns:
-            str: Unique identifier for the audit log entry
+            details: Detailed information about the event (alias for description)
+            status: Status of the event (success/failure)
+            metadata: Additional contextual information about the event
+            ip_address: IP address associated with the event
         """
         pass
 
     @abstractmethod
-    async def log_phi_access(
+    def log_phi_access(
         self,
         actor_id: str,
-        patient_id: str,
-        resource_type: str,
-        action: str,
-        status: str,
-        phi_fields: list[str] | None = None,
-        reason: str | None = None,
-        request: Any | None = None,
-        request_context: dict[str, Any] | None = None,
-    ) -> str:
-        """Log PHI access event specifically.
-
-        Specialized method for PHI access to ensure proper HIPAA audit trails.
+        patient_id: str | None = None,
+        resource_id: str | None = None,
+        data_accessed: str | None = None,
+        resource_type: str | None = None,
+        access_reason: str | None = None,
+        action: str | None = None,
+        ip_address: str | None = None,
+        details: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Log access to Protected Health Information (PHI).
 
         Args:
-            actor_id: ID of the user accessing PHI
+            actor_id: ID of the user or system accessing the PHI
             patient_id: ID of the patient whose PHI was accessed
-            resource_type: Type of resource containing PHI (e.g., "medical_record")
-            action: Action performed on PHI (e.g., "view", "modify")
-            status: Outcome of the access attempt
-            phi_fields: Specific PHI fields accessed (without values)
-            reason: Business reason for accessing the PHI
-            request: Optional request object for extracting context information
-            request_context: Additional context from the request (location, device, etc.)
-
-        Returns:
-            str: Unique identifier for the audit log entry
+            resource_id: ID of the resource being accessed (alternative to patient_id)
+            data_accessed: Description of the PHI data that was accessed
+            resource_type: Type of resource being accessed
+            access_reason: Reason for accessing the PHI
+            action: Action being performed (view, modify, delete)
+            ip_address: IP address of the actor
+            details: Additional human-readable details
+            metadata: Additional contextual information about the access
         """
         pass
 
     @abstractmethod
-    async def get_audit_trail(
+    def log_auth_event(
         self,
-        filters: dict[str, Any] | None = None,
-        start_time: datetime | None = None,
-        end_time: datetime | None = None,
-        limit: int = 100,
-        offset: int = 0,
-    ) -> list[dict[str, Any]]:
-        """Retrieve audit trail entries based on filters.
+        event_type: str,
+        user_id: str,
+        success: bool,
+        description: str,
+        ip_address: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Log an authentication or authorization event.
 
         Args:
-            filters: Optional filters to apply (e.g., event_type, actor_id)
-            start_time: Optional start time for the audit trail
-            end_time: Optional end time for the audit trail
+            event_type: Type of auth event (e.g., "LOGIN", "LOGOUT", "TOKEN_VALIDATION")
+            user_id: ID of the user associated with the event
+            success: Whether the auth operation succeeded
+            description: Human-readable description of the event
+            ip_address: IP address of the actor
+            metadata: Additional contextual information about the event
+        """
+        pass
+
+    @abstractmethod
+    def log_system_event(
+        self,
+        event_type: str,
+        description: str,
+        severity: AuditSeverity = AuditSeverity.INFO,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Log a system-level event.
+
+        Args:
+            event_type: Type of system event (e.g., "STARTUP", "SHUTDOWN", "ERROR")
+            description: Human-readable description of the event
+            severity: Severity level of the event
+            metadata: Additional contextual information about the event
+        """
+        pass
+
+    @abstractmethod
+    def get_audit_trail(
+        self,
+        user_id: str | None = None,
+        patient_id: str | None = None,
+        event_type: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        limit: int | None = 100,
+        offset: int | None = 0,
+    ) -> list[dict[str, Any]]:
+        """
+        Retrieve audit trail entries based on filtering criteria.
+
+        Args:
+            user_id: Filter by user ID
+            patient_id: Filter by patient ID
+            event_type: Filter by event type
+            start_date: Filter by start date (ISO format)
+            end_date: Filter by end date (ISO format)
             limit: Maximum number of entries to return
             offset: Offset for pagination
 
         Returns:
-            List[Dict[str, Any]]: List of audit log entries matching the criteria
-        """
-        pass
-
-    @abstractmethod
-    async def export_audit_logs(
-        self,
-        start_time: datetime | None = None,
-        end_time: datetime | None = None,
-        format: str = "json",
-        file_path: str | None = None,
-        filters: dict[str, Any] | None = None,
-    ) -> str:
-        """Export audit logs to a file in the specified format.
-
-        Args:
-            start_time: Start time for logs to export
-            end_time: End time for logs to export
-            format: Export format (json, csv, xml)
-            file_path: Path to save the export file (generated if None)
-            filters: Additional filters for the export (actor_id, resource_type, etc.)
-
-        Returns:
-            str: Path to the exported file
-        """
-        pass
-
-    @abstractmethod
-    async def get_security_dashboard_data(self, days: int = 7) -> dict[str, Any]:
-        """Get summary data for security dashboard.
-
-        Args:
-            days: Number of days to include in the summary
-
-        Returns:
-            Dict[str, Any]: Security data summary for dashboard
+            List of audit log entries matching the criteria
         """
         pass

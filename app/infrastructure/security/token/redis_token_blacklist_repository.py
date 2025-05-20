@@ -7,7 +7,7 @@ user session management and token invalidation.
 """
 
 import hashlib
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.core.interfaces.repositories.token_blacklist_repository_interface import (
     ITokenBlacklistRepository,
@@ -73,7 +73,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         """
         try:
             # Calculate remaining seconds until expiration
-            now = datetime.now(UTC)
+            now = datetime.now(timezone.utc)
             if expires_at <= now:
                 # Token already expired, no need to blacklist
                 logger.debug(f"Token {jti} already expired, skipping blacklist")
@@ -169,7 +169,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
 
             # Set expiration date to 1 year in the future to ensure tokens stay blacklisted
             # even beyond their natural expiration
-            expires_at = datetime.now(UTC) + timedelta(days=365)
+            expires_at = datetime.now(timezone.utc) + timedelta(days=365)
 
             # Blacklist each JTI
             for jti_info in session_jti_list:
@@ -211,4 +211,17 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             Number of entries removed (always 0 for this implementation).
         """
         logger.debug("Redis handles TTL automatically; remove_expired_entries is a no-op.")
+        return 0
+
+    async def clear_expired_tokens(self) -> int:
+        """
+        Clear expired tokens from the blacklist.
+
+        For Redis, this is largely a no-op as Redis handles TTL automatically.
+        This method is provided for interface compatibility with ITokenBlacklistRepository.
+
+        Returns:
+            Number of tokens removed (always 0 for Redis implementation)
+        """
+        logger.debug("Redis handles TTL automatically; clear_expired_tokens is a no-op.")
         return 0

@@ -303,7 +303,7 @@ class PasswordHandler(IPasswordHandler):
             return "Password meets complexity requirements"
 
         return "Suggestions: " + "; ".join(suggestions)
-        
+
     def get_password_strength_feedback(self, password: str) -> dict[str, Any]:
         """
         Get detailed feedback on password strength.
@@ -318,29 +318,33 @@ class PasswordHandler(IPasswordHandler):
         # Use zxcvbn for comprehensive password strength analysis
         try:
             result = zxcvbn(password)
-            
+
             # Extract useful information from zxcvbn result
             feedback = {
                 "score": result.get("score", 0),  # 0-4 score (0=weak, 4=strong)
                 "estimated_guesses": result.get("guesses", 0),
-                "estimated_crack_time_seconds": result.get("crack_times_seconds", {}).get("offline_slow_hashing_1e4_per_second", 0),
-                "estimated_crack_time_display": result.get("crack_times_display", {}).get("offline_slow_hashing_1e4_per_second", "unknown"),
+                "estimated_crack_time_seconds": result.get("crack_times_seconds", {}).get(
+                    "offline_slow_hashing_1e4_per_second", 0
+                ),
+                "estimated_crack_time_display": result.get("crack_times_display", {}).get(
+                    "offline_slow_hashing_1e4_per_second", "unknown"
+                ),
                 "feedback": result.get("feedback", {}),
                 "warning": result.get("feedback", {}).get("warning", ""),
-                "suggestions": result.get("feedback", {}).get("suggestions", [])
+                "suggestions": result.get("feedback", {}).get("suggestions", []),
             }
-            
+
             # Add our custom checks
             is_valid, error = self.validate_password_complexity(password)
             feedback["meets_complexity_requirements"] = is_valid
             if not is_valid and error:
                 feedback["complexity_error"] = error
-                
+
             # Check for common password
             feedback["is_common_password"] = self.is_common_password(password)
-            
+
             return feedback
-            
+
         except Exception as e:
             logger.warning(f"Error generating password strength feedback: {e}")
             # Provide basic feedback if zxcvbn fails
@@ -349,7 +353,7 @@ class PasswordHandler(IPasswordHandler):
                 "warning": "Unable to perform comprehensive strength analysis",
                 "suggestions": ["Use a longer password with a mix of character types"],
                 "meets_complexity_requirements": len(password) >= 12,
-                "is_common_password": self.is_common_password(password)
+                "is_common_password": self.is_common_password(password),
             }
 
 

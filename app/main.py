@@ -51,7 +51,7 @@ app = create_application()
 if __name__ == "__main__":
     # This block runs only when the script is executed directly (not through Uvicorn)
     settings = get_settings()
-    
+
     logger.info(
         f"Starting Uvicorn server. Host: {settings.SERVER_HOST}, Port: {settings.SERVER_PORT}, LogLevel: {settings.LOG_LEVEL.lower()}"
     )

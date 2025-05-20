@@ -7,9 +7,8 @@ for testing and development purposes.
 
 import logging
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
-from uuid import UUID
 
 from app.core.domain.entities.alert import AlertPriority, AlertStatus, AlertType
 from app.core.interfaces.services.alert_service_interface import AlertServiceInterface
@@ -38,7 +37,7 @@ class MockBiometricAlertService(AlertServiceInterface):
     ) -> list[dict[str, Any]]:
         """Get alerts with optional filtering."""
         filtered_alerts = []
-        
+
         for alert_id, alert in self.alerts.items():
             # Apply filters
             if patient_id and alert.get("patient_id") != patient_id:
@@ -53,11 +52,11 @@ class MockBiometricAlertService(AlertServiceInterface):
                 continue
             if end_date and alert.get("created_at", datetime.max) > end_date:
                 continue
-            
+
             filtered_alerts.append(alert)
-        
+
         # Apply pagination
-        paginated = filtered_alerts[offset:offset+limit]
+        paginated = filtered_alerts[offset : offset + limit]
         return paginated
 
     async def get_alert_by_id(self, alert_id: str) -> dict[str, Any] | None:
@@ -76,7 +75,7 @@ class MockBiometricAlertService(AlertServiceInterface):
         """Create a new alert."""
         alert_id = str(uuid.uuid4())
         now = datetime.now()
-        
+
         alert = {
             "id": alert_id,
             "patient_id": patient_id,
@@ -89,7 +88,7 @@ class MockBiometricAlertService(AlertServiceInterface):
             "created_at": now,
             "updated_at": now,
         }
-        
+
         self.alerts[alert_id] = alert
         return True, alert_id, None
 
@@ -99,7 +98,7 @@ class MockBiometricAlertService(AlertServiceInterface):
         """Update the status of an alert."""
         if alert_id not in self.alerts:
             return False
-            
+
         self.alerts[alert_id]["status"] = new_status
         self.alerts[alert_id]["updated_at"] = datetime.now()
         self.alerts[alert_id]["updated_by"] = updated_by
