@@ -130,7 +130,7 @@ class AuditLogService(IAuditLogger):
             self._anomaly_detection_enabled
             and actor_id
             and not _skip_anomaly_check
-            and event_type != AuditEventType.SECURITY_EVENT
+            and event_type != AuditEventType.SECURITY_ALERT
             and event_type != AuditEventType.ANOMALY_DETECTED
         ):
             await self._check_for_anomalies(actor_id, audit_log)
@@ -203,21 +203,33 @@ class AuditLogService(IAuditLogger):
     async def log_phi_access(
         self,
         actor_id: str,
-        resource_type: str,
-        resource_id: str,
-        action: str,
-        metadata: Dict[str, Any] = None,
-        ip_address: str = None,
-        details: str = None,
+        patient_id: str = None,
+        resource_type: str = None,
+        resource_id: str = None,
+        action: str = None,
+        status: str = "success",
+        phi_fields: list[str] | None = None,
+        reason: str | None = None,
+        request: Request | None = None,
+        request_context: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
+        ip_address: str | None = None,
+        details: str | None = None,
     ) -> str:
         """
         Log access to Protected Health Information (PHI).
 
         Args:
             actor_id: ID of the user/system accessing the PHI
+            patient_id: ID of the patient whose PHI was accessed (legacy param, use resource_id instead)
             resource_type: Type of PHI resource (e.g., "patient", "medical_record")
             resource_id: ID of the specific PHI resource
             action: Action performed (e.g., "view", "update", "delete")
+            status: Outcome of the access attempt (e.g., "success", "failure")
+            phi_fields: Specific PHI fields accessed (without values)
+            reason: Business reason for accessing the PHI
+            request: Optional FastAPI request object for extracting IP and headers
+            request_context: Additional context from the request (location, device, etc.)
             metadata: Additional contextual information
             ip_address: IP address of the actor
             details: Additional details about the access
@@ -228,16 +240,38 @@ class AuditLogService(IAuditLogger):
         # Use the correct enum value for PHI access
         event_type = AuditEventType.PHI_ACCESS
         
+        # Support the older patient_id parameter by mapping it to resource_id 
+        if patient_id and not resource_id:
+            resource_id = patient_id
+        
+        # Build details object that includes phi_fields and reason if provided
+        detailed_info = {}
+        if phi_fields:
+            detailed_info["phi_fields"] = phi_fields
+        if reason:
+            detailed_info["reason"] = reason
+        if request_context:
+            detailed_info["context"] = request_context
+        
+        # If string details were provided, add them to the detailed_info
+        if details and isinstance(details, str):
+            detailed_info["description"] = details
+        
+        # If details is already a dict, use it directly
+        details_dict = detailed_info if detailed_info else details if isinstance(details, dict) else None
+            
         return await self.log_event(
             event_type=event_type,
             actor_id=actor_id,
-            resource_type=resource_type,
-            resource_id=resource_id,
+            target_resource=resource_type,
+            target_id=resource_id,
             action=action,
+            status=status,
             metadata=metadata,
             ip_address=ip_address,
-            details=details,
+            details=details_dict,
             severity=AuditSeverity.HIGH,  # PHI access is always high severity for HIPAA
+            request=request
         )
 
     async def get_audit_trail(
@@ -613,7 +647,7 @@ class AuditLogService(IAuditLogger):
 
             # Log a security event for the anomaly - pass _skip_anomaly_check=True to prevent recursion
             await self.log_event(
-                event_type=AuditEventType.SECURITY_EVENT,
+                event_type=AuditEventType.SECURITY_ALERT,
                 actor_id=user_id,
                 action="anomaly_detected",
                 status="warning",
@@ -639,7 +673,7 @@ class AuditLogService(IAuditLogger):
                 # Log a security event for the anomaly - directly using internal service methods
                 # to avoid issues with recursion and different repository interfaces
                 security_event_id = await self.log_event(
-                    event_type=AuditEventType.SECURITY_EVENT,
+                    event_type=AuditEventType.SECURITY_ALERT,
                     actor_id=user_id,
                     action="geographic_anomaly",
                     status="warning",
@@ -671,7 +705,7 @@ class AuditLogService(IAuditLogger):
 
                     # Log a security event for the anomaly - pass _skip_anomaly_check=True to prevent recursion
                     await self.log_event(
-                        event_type=AuditEventType.SECURITY_EVENT,
+                        event_type=AuditEventType.SECURITY_ALERT,
                         actor_id=user_id,
                         action="geographic_anomaly",
                         status="warning",
