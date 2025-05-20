@@ -126,8 +126,10 @@ except ImportError as e:
     # Updated mock to match the token data expected by tests
     def decode_token(token):
         # For invalid token test
-        if token == "invalid.token.format":
-            raise jwt.JWTError("Invalid token format")
+# Add type ignore for JWT.JWTError references - around line 130
+if token == "invalid.token.format":
+    raise jwt.JWTError("Invalid token format")  # type: ignore
+
 
         # For expired token test - check if this specific token structure exists
         try:
@@ -272,9 +274,10 @@ def test_jwt_token(test_user):
         "id": test_user["id"],
         "role": test_user["role"],
         "permissions": test_user["permissions"],
-        "exp": datetime.now(UTC) + expires_delta,
-    }
-    return jwt.encode(data, settings.JWT_SECRET_KEY, algorithm="HS256")
+# Fix JWT encoding with SecretStr - around line 277
+# Convert JWT_SECRET_KEY to string before using it
+return jwt.encode(data, str(settings.JWT_SECRET_KEY), algorithm="HS256")
+
 
 
 @pytest.fixture

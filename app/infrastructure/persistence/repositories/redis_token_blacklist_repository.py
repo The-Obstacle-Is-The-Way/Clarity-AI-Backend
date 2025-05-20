@@ -183,6 +183,20 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         logger.debug("Expired token cleanup not needed with Redis TTL")
         return 0
 
+    async def clear_expired_tokens(self) -> int:
+        """
+        Remove expired tokens from the blacklist.
+        
+        This should be called periodically to clean up the blacklist.
+        
+        Returns:
+            The number of tokens removed from the blacklist
+        """
+        # Redis handles TTL expiration automatically through its built-in TTL mechanism,
+        # so this is a no-op implementation for interface compliance.
+        logger.debug("Expired token cleanup not needed with Redis TTL - handled automatically")
+        return 0
+
     def _hash_token(self, token: str) -> str:
         """
         Create a hash of the token for storage.
