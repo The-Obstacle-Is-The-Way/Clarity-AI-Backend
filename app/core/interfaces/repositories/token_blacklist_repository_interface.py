@@ -6,7 +6,7 @@ to enforce secure token invalidation for compliance with HIPAA security requirem
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from datetime import datetime
 
 
 class ITokenBlacklistRepository(ABC):
@@ -19,13 +19,15 @@ class ITokenBlacklistRepository(ABC):
     """
     
     @abstractmethod
-    async def add_to_blacklist(self, token: str, token_id: Optional[str] = None) -> None:
+    async def add_to_blacklist(self, token: str, jti: str, expires_at: datetime, reason: str | None = None) -> None:
         """
         Add a token to the blacklist.
         
         Args:
             token: The token value to blacklist
-            token_id: The token's JTI (JWT ID) if available
+            jti: JWT ID - unique identifier for the token
+            expires_at: When the token expires
+            reason: Reason for blacklisting (optional)
         """
         pass
     
