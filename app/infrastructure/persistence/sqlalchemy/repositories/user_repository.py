@@ -10,12 +10,14 @@ All other implementations should be considered deprecated.
 
 import logging
 import uuid
+from typing import Optional, Union, Any, Callable
 
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.future import select
 
 # Domain imports
-from app.domain.entities.user import User as DomainUser
+from app.core.domain.entities.user import User as DomainUser
 from app.domain.repositories.user_repository import UserRepository as UserRepositoryInterface
 from app.domain.utils.datetime_utils import now_utc
 from app.infrastructure.persistence.sqlalchemy.mappers.user_mapper import UserMapper
@@ -36,7 +38,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
     interface for domain entities while abstracting the persistence details.
     """
 
-    def __init__(self, session_factory=None, db_session=None):
+    def __init__(self, session_factory: Optional[async_sessionmaker] = None, db_session: Optional[AsyncSession] = None):
         """
         Initialize the UserRepository with a SQLAlchemy session factory or session.
 
@@ -61,7 +63,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
 
         self._mapper = UserMapper()
 
-    async def _get_session(self):
+    async def _get_session(self) -> AsyncSession:
         """
         Get a session for database operations.
 
@@ -477,8 +479,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
         """
         return UserMapper.to_persistence(user)
 
-
-def get_user_repository(session_factory=None, db_session=None) -> SQLAlchemyUserRepository:
+def get_user_repository(session_factory: Optional[async_sessionmaker] = None, db_session: Optional[AsyncSession] = None) -> SQLAlchemyUserRepository:
     """
     Factory function to create a properly configured SQLAlchemyUserRepository.
 

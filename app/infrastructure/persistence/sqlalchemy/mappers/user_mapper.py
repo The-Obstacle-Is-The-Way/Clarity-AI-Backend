@@ -102,8 +102,12 @@ class UserMapper:
             domain_user_data["mfa_enabled"] = model.mfa_enabled
         if hasattr(model, "mfa_secret"):
             domain_user_data["mfa_secret"] = model.mfa_secret
-        if hasattr(model, "failed_login_attempts"):
-            domain_user_data["failed_login_attempts"] = model.failed_login_attempts
+        # Ensure failed_login_attempts is always set with a default of 0
+        failed_login_attempts = getattr(model, "failed_login_attempts", 0)
+        # If the attribute exists but is None, use 0 instead
+        if failed_login_attempts is None:
+            failed_login_attempts = 0
+        domain_user_data["failed_login_attempts"] = failed_login_attempts
 
         # Instantiate DomainUser
         domain_user = DomainUser(**domain_user_data)

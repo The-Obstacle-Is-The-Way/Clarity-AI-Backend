@@ -2,36 +2,52 @@
 
 from __future__ import annotations
 
-# NOTE:
-#   The codebase targets Python 3.9 in the CI matrix.  The `|` (PEP‑604
-#   union‑type) syntax used previously is only supported from Python 3.10
-#   onwards and therefore raises a `SyntaxError` during test discovery on
-#   3.9. We replace these occurrences with `typing.Union` so that the same
-#   code runs unmodified on 3.9 → 3.12.
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TokenPayload(BaseModel):
-    """Schema for the data encoded within a JWT token."""
-
+    """Schema for the data encoded within a JWT token.
+    
+    This is the canonical definition of TokenPayload used throughout the application.
+    It includes all fields that might be needed by different parts of the system,
+    including tests and authentication middleware.
+    """
+    # Standard JWT claims
     sub: str | UUID  # Subject of the token (user ID)
     exp: int  # Expiration time claim (POSIX timestamp)
     iat: int  # Issued at time claim (POSIX timestamp)
     iss: str | None = None  # Issuer claim
     aud: str | list[str] | None = None  # Audience claim
     jti: str | None = None  # JWT ID claim
+    nbf: int | None = None  # Not before time
+    
+    # Application-specific fields
     scope: str | None = None  # Single scope string (e.g. "access_token")
     scopes: list[str] | None = Field(default_factory=list)  # Optional list variant
     session_id: str | None = None  # Optional session identifier
-    # ------------------------------------------------------------------
-    # Legacy / extended claims expected by the integration test‑suite
-    # ------------------------------------------------------------------
     user_id: str | UUID | None = None  # Explicit user identifier
     role: str | None = None  # Single role string
     roles: list[str] | None = None  # Multiple roles
-    permissions: list[str] | None = None  # Fine‑grained permission list
-
-    # Empty model_config since no specific settings are needed
-    # If needed later, uncomment: model_config = ConfigDict(arbitrary_types_allowed=True)
+    permissions: list[str] | None = None  # Fine-grained permission list
+    
+    # Additional fields used in tests and other parts of the application
+    username: str | None = None  # Username
+    email: str | None = None  # User email
+    token_type: str | None = None  # Token type (access, refresh, etc.)
+    first_name: str | None = None  # User first name
+    last_name: str | None = None  # User last name
+    is_active: bool | None = None  # User active status
+    is_verified: bool | None = None  # User verification status
+    active: bool | None = None  # Alias for is_active
+    verified: bool | None = None  # Alias for is_verified
+    refresh: bool | None = None  # Flag for refresh tokens
+    parent_jti: str | None = None  # Parent token JTI for refresh token tracking
+    type: str | None = None  # Token type
+    
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        extra="allow",  # Allow extra fields for forward compatibility
+        populate_by_name=True  # Allow populating by field name
+    )

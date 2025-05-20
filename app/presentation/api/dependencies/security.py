@@ -10,27 +10,27 @@ from typing import Annotated
 
 from fastapi import Depends
 
-# from app.config.settings import get_settings # Legacy import
+# Import the interface from the core layer
+from app.core.interfaces.security.password_handler_interface import IPasswordHandler
 # Import the concrete implementation from the infrastructure layer
 from app.infrastructure.security.password.password_handler import PasswordHandler
 
 logger = logging.getLogger(__name__)
 
-# TODO: Define IPasswordHandler in core.interfaces and use it here for Clean Architecture.
-# from app.core.interfaces.security.password_handler_interface import IPasswordHandler
 
-
-# Temporarily hinting with concrete class due to missing interface
-def get_password_handler() -> PasswordHandler:
-    """Dependency provider for the Password Handler."""
+def get_password_handler() -> IPasswordHandler:
+    """Dependency provider for the Password Handler.
+    
+    Returns an implementation of IPasswordHandler interface, following
+    the Dependency Inversion Principle from SOLID.
+    """
     logger.debug("Providing Password Handler dependency")
-    # Simply return an instance of the concrete implementation
+    # Return concrete implementation as interface type
     return PasswordHandler()
 
 
-# Type hint for dependency injection
-# Temporarily hinting with concrete class
-PasswordHandlerDep = Annotated[PasswordHandler, Depends(get_password_handler)]
+# Type hint for dependency injection using the interface
+PasswordHandlerDep = Annotated[IPasswordHandler, Depends(get_password_handler)]
 
 __all__ = [
     "PasswordHandlerDep",

@@ -1,118 +1,98 @@
 """
 Token Repository Interface.
 
-This module defines the interface for token repository operations,
-supporting authentication and authorization in the application
-while maintaining HIPAA compliance and clean architecture.
+Defines the interface for token persistence and blacklisting operations
+that must be implemented by concrete repositories.
 """
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any
-from uuid import UUID
 
 
 class ITokenRepository(ABC):
-    """
-    Interface for token repository operations.
-
-    This interface encapsulates the functionality required for storing,
-    retrieving, and managing authentication tokens according to HIPAA
-    requirements and security best practices.
-    """
+    """Interface for token repository operations."""
 
     @abstractmethod
-    async def store_token(
-        self,
-        user_id: UUID,
-        token_id: str,
-        token_type: str,
-        expires_at: datetime,
-        metadata: dict[str, Any] | None = None,
-    ) -> None:
+    async def blacklist_token(self, token: str, expires_at: datetime) -> None:
         """
-        Store a token in the repository.
+        Add a token to the blacklist.
 
         Args:
-            user_id: ID of the user the token belongs to
-            token_id: Unique identifier for the token (JTI)
-            token_type: Type of token (access, refresh)
-            expires_at: Expiration timestamp
-            metadata: Additional token metadata
+            token: The token to blacklist
+            expires_at: When the token expires
 
         Raises:
-            RepositoryError: If token storage fails
+            RepositoryException: If the operation fails
         """
         pass
 
     @abstractmethod
-    async def get_user_tokens(
-        self, user_id: UUID, token_type: str | None = None, active_only: bool = True
-    ) -> list[dict[str, Any]]:
+    async def is_blacklisted(self, token: str) -> bool:
         """
-        Get all tokens for a specific user.
+        Check if a token is blacklisted.
 
         Args:
-            user_id: ID of the user
-            token_type: Filter by token type (optional)
-            active_only: If True, only return non-expired tokens
+            token: The token to check
 
         Returns:
-            List of token data dictionaries
+            bool: True if blacklisted, False otherwise
 
         Raises:
-            RepositoryError: If token retrieval fails
+            RepositoryException: If the operation fails
         """
         pass
 
     @abstractmethod
-    async def invalidate_token(self, token_id: str) -> bool:
+    async def blacklist_user_tokens(self, user_id: str) -> None:
         """
-        Invalidate a specific token.
+        Blacklist all tokens for a specific user.
 
         Args:
-            token_id: Unique identifier for the token (JTI)
-
-        Returns:
-            True if token was invalidated, False if token not found
+            user_id: The user identifier
 
         Raises:
-            RepositoryError: If token invalidation fails
+            RepositoryException: If the operation fails
         """
         pass
 
     @abstractmethod
-    async def invalidate_user_tokens(
-        self,
-        user_id: UUID,
-        token_type: str | None = None,
-        exclude_token_ids: list[str] | None = None,
-    ) -> int:
+    async def blacklist_session_tokens(self, session_id: str) -> None:
         """
-        Invalidate all tokens for a user.
+        Blacklist all tokens for a specific session.
 
         Args:
-            user_id: ID of the user
-            token_type: Only invalidate tokens of this type (optional)
-            exclude_token_ids: List of token IDs to exclude from invalidation
-
-        Returns:
-            Number of tokens invalidated
+            session_id: The session identifier
 
         Raises:
-            RepositoryError: If token invalidation fails
+            RepositoryException: If the operation fails
         """
         pass
 
     @abstractmethod
-    async def clean_expired_tokens(self) -> int:
+    async def cleanup_expired_tokens(self) -> int:
         """
-        Remove expired tokens from the repository.
+        Remove expired tokens from the blacklist.
 
         Returns:
-            Number of tokens removed
+            int: Number of expired tokens removed
 
         Raises:
-            RepositoryError: If token cleanup fails
+            RepositoryException: If the operation fails
+        """
+        pass
+
+    @abstractmethod
+    async def get_active_sessions(self, user_id: str) -> list[str]:
+        """
+        Get all active sessions for a user.
+
+        Args:
+            user_id: The user identifier
+
+        Returns:
+            List[str]: List of active session IDs
+
+        Raises:
+            RepositoryException: If the operation fails
         """
         pass
