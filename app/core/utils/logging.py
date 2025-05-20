@@ -125,31 +125,29 @@ def log_execution_time(func=None, *, logger=None, level=LogLevel.DEBUG):
     Returns:
         Decorated function or decorator function depending on usage
     """
-    # Get the integer value for common LogLevel enums to avoid conversion issues
+    # Define level conversion map outside both functions to be used by actual decorator
     level_map = {
-        LogLevel.DEBUG: 10,   # logging.DEBUG
-        LogLevel.INFO: 20,    # logging.INFO
-        LogLevel.WARNING: 30, # logging.WARNING
-        LogLevel.ERROR: 40,   # logging.ERROR
-        LogLevel.CRITICAL: 50 # logging.CRITICAL
+        LogLevel.DEBUG: logging.DEBUG,       # 10
+        LogLevel.INFO: logging.INFO,         # 20
+        LogLevel.WARNING: logging.WARNING,   # 30
+        LogLevel.ERROR: logging.ERROR,       # 40
+        LogLevel.CRITICAL: logging.CRITICAL  # 50
     }
     
-    # Convert level to integer
-    if isinstance(level, LogLevel):
-        level_int = level_map.get(level, 10)  # Default to DEBUG (10) if not found
-    elif isinstance(level, int):
+    # This is the actual decorator that will be returned when used with parameters
+    def decorator_with_args(fn):
+        nonlocal logger, level
+        
+        # Get logger or create a new one based on the module
+        logger_instance = logger or get_logger(fn.__module__)
+        
+        # Convert level to integer if it's a LogLevel enum
         level_int = level
-    else:
-        level_int = 10  # Default to DEBUG
-    
-    def create_decorator(fn):
+        if isinstance(level, LogLevel):
+            level_int = level_map.get(level, logging.DEBUG)
+        
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            # Get or create logger
-            actual_logger = logger
-            if actual_logger is None:
-                actual_logger = get_logger(fn.__module__)
-            
             # Start timing
             start_time = datetime.now()
             
@@ -157,39 +155,40 @@ def log_execution_time(func=None, *, logger=None, level=LogLevel.DEBUG):
                 # Execute function
                 result = fn(*args, **kwargs)
                 
-                # Calculate duration
+                # Calculate and log duration
                 end_time = datetime.now()
                 duration_ms = (end_time - start_time).total_seconds() * 1000
                 
-                # Use hardcoded integer log level
-                actual_logger.log(
-                    level_int,  # Use integer value directly
+                # Log with explicit integer level
+                logger_instance.log(
+                    level_int,  # Already converted to int above
                     f"Function '{fn.__name__}' executed in {duration_ms:.2f} ms"
                 )
                 
                 return result
             except Exception as e:
-                # Calculate duration even for exceptions
+                # Calculate duration for exception case
                 end_time = datetime.now()
                 duration_ms = (end_time - start_time).total_seconds() * 1000
                 
-                # Log exception info with the format expected by tests
-                actual_logger.exception(
-                    f"Exception in '{fn.__name__}' after {duration_ms:.2f} ms: {e!s}"
-                )
+                # Log the exception with the expected format
+                error_message = f"Exception in '{fn.__name__}' after {duration_ms:.2f} ms: {str(e)}"
+                logger_instance.error(error_message)
+                
+                # Print detailed traceback to stderr for debugging
+                logger_instance.error(f"Exception details for '{fn.__name__}'")
                 
                 # Re-raise the exception
                 raise
-                
+        
         return wrapper
     
-    # Handle both decorator usage patterns
+    # Handle the case when decorator is used without arguments
     if func is not None:
-        # Used as @log_execution_time
-        return create_decorator(func)
+        return decorator_with_args(func)
     
-    # Used as @log_execution_time(logger=..., level=...)
-    return create_decorator
+    # Handle the case when decorator is used with arguments
+    return decorator_with_args
 
 
 def log_method_calls(
