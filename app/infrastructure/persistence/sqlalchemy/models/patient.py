@@ -11,7 +11,7 @@ import json
 import logging
 import uuid
 from datetime import date, datetime, timezone
-from typing import Any, Optional, Dict, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 
 from dateutil import parser
 from pydantic import ValidationError
@@ -151,10 +151,10 @@ class Patient(Base, TimestampMixin, AuditMixin):
     # Complex data fields (JSON/JSONB in PostgreSQL, stored as encrypted blobs)
     if TYPE_CHECKING:
         # Type annotations for mypy
-        _contact_info: Optional[Dict[str, Any]]
-        _address_details: Optional[Dict[str, Any]]
-        _emergency_contact_details: Optional[Dict[str, Any]]
-        _preferences: Optional[Dict[str, Any]]
+        _contact_info: Optional[dict[str, Any]]
+        _address_details: Optional[dict[str, Any]]
+        _emergency_contact_details: Optional[dict[str, Any]]
+        _preferences: Optional[dict[str, Any]]
     else:
         # Actual column definitions for runtime
         _contact_info = Column("contact_info", EncryptedJSON, nullable=True)
@@ -483,11 +483,11 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # DEBUG PRINTS START
         print("[DEBUG PatientModel.from_domain] Final model attributes before return:")
         print(f"  _contact_info TYPE: {type(model._contact_info)}")
-        print(f"  _contact_info VALUE: {str(model._contact_info)}")
+        print(f"  _contact_info VALUE: {repr(model._contact_info)}")
         print(f"  _address_details TYPE: {type(model._address_details)}")
-        print(f"  _address_details VALUE: {str(model._address_details)}")
+        print(f"  _address_details VALUE: {repr(model._address_details)}")
         print(f"  _emergency_contact_details TYPE: {type(model._emergency_contact_details)}")
-        print(f"  _emergency_contact_details VALUE: {str(model._emergency_contact_details)}")
+        print(f"  _emergency_contact_details VALUE: {repr(model._emergency_contact_details)}")
         # DEBUG PRINTS END
 
         logger.debug(f"[from_domain] Completed conversion for patient model ID: {model.id}")
@@ -752,7 +752,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         )  # Assuming notes is intended to be a simple string
         extra_data_dict = self._extra_data  # This should be a dict after EncryptedJSON processing
 
-        def _parse_json_string(json_str: Optional[str | bytes], field_name: str) -> Any | None:
+        def _parse_json_string(json_str: Optional[str | bytes], field_name: str) -> Any:
             if json_str is None:
                 return None
 
@@ -765,18 +765,12 @@ class Patient(Base, TimestampMixin, AuditMixin):
                         f"Failed to decode bytes for {field_name} for patient {self.id} from JSON string: '{json_str[:50]}...'"
                     )
                     return None
-
-            if not isinstance(str_to_parse, str):  # Should be a string now
-                logger.warning(
-                    f"{field_name} for patient {self.id} is not a string after potential decode: type {type(str_to_parse)}. Value: {str(str_to_parse)[:100]}"
-                )
-                return None
-
+            # Use repr for proper bytes representation
             try:
                 return json.loads(str_to_parse)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
                 logger.warning(
-                    f"Failed to parse {field_name} for patient {self.id} from JSON string: '{str_to_parse[:100]}'"
+                    f"Failed to parse {field_name} for patient {self.id} from JSON string: {repr(str_to_parse[:100])}"
                 )
                 return None
 
