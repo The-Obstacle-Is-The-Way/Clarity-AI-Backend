@@ -10,8 +10,10 @@ All other implementations should be considered deprecated.
 
 import logging
 import uuid
+from typing import Optional, Union, Any, Callable
 
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.future import select
 
 # Domain imports
@@ -36,7 +38,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
     interface for domain entities while abstracting the persistence details.
     """
 
-    def __init__(self, session_factory=None, db_session=None):
+    def __init__(self, session_factory: Optional[async_sessionmaker] = None, db_session: Optional[AsyncSession] = None):
         """
         Initialize the UserRepository with a SQLAlchemy session factory or session.
 
@@ -61,7 +63,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
 
         self._mapper = UserMapper()
 
-    async def _get_session(self):
+    async def _get_session(self) -> AsyncSession:
         """
         Get a session for database operations.
 
@@ -473,12 +475,22 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             user: The domain User entity to convert
 
         Returns:
-            The SQLAlchemy User model
-        """
-        return UserMapper.to_persistence(user)
 
+async def _get_session(self) -> AsyncSession:
+    """
+    Get an async database session.
 
-def get_user_repository(session_factory=None, db_session=None) -> SQLAlchemyUserRepository:
+    Returns:
+        An async database session
+    """
+    if self._session_factory:
+        return await self._session_factory()
+    elif self._db_session:
+        return self._db_session
+    else:
+        raise ValueError("Either session_factory or db_session must be provided")
+
+def get_user_repository(session_factory: Optional[async_sessionmaker] = None, db_session: Optional[AsyncSession] = None) -> SQLAlchemyUserRepository:
     """
     Factory function to create a properly configured SQLAlchemyUserRepository.
 
