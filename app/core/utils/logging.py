@@ -26,7 +26,9 @@ class PHISanitizingFilter(logging.Filter):
     def __init__(self, name: str = "PHISanitizer"):
         super().__init__(name)
         # Avoid circular import by not creating the anonymizer in __init__
-        self.anonymizer = None
+        # Will be initialized in filter() method when first needed
+        from typing import Any
+        self.anonymizer: Any = None
 
     def filter(self, record: logging.LogRecord) -> bool:
         """Sanitize the log record message using DataAnonymizer."""
@@ -37,6 +39,7 @@ class PHISanitizingFilter(logging.Filter):
 
             # Create anonymizer instance only when first needed
             self.anonymizer = DataAnonymizer()
+            assert self.anonymizer is not None  # Help mypy understand this can't be None anymore
 
         # Ensure message is formatted correctly before sanitization
         original_message = record.getMessage()
@@ -102,64 +105,69 @@ def get_logger(name: str) -> logging.Logger:
 
 
 def log_execution_time(
-    logger: logging.Logger | None = None, level: LogLevel = LogLevel.DEBUG
+    logger: logging.Logger | None = None, level: LogLevel | int = LogLevel.DEBUG
 ) -> Callable[[F], F]:
     """
     Decorator to log the execution time of a function.
+    Can be used as @log_execution_time or @log_execution_time().
 
     Args:
-        logger: Logger to use, if None a new logger is created using function's module name
-        level: Log level to use
+        logger_or_func: Logger to use or function being decorated if no args provided
+        level: Log level to use, defaults to DEBUG
 
     Returns:
-        Decorator function
+        Decorated function or decorator function
     """
-
+    # No special handling needed at the outer level
+    # Level conversion happens in the decorator function
+    
     def decorator(func: F) -> F:
+        # Convert level to integer if it's an enum (ensure this is done at decoration time) 
+        numeric_level = level.value if isinstance(level, LogLevel) else level
+        
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Get or create logger
             nonlocal logger
-            if logger is None:
-                logger = get_logger(func.__module__)
-
+            log_inst = logger
+            if log_inst is None:
+                log_inst = get_logger(func.__module__)
+                
             # Record start time
             start_time = datetime.now()
-
-            # Call the decorated function
+            
             try:
+                # Execute the function
                 result = func(*args, **kwargs)
-                # Record end time and calculate duration
+                
+                # Calculate duration
                 end_time = datetime.now()
                 duration_ms = (end_time - start_time).total_seconds() * 1000
-
-                # Log execution time
-                # Ensure level is an integer as required by logging module
-                log_level = level.value if hasattr(level, 'value') else level
-                logger.log(
-                    log_level,
+                
+                # Log success with numeric level
+                log_inst.log(
+                    numeric_level,
                     f"Function '{func.__name__}' executed in {duration_ms:.2f} ms"
                 )
-
+                
                 return result
             except Exception as e:
-                # Log exception with sanitized PHI
+                # Log exception
                 end_time = datetime.now()
                 duration_ms = (end_time - start_time).total_seconds() * 1000
-
-                logger.exception(
+                log_inst.exception(
                     f"Exception in '{func.__name__}' after {duration_ms:.2f} ms: {e!s}"
                 )
-                raise  # Re-raise the exception
-
+                raise
+                
         return cast(F, wrapper)
-
+    
     return decorator
 
 
 def log_method_calls(
     logger: logging.Logger | None = None,
-    level: LogLevel = LogLevel.DEBUG,
+    level: LogLevel | int = LogLevel.DEBUG,
     log_args: bool = True,
     log_results: bool = True,
 ) -> Callable[[type], type]:
@@ -175,6 +183,11 @@ def log_method_calls(
     Returns:
         Decorator function
     """
+    # Convert to int if it's a LogLevel enum
+    if isinstance(level, LogLevel):
+        numeric_level = level.value
+    else:
+        numeric_level = level
 
     def decorator(cls: type) -> type:
         # Get class methods (excluding magic methods)
@@ -183,7 +196,7 @@ def log_method_calls(
                 setattr(
                     cls,
                     name,
-                    _create_logged_method(method, logger, level, log_args, log_results),
+                    _create_logged_method(method, logger, numeric_level, log_args, log_results),
                 )
         return cls
 
@@ -193,7 +206,7 @@ def log_method_calls(
 def _create_logged_method(
     method: Callable,
     logger: logging.Logger | None,
-    level: LogLevel,
+    level: int,  # Already converted to int by the calling function
     log_args: bool,
     log_results: bool,
 ) -> Callable:
@@ -226,18 +239,18 @@ def _create_logged_method(
             args_kwargs = [s for s in [args_str, kwargs_str] if s]
             method_call += f"({', '.join(args_kwargs)})"
 
-        # Log method entry
-        method_logger.log(level.value, f"Calling {method_call}")
+        # Log method entry - level is already an integer
+        method_logger.log(level, f"Calling {method_call}")
 
         # Execute method
         try:
             result = method(self, *args, **kwargs)
 
-            # Log successful completion
+            # Log successful completion - level is already an integer
             if log_results:
-                method_logger.log(level.value, f"{method_call} returned: {result!s}")
+                method_logger.log(level, f"{method_call} returned: {result!s}")
             else:
-                method_logger.log(level.value, f"{method_call} completed successfully")
+                method_logger.log(level, f"{method_call} completed successfully")
 
             return result
 
