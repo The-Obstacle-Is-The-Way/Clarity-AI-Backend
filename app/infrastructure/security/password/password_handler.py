@@ -5,8 +5,6 @@ Secure password handling for the NOVAMIND psychiatric platform.
 Implements HIPAA-compliant password hashing and verification.
 """
 
-# Use standard logger instead of old import
-# from app.core.utils.logging import get_logger # Use the standard logger function
 import logging
 import re
 import secrets
@@ -15,8 +13,9 @@ import string
 from passlib.context import CryptContext
 from zxcvbn import zxcvbn
 
+# Import the interface
+from app.core.interfaces.security.password_handler_interface import IPasswordHandler
 # Use canonical config import
-# from app.core.config import get_settings
 from app.core.config.settings import get_settings
 
 # Initialize logger
@@ -27,7 +26,7 @@ logger = logging.getLogger(__name__)
 # default_crypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-class PasswordHandler:
+class PasswordHandler(IPasswordHandler):
     """
     Handles password hashing and verification using passlib.
     Allows configuration of hashing schemes and parameters.
