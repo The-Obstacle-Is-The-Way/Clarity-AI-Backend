@@ -64,19 +64,23 @@ class TestAuditLogger:
     def test_log_phi_access(self, audit_logger, mock_logger):
         """Test logging of PHI access events."""
         # Setup
-        user_id = str(uuid.uuid4())
+        actor_id = str(uuid.uuid4())
+        patient_id = str(uuid.uuid4())
         action = "view"
         resource_type = "patient"
-        resource_id = str(uuid.uuid4())
-        details = {"reason": "patient care"}
+        status = "success"
+        phi_fields = ["name", "dob"]
+        reason = "medical review"
 
         # Exercise
-        audit_logger.log_phi_access(
-            user_id=user_id,
+        event_id = audit_logger.log_phi_access(
+            actor_id=actor_id,
+            patient_id=patient_id,
             action=action,
             resource_type=resource_type,
-            resource_id=resource_id,
-            details=details,
+            status=status,
+            phi_fields=phi_fields,
+            reason=reason,
         )
 
         # Verify
@@ -89,23 +93,30 @@ class TestAuditLogger:
         log_data = json.loads(log_message)
 
         assert log_data["event_type"] == "phi_access"
-        assert log_data["user_id"] == user_id
+        assert log_data["actor_id"] == actor_id
+        assert log_data["patient_id"] == patient_id
         assert log_data["action"] == action
         assert log_data["resource_type"] == resource_type
-        assert log_data["resource_id"] == resource_id
-        assert log_data["details"] == details
+        assert log_data["status"] == status
+        assert log_data["phi_fields"] == phi_fields
+        assert log_data["reason"] == reason
 
     def test_log_auth_event(self, audit_logger, mock_logger):
         """Test logging of authentication events."""
         # Setup
         event_type = "login"
-        user_id = str(uuid.uuid4())
+        actor_id = str(uuid.uuid4())
         success = True
         details = {"ip_address": "127.0.0.1"}
+        user_id = str(uuid.uuid4())
 
         # Exercise
-        audit_logger.log_auth_event(
-            event_type=event_type, user_id=user_id, success=success, details=details
+        event_id = audit_logger.log_auth_event(
+            actor_id=actor_id,
+            event_type=event_type,
+            success=success,
+            details=details,
+            user_id=user_id,
         )
 
         # Verify
@@ -119,9 +130,10 @@ class TestAuditLogger:
 
         assert log_data["event_type"] == "auth_event"
         assert log_data["auth_type"] == event_type
-        assert log_data["user_id"] == user_id
+        assert log_data["actor_id"] == actor_id
         assert log_data["success"] is success
         assert log_data["details"] == details
+        assert log_data["user_id"] == user_id
 
     def test_log_system_event(self, audit_logger, mock_logger):
         """Test logging of system events."""
@@ -132,7 +144,7 @@ class TestAuditLogger:
         user_id = str(uuid.uuid4())
 
         # Exercise
-        audit_logger.log_system_event(
+        event_id = audit_logger.log_system_event(
             event_type=event_type,
             description=description,
             details=details,
@@ -151,7 +163,7 @@ class TestAuditLogger:
         assert log_data["event_type"] == "system_event"
         assert log_data["system_event_type"] == event_type
         assert log_data["description"] == description
-        assert log_data["user_id"] == user_id
+        assert log_data["user_id"] == actor_id
         assert log_data["details"] == details
 
     @patch("app.infrastructure.security.audit.audit.AuditLogger._send_to_external_audit_service")
@@ -162,12 +174,16 @@ class TestAuditLogger:
         logger = AuditLogger()
 
         # Exercise
+        actor_id = str(uuid.uuid4())
+        patient_id = str(uuid.uuid4())
         logger.log_phi_access(
-            user_id=str(uuid.uuid4()),
+            actor_id=actor_id,
+            patient_id=patient_id,
             action="view",
             resource_type="patient",
-            resource_id=str(uuid.uuid4()),
-            details={},
+            status="success",
+            reason="testing",
+            phi_fields=["name", "dob"],
         )
 
         # Verify

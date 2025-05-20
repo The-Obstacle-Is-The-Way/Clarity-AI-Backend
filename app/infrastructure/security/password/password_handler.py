@@ -213,7 +213,7 @@ class PasswordHandler(IPasswordHandler):
 
         # All checks passed
         logger.debug("Password strength validation passed")
-        return True, ""
+        return True, None
 
     def validate_password_complexity(self, password: str) -> tuple[bool, str]:
         """

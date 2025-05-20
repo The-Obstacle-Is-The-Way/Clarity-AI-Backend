@@ -83,6 +83,32 @@ class JWTService(IJwtService):
         if not self.settings.jwt_secret_key:
             raise ValueError("JWT_SECRET_KEY is required")
 
+    def __init__(
+        self,
+        token_repo: ITokenRepository,
+        blacklist_repo: ITokenBlacklistRepository,
+        audit_logger: IAuditLogger,
+        settings: Settings = None,
+    ):
+        """
+        Initialize the JWT service.
+
+        Args:
+            token_repo: Repository for managing tokens
+            blacklist_repo: Repository for managing blacklisted tokens
+            audit_logger: Service for audit logging
+            settings: Application settings
+        """
+        self.token_repo = token_repo
+        self.blacklist_repo = blacklist_repo
+        self.audit_logger = audit_logger
+        self.settings = settings or Settings()
+        self.algorithm = "HS256"  # HMAC with SHA-256
+
+        # Validate that we have required secrets
+        if not self.settings.jwt_secret_key:
+            raise ValueError("JWT_SECRET_KEY is required")
+            
     def create_access_token(
         self,
         data: dict[str, Any],
