@@ -49,6 +49,11 @@ class User(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now, description="When the user was created")
     updated_at: datetime | None = Field(default=None, description="When the user was last updated")
     full_name: str | None = Field(default=None, description="User's full name (first + last)")
+    # Authentication and security fields
+    reset_token: str | None = Field(default=None, description="Password reset token")
+    reset_token_expires: datetime | None = Field(default=None, description="When the reset token expires")
+    failed_login_attempts: int = Field(default=0, description="Number of failed login attempts")
+    last_login: datetime | None = Field(default=None, description="When the user last logged in")
 
     # Authentication fields
     hashed_password: str = Field(
