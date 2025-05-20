@@ -345,7 +345,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
                             break
                     else:  # No break occurred in for loop
                         logger.warning(
-                            f"Invalid gender value in domain object: {gender_value}. Setting to None."
+                            f"Invalid gender value in domain object: {repr(gender_value)}. Setting to None."
                         )
                         model._gender = None
             else:
@@ -762,7 +762,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
                     str_to_parse = json_str.decode("utf-8")
                 except UnicodeDecodeError:
                     logger.warning(
-                        f"Failed to decode bytes for {field_name} for patient {self.id} from JSON string: '{json_str[:50]}...'"
+                        f"Failed to decode bytes for {field_name} for patient {self.id} from JSON string: {repr(json_str[:50])}..."
                     )
                     return None
             # Use repr for proper bytes representation
