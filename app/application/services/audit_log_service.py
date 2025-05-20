@@ -172,14 +172,14 @@ class AuditLogService(IAuditLogger):
         # Map to a standard event type
         if "login" in description.lower():
             event_type = (
-                AuditEventType.LOGIN if status == "success" else AuditEventType.LOGIN_FAILED
+                AuditEventType.LOGIN_SUCCESS if status == "success" else AuditEventType.LOGIN_FAILURE
             )
         elif "logout" in description.lower():
             event_type = AuditEventType.LOGOUT
         elif "password" in description.lower():
-            event_type = AuditEventType.PASSWORD_CHANGED
+            event_type = AuditEventType.PASSWORD_CHANGE
         elif "permission" in description.lower() or "role" in description.lower():
-            event_type = AuditEventType.PERMISSION_CHANGED
+            event_type = AuditEventType.PERMISSION_CHANGE
         elif "access denied" in description.lower():
             event_type = AuditEventType.ACCESS_DENIED
         else:
@@ -495,7 +495,7 @@ class AuditLogService(IAuditLogger):
         # Map to appropriate AuditEventType
         audit_event_type = None
         if "login" in event_type.lower():
-            audit_event_type = AuditEventType.LOGIN if success else AuditEventType.LOGIN_FAILED
+            audit_event_type = AuditEventType.LOGIN_SUCCESS if success else AuditEventType.LOGIN_FAILURE
         elif "logout" in event_type.lower():
             audit_event_type = AuditEventType.LOGOUT
         elif "token" in event_type.lower():

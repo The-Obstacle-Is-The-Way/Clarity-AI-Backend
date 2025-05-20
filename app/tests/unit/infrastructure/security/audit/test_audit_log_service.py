@@ -186,49 +186,44 @@ class TestAuditLogService:
         # Reset the service to clear any existing history
         audit_service._user_access_history = {}
         audit_service._suspicious_ips = set()
+        audit_service._anomaly_detection_enabled = True
 
-        # Set up mocks
-        original_log_event = audit_service.log_event
-        mock_log_event = AsyncMock(return_value="mocked-security-event-id")
-        audit_service.log_event = mock_log_event
-
-        # Create a test request with the special IP that triggers anomaly detection
-        test_request = MagicMock()
-        test_request.client.host = "not_an_ip"  # Special value that triggers anomaly detection
-        test_request.headers = {}
-
-        # Create a spy to see if _check_for_anomalies is called
+        # Set up mocks but keep original log_event behavior
         original_check_anomalies = audit_service._check_for_anomalies
         check_anomalies_spy = AsyncMock(side_effect=original_check_anomalies)
         audit_service._check_for_anomalies = check_anomalies_spy
 
-        # Call log_phi_access with the test request
-        await audit_service.log_phi_access(
-            actor_id=TEST_USER_ID,
-            patient_id=TEST_PATIENT_ID,
-            resource_type="patient",
-            action="view",
-            status="success",
-            reason="treatment",
-            request=test_request,
-            phi_fields=["name", "dob"],
-        )
+        # Create a test request
+        test_request = MagicMock()
+        test_request.client.host = "192.168.1.1"
+        test_request.headers = {}
+
+        # Create multiple rapid PHI access events to trigger anomaly detection
+        for _ in range(15):  # Create enough events to trigger anomaly
+            await audit_service.log_phi_access(
+                actor_id=TEST_USER_ID,
+                patient_id=TEST_PATIENT_ID,
+                resource_type="patient", 
+                action="view",
+                status="success",
+                reason="treatment",
+                request=test_request,
+                phi_fields=["name", "dob"],
+            )
 
         # Verify _check_for_anomalies was called
         assert check_anomalies_spy.called, "Anomaly detection check was not called"
 
-        # The main test is that log_event should have been called with event_type=AuditEventType.SECURITY_ALERT
-        # Find the security event call - there should be at least one call after the initial PHI log
-        security_event_calls = [
-            call
-            for call in mock_log_event.call_args_list
-            if call.kwargs.get("event_type") == AuditEventType.SECURITY_ALERT
+        # Look for security alert events in the repository calls
+        security_events = [
+            log for args in mock_repository._create.call_args_list 
+            for log in [args[0][0]] 
+            if log.event_type == AuditEventType.SECURITY_ALERT
         ]
-
-        assert security_event_calls, "No security event was logged when an anomaly was detected"
-
-        # Restore original methods
-        audit_service.log_event = original_log_event
+        
+        assert security_events, "No security event was logged when an anomaly was detected"
+        
+        # Restore original method
         audit_service._check_for_anomalies = original_check_anomalies
 
 
