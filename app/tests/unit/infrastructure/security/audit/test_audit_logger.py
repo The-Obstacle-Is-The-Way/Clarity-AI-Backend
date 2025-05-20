@@ -141,14 +141,14 @@ class TestAuditLogger:
         event_type = "startup"
         description = "System started successfully"
         details = {"version": "1.0.0"}
-        user_id = str(uuid.uuid4())
+        actor_id = str(uuid.uuid4())
 
         # Exercise
         event_id = audit_logger.log_system_event(
             event_type=event_type,
             description=description,
             details=details,
-            user_id=user_id,
+            actor_id=actor_id,
         )
 
         # Verify
@@ -163,7 +163,8 @@ class TestAuditLogger:
         assert log_data["event_type"] == "system_event"
         assert log_data["system_event_type"] == event_type
         assert log_data["description"] == description
-        assert log_data["user_id"] == actor_id
+        assert log_data["user_id"] == actor_id  # For backward compatibility
+        assert log_data["actor_id"] == actor_id  # New field name for clarity
         assert log_data["details"] == details
 
     @patch("app.infrastructure.security.audit.audit.AuditLogger._send_to_external_audit_service")

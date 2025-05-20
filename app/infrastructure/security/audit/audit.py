@@ -248,7 +248,8 @@ class AuditLogger(IAuditLogger):
             "event_id": event_id,
             "timestamp": timestamp,
             "event_type": "phi_access",
-            "user_id": actor_id,
+            "user_id": actor_id,  # For backward compatibility
+            "actor_id": actor_id,  # New field name for clarity
             "patient_id": patient_id,
             "action": action,
             "resource_type": resource_type,
@@ -268,10 +269,11 @@ class AuditLogger(IAuditLogger):
     def log_auth_event(
         self,
         event_type: str,
-        user_id: str | None,
-        success: bool,
+        user_id: str | None = None,
+        success: bool = True,
         details: dict[str, Any] | None = None,
-    ) -> None:
+        actor_id: str | None = None,
+    ) -> str:
         """
         Log an authentication-related event.
 
@@ -290,7 +292,8 @@ class AuditLogger(IAuditLogger):
             "timestamp": timestamp,
             "event_type": "auth_event",
             "auth_type": event_type,
-            "user_id": user_id,
+            "user_id": user_id,  # Keep original user_id
+            "actor_id": actor_id or user_id,  # Use actor_id if provided, otherwise user_id
             "success": success,
             "details": details or {},
         }
@@ -301,6 +304,8 @@ class AuditLogger(IAuditLogger):
         # If configured, also send to external audit service
         if self.external_audit_enabled:
             self._send_to_external_audit_service(audit_entry)
+            
+        return event_id
 
     def log_system_event(
         self,
@@ -308,7 +313,8 @@ class AuditLogger(IAuditLogger):
         description: str,
         details: dict[str, Any] | None = None,
         user_id: str | None = None,
-    ) -> None:
+        actor_id: str | None = None,
+    ) -> str:
         """
         Log a system event.
 
@@ -328,7 +334,8 @@ class AuditLogger(IAuditLogger):
             "event_type": "system_event",
             "system_event_type": event_type,
             "description": description,
-            "user_id": user_id,
+            "user_id": user_id,  # Keep original user_id
+            "actor_id": actor_id or user_id,  # Use actor_id if provided, otherwise user_id
             "details": details or {},
         }
 
@@ -338,6 +345,8 @@ class AuditLogger(IAuditLogger):
         # If configured, also send to external audit service
         if self.external_audit_enabled:
             self._send_to_external_audit_service(audit_entry)
+            
+        return event_id
 
     def get_audit_trail(
         self,
