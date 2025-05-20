@@ -268,7 +268,6 @@ class AuditLogService(IAuditLogger):
             action=action,
             status=status,
             metadata=metadata,
-            ip_address=ip_address,
             details=details_dict,
             severity=AuditSeverity.HIGH,  # PHI access is always high severity for HIPAA
             request=request
