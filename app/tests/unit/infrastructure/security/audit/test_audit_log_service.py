@@ -75,7 +75,7 @@ class TestAuditLogService:
         mock_repository._create.reset_mock()
 
         log_id = await audit_service.log_event(
-            event_type=AuditEventType.LOGIN,
+            event_type=AuditEventType.LOGIN_SUCCESS,
             actor_id=TEST_USER_ID,
             action="login",
             status="success",
@@ -86,7 +86,7 @@ class TestAuditLogService:
 
         # Check that the log has the correct data
         audit_log = mock_repository._create.call_args[0][0]
-        assert audit_log.event_type == AuditEventType.LOGIN
+        assert audit_log.event_type == AuditEventType.LOGIN_SUCCESS
         assert audit_log.actor_id == TEST_USER_ID
         assert audit_log.action == "login"
         assert audit_log.status == "success"
@@ -104,7 +104,7 @@ class TestAuditLogService:
 
         # Check that the log has the correct data
         audit_log = mock_repository._create.call_args[0][0]
-        assert audit_log.event_type == AuditEventType.LOGIN_FAILED
+        assert audit_log.event_type == AuditEventType.LOGIN_FAILURE
         assert audit_log.actor_id == TEST_USER_ID
         assert "Failed login attempt" in str(audit_log.details)
 
@@ -127,7 +127,7 @@ class TestAuditLogService:
 
         # Check that the log has the correct data
         audit_log = mock_repository._create.call_args[0][0]
-        assert audit_log.event_type == AuditEventType.PHI_ACCESSED
+        assert audit_log.event_type == AuditEventType.PHI_ACCESS
         assert audit_log.actor_id == TEST_USER_ID
         assert audit_log.resource_id == TEST_PATIENT_ID
         assert audit_log.resource_type == "patient"
@@ -144,7 +144,7 @@ class TestAuditLogService:
             AuditLog(
                 id=str(uuid.uuid4()),
                 timestamp=datetime.now(timezone.utc),
-                event_type=AuditEventType.PHI_ACCESSED,
+                event_type=AuditEventType.PHI_ACCESS,
                 actor_id=TEST_USER_ID,
                 resource_type="patient",
                 resource_id=TEST_PATIENT_ID,
@@ -155,7 +155,7 @@ class TestAuditLogService:
             AuditLog(
                 id=str(uuid.uuid4()),
                 timestamp=datetime.now(timezone.utc) - timedelta(hours=1),
-                event_type=AuditEventType.LOGIN,
+                event_type=AuditEventType.LOGIN_SUCCESS,
                 actor_id=TEST_USER_ID,
                 action="login",
                 status="success",
@@ -178,8 +178,8 @@ class TestAuditLogService:
 
         # Check that the logs were returned
         assert len(logs) == 2
-        assert logs[0]["event_type"] == AuditEventType.PHI_ACCESSED
-        assert logs[1]["event_type"] == AuditEventType.LOGIN
+        assert logs[0]["event_type"] == AuditEventType.PHI_ACCESS
+        assert logs[1]["event_type"] == AuditEventType.LOGIN_SUCCESS
 
     async def test_anomaly_detection(self, audit_service, mock_repository):
         """Test that anomalies are detected."""
@@ -217,12 +217,12 @@ class TestAuditLogService:
         # Verify _check_for_anomalies was called
         assert check_anomalies_spy.called, "Anomaly detection check was not called"
 
-        # The main test is that log_event should have been called with event_type=AuditEventType.SECURITY_EVENT
+        # The main test is that log_event should have been called with event_type=AuditEventType.SECURITY_ALERT
         # Find the security event call - there should be at least one call after the initial PHI log
         security_event_calls = [
             call
             for call in mock_log_event.call_args_list
-            if call.kwargs.get("event_type") == AuditEventType.SECURITY_EVENT
+            if call.kwargs.get("event_type") == AuditEventType.SECURITY_ALERT
         ]
 
         assert security_event_calls, "No security event was logged when an anomaly was detected"
