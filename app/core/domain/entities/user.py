@@ -179,7 +179,9 @@ class User(BaseModel):
         if not hasattr(self, "reset_token") or not hasattr(self, "reset_token_expires"):
             return False
             
+        # Check if reset_token matches and reset_token_expires is not None and not expired
         return (self.reset_token == token and 
+                self.reset_token_expires is not None and
                 self.reset_token_expires > datetime.now())
                 
     def clear_reset_token(self) -> None:
