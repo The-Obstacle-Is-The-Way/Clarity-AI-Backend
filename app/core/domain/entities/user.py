@@ -8,7 +8,7 @@ without any dependency on infrastructure or application layers.
 
 import enum
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -150,7 +150,7 @@ class User(BaseModel):
             self.failed_login_attempts = getattr(self, "failed_login_attempts", 0) + 1
             
     # Password reset methods
-    def set_reset_token(self, token: str, expires: Optional[datetime] = None) -> None:
+    def set_reset_token(self, token: str, expires: datetime | None = None) -> None:
         """Set a password reset token and its expiry time.
         
         Args:
@@ -179,7 +179,8 @@ class User(BaseModel):
                 
     def clear_reset_token(self) -> None:
         """Clear the password reset token and expiry time."""
+        # Use object.__setattr__ to bypass type checking for dynamic attributes
         if hasattr(self, "reset_token"):
-            self.reset_token = None
+            object.__setattr__(self, "reset_token", None)
         if hasattr(self, "reset_token_expires"):
-            self.reset_token_expires = None
+            object.__setattr__(self, "reset_token_expires", None)
