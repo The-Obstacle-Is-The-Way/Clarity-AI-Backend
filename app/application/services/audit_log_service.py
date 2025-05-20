@@ -13,7 +13,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import Request
 
@@ -172,7 +172,9 @@ class AuditLogService(IAuditLogger):
         # Map to a standard event type
         if "login" in description.lower():
             event_type = (
-                AuditEventType.LOGIN_SUCCESS if status == "success" else AuditEventType.LOGIN_FAILURE
+                AuditEventType.LOGIN_SUCCESS
+                if status == "success"
+                else AuditEventType.LOGIN_FAILURE
             )
         elif "logout" in description.lower():
             event_type = AuditEventType.LOGOUT
@@ -238,11 +240,11 @@ class AuditLogService(IAuditLogger):
         """
         # Use the correct enum value for PHI access
         event_type = AuditEventType.PHI_ACCESS
-        
-        # Support the older patient_id parameter by mapping it to resource_id 
+
+        # Support the older patient_id parameter by mapping it to resource_id
         if patient_id and not resource_id:
             resource_id = patient_id
-        
+
         # Build details object that includes phi_fields and reason if provided
         detailed_info = {}
         if phi_fields:
@@ -251,14 +253,16 @@ class AuditLogService(IAuditLogger):
             detailed_info["reason"] = reason
         if request_context:
             detailed_info["context"] = request_context
-        
+
         # If string details were provided, add them to the detailed_info
         if details and isinstance(details, str):
             detailed_info["description"] = details
-        
+
         # If details is already a dict, use it directly
-        details_dict = detailed_info if detailed_info else details if isinstance(details, dict) else None
-            
+        details_dict = (
+            detailed_info if detailed_info else details if isinstance(details, dict) else None
+        )
+
         return await self.log_event(
             event_type=event_type,
             actor_id=actor_id,
@@ -269,7 +273,7 @@ class AuditLogService(IAuditLogger):
             metadata=metadata,
             details=details_dict,
             severity=AuditSeverity.HIGH,  # PHI access is always high severity for HIPAA
-            request=request
+            request=request,
         )
 
     async def get_audit_trail(
@@ -478,12 +482,12 @@ class AuditLogService(IAuditLogger):
         user_id: str,
         success: bool,
         description: str,
-        ip_address: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        ip_address: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """
         Log an authentication or authorization event.
-        
+
         Args:
             event_type: Type of auth event (e.g., "LOGIN", "LOGOUT", "TOKEN_VALIDATION")
             user_id: ID of the user associated with the event
@@ -495,14 +499,18 @@ class AuditLogService(IAuditLogger):
         # Map to appropriate AuditEventType
         audit_event_type = None
         if "login" in event_type.lower():
-            audit_event_type = AuditEventType.LOGIN_SUCCESS if success else AuditEventType.LOGIN_FAILURE
+            audit_event_type = (
+                AuditEventType.LOGIN_SUCCESS if success else AuditEventType.LOGIN_FAILURE
+            )
         elif "logout" in event_type.lower():
             audit_event_type = AuditEventType.LOGOUT
         elif "token" in event_type.lower():
-            audit_event_type = AuditEventType.TOKEN_VALIDATED if success else AuditEventType.TOKEN_INVALID
+            audit_event_type = (
+                AuditEventType.TOKEN_VALIDATED if success else AuditEventType.TOKEN_INVALID
+            )
         else:
             audit_event_type = AuditEventType.OTHER
-        
+
         # Log the auth event using the general log_event method
         await self.log_event(
             event_type=audit_event_type,
@@ -511,19 +519,19 @@ class AuditLogService(IAuditLogger):
             status="success" if success else "failure",
             details={"description": description},
             metadata=metadata,
-            severity=AuditSeverity.HIGH if not success else AuditSeverity.INFO
+            severity=AuditSeverity.HIGH if not success else AuditSeverity.INFO,
         )
-    
+
     async def log_system_event(
         self,
         event_type: str,
         description: str,
         severity: AuditSeverity = AuditSeverity.INFO,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """
         Log a system-level event.
-        
+
         Args:
             event_type: Type of system event (e.g., "STARTUP", "SHUTDOWN", "ERROR")
             description: Human-readable description of the event
@@ -532,11 +540,11 @@ class AuditLogService(IAuditLogger):
         """
         # Map to appropriate AuditEventType
         audit_event_type = AuditEventType.SYSTEM_EVENT
-        
+
         # For specific system events, use more specific types
         if "error" in event_type.lower() or "exception" in event_type.lower():
             audit_event_type = AuditEventType.SYSTEM_ERROR
-        
+
         # Log the system event using the general log_event method
         await self.log_event(
             event_type=audit_event_type,
@@ -544,7 +552,7 @@ class AuditLogService(IAuditLogger):
             action=event_type,
             details={"description": description},
             metadata=metadata,
-            severity=severity
+            severity=severity,
         )
 
     # Private methods

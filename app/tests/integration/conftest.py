@@ -12,10 +12,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-# Import Redis service interface and mock implementation
-from app.core.interfaces.services.redis_service_interface import IRedisService
-from app.tests.utils.mock_redis_service import create_mock_redis_service
-
 import pytest
 import pytest_asyncio
 from asgi_lifespan import LifespanManager
@@ -38,6 +34,9 @@ from app.core.interfaces.services.jwt_service import IJwtService
 
 # Added imports for mock JWT service
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+
+# Import Redis service interface and mock implementation
+from app.core.interfaces.services.redis_service_interface import IRedisService
 from app.core.models.token_models import TokenPayload
 from app.domain.exceptions.token_exceptions import InvalidTokenException
 from app.infrastructure.aws.service_factory_provider import get_aws_service_factory
@@ -56,6 +55,7 @@ from app.tests.integration.utils.test_db_initializer import (
     create_test_users,
     get_test_db_session,
 )
+from app.tests.utils.mock_redis_service import create_mock_redis_service
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -974,14 +974,15 @@ def auth_headers():
 
 # Add Redis service mock fixture
 
+
 @pytest.fixture
 def mock_redis_service() -> IRedisService:
     """
     Provides a mock Redis service implementing IRedisService for testing.
-    
+
     This mock allows tests requiring Redis to run without an actual Redis instance.
     It simulates Redis operations in memory for test isolation.
-    
+
     Returns:
         IRedisService: A mock implementation of the Redis service interface
     """
@@ -990,32 +991,30 @@ def mock_redis_service() -> IRedisService:
 
 # Override Redis dependency in FastAPI app
 @pytest.fixture
-def override_redis_dependency(
-    test_app: FastAPI, mock_redis_service: IRedisService
-) -> FastAPI:
+def override_redis_dependency(test_app: FastAPI, mock_redis_service: IRedisService) -> FastAPI:
     """
     Overrides the Redis service dependency in the FastAPI app for testing.
-    
+
     This allows tests to use a mock Redis service instead of a real one.
-    
+
     Args:
         test_app: The FastAPI application instance
         mock_redis_service: The mock Redis service to use
-        
+
     Returns:
         FastAPI: The modified FastAPI app with Redis dependency overridden
     """
     # Import the dependency provider to override
     from app.presentation.api.dependencies.redis import get_redis_service
-    
+
     # Store original dependency override to restore later if needed
     original_dependencies = test_app.dependency_overrides.copy()
-    
+
     # Override the dependency
     test_app.dependency_overrides[get_redis_service] = lambda: mock_redis_service
-    
+
     yield test_app
-    
+
     # Restore original dependencies after test
     test_app.dependency_overrides = original_dependencies
 

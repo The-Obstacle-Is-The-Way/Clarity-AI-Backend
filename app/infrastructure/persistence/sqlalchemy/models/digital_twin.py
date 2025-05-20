@@ -18,6 +18,8 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+)
+from sqlalchemy import (
     UUID as SQLAlchemyUUID,
 )
 from sqlalchemy.ext.hybrid import hybrid_property

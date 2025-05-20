@@ -11,7 +11,7 @@ import json
 import logging
 import uuid
 from datetime import date, datetime, timezone
-from typing import Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from dateutil import parser
 from pydantic import ValidationError
@@ -31,9 +31,6 @@ from sqlalchemy.orm import relationship
 from app.core.domain.entities.patient import Patient as DomainPatient
 from app.core.domain.enums import Gender  # Corrected Gender import
 
-# Import the encryption service instance directly
-from app.infrastructure.security.encryption import encryption_service_instance
-
 # from app.infrastructure.security.encryption import EncryptedString, EncryptedText, EncryptedDate, EncryptedJSON # REMOVED - Caused ImportError
 from app.domain.exceptions.persistence_exceptions import PersistenceError
 from app.domain.utils.datetime_utils import now_utc
@@ -49,6 +46,8 @@ from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import (
     EncryptedString,
     EncryptedText,
 )
+
+# Import the encryption service instance directly
 
 # Import the encryption service instance directly for use in TypeDecorators
 # This allows tests to patch it directly in this module
@@ -95,12 +94,12 @@ class Patient(Base, TimestampMixin, AuditMixin):
     # This ensures compatibility with test expectations and encryption handling
     if TYPE_CHECKING:
         # Type annotations for mypy
-        _first_name: Optional[str]
-        _last_name: Optional[str]
-        _middle_name: Optional[str]
-        _gender: Optional[Gender]
-        _date_of_birth: Optional[str]
-        _ssn: Optional[str]
+        _first_name: str | None
+        _last_name: str | None
+        _middle_name: str | None
+        _gender: Gender | None
+        _date_of_birth: str | None
+        _ssn: str | None
     else:
         # Actual column definitions for runtime
         _first_name = Column("first_name", EncryptedString, nullable=True)
@@ -111,20 +110,20 @@ class Patient(Base, TimestampMixin, AuditMixin):
         _ssn = Column("ssn", EncryptedString, nullable=True)
     if TYPE_CHECKING:
         # Type annotations for mypy
-        _mrn: Optional[str]
-        _email: Optional[str]
-        _phone_number: Optional[str]
-        
+        _mrn: str | None
+        _email: str | None
+        _phone_number: str | None
+
         # Insurance-related fields (PHI)
-        _insurance_provider: Optional[str]
-        _insurance_policy_number: Optional[str]
-        _insurance_group_number: Optional[str]
+        _insurance_provider: str | None
+        _insurance_policy_number: str | None
+        _insurance_group_number: str | None
     else:
         # Actual column definitions for runtime
         _mrn = Column("mrn", EncryptedString, nullable=True)
         _email = Column("email", EncryptedString, nullable=True)
         _phone_number = Column("phone_number", EncryptedString, nullable=True)
-        
+
         # Insurance-related fields (PHI)
         _insurance_provider = Column("insurance_provider", EncryptedString, nullable=True)
         _insurance_policy_number = Column("insurance_policy_number", EncryptedString, nullable=True)
@@ -137,9 +136,9 @@ class Patient(Base, TimestampMixin, AuditMixin):
     _country = Column("country", EncryptedString, nullable=True)
     if TYPE_CHECKING:
         # Type annotations for mypy
-        _emergency_contact_name: Optional[str]
-        _emergency_contact_phone: Optional[str]
-        _emergency_contact_relationship: Optional[str]
+        _emergency_contact_name: str | None
+        _emergency_contact_phone: str | None
+        _emergency_contact_relationship: str | None
     else:
         # Actual column definitions for runtime
         _emergency_contact_name = Column("emergency_contact_name", EncryptedString, nullable=True)
@@ -151,23 +150,25 @@ class Patient(Base, TimestampMixin, AuditMixin):
     # Complex data fields (JSON/JSONB in PostgreSQL, stored as encrypted blobs)
     if TYPE_CHECKING:
         # Type annotations for mypy
-        _contact_info: Optional[dict[str, Any]]
-        _address_details: Optional[dict[str, Any]]
-        _emergency_contact_details: Optional[dict[str, Any]]
-        _preferences: Optional[dict[str, Any]]
+        _contact_info: dict[str, Any] | None
+        _address_details: dict[str, Any] | None
+        _emergency_contact_details: dict[str, Any] | None
+        _preferences: dict[str, Any] | None
     else:
         # Actual column definitions for runtime
         _contact_info = Column("contact_info", EncryptedJSON, nullable=True)
         _address_details = Column("address_details", EncryptedJSON, nullable=True)
-        _emergency_contact_details = Column("emergency_contact_details", EncryptedJSON, nullable=True)
+        _emergency_contact_details = Column(
+            "emergency_contact_details", EncryptedJSON, nullable=True
+        )
         _preferences = Column("preferences", EncryptedJSON, nullable=True)
     # Medical data fields (PHI - stored as encrypted text)
     if TYPE_CHECKING:
         # Type annotations for mypy
-        _medical_history: Optional[str]
-        _medications: Optional[str]
-        _allergies: Optional[str]
-        _notes: Optional[str]
+        _medical_history: str | None
+        _medications: str | None
+        _allergies: str | None
+        _notes: str | None
     else:
         # Actual column definitions for runtime
         _medical_history = Column("medical_history", EncryptedText, nullable=True)
@@ -345,7 +346,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
                             break
                     else:  # No break occurred in for loop
                         logger.warning(
-                            f"Invalid gender value in domain object: {repr(gender_value)}. Setting to None."
+                            f"Invalid gender value in domain object: {gender_value!r}. Setting to None."
                         )
                         model._gender = None
             else:
@@ -483,11 +484,11 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # DEBUG PRINTS START
         print("[DEBUG PatientModel.from_domain] Final model attributes before return:")
         print(f"  _contact_info TYPE: {type(model._contact_info)}")
-        print(f"  _contact_info VALUE: {repr(model._contact_info)}")
+        print(f"  _contact_info VALUE: {model._contact_info!r}")
         print(f"  _address_details TYPE: {type(model._address_details)}")
-        print(f"  _address_details VALUE: {repr(model._address_details)}")
+        print(f"  _address_details VALUE: {model._address_details!r}")
         print(f"  _emergency_contact_details TYPE: {type(model._emergency_contact_details)}")
-        print(f"  _emergency_contact_details VALUE: {repr(model._emergency_contact_details)}")
+        print(f"  _emergency_contact_details VALUE: {model._emergency_contact_details!r}")
         # DEBUG PRINTS END
 
         logger.debug(f"[from_domain] Completed conversion for patient model ID: {model.id}")
@@ -555,11 +556,11 @@ class Patient(Base, TimestampMixin, AuditMixin):
                         f"Failed to decode bytes to UTF-8 string. Value: {value[:50]}..."
                     )
                     return str(value)  # Fallback, might be lossy
-            
+
             # Strip 'encrypted_' prefix if present in string values
             if isinstance(value, str) and value.startswith("encrypted_"):
-                return value[len("encrypted_"):]
-                
+                return value[len("encrypted_") :]
+
             return value
 
         def _ensure_parsed_json(value: Any) -> Any:
@@ -757,7 +758,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         )  # Assuming notes is intended to be a simple string
         extra_data_dict = self._extra_data  # This should be a dict after EncryptedJSON processing
 
-        def _parse_json_string(json_str: Optional[str | bytes], field_name: str) -> Any:
+        def _parse_json_string(json_str: str | bytes | None, field_name: str) -> Any:
             if json_str is None:
                 return None
 
@@ -767,15 +768,15 @@ class Patient(Base, TimestampMixin, AuditMixin):
                     str_to_parse = json_str.decode("utf-8")
                 except UnicodeDecodeError:
                     logger.warning(
-                        f"Failed to decode bytes for {field_name} for patient {self.id} from JSON string: {repr(json_str[:50])}..."
+                        f"Failed to decode bytes for {field_name} for patient {self.id} from JSON string: {json_str[:50]!r}..."
                     )
                     return None
             # Use repr for proper bytes representation
             try:
                 return json.loads(str_to_parse)
-            except json.JSONDecodeError as e:
+            except json.JSONDecodeError:
                 logger.warning(
-                    f"Failed to parse {field_name} for patient {self.id} from JSON string: {repr(str_to_parse[:100])}"
+                    f"Failed to parse {field_name} for patient {self.id} from JSON string: {str_to_parse[:100]!r}"
                 )
                 return None
 

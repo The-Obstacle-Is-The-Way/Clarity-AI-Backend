@@ -12,7 +12,8 @@ import traceback
 from collections.abc import Callable
 from datetime import datetime
 from functools import wraps
-from typing import Any, Optional, TypeVar, Union, ParamSpec
+from typing import Any, ParamSpec, TypeVar
+
 from app.core.constants import LogLevel
 
 # Type variables for function signatures
@@ -27,6 +28,7 @@ class PHISanitizingFilter(logging.Filter):
         # Avoid circular import by not creating the anonymizer in __init__
         # Will be initialized in filter() method when first needed
         from typing import Any
+
         self.anonymizer: Any = None
 
     def filter(self, record: logging.LogRecord) -> bool:
@@ -104,19 +106,20 @@ def get_logger(name: str) -> logging.Logger:
 
 
 # Define type variables for generic function signatures
-T = TypeVar('T')
-P = ParamSpec('P')
+T = TypeVar("T")
+P = ParamSpec("P")
+
 
 def log_execution_time(func=None, *, logger=None, level=LogLevel.DEBUG):
     """
     Decorator to log the execution time of a function.
     Can be used with or without arguments:
-    
+
     @log_execution_time
     def my_func(): pass
-    
+
     OR
-    
+
     @log_execution_time(logger=my_logger, level=LogLevel.INFO)
     def my_func(): pass
 
@@ -134,54 +137,49 @@ def log_execution_time(func=None, *, logger=None, level=LogLevel.DEBUG):
         LogLevel.INFO: logging.INFO,
         LogLevel.WARNING: logging.WARNING,
         LogLevel.ERROR: logging.ERROR,
-        LogLevel.CRITICAL: logging.CRITICAL
+        LogLevel.CRITICAL: logging.CRITICAL,
     }
-    
+
     def actual_decorator(fn):
         # Create specific logger for this function if not provided
         nonlocal logger, level
         log = logger or get_logger(fn.__module__)
-        
+
         # Ensure level is an integer
         log_level = level
         if isinstance(log_level, LogLevel):
             log_level = level_to_int.get(log_level, logging.DEBUG)
         elif not isinstance(log_level, int):
             log_level = logging.DEBUG
-            
+
         @wraps(fn)
         def wrapper(*args, **kwargs):
             start_time = datetime.now()
-            
+
             try:
                 # Execute the function
                 result = fn(*args, **kwargs)
-                
+
                 # Calculate execution time
                 end_time = datetime.now()
                 duration_ms = (end_time - start_time).total_seconds() * 1000
-                
+
                 # Use the integer log level
-                log.log(
-                    log_level, 
-                    f"Function '{fn.__name__}' executed in {duration_ms:.2f} ms"
-                )
-                
+                log.log(log_level, f"Function '{fn.__name__}' executed in {duration_ms:.2f} ms")
+
                 return result
             except Exception as e:
                 # Log exceptions with traceback
                 end_time = datetime.now()
                 duration_ms = (end_time - start_time).total_seconds() * 1000
-                
-                log.exception(
-                    f"Exception in '{fn.__name__}' after {duration_ms:.2f} ms: {str(e)}"
-                )
-                
+
+                log.exception(f"Exception in '{fn.__name__}' after {duration_ms:.2f} ms: {e!s}")
+
                 # Re-raise the exception
                 raise
-                
+
         return wrapper
-    
+
     # Handle being called directly as @log_execution_time or with args
     if func is not None:
         return actual_decorator(func)

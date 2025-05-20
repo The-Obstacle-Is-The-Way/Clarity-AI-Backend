@@ -186,9 +186,9 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
     async def clear_expired_tokens(self) -> int:
         """
         Remove expired tokens from the blacklist.
-        
+
         This should be called periodically to clean up the blacklist.
-        
+
         Returns:
             The number of tokens removed from the blacklist
         """

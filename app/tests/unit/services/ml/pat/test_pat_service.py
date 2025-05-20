@@ -15,12 +15,15 @@ from pytest_mock import MockerFixture
 # Conditional import for freezegun
 try:
     from freezegun import freeze_time
+
     FREEZEGUN_AVAILABLE = True
 except ImportError:
     FREEZEGUN_AVAILABLE = False
+
     # Create a mock freeze_time decorator if freezegun is not available
     def freeze_time(time_str):
         return lambda x: x
+
 
 from app.core.interfaces.aws_service_interface import (
     AWSServiceFactory,

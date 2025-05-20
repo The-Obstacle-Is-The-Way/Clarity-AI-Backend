@@ -293,58 +293,63 @@ def mock_redis_cache_service(mock_redis_service):
 def mock_token_blacklist_repository():
     """
     Fixture to provide an in-memory token blacklist repository.
-    
+
     This implementation doesn't rely on Redis and is suitable for unit tests.
     """
     from app.core.interfaces.repositories.token_blacklist_repository_interface import (
         ITokenBlacklistRepository,
     )
-    
+
     class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
         """In-memory implementation for testing."""
-        
+
         def __init__(self):
             self._token_blacklist = {}  # token hash -> jti
-            self._jti_blacklist = {}    # jti -> details
-            
-        async def add_to_blacklist(self, token: str, jti: str, expires_at: datetime, reason: str | None = None) -> None:
+            self._jti_blacklist = {}  # jti -> details
+
+        async def add_to_blacklist(
+            self, token: str, jti: str, expires_at: datetime, reason: str | None = None
+        ) -> None:
             """Add a token to the blacklist."""
             from hashlib import sha256
+
             token_hash = sha256(token.encode()).hexdigest()
             self._token_blacklist[token_hash] = jti
             self._jti_blacklist[jti] = {
                 "expires_at": expires_at,
-                "reason": reason or "test_blacklist"
+                "reason": reason or "test_blacklist",
             }
-            
+
         async def is_blacklisted(self, token: str) -> bool:
             """Check if a token is blacklisted."""
             from hashlib import sha256
+
             token_hash = sha256(token.encode()).hexdigest()
             return token_hash in self._token_blacklist
-            
+
         async def is_jti_blacklisted(self, token_id: str) -> bool:
             """Check if a JTI is blacklisted."""
             return token_id in self._jti_blacklist
-            
+
         async def clear_expired_tokens(self) -> int:
             """Remove expired tokens from the blacklist."""
             now = datetime.now(timezone.utc)
             expired_jtis = [
-                jti for jti, details in self._jti_blacklist.items()
+                jti
+                for jti, details in self._jti_blacklist.items()
                 if details.get("expires_at") and details.get("expires_at") <= now
             ]
-            
+
             for jti in expired_jtis:
                 del self._jti_blacklist[jti]
-                
+
                 # Also remove from token blacklist
                 for token_hash, token_jti in list(self._token_blacklist.items()):
                     if token_jti == jti:
                         del self._token_blacklist[token_hash]
-                        
+
             return len(expired_jtis)
-    
+
     return InMemoryTokenBlacklistRepository()
 
 
@@ -361,17 +366,16 @@ def mock_settings():
 def mock_model_service():
     """
     Fixture to provide a mock model service for tests.
-    
+
     This mock service allows tests requiring ML model functionality to run
     without actual ML models or inference operations. It provides predictable
     responses for testing purposes.
-    
+
     Returns:
         IModelService: A mock implementation of the model service interface
     """
-    from app.core.interfaces.services.model_service_interface import IModelService
     from app.tests.utils.mock_model_service import create_mock_model_service
-    
+
     return create_mock_model_service()
 
 

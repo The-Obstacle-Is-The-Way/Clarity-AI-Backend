@@ -6,7 +6,7 @@ following Clean Architecture principles. These entities are used across the appl
 and represent the core business logic around ML models.
 """
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class ModelType(str, Enum):
@@ -22,7 +22,7 @@ class ModelType(str, Enum):
 class ModelInfo:
     """
     Domain entity representing ML model metadata information.
-    
+
     This entity contains the core properties of a machine learning model
     that are used by the business logic, independent of implementation details.
     """
@@ -33,14 +33,14 @@ class ModelInfo:
         model_name: str,
         model_type: ModelType,
         version: str,
-        description: Optional[str] = None,
-        parameters: Optional[int] = None,
-        supported_features: Optional[List[str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        description: str | None = None,
+        parameters: int | None = None,
+        supported_features: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
     ):
         """
         Initialize a ModelInfo entity.
-        
+
         Args:
             model_id: Unique identifier for the model
             model_name: Human-readable name of the model
@@ -74,8 +74,8 @@ class InferenceStatus(str, Enum):
 class InferenceResult:
     """
     Domain entity representing the result of an ML model inference.
-    
-    This entity contains the core properties of inference results 
+
+    This entity contains the core properties of inference results
     that are used by the business logic, independent of implementation details.
     """
 
@@ -84,15 +84,15 @@ class InferenceResult:
         inference_id: str,
         model_id: str,
         status: InferenceStatus,
-        result: Optional[Dict[str, Any]] = None,
-        confidence: Optional[float] = None,
-        processing_time_ms: Optional[int] = None,
-        error_message: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        result: dict[str, Any] | None = None,
+        confidence: float | None = None,
+        processing_time_ms: int | None = None,
+        error_message: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ):
         """
         Initialize an InferenceResult entity.
-        
+
         Args:
             inference_id: Unique identifier for this inference result
             model_id: Identifier of the model used for inference

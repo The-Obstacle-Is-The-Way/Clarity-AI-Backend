@@ -25,17 +25,23 @@ import asyncio
 import time
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Optional, Tuple, Union
+from typing import Any
 
 import jwt
 from pydantic import BaseModel
 
 from app.config.settings import Settings
 from app.core.constants.audit import AuditEventType, AuditSeverity
-from app.core.exceptions.auth import InvalidTokenException, TokenBlacklistedException, TokenExpiredException
+from app.core.exceptions.auth import (
+    InvalidTokenException,
+    TokenBlacklistedException,
+    TokenExpiredException,
+)
+from app.core.interfaces.repositories.token_blacklist_repository_interface import (
+    ITokenBlacklistRepository,
+)
 from app.core.interfaces.repositories.token_repository_interface import ITokenRepository
 from app.core.interfaces.services.audit_logger_interface import IAuditLogger
-from app.core.interfaces.repositories.token_blacklist_repository_interface import ITokenBlacklistRepository
 
 
 def utcnow() -> datetime:
@@ -45,6 +51,7 @@ def utcnow() -> datetime:
 
 class TokenPayload(BaseModel):
     """Model representing the payload of a JWT token."""
+
     sub: str
     exp: int
     iat: int
@@ -52,7 +59,7 @@ class TokenPayload(BaseModel):
     session_id: str
     user_id: str
     email: str
-    role: Optional[str] = None
+    role: str | None = None
     permissions: list[str] = []
     token_type: str
 
@@ -99,7 +106,7 @@ class JWTService:
         data: dict[str, Any],
         expires_delta: timedelta | None = None,
         expires_delta_minutes: int | None = None,
-    ) -> Union[str, Tuple[str, int]]:
+    ) -> str | tuple[str, int]:
         """
         Create a new JWT access token.
 
@@ -166,7 +173,7 @@ class JWTService:
         # Check if we need to return expires_in
         if hasattr(self, "_return_expires_in") and self._return_expires_in:
             return access_token, expires_in
-            
+
         return access_token
 
     def create_refresh_token(
@@ -177,12 +184,12 @@ class JWTService:
     ) -> str:
         """
         Creates a new refresh token.
-        
+
         Args:
             data: Dictionary containing token data (user_id, email, session_id)
             expires_delta: Optional custom expiration time
             expires_delta_minutes: Optional custom expiration time in minutes
-            
+
         Returns:
             The encoded JWT refresh token string
         """
@@ -190,7 +197,7 @@ class JWTService:
         user_id = data.get("user_id") or data.get("sub")
         email = data.get("email", "")
         session_id = data.get("session_id", str(uuid.uuid4()))
-        
+
         if not user_id:
             raise ValueError("user_id or sub is required in data dictionary")
 

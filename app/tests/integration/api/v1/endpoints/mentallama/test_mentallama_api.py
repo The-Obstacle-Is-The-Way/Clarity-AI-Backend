@@ -147,11 +147,11 @@ class MockAuditLogService(IAuditLogger):
         success: bool,
         description: str,
         ip_address: str | None = None,
-        metadata: dict | None = None
+        metadata: dict | None = None,
     ) -> None:
         """
         Log an authentication or authorization event without using the database.
-        
+
         Args:
             event_type: Type of auth event (e.g., "LOGIN", "LOGOUT", "TOKEN_VALIDATION")
             user_id: ID of the user associated with the event
@@ -161,7 +161,9 @@ class MockAuditLogService(IAuditLogger):
             metadata: Additional contextual information about the event
         """
         # For testing purposes, we just log but don't store anything
-        logger.info(f"MOCK AUTH EVENT: {event_type} by {user_id} - Success: {success} - {description}")
+        logger.info(
+            f"MOCK AUTH EVENT: {event_type} by {user_id} - Success: {success} - {description}"
+        )
         return
 
     async def get_audit_trail(

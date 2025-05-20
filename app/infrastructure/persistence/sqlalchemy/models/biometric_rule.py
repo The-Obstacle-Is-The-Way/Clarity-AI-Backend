@@ -17,6 +17,8 @@ from sqlalchemy import (
     ForeignKey,
     String,
     Text,
+)
+from sqlalchemy import (
     UUID as SQLAlchemyUUID,
 )
 from sqlalchemy.orm import relationship

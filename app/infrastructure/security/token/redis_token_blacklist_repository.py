@@ -212,14 +212,14 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         """
         logger.debug("Redis handles TTL automatically; remove_expired_entries is a no-op.")
         return 0
-        
+
     async def clear_expired_tokens(self) -> int:
         """
         Clear expired tokens from the blacklist.
-        
+
         For Redis, this is largely a no-op as Redis handles TTL automatically.
         This method is provided for interface compatibility with ITokenBlacklistRepository.
-        
+
         Returns:
             Number of tokens removed (always 0 for Redis implementation)
         """

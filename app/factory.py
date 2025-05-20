@@ -28,8 +28,8 @@ from app.core.config import get_settings as global_get_settings
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface as IJWTService
 from app.core.interfaces.services.redis_service_interface import IRedisService
 from app.core.logging_config import LOGGING_CONFIG
-from app.infrastructure.security.rate_limiting.service_impl import get_rate_limiter_service
 from app.infrastructure.security.jwt.jwt_service import get_jwt_service
+from app.infrastructure.security.rate_limiting.service_impl import get_rate_limiter_service
 from app.infrastructure.services.redis.redis_service import (
     create_redis_service,
 )
@@ -361,8 +361,10 @@ def create_application(
 
             # Initialize Redis for rate limiting
             # Store the Redis service in app state to be accessed by rate limiter components
-            app_instance.state.rate_limit_redis = create_redis_service(redis_url=current_settings.REDIS_URL)
-            
+            app_instance.state.rate_limit_redis = create_redis_service(
+                redis_url=current_settings.REDIS_URL
+            )
+
             # Initialize rate limiter service with Redis service from app state
             rate_limiter = get_rate_limiter_service()
 

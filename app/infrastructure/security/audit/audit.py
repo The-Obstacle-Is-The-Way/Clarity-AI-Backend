@@ -19,13 +19,13 @@ import logging
 import os
 import uuid
 from datetime import timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.core.config.settings import get_settings
 from app.core.interfaces.services.audit_logger_interface import (
     AuditEventType,
     AuditSeverity,
-    IAuditLogger
+    IAuditLogger,
 )
 
 # Use standard logger
@@ -304,7 +304,7 @@ class AuditLogger(IAuditLogger):
         # If configured, also send to external audit service
         if self.external_audit_enabled:
             self._send_to_external_audit_service(audit_entry)
-            
+
         return event_id
 
     def log_system_event(
@@ -345,7 +345,7 @@ class AuditLogger(IAuditLogger):
         # If configured, also send to external audit service
         if self.external_audit_enabled:
             self._send_to_external_audit_service(audit_entry)
-            
+
         return event_id
 
     def get_audit_trail(
@@ -488,9 +488,11 @@ except Exception as e:
             details: dict[str, Any] | None = None,
             request: Any | None = None,
         ) -> str:
-            logger.warning("DummyAuditLogger.log_security_event called but logger not properly initialized")
+            logger.warning(
+                "DummyAuditLogger.log_security_event called but logger not properly initialized"
+            )
             return str(uuid.uuid4())
-            
+
         def log_phi_access(
             self,
             actor_id: str,
@@ -503,9 +505,11 @@ except Exception as e:
             request: Any | None = None,
             request_context: dict[str, Any] | None = None,
         ) -> str:
-            logger.warning("DummyAuditLogger.log_phi_access called but logger not properly initialized")
+            logger.warning(
+                "DummyAuditLogger.log_phi_access called but logger not properly initialized"
+            )
             return str(uuid.uuid4())
-            
+
         def get_audit_trail(
             self,
             filters: dict[str, Any] | None = None,
@@ -514,9 +518,11 @@ except Exception as e:
             limit: int = 100,
             offset: int = 0,
         ) -> list[dict[str, Any]]:
-            logger.warning("DummyAuditLogger.get_audit_trail called but logger not properly initialized")
+            logger.warning(
+                "DummyAuditLogger.get_audit_trail called but logger not properly initialized"
+            )
             return []
-            
+
         def export_audit_logs(
             self,
             start_time: datetime.datetime | None = None,
@@ -525,11 +531,15 @@ except Exception as e:
             file_path: str | None = None,
             filters: dict[str, Any] | None = None,
         ) -> str:
-            logger.warning("DummyAuditLogger.export_audit_logs called but logger not properly initialized")
+            logger.warning(
+                "DummyAuditLogger.export_audit_logs called but logger not properly initialized"
+            )
             return "/dev/null"
-            
+
         def get_security_dashboard_data(self, days: int = 7) -> dict[str, Any]:
-            logger.warning("DummyAuditLogger.get_security_dashboard_data called but logger not properly initialized")
+            logger.warning(
+                "DummyAuditLogger.get_security_dashboard_data called but logger not properly initialized"
+            )
             return {
                 "total_events": 0,
                 "security_incidents": 0,
@@ -537,7 +547,7 @@ except Exception as e:
                 "failed_logins": 0,
                 "days": days,
             }
-            
+
         def _send_to_external_audit_service(self, *args, **kwargs):
             pass
 

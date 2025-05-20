@@ -203,7 +203,7 @@ class TestAuditLogService:
             await audit_service.log_phi_access(
                 actor_id=TEST_USER_ID,
                 patient_id=TEST_PATIENT_ID,
-                resource_type="patient", 
+                resource_type="patient",
                 action="view",
                 status="success",
                 reason="treatment",
@@ -216,13 +216,14 @@ class TestAuditLogService:
 
         # Look for security alert events in the repository calls
         security_events = [
-            log for args in mock_repository._create.call_args_list 
-            for log in [args[0][0]] 
+            log
+            for args in mock_repository._create.call_args_list
+            for log in [args[0][0]]
             if log.event_type == AuditEventType.SECURITY_ALERT
         ]
-        
+
         assert security_events, "No security event was logged when an anomaly was detected"
-        
+
         # Restore original method
         audit_service._check_for_anomalies = original_check_anomalies
 

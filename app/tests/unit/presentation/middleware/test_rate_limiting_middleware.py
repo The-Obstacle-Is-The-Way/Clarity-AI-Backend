@@ -7,7 +7,7 @@ from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
 
-from app.core.interfaces.services.rate_limiting import IRateLimiter, RateLimitConfig
+from app.core.interfaces.services.rate_limiting import RateLimitConfig
 from app.presentation.middleware.rate_limiting import (
     RateLimitingMiddleware,
 )
@@ -40,7 +40,7 @@ class MockRateLimiter:
         client_id = request.client.host if request.client else "unknown"
         self.last_key = f"global:{client_id}"
         self.last_config = config
-        
+
         # Return true if request count is under limit (using 10 as the threshold)
         return self.request_count <= 10
 
@@ -212,7 +212,7 @@ class TestRateLimitingMiddleware:
         class ExceptionRaisingLimiter:
             async def is_allowed(self, client_id):
                 raise ValueError("Test exception")
-                
+
             async def check_rate_limit(self, request, config=None):
                 raise ValueError("Test exception")
 

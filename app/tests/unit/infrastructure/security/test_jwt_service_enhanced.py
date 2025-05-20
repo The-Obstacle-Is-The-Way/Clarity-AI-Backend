@@ -18,12 +18,15 @@ import pytest
 # Conditionally import freezegun or skip the tests if it's not available
 try:
     from freezegun import freeze_time
+
     FREEZEGUN_AVAILABLE = True
 except ImportError:
     FREEZEGUN_AVAILABLE = False
+
     # Create a no-op placeholder for freeze_time decorator to avoid syntax errors
     def freeze_time(time_str):
         return lambda x: x
+
 
 # Use canonical config path
 from app.config.settings import Settings

@@ -9,11 +9,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class TokenPayload(BaseModel):
     """Schema for the data encoded within a JWT token.
-    
+
     This is the canonical definition of TokenPayload used throughout the application.
     It includes all fields that might be needed by different parts of the system,
     including tests and authentication middleware.
     """
+
     # Standard JWT claims
     sub: str | UUID  # Subject of the token (user ID)
     exp: int  # Expiration time claim (POSIX timestamp)
@@ -22,7 +23,7 @@ class TokenPayload(BaseModel):
     aud: str | list[str] | None = None  # Audience claim
     jti: str | None = None  # JWT ID claim
     nbf: int | None = None  # Not before time
-    
+
     # Application-specific fields
     scope: str | None = None  # Single scope string (e.g. "access_token")
     scopes: list[str] | None = Field(default_factory=list)  # Optional list variant
@@ -31,7 +32,7 @@ class TokenPayload(BaseModel):
     role: str | None = None  # Single role string
     roles: list[str] | None = None  # Multiple roles
     permissions: list[str] | None = None  # Fine-grained permission list
-    
+
     # Additional fields used in tests and other parts of the application
     username: str | None = None  # Username
     email: str | None = None  # User email
@@ -45,9 +46,9 @@ class TokenPayload(BaseModel):
     refresh: bool | None = None  # Flag for refresh tokens
     parent_jti: str | None = None  # Parent token JTI for refresh token tracking
     type: str | None = None  # Token type
-    
+
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         extra="allow",  # Allow extra fields for forward compatibility
-        populate_by_name=True  # Allow populating by field name
+        populate_by_name=True,  # Allow populating by field name
     )

@@ -6,7 +6,6 @@ interface used by the presentation layer middleware.
 """
 
 import logging
-from typing import Optional
 
 from fastapi import Request
 
@@ -24,15 +23,15 @@ logger = logging.getLogger(__name__)
 class RateLimiterServiceImpl(RateLimiterService):
     """
     Implementation of the RateLimiterService interface.
-    
+
     This adapter connects the presentation layer middleware with the
     core rate limiting components, following Clean Architecture principles.
     """
 
-    def __init__(self, rate_limiter: Optional[IRateLimiter] = None):
+    def __init__(self, rate_limiter: IRateLimiter | None = None):
         """
         Initialize with a rate limiter implementation.
-        
+
         Args:
             rate_limiter: The core rate limiter to use, or None to create a default
         """
@@ -46,10 +45,10 @@ class RateLimiterServiceImpl(RateLimiterService):
     async def is_allowed(self, identifier: str) -> bool:
         """
         Check if a request from the given identifier is allowed.
-        
+
         Args:
             identifier: Unique key identifying the request source
-            
+
         Returns:
             True if the request is allowed, False otherwise
         """
@@ -58,29 +57,29 @@ class RateLimiterServiceImpl(RateLimiterService):
     async def check_rate_limit(self, request: Request) -> bool:
         """
         Check if the request is within rate limits.
-        
+
         Args:
             request: The incoming HTTP request
-            
+
         Returns:
             True if the request is allowed, False if rate limited
         """
         # Extract client IP to use as the rate limit key
         client_ip = request.client.host if request.client else "unknown"
-        
+
         # Check rate limit using the core rate limiter
         allowed = self._limiter.check_rate_limit(client_ip, self._default_config)
-        
+
         if not allowed:
             logger.warning(f"Rate limit exceeded for IP: {client_ip}")
-        
+
         return allowed
 
 
 def get_rate_limiter_service() -> RateLimiterService:
     """
     Factory function to create a RateLimiterService.
-    
+
     Returns:
         An implementation of RateLimiterService
     """

@@ -11,7 +11,6 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.core.interfaces.services.redis_service_interface import IRedisService
-from app.infrastructure.services.redis.redis_cache_service import RedisCacheService
 from app.infrastructure.security.token.redis_token_blacklist_repository import (
     RedisTokenBlacklistRepository,
 )
@@ -154,11 +153,11 @@ class TestRedisTokenBlacklistRepository:
         """Test blacklisting a session."""
         # Arrange
         session_id = "test-session-123"
-        
+
         # Mock the session tokens
         session_tokens = [
             {"jti": mock_jti, "token_hash": "abc123"},
-            {"jti": "another-jti", "token_hash": "def456"}
+            {"jti": "another-jti", "token_hash": "def456"},
         ]
         mock_redis_service.get.return_value = session_tokens
 
@@ -178,13 +177,13 @@ class TestRedisTokenBlacklistRepository:
 
         # Assert - should always return 0 as Redis handles this automatically
         assert result == 0
-        
+
     @pytest.mark.asyncio
     async def test_clear_expired_tokens(self, token_blacklist_repo):
         """Test clearing expired tokens (no-op in Redis implementation)."""
         # Act
         result = await token_blacklist_repo.clear_expired_tokens()
-        
+
         # Assert - should always return 0 as Redis handles this automatically via TTL
         assert result == 0
 

@@ -13,12 +13,12 @@ from typing import Any
 class IPasswordHandler(ABC):
     """
     Interface for password handling services.
-    
+
     Implementations of this interface should handle secure password operations
     including hashing, verification, and validation in accordance with
     security best practices and HIPAA requirements.
     """
-    
+
     @abstractmethod
     def get_password_hash(self, password: str) -> str:
         """
@@ -31,7 +31,7 @@ class IPasswordHandler(ABC):
             The hashed password.
         """
         pass
-    
+
     @abstractmethod
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """
@@ -45,7 +45,7 @@ class IPasswordHandler(ABC):
             True if the password matches, False otherwise.
         """
         pass
-    
+
     @abstractmethod
     def password_needs_rehash(self, hashed_password: str) -> bool:
         """
@@ -58,7 +58,7 @@ class IPasswordHandler(ABC):
             True if rehashing is recommended, False otherwise
         """
         pass
-    
+
     @abstractmethod
     def generate_secure_password(self, length: int = 16) -> str:
         """
@@ -71,34 +71,34 @@ class IPasswordHandler(ABC):
             Secure random password string
         """
         pass
-    
+
     @abstractmethod
     def hash_password(self, password: str) -> str:
         """
         Alias for get_password_hash (retained for backwards-compat).
-        
+
         Args:
             password: The plain text password to hash
-            
+
         Returns:
             A securely hashed password string
         """
         pass
-    
+
     @abstractmethod
     def check_password(self, plain_password: str, hashed_password: str) -> bool:
         """
         Alias for verify_password (retained for backwards-compat).
-        
+
         Args:
             plain_password: The plain text password to verify
             hashed_password: The hashed password to compare against
-            
+
         Returns:
             True if the password matches, False otherwise
         """
         pass
-    
+
     @abstractmethod
     def validate_password_strength(self, password: str) -> tuple[bool, str | None]:
         """
@@ -111,7 +111,7 @@ class IPasswordHandler(ABC):
             Tuple of (is_valid, error_message)
         """
         pass
-    
+
     @abstractmethod
     def validate_password_complexity(self, password: str) -> tuple[bool, str]:
         """
@@ -124,7 +124,7 @@ class IPasswordHandler(ABC):
             Tuple of (is_valid, error_message)
         """
         pass
-    
+
     @abstractmethod
     def is_common_password(self, password: str) -> bool:
         """
@@ -137,7 +137,7 @@ class IPasswordHandler(ABC):
             True if the password appears to be breached, False otherwise
         """
         pass
-    
+
     @abstractmethod
     def suggest_password_improvement(self, password: str) -> str:
         """
@@ -150,7 +150,7 @@ class IPasswordHandler(ABC):
             Suggestion message
         """
         pass
-        
+
     @abstractmethod
     def get_password_strength_feedback(self, password: str) -> dict[str, Any]:
         """

@@ -227,17 +227,17 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
         except Exception as e:
             logger.error(f"Failed to remove expired entries: {e!s}")
             raise RepositoryException(f"Failed to remove expired entries: {e!s}")
-            
+
     async def clear_expired_tokens(self) -> int:
         """
         Clear expired tokens from the blacklist.
-        
+
         This method implements the interface requirement and provides functionality
         to clean up expired tokens from the in-memory storage.
-        
+
         Returns:
             Number of tokens removed
-            
+
         Raises:
             RepositoryException: If cleanup fails
         """
