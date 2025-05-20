@@ -13,7 +13,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Dict, Optional
 
 from fastapi import Request
 
@@ -203,96 +203,41 @@ class AuditLogService(IAuditLogger):
     async def log_phi_access(
         self,
         actor_id: str,
-        patient_id: str,
         resource_type: str,
+        resource_id: str,
         action: str,
-        status: str,
-        phi_fields: list[str] | None = None,
-        reason: str | None = None,
-        request: Request | None = None,
-        request_context: dict[str, Any] | None = None,
-        metadata: dict[str, Any] | None = None,
-        ip_address: str | None = None,
+        metadata: Dict[str, Any] = None,
+        ip_address: str = None,
+        details: str = None,
     ) -> str:
         """
-        Log PHI access event specifically.
+        Log access to Protected Health Information (PHI).
 
         Args:
-            actor_id: ID of the user accessing PHI
-            patient_id: ID of the patient whose PHI was accessed
-            resource_type: Type of resource containing PHI (e.g., "medical_record")
-            action: Action performed on PHI (e.g., "view", "modify")
-            status: Outcome of the access attempt
-            phi_fields: Specific PHI fields accessed (without values)
-            reason: Business reason for accessing the PHI
-            request: Optional FastAPI request object for extracting IP and headers
-            request_context: Additional context from the request (location, device, etc.)
-            metadata: Additional metadata for the event
-            ip_address: IP address of the request, if known
+            actor_id: ID of the user/system accessing the PHI
+            resource_type: Type of PHI resource (e.g., "patient", "medical_record")
+            resource_id: ID of the specific PHI resource
+            action: Action performed (e.g., "view", "update", "delete")
+            metadata: Additional contextual information
+            ip_address: IP address of the actor
+            details: Additional details about the access
 
         Returns:
-            str: Unique identifier for the audit log entry
+            ID of the created audit log entry
         """
-        # Map the action to an event type
-        if action.lower() in ["view", "read", "get"]:
-            event_type = AuditEventType.PHI_ACCESSED
-        elif action.lower() in ["update", "modify", "edit", "patch", "put"]:
-            event_type = AuditEventType.PHI_MODIFIED
-        elif action.lower() in ["delete", "remove"]:
-            event_type = AuditEventType.PHI_DELETED
-        elif action.lower() in ["export", "download", "print"]:
-            event_type = AuditEventType.PHI_EXPORTED
-        else:
-            event_type = AuditEventType.PHI_ACCESSED  # Default
-
-        # Ensure we have a reason for access (required by HIPAA)
-        reason = reason or "Not specified (HIPAA requires a reason for PHI access)"
-
-        # Build details including PHI fields accessed (without values)
-        details = {
-            "reason": reason,
-            "phi_fields": phi_fields or ["all"],
-        }
-
-        # Add request context if provided
-        if request_context:
-            details.update({"context": request_context})
-
-        # Extract IP address from request if not provided directly
-        request_ip = None
-        if request and not ip_address:
-            request_ip = self._extract_ip_from_request(request)
-
-        # Create a new audit log entry for anomaly detection
-        audit_log = AuditLog(
-            id=str(uuid.uuid4()),
-            timestamp=datetime.now(timezone.utc),
-            event_type=event_type,
-            actor_id=actor_id,
-            resource_type=resource_type,
-            resource_id=patient_id,
-            action=action,
-            status=status,
-            ip_address=ip_address or request_ip,
-            details=details,
-        )
-
-        # Check for anomalies before logging
-        if self._anomaly_detection_enabled and actor_id:
-            await self._check_for_anomalies(actor_id, audit_log)
-
-        # Log the PHI access event
+        # Use the correct enum value for PHI access
+        event_type = AuditEventType.PHI_ACCESS
+        
         return await self.log_event(
             event_type=event_type,
             actor_id=actor_id,
-            target_resource=resource_type,
-            target_id=patient_id,
+            resource_type=resource_type,
+            resource_id=resource_id,
             action=action,
-            status=status,
-            details=details,
-            severity=AuditSeverity.HIGH,  # PHI access is always high severity
             metadata=metadata,
-            request=request,
+            ip_address=ip_address,
+            details=details,
+            severity=AuditSeverity.HIGH,  # PHI access is always high severity for HIPAA
         )
 
     async def get_audit_trail(
@@ -360,7 +305,7 @@ class AuditLogService(IAuditLogger):
         # Get recent PHI access events
         phi_filters = {
             "event_type": [
-                AuditEventType.PHI_ACCESSED,
+                AuditEventType.PHI_ACCESS,
                 AuditEventType.PHI_MODIFIED,
                 AuditEventType.PHI_DELETED,
                 AuditEventType.PHI_EXPORTED,
@@ -494,6 +439,81 @@ class AuditLogService(IAuditLogger):
         except Exception as e:
             logger.error(f"Failed to export audit logs: {e}", exc_info=True)
             raise
+
+    async def log_auth_event(
+        self,
+        event_type: str,
+        user_id: str,
+        success: bool,
+        description: str,
+        ip_address: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """
+        Log an authentication or authorization event.
+        
+        Args:
+            event_type: Type of auth event (e.g., "LOGIN", "LOGOUT", "TOKEN_VALIDATION")
+            user_id: ID of the user associated with the event
+            success: Whether the auth operation succeeded
+            description: Human-readable description of the event
+            ip_address: IP address of the actor
+            metadata: Additional contextual information about the event
+        """
+        # Map to appropriate AuditEventType
+        audit_event_type = None
+        if "login" in event_type.lower():
+            audit_event_type = AuditEventType.LOGIN if success else AuditEventType.LOGIN_FAILED
+        elif "logout" in event_type.lower():
+            audit_event_type = AuditEventType.LOGOUT
+        elif "token" in event_type.lower():
+            audit_event_type = AuditEventType.TOKEN_VALIDATED if success else AuditEventType.TOKEN_INVALID
+        else:
+            audit_event_type = AuditEventType.OTHER
+        
+        # Log the auth event using the general log_event method
+        await self.log_event(
+            event_type=audit_event_type,
+            actor_id=user_id,
+            action=event_type,
+            status="success" if success else "failure",
+            details={"description": description},
+            metadata=metadata,
+            severity=AuditSeverity.HIGH if not success else AuditSeverity.INFO
+        )
+    
+    async def log_system_event(
+        self,
+        event_type: str,
+        description: str,
+        severity: AuditSeverity = AuditSeverity.INFO,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """
+        Log a system-level event.
+        
+        Args:
+            event_type: Type of system event (e.g., "STARTUP", "SHUTDOWN", "ERROR")
+            description: Human-readable description of the event
+            severity: Severity level of the event
+            metadata: Additional contextual information about the event
+        """
+        # Map to appropriate AuditEventType
+        audit_event_type = AuditEventType.SYSTEM_EVENT
+        
+        # For specific system events, use more specific types
+        if "error" in event_type.lower() or "exception" in event_type.lower():
+            audit_event_type = AuditEventType.SYSTEM_ERROR
+        
+        # Log the system event using the general log_event method
+        await self.log_event(
+            event_type=audit_event_type,
+            actor_id="SYSTEM",
+            action=event_type,
+            details={"description": description},
+            metadata=metadata,
+            severity=severity
+        )
 
     # Private methods
 

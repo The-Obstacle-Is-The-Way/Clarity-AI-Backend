@@ -24,8 +24,8 @@ async def other_endpoint(request):
     return JSONResponse({"message": "other"})
 
 
-class MockRateLimiter(IRateLimiter):
-    """Mock implementation of IRateLimiter for testing."""
+class MockRateLimiter:
+    """Mock implementation of RateLimiterService for testing."""
 
     def __init__(self):
         self.check_rate_limit_mock = MagicMock(return_value=True)
@@ -34,9 +34,15 @@ class MockRateLimiter(IRateLimiter):
         self.last_key = None
         self.last_config = None
 
-    def check_rate_limit(self, key: str, config: RateLimitConfig) -> bool:
-        """Mock implementation."""
-        return self.check_rate_limit_mock(key, config)
+    async def check_rate_limit(self, request, config=None):
+        """Mock implementation that matches RateLimiterService interface."""
+        # Extract client ID from request
+        client_id = request.client.host if request.client else "unknown"
+        self.last_key = f"global:{client_id}"
+        self.last_config = config
+        
+        # Return true if request count is under limit (using 10 as the threshold)
+        return self.request_count <= 10
 
     async def track_request(self, key: str, config: RateLimitConfig):
         """Mock implementation that directly returns a tuple."""
@@ -58,7 +64,7 @@ class MockRateLimiter(IRateLimiter):
 
 @pytest.fixture
 def mock_limiter():
-    """Create a properly mocked rate limiter implementing IRateLimiter."""
+    """Create a properly mocked rate limiter."""
     return MockRateLimiter()
 
 
@@ -151,7 +157,7 @@ class TestRateLimitingMiddleware:
 
     def test_path_specific_limits(self):
         """Test that path-specific limits are used when available."""
-        # Create mock limiter implementing IRateLimiter
+        # Create mock limiter
         mock_limiter = MockRateLimiter()
         mock_limiter.request_count = 3  # Under any limit
 
@@ -205,6 +211,9 @@ class TestRateLimitingMiddleware:
 
         class ExceptionRaisingLimiter:
             async def is_allowed(self, client_id):
+                raise ValueError("Test exception")
+                
+            async def check_rate_limit(self, request, config=None):
                 raise ValueError("Test exception")
 
         # Create middleware instance with our test limiter
