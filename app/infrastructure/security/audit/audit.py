@@ -248,11 +248,14 @@ class AuditLogger(IAuditLogger):
             "event_id": event_id,
             "timestamp": timestamp,
             "event_type": "phi_access",
-            "user_id": user_id,
+            "user_id": actor_id,
+            "patient_id": patient_id,
             "action": action,
             "resource_type": resource_type,
-            "resource_id": resource_id,
-            "details": details or {},
+            "status": status,
+            "phi_fields": phi_fields or [],
+            "reason": reason,
+            "details": request_context or {},
         }
 
         # Log the audit entry
@@ -448,36 +451,84 @@ except Exception as e:
 
     # Create a dummy logger that won't crash when used
     class DummyAuditLogger(IAuditLogger):
-    """Dummy implementation of IAuditLogger for testing or fallback."""
+        """Dummy implementation of IAuditLogger for testing or fallback."""
 
-    def log_event(
-        self,
-        event_type: AuditEventType,
-        actor_id: str | None = None,
-        target_resource: str | None = None,
-        target_id: str | None = None,
-        action: str | None = None,
-        status: str | None = None,
-        details: dict[str, Any] | None = None,
-        severity: AuditSeverity = AuditSeverity.INFO,
-        metadata: dict[str, Any] | None = None,
-        timestamp: datetime.datetime | None = None,
-        request: Any | None = None,
-    ) -> str:
-        return str(uuid.uuid4())
+        def log_event(
+            self,
+            event_type: AuditEventType,
+            actor_id: str | None = None,
+            target_resource: str | None = None,
+            target_id: str | None = None,
+            action: str | None = None,
+            status: str | None = None,
+            details: dict[str, Any] | None = None,
+            severity: AuditSeverity = AuditSeverity.INFO,
+            metadata: dict[str, Any] | None = None,
+            timestamp: datetime.datetime | None = None,
+            request: Any | None = None,
+        ) -> str:
+            logger.warning("DummyAuditLogger.log_event called but logger not properly initialized")
+            return str(uuid.uuid4())
 
-    def log_security_event(
-        self,
-        description: str,
-        actor_id: str | None = None,
-        status: str | None = None,
-        severity: AuditSeverity = AuditSeverity.HIGH,
-        details: dict[str, Any] | None = None,
-        request: Any | None = None,
-    ) -> str:
-        return str(uuid.uuid4())
-            )
-
+        def log_security_event(
+            self,
+            description: str,
+            actor_id: str | None = None,
+            status: str | None = None,
+            severity: AuditSeverity = AuditSeverity.HIGH,
+            details: dict[str, Any] | None = None,
+            request: Any | None = None,
+        ) -> str:
+            logger.warning("DummyAuditLogger.log_security_event called but logger not properly initialized")
+            return str(uuid.uuid4())
+            
+        def log_phi_access(
+            self,
+            actor_id: str,
+            patient_id: str,
+            resource_type: str,
+            action: str,
+            status: str,
+            phi_fields: list[str] | None = None,
+            reason: str | None = None,
+            request: Any | None = None,
+            request_context: dict[str, Any] | None = None,
+        ) -> str:
+            logger.warning("DummyAuditLogger.log_phi_access called but logger not properly initialized")
+            return str(uuid.uuid4())
+            
+        def get_audit_trail(
+            self,
+            filters: dict[str, Any] | None = None,
+            start_time: datetime.datetime | None = None,
+            end_time: datetime.datetime | None = None,
+            limit: int = 100,
+            offset: int = 0,
+        ) -> list[dict[str, Any]]:
+            logger.warning("DummyAuditLogger.get_audit_trail called but logger not properly initialized")
+            return []
+            
+        def export_audit_logs(
+            self,
+            start_time: datetime.datetime | None = None,
+            end_time: datetime.datetime | None = None,
+            format: str = "json",
+            file_path: str | None = None,
+            filters: dict[str, Any] | None = None,
+        ) -> str:
+            logger.warning("DummyAuditLogger.export_audit_logs called but logger not properly initialized")
+            return "/dev/null"
+            
+        def get_security_dashboard_data(self, days: int = 7) -> dict[str, Any]:
+            logger.warning("DummyAuditLogger.get_security_dashboard_data called but logger not properly initialized")
+            return {
+                "total_events": 0,
+                "security_incidents": 0,
+                "phi_access_count": 0,
+                "failed_logins": 0,
+                "days": days,
+            }
+            
         def _send_to_external_audit_service(self, *args, **kwargs):
             pass
 
