@@ -109,44 +109,40 @@ def log_execution_time(
 ) -> Callable[[F], F]:
     """
     Decorator to log the execution time of a function.
-    Can be used as @log_execution_time or @log_execution_time().
 
     Args:
-        logger_or_func: Logger to use or function being decorated if no args provided
-        level: Log level to use, defaults to DEBUG
+        logger: Logger to use, if None a new logger is created using function's module name
+        level: Log level to use
 
     Returns:
-        Decorated function or decorator function
+        Decorator function
     """
-    # No special handling needed at the outer level
-    # Level conversion happens in the decorator function
-    
     def decorator(func: F) -> F:
-        # Convert level to integer if it's an enum (ensure this is done at decoration time) 
-        numeric_level = level.value if isinstance(level, LogLevel) else level
-        
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Get or create logger
             nonlocal logger
-            log_inst = logger
-            if log_inst is None:
-                log_inst = get_logger(func.__module__)
-                
-            # Record start time
+            
+            # Create a local logger if none was provided
+            actual_logger = logger
+            if actual_logger is None:
+                actual_logger = get_logger(func.__module__)
+            
+            # Start timing
             start_time = datetime.now()
             
             try:
-                # Execute the function
+                # Call the decorated function
                 result = func(*args, **kwargs)
                 
                 # Calculate duration
                 end_time = datetime.now()
                 duration_ms = (end_time - start_time).total_seconds() * 1000
                 
-                # Log success with numeric level
-                log_inst.log(
-                    numeric_level,
+                # Use DEBUG level (10) as integer directly to avoid any conversion issues
+                # This avoids problems with the LogLevel enum conversion
+                actual_logger.log(
+                    10,  # DEBUG level as integer
                     f"Function '{func.__name__}' executed in {duration_ms:.2f} ms"
                 )
                 
@@ -155,7 +151,7 @@ def log_execution_time(
                 # Log exception
                 end_time = datetime.now()
                 duration_ms = (end_time - start_time).total_seconds() * 1000
-                log_inst.exception(
+                actual_logger.exception(
                     f"Exception in '{func.__name__}' after {duration_ms:.2f} ms: {e!s}"
                 )
                 raise

@@ -178,6 +178,15 @@ class TestRedisTokenBlacklistRepository:
 
         # Assert - should always return 0 as Redis handles this automatically
         assert result == 0
+        
+    @pytest.mark.asyncio
+    async def test_clear_expired_tokens(self, token_blacklist_repo):
+        """Test clearing expired tokens (no-op in Redis implementation)."""
+        # Act
+        result = await token_blacklist_repo.clear_expired_tokens()
+        
+        # Assert - should always return 0 as Redis handles this automatically via TTL
+        assert result == 0
 
     @pytest.mark.asyncio
     async def test_redis_exception_handling(
