@@ -11,7 +11,7 @@ import json
 import logging
 import uuid
 from datetime import date, datetime, timezone
-from typing import Any
+from typing import Any, Dict, List, Optional, Union, cast, TYPE_CHECKING
 
 from dateutil import parser
 from pydantic import ValidationError
@@ -93,43 +93,79 @@ class Patient(Base, TimestampMixin, AuditMixin):
     # --- Encrypted PHI Fields (Stored as Text/Blob in DB) ---
     # QUANTUM FIX: Use prefixed column names with underscore for encrypted fields
     # This ensures compatibility with test expectations and encryption handling
-    _first_name = Column("first_name", EncryptedString, nullable=True)
-    _last_name = Column("last_name", EncryptedString, nullable=True)
-    _middle_name = Column("middle_name", EncryptedString, nullable=True)
-    _gender = Column("gender", SQLEnum(Gender, name="gender_enum"), nullable=True)
-    _date_of_birth = Column("date_of_birth", EncryptedString, nullable=True)
-    _ssn = Column("ssn", EncryptedString, nullable=True)
-    _mrn = Column("mrn", EncryptedString, nullable=True)
-    _email = Column("email", EncryptedString, nullable=True)
-    _phone_number = Column("phone_number", EncryptedString, nullable=True)
-    _insurance_provider = Column("insurance_provider", EncryptedString, nullable=True)
-    _insurance_policy_number = Column("insurance_policy_number", EncryptedString, nullable=True)
-    _insurance_group_number = Column("insurance_group_number", EncryptedString, nullable=True)
+    if TYPE_CHECKING:
+        # Type annotations for mypy
+        _first_name: Optional[str]
+        _last_name: Optional[str]
+        _middle_name: Optional[str]
+        _gender: Optional[Gender]
+        _date_of_birth: Optional[str]
+        _ssn: Optional[str]
+    else:
+        # Actual column definitions for runtime
+        _first_name = Column("first_name", EncryptedString, nullable=True)
+        _last_name = Column("last_name", EncryptedString, nullable=True)
+        _middle_name = Column("middle_name", EncryptedString, nullable=True)
+        _gender = Column("gender", SQLEnum(Gender, name="gender_enum"), nullable=True)
+        _date_of_birth = Column("date_of_birth", EncryptedString, nullable=True)
+        _ssn = Column("ssn", EncryptedString, nullable=True)
+    if TYPE_CHECKING:
+        # Type annotations for mypy
+        _mrn: Optional[str]
+        _email: Optional[str]
+        _phone_number: Optional[str]
+        
+        # Insurance-related fields (PHI)
+        _insurance_provider: Optional[str]
+        _insurance_policy_number: Optional[str]
+        _insurance_group_number: Optional[str]
+    else:
+        # Actual column definitions for runtime
+        _mrn = Column("mrn", EncryptedString, nullable=True)
+        _email = Column("email", EncryptedString, nullable=True)
+        _phone_number = Column("phone_number", EncryptedString, nullable=True)
+        
+        # Insurance-related fields (PHI)
+        _insurance_provider = Column("insurance_provider", EncryptedString, nullable=True)
+        _insurance_policy_number = Column("insurance_policy_number", EncryptedString, nullable=True)
+        _insurance_group_number = Column("insurance_group_number", EncryptedString, nullable=True)
     _address_line1 = Column("address_line1", EncryptedString, nullable=True)
     _address_line2 = Column("address_line2", EncryptedString, nullable=True)
     _city = Column("city", EncryptedString, nullable=True)
     _state = Column("state", EncryptedString, nullable=True)
     _zip_code = Column("zip_code", EncryptedString, nullable=True)
     _country = Column("country", EncryptedString, nullable=True)
-    _emergency_contact_name = Column("emergency_contact_name", EncryptedString, nullable=True)
-    _emergency_contact_phone = Column("emergency_contact_phone", EncryptedString, nullable=True)
-    _emergency_contact_relationship = Column(
-        "emergency_contact_relationship", EncryptedString, nullable=True
-    )
+    if TYPE_CHECKING:
+        # Type annotations for mypy
+        _emergency_contact_name: Optional[str]
+        _emergency_contact_phone: Optional[str]
+        _emergency_contact_relationship: Optional[str]
+    else:
+        # Actual column definitions for runtime
+        _emergency_contact_name = Column("emergency_contact_name", EncryptedString, nullable=True)
+        _emergency_contact_phone = Column("emergency_contact_phone", EncryptedString, nullable=True)
+        _emergency_contact_relationship = Column(
+            "emergency_contact_relationship", EncryptedString, nullable=True
+        )
 
-    # Fields that might be JSON or larger text
-    _contact_info = Column("contact_info", EncryptedJSON, nullable=True)
-    _address_details = Column("address_details", EncryptedJSON, nullable=True)
-    _emergency_contact_details = Column("emergency_contact_details", EncryptedJSON, nullable=True)
-    _preferences = Column("preferences", EncryptedJSON, nullable=True)
+    # Complex data fields (JSON/JSONB in PostgreSQL, stored as encrypted blobs)
+    if TYPE_CHECKING:
+        # Type annotations for mypy
+        _contact_info: Optional[Dict[str, Any]]
+        _address_details: Optional[Dict[str, Any]]
+        _emergency_contact_details: Optional[Dict[str, Any]]
+        _preferences: Optional[Dict[str, Any]]
+    else:
+        # Actual column definitions for runtime
+        _contact_info = Column("contact_info", EncryptedJSON, nullable=True)
+        _address_details = Column("address_details", EncryptedJSON, nullable=True)
+        _emergency_contact_details = Column("emergency_contact_details", EncryptedJSON, nullable=True)
+        _preferences = Column("preferences", EncryptedJSON, nullable=True)
     _medical_history = Column("medical_history", EncryptedText, nullable=True)
     _medications = Column("medications", EncryptedText, nullable=True)
     _allergies = Column("allergies", EncryptedText, nullable=True)
     _notes = Column("notes", EncryptedText, nullable=True)
     _custom_fields = Column("custom_fields", EncryptedJSON, nullable=True)
-
-    # --- Other Fields (Potentially Sensitive/Encrypted or Not) ---
-    # Example: Encrypted JSON blob for arbitrary additional structured data
     _extra_data = Column("extra_data", EncryptedJSON, nullable=True)
 
     # --- Relationships ---
@@ -437,11 +473,11 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # DEBUG PRINTS START
         print("[DEBUG PatientModel.from_domain] Final model attributes before return:")
         print(f"  _contact_info TYPE: {type(model._contact_info)}")
-        print(f"  _contact_info VALUE: {model._contact_info}")
+        print(f"  _contact_info VALUE: {str(model._contact_info)}")
         print(f"  _address_details TYPE: {type(model._address_details)}")
-        print(f"  _address_details VALUE: {model._address_details}")
+        print(f"  _address_details VALUE: {str(model._address_details)}")
         print(f"  _emergency_contact_details TYPE: {type(model._emergency_contact_details)}")
-        print(f"  _emergency_contact_details VALUE: {model._emergency_contact_details}")
+        print(f"  _emergency_contact_details VALUE: {str(model._emergency_contact_details)}")
         # DEBUG PRINTS END
 
         logger.debug(f"[from_domain] Completed conversion for patient model ID: {model.id}")
@@ -497,24 +533,11 @@ class Patient(Base, TimestampMixin, AuditMixin):
             else:
                 print(f"  DEBUG Attr [{attr_name}]: Not present on self.")
 
-        def _decode_if_bytes(value: Any) -> str | None:
-            if value is None:
-                return None
-            if isinstance(value, bytes):  # EncodableBytes is a subclass of bytes
-                try:
-                    return value.decode("utf-8")
-                except UnicodeDecodeError:
-                    logger.warning(
-                        f"Failed to decode bytes to UTF-8 string for patient {self.id}. Value: {value[:50]}..."
-                    )
-                    return str(value)  # Fallback, might be lossy or noisy
-
-            # Handle test case with encrypted_ prefix
-            if isinstance(value, str) and value.startswith("encrypted_"):
-                return value[len("encrypted_") :]
-
-            # If not None and not bytes, ensure it's a string for Pydantic
-            return str(value)
+        def _decode_if_bytes(value: Any) -> Any:
+            """Decode bytes to string if the value is bytes."""
+            if isinstance(value, bytes):
+                return value.decode("utf-8")
+            return value
 
         def _ensure_parsed_json(value: Any) -> Any:
             if isinstance(value, str):
@@ -716,7 +739,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 return None
 
             str_to_parse = json_str
-            if isinstance(json_str, bytes):  # Handles EncodableBytes
+            if isinstance(json_str, bytes):
                 try:
                     str_to_parse = json_str.decode("utf-8")
                 except UnicodeDecodeError:
