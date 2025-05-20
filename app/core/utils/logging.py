@@ -134,9 +134,11 @@ def log_execution_time(
                 duration_ms = (end_time - start_time).total_seconds() * 1000
 
                 # Log execution time
+                # Ensure level is an integer as required by logging module
+                log_level = level.value if hasattr(level, 'value') else level
                 logger.log(
-                    level.value,
-                    f"Function '{func.__name__}' executed in {duration_ms:.2f} ms",
+                    log_level,
+                    f"Function '{func.__name__}' executed in {duration_ms:.2f} ms"
                 )
 
                 return result
