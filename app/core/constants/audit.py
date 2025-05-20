@@ -17,10 +17,12 @@ class AuditSeverity(str, Enum):
     specifically tailored for security and compliance events.
     """
     CRITICAL = "CRITICAL"  # Severe events requiring immediate attention
+    HIGH = "HIGH"          # High priority events requiring attention soon
     ERROR = "ERROR"        # Error conditions
     WARNING = "WARNING"    # Warning conditions
     INFO = "INFO"          # Informational messages
     DEBUG = "DEBUG"        # Debug-level messages
+    TRACE = "TRACE"        # Detailed trace information
 
 
 class AuditEventType(str, Enum):
