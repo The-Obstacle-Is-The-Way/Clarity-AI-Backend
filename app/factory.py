@@ -28,7 +28,7 @@ from app.core.config import get_settings as global_get_settings
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface as IJWTService
 from app.core.interfaces.services.redis_service_interface import IRedisService
 from app.core.logging_config import LOGGING_CONFIG
-from app.core.security.rate_limiting.service import get_rate_limiter_service
+from app.infrastructure.security.rate_limiting.service_impl import get_rate_limiter_service
 from app.infrastructure.security.jwt.jwt_service import get_jwt_service
 from app.infrastructure.services.redis.redis_service import (
     create_redis_service,

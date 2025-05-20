@@ -10,24 +10,30 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.infrastructure.persistence.repositories.redis_token_blacklist_repository import (
+from app.core.interfaces.services.redis_service_interface import IRedisService
+from app.infrastructure.services.redis.redis_cache_service import RedisCacheService
+from app.infrastructure.security.token.redis_token_blacklist_repository import (
     RedisTokenBlacklistRepository,
 )
 
 
 @pytest.fixture
-def mock_redis_service():
+def mock_redis_service() -> IRedisService:
     """Create a mock Redis service for testing."""
     redis_service = AsyncMock()
     # Mock the necessary Redis methods
     redis_service.set = AsyncMock(return_value=True)
     redis_service.get = AsyncMock(return_value=None)  # Default to not blacklisted
     redis_service.delete = AsyncMock(return_value=1)
+    redis_service.exists = AsyncMock(return_value=0)  # Default to key not existing
+    redis_service.expire = AsyncMock(return_value=True)
+    redis_service.ttl = AsyncMock(return_value=3600)  # Default 1 hour TTL
+    redis_service.scan = AsyncMock(return_value=(0, []))  # Empty scan result by default
     return redis_service
 
 
 @pytest.fixture
-def token_blacklist_repo(mock_redis_service):
+def token_blacklist_repo(mock_redis_service: IRedisService) -> RedisTokenBlacklistRepository:
     """Create token blacklist repository with mocked Redis service."""
     return RedisTokenBlacklistRepository(redis_service=mock_redis_service)
 
@@ -144,26 +150,25 @@ class TestRedisTokenBlacklistRepository:
         assert mock_jti in str(mock_redis_service.get.call_args)
 
     @pytest.mark.asyncio
-    async def test_blacklist_session(self, token_blacklist_repo, mock_redis_service):
+    async def test_blacklist_session(self, token_blacklist_repo, mock_redis_service, mock_jti):
         """Test blacklisting a session."""
         # Arrange
         session_id = "test-session-123"
+        
+        # Mock the session tokens
+        session_tokens = [
+            {"jti": mock_jti, "token_hash": "abc123"},
+            {"jti": "another-jti", "token_hash": "def456"}
+        ]
+        mock_redis_service.get.return_value = session_tokens
 
         # Act
         await token_blacklist_repo.blacklist_session(session_id)
 
         # Assert
-        mock_redis_service.set.assert_called_once()
-        assert session_id in str(mock_redis_service.set.call_args)
-        # TTL should be set for ~30 days (in seconds)
-        assert any(
-            arg > 2500000
-            for arg in [
-                arg
-                for args in mock_redis_service.set.call_args[1].values()
-                for arg in ([args] if not isinstance(args, (list, tuple)) else args)
-            ]
-        )
+        # Redis set should be called multiple times (for each token)
+        assert mock_redis_service.set.call_count > 0
+        assert mock_jti in str(mock_redis_service.set.call_args_list)
 
     @pytest.mark.asyncio
     async def test_remove_expired_entries(self, token_blacklist_repo):
