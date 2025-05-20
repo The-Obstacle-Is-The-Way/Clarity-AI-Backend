@@ -19,15 +19,20 @@ import logging
 import os
 import uuid
 from datetime import timezone
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from app.core.config.settings import get_settings
+from app.core.interfaces.services.audit_logger_interface import (
+    AuditEventType,
+    AuditSeverity,
+    IAuditLogger
+)
 
 # Use standard logger
 logger = logging.getLogger(__name__)
 
 
-class AuditLogger:
+class AuditLogger(IAuditLogger):
     """
     HIPAA-compliant audit logging system that tracks and records access to PHI
     and authentication events.
