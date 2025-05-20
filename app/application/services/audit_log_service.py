@@ -131,7 +131,6 @@ class AuditLogService(IAuditLogger):
             and actor_id
             and not _skip_anomaly_check
             and event_type != AuditEventType.SECURITY_ALERT
-            and event_type != AuditEventType.ANOMALY_DETECTED
         ):
             await self._check_for_anomalies(actor_id, audit_log)
 
