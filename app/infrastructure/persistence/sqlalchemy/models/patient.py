@@ -544,17 +544,22 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 print(f"  DEBUG Attr [{attr_name}]: Not present on self.")
 
         def _decode_if_bytes(value: Any) -> Any:
-            """Decode bytes to string if the value is bytes."""
+            """Decode bytes to string if the value is bytes and strip 'encrypted_' prefix if present."""
             if value is None:
                 return None
             if isinstance(value, bytes):
                 try:
-                    return value.decode("utf-8")
+                    value = value.decode("utf-8")
                 except UnicodeDecodeError:
                     logger.warning(
                         f"Failed to decode bytes to UTF-8 string. Value: {value[:50]}..."
                     )
                     return str(value)  # Fallback, might be lossy
+            
+            # Strip 'encrypted_' prefix if present in string values
+            if isinstance(value, str) and value.startswith("encrypted_"):
+                return value[len("encrypted_"):]
+                
             return value
 
         def _ensure_parsed_json(value: Any) -> Any:
