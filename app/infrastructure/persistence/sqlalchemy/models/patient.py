@@ -11,7 +11,7 @@ import json
 import logging
 import uuid
 from datetime import date, datetime, timezone
-from typing import Any, Dict, List, Optional, Union, cast, TYPE_CHECKING
+from typing import Any, Optional, Dict, TYPE_CHECKING
 
 from dateutil import parser
 from pydantic import ValidationError
@@ -161,10 +161,19 @@ class Patient(Base, TimestampMixin, AuditMixin):
         _address_details = Column("address_details", EncryptedJSON, nullable=True)
         _emergency_contact_details = Column("emergency_contact_details", EncryptedJSON, nullable=True)
         _preferences = Column("preferences", EncryptedJSON, nullable=True)
-    _medical_history = Column("medical_history", EncryptedText, nullable=True)
-    _medications = Column("medications", EncryptedText, nullable=True)
-    _allergies = Column("allergies", EncryptedText, nullable=True)
-    _notes = Column("notes", EncryptedText, nullable=True)
+    # Medical data fields (PHI - stored as encrypted text)
+    if TYPE_CHECKING:
+        # Type annotations for mypy
+        _medical_history: Optional[str]
+        _medications: Optional[str]
+        _allergies: Optional[str]
+        _notes: Optional[str]
+    else:
+        # Actual column definitions for runtime
+        _medical_history = Column("medical_history", EncryptedText, nullable=True)
+        _medications = Column("medications", EncryptedText, nullable=True)
+        _allergies = Column("allergies", EncryptedText, nullable=True)
+        _notes = Column("notes", EncryptedText, nullable=True)
     _custom_fields = Column("custom_fields", EncryptedJSON, nullable=True)
     _extra_data = Column("extra_data", EncryptedJSON, nullable=True)
 
@@ -229,6 +238,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
 
     # --- Encrypted Fields Set ---
     # QUANTUM FIX: Update encrypted_fields set to use prefixed column names with underscores
+    # This ensures compatibility with test expectations and encryption handling
     encrypted_fields = {
         "_first_name",
         "_last_name",
@@ -535,8 +545,16 @@ class Patient(Base, TimestampMixin, AuditMixin):
 
         def _decode_if_bytes(value: Any) -> Any:
             """Decode bytes to string if the value is bytes."""
+            if value is None:
+                return None
             if isinstance(value, bytes):
-                return value.decode("utf-8")
+                try:
+                    return value.decode("utf-8")
+                except UnicodeDecodeError:
+                    logger.warning(
+                        f"Failed to decode bytes to UTF-8 string. Value: {value[:50]}..."
+                    )
+                    return str(value)  # Fallback, might be lossy
             return value
 
         def _ensure_parsed_json(value: Any) -> Any:
@@ -734,7 +752,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         )  # Assuming notes is intended to be a simple string
         extra_data_dict = self._extra_data  # This should be a dict after EncryptedJSON processing
 
-        def _parse_json_string(json_str: str | bytes | None, field_name: str) -> Any | None:
+        def _parse_json_string(json_str: Optional[str | bytes], field_name: str) -> Any | None:
             if json_str is None:
                 return None
 
