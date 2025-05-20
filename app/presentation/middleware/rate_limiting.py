@@ -7,8 +7,9 @@ using the Clean Architecture rate limiting components.
 
 import logging
 from collections.abc import Callable
+from typing import Any
 
-from fastapi import HTTPException, Request, Response, status
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.security.rate_limiting.service import RateLimiterService
@@ -47,11 +48,11 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
 
     def __init__(
         self,
-        app,
+        app: FastAPI,
         limiter: RateLimiterService,
         exclude_paths: list[str] | None = None,
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ):
         """
         Initialize middleware with rate limiter and exclusion paths.
@@ -68,7 +69,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             f"Rate limiting middleware initialized with exclude paths: {self.exclude_paths}"
         )
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         """
         Process request with rate limiting.
 
@@ -88,7 +89,8 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         ):
             logger.debug(f"Skipping rate limiting for excluded path: {path}")
             try:
-                return await call_next(request)
+                response: Response = await call_next(request)
+                return response
             except Exception as e:
                 # Log and re-raise the exception to be handled by the exception handlers
                 logger.error(
@@ -116,7 +118,8 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
 
         # Allow the request to continue
         try:
-            return await call_next(request)
+            response: Response = await call_next(request)
+            return response
         except Exception as e:
             # Log and re-raise the exception to be handled by the exception handlers
             logger.error(

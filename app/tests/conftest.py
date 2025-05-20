@@ -307,4 +307,23 @@ def mock_settings():
     return MockSettings()
 
 
+# Setup ML model service fixture
+@pytest.fixture
+def mock_model_service():
+    """
+    Fixture to provide a mock model service for tests.
+    
+    This mock service allows tests requiring ML model functionality to run
+    without actual ML models or inference operations. It provides predictable
+    responses for testing purposes.
+    
+    Returns:
+        IModelService: A mock implementation of the model service interface
+    """
+    from app.core.interfaces.services.model_service_interface import IModelService
+    from app.tests.utils.mock_model_service import create_mock_model_service
+    
+    return create_mock_model_service()
+
+
 # Setup other global fixtures if needed
