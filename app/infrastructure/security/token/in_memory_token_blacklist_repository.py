@@ -6,7 +6,7 @@ repository interface for testing and development purposes.
 """
 
 import hashlib
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from app.core.interfaces.repositories.token_blacklist_repository_interface import (
     ITokenBlacklistRepository,
@@ -69,7 +69,7 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
         """
         try:
             # Check if token has already expired
-            now = datetime.now(UTC)
+            now = datetime.now(timezone.utc)
             if expires_at <= now:
                 # Token already expired, no need to blacklist
                 logger.debug(f"Token {jti} already expired, skipping blacklist")
@@ -112,7 +112,7 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
 
             # Check if token has expired from the blacklist
             token_info = self._token_blacklist[token_hash]
-            if token_info["expires_at"] < datetime.now(UTC):
+            if token_info["expires_at"] < datetime.now(timezone.utc):
                 # Clean up expired token
                 del self._token_blacklist[token_hash]
                 return False
@@ -143,7 +143,7 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
 
             # Check if JTI has expired from the blacklist
             jti_info = self._jti_blacklist[jti]
-            if jti_info["expires_at"] < datetime.now(UTC):
+            if jti_info["expires_at"] < datetime.now(timezone.utc):
                 # Clean up expired JTI
                 del self._jti_blacklist[jti]
                 return False
@@ -199,7 +199,7 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
             RepositoryException: If cleanup fails
         """
         try:
-            now = datetime.now(UTC)
+            now = datetime.now(timezone.utc)
             removed_count = 0
 
             # Clean up expired tokens
@@ -227,3 +227,19 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
         except Exception as e:
             logger.error(f"Failed to remove expired entries: {e!s}")
             raise RepositoryException(f"Failed to remove expired entries: {e!s}")
+            
+    async def clear_expired_tokens(self) -> int:
+        """
+        Clear expired tokens from the blacklist.
+        
+        This method implements the interface requirement and provides functionality
+        to clean up expired tokens from the in-memory storage.
+        
+        Returns:
+            Number of tokens removed
+            
+        Raises:
+            RepositoryException: If cleanup fails
+        """
+        # Delegate to remove_expired_entries since the functionality is identical
+        return await self.remove_expired_entries()

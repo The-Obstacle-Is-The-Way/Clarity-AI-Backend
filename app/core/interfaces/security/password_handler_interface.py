@@ -7,7 +7,7 @@ in compliance with HIPAA security requirements.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Tuple
+from typing import Any
 
 
 class IPasswordHandler(ABC):
@@ -20,9 +20,62 @@ class IPasswordHandler(ABC):
     """
     
     @abstractmethod
+    def get_password_hash(self, password: str) -> str:
+        """
+        Hashes a plain text password.
+
+        Args:
+            password: The plain text password.
+
+        Returns:
+            The hashed password.
+        """
+        pass
+    
+    @abstractmethod
+    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        """
+        Verifies a plain text password against a hashed password.
+
+        Args:
+            plain_password: The plain text password.
+            hashed_password: The hashed password to compare against.
+
+        Returns:
+            True if the password matches, False otherwise.
+        """
+        pass
+    
+    @abstractmethod
+    def password_needs_rehash(self, hashed_password: str) -> bool:
+        """
+        Check if a password hash needs to be upgraded.
+
+        Args:
+            hashed_password: Currently stored password hash
+
+        Returns:
+            True if rehashing is recommended, False otherwise
+        """
+        pass
+    
+    @abstractmethod
+    def generate_secure_password(self, length: int = 16) -> str:
+        """
+        Generate a cryptographically secure random password.
+
+        Args:
+            length: Length of password to generate (default: 16)
+
+        Returns:
+            Secure random password string
+        """
+        pass
+    
+    @abstractmethod
     def hash_password(self, password: str) -> str:
         """
-        Create a secure hash of a password.
+        Alias for get_password_hash (retained for backwards-compat).
         
         Args:
             password: The plain text password to hash
@@ -33,9 +86,9 @@ class IPasswordHandler(ABC):
         pass
     
     @abstractmethod
-    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+    def check_password(self, plain_password: str, hashed_password: str) -> bool:
         """
-        Verify that a plain text password matches a hashed password.
+        Alias for verify_password (retained for backwards-compat).
         
         Args:
             plain_password: The plain text password to verify
@@ -47,29 +100,67 @@ class IPasswordHandler(ABC):
         pass
     
     @abstractmethod
-    def validate_password_strength(self, password: str) -> Tuple[bool, Optional[List[str]]]:
+    def validate_password_strength(self, password: str) -> tuple[bool, str | None]:
         """
-        Validate the strength of a password against security requirements.
-        
+        Validate password strength against HIPAA-compliant security requirements.
+
         Args:
-            password: The password to validate
-            
+            password: Password to validate
+
         Returns:
-            A tuple containing:
-            - A boolean indicating if the password meets requirements
-            - A list of validation failure messages (if any)
+            Tuple of (is_valid, error_message)
         """
         pass
     
     @abstractmethod
-    def get_password_strength_score(self, password: str) -> Dict[str, any]:
+    def validate_password_complexity(self, password: str) -> tuple[bool, str]:
         """
-        Calculate a strength score for a password.
-        
+        Validate if a password meets complexity requirements.
+
         Args:
-            password: The password to evaluate
-            
+            password: Password to validate
+
         Returns:
-            A dictionary containing the strength score and analysis details
+            Tuple of (is_valid, error_message)
+        """
+        pass
+    
+    @abstractmethod
+    def is_common_password(self, password: str) -> bool:
+        """
+        Check if a password has been compromised in known breaches.
+
+        Args:
+            password: Password to check
+
+        Returns:
+            True if the password appears to be breached, False otherwise
+        """
+        pass
+    
+    @abstractmethod
+    def suggest_password_improvement(self, password: str) -> str:
+        """
+        Provide improvement suggestions for a password.
+
+        Args:
+            password: Password to analyze
+
+        Returns:
+            Suggestion message
+        """
+        pass
+        
+    @abstractmethod
+    def get_password_strength_feedback(self, password: str) -> dict[str, Any]:
+        """
+        Get detailed feedback on password strength.
+
+        Args:
+            password: The password to analyze
+
+        Returns:
+            dict[str, Any]: Detailed feedback containing strength score,
+                            suggestions for improvement, and other metrics
         """
         pass
