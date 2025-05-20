@@ -28,7 +28,7 @@ from app.core.config import get_settings as global_get_settings
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface as IJWTService
 from app.core.interfaces.services.redis_service_interface import IRedisService
 from app.core.logging_config import LOGGING_CONFIG
-from app.core.security.rate_limiting.limiter import RateLimiter
+from app.core.security.rate_limiting.service import RateLimiterService, get_rate_limiter_service
 from app.infrastructure.security.jwt.jwt_service import get_jwt_service
 from app.infrastructure.services.redis.redis_service import (
     create_redis_service,
@@ -361,10 +361,8 @@ def create_application(
 
             rate_limit_redis = create_redis_service(redis_url=current_settings.REDIS_URL)
 
-            # Create a rate limiter instance using the Redis service
-            rate_limiter = RateLimiter(
-                requests_per_minute=getattr(current_settings, "RATE_LIMIT_DEFAULT_RPM", 60)
-            )
+            # Initialize rate limiter service
+            rate_limiter = get_rate_limiter_service()
 
             # Add rate limiting middleware
             from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
