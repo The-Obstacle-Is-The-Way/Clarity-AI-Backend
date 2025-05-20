@@ -10,8 +10,17 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio
-from freezegun import freeze_time
 from pytest_mock import MockerFixture
+
+# Conditional import for freezegun
+try:
+    from freezegun import freeze_time
+    FREEZEGUN_AVAILABLE = True
+except ImportError:
+    FREEZEGUN_AVAILABLE = False
+    # Create a mock freeze_time decorator if freezegun is not available
+    def freeze_time(time_str):
+        return lambda x: x
 
 from app.core.interfaces.aws_service_interface import (
     AWSServiceFactory,
@@ -59,6 +68,7 @@ def create_mock_response(body_content: dict[str, Any]) -> dict[str, Any]:
     return {"body": mock_stream}
 
 
+@pytest.mark.skipif(not FREEZEGUN_AVAILABLE, reason="freezegun library not installed")
 class TestBedrockPAT:
     """Test suite for the BedrockPAT implementation."""
 
