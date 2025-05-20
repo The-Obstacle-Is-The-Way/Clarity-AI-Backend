@@ -20,7 +20,8 @@ class AccelerometerReading(BaseModel):
     z: float = Field(..., description="Z-axis acceleration value")
 
     @field_validator("timestamp")
-    def ensure_timezone(cls, v):
+    @classmethod
+    def ensure_timezone(cls, v: datetime) -> datetime:
         """Ensure timestamp has timezone information."""
         if v.tzinfo is None:
             return v.replace(tzinfo=datetime.now().astimezone().tzinfo)
@@ -192,19 +193,17 @@ class AnalysisResult(BaseModel):
     warnings: list[str] = Field([], description="Warnings or alerts from the analysis")
 
     @field_validator("metrics", mode="before")
-    def validate_metrics(cls, v, info: ValidationInfo):
+    @classmethod
+    def validate_metrics(cls, v: Any, info: ValidationInfo) -> Any:
         """Validate metrics based on analysis type."""
         # In Pydantic v2, we need to use the ValidationInfo object's data attribute
         # instead of the raw values dict from v1
 
-        # Safely extract data - handle both Pydantic v1 and v2 patterns
-        data = {}
+        # Safely extract data from ValidationInfo
+        data: dict[str, Any] = {}
         if hasattr(info, "data"):
-            # Pydantic v2 pattern
-            data = info.data
-        else:
-            # Fallback for older tests that might pass values directly
-            data = info
+            # Pydantic v2 pattern - cast data to dict safely
+            data = {} if info.data is None else dict(info.data) if hasattr(info.data, "items") else {}
 
         # Early return if we don't have analysis_type
         if "analysis_type" not in data:
@@ -276,11 +275,31 @@ class HistoricalAnalysisRequest(BaseModel):
     skip: int = Field(0, description="Number of results to skip")
 
 
+class ModelInfo(BaseModel):
+    """Model information data structure.
+    
+    Used by services to report and exchange information about ML models.
+    This is the core model data structure used between layers.
+    """
+    
+    model_config = ConfigDict(protected_namespaces=())
+    model_id: str = Field(..., description="Unique identifier for the model")
+    name: str = Field(..., description="Human-readable name of the model")
+    description: str = Field(..., description="Description of the model's purpose and capabilities")
+    type: str = Field(..., description="Model type (e.g., 'bedrock', 'custom')")
+    provider: str = Field(..., description="Provider of the model (e.g., 'AWS', 'local')")
+    version: str = Field(..., description="Model version")
+    capabilities: list[str] = Field(..., description="List of capabilities (e.g., 'text-generation')")
+    last_updated: str = Field(..., description="ISO timestamp of when the model was last updated")
+    parameters: int | None = Field(None, description="Number of model parameters if known")
+    context_length: int | None = Field(None, description="Maximum context length if applicable")
+    tags: list[str] | None = Field(None, description="Optional tags for the model")
+
+
 class ModelInfoResponse(BaseModel):
     """Response model for PAT model information."""
 
     model_config = ConfigDict(protected_namespaces=())
-
     model_name: str = Field(..., description="Name of the PAT model")
     model_size: PATModelSizeEnum = Field(..., description="Size of the PAT model")
     model_path: str = Field(..., description="Path to the PAT model")

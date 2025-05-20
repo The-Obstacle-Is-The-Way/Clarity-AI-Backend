@@ -757,9 +757,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         medications_list_str = _decode_if_bytes(self._medications)
         allergies_list_str = _decode_if_bytes(self._allergies)
 
-        notes_str = _decode_if_bytes(
-            self._notes
-        )  # Assuming notes is intended to be a simple string
+        # Process extra data from EncryptedJSON
         extra_data_dict = self._extra_data  # This should be a dict after EncryptedJSON processing
 
         def _parse_json_string(json_str: str | bytes | None, field_name: str) -> Any:
