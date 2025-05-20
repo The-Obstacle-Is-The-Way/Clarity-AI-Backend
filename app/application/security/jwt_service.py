@@ -3,54 +3,62 @@ JWT Service module.
 
 This module provides a service for JWT token generation, validation, and management,
 following HIPAA compliance requirements for secure authentication and authorization.
-"""
 
+The service includes:
+- Token generation (access and refresh tokens)
+- Token validation
+- Token blacklisting
+- Audit logging
+
+Security features:
+- Tokens are signed with HMAC-SHA256
+- Tokens have appropriate expiration times
+- Blacklisting prevents token reuse after logout
+- Comprehensive audit logging for security events
+
+The implementation follows Clean Architecture principles:
+- Service depends on interfaces, not concrete implementations
+- Repositories handle persistence concerns
+- Service enforces business rules for token management
+"""
 import asyncio
 import time
 import uuid
-from datetime import timedelta
-from typing import Any
+from datetime import datetime, timedelta
+from typing import Any, Optional, Tuple, Union
 
 import jwt
 from pydantic import BaseModel
 
-from app.core.config import Settings
-from app.core.interfaces.repositories.token_blacklist_repository_interface import (
-    ITokenBlacklistRepository,
-)
+from app.config.settings import Settings
+from app.core.constants.audit import AuditEventType, AuditSeverity
+from app.core.exceptions.auth import InvalidTokenException, TokenBlacklistedException, TokenExpiredException
 from app.core.interfaces.repositories.token_repository_interface import ITokenRepository
-from app.core.interfaces.services.audit_logger_interface import (
-    AuditEventType,
-    AuditSeverity,
-    IAuditLogger,
-)
-from app.core.interfaces.services.jwt_service import IJwtService
-from app.core.utils.date_utils import utcnow
-from app.domain.exceptions.auth_exceptions import (
-    InvalidTokenException,
-    TokenBlacklistedException,
-    TokenExpiredException,
-)
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
+from app.core.interfaces.repositories.token_blacklist_repository_interface import ITokenBlacklistRepository
+
+
+def utcnow() -> datetime:
+    """Return the current UTC datetime."""
+    return datetime.utcnow()
 
 
 class TokenPayload(BaseModel):
     """Model representing the payload of a JWT token."""
+    sub: str
+    exp: int
+    iat: int
+    jti: str
+    session_id: str
+    user_id: str
+    email: str
+    role: Optional[str] = None
+    permissions: list[str] = []
+    token_type: str
 
-    sub: str  # Subject (user ID)
-    exp: int  # Expiration time
-    iat: int  # Issued at
-    jti: str  # JWT ID (unique identifier for this token)
-    session_id: str  # Session ID
-    user_id: str  # User ID
-    email: str  # User email
-    role: str  # User role
-    permissions: list[str]  # User permissions
-    token_type: str  # Token type
 
-
-class JWTService(IJwtService):
-    """
-    Service for JWT token generation, validation, and management.
+class JWTService:
+    """Service for JWT token generation, validation, and management.
 
     This service adheres to HIPAA security requirements for authentication
     and authorization, including:
@@ -59,29 +67,6 @@ class JWTService(IJwtService):
     - Token blacklisting to enforce logout
     - Audit logging of token-related activities
     """
-
-    def __init__(
-        self,
-        token_repo: ITokenRepository,
-        blacklist_repo: ITokenBlacklistRepository,
-        audit_logger: IAuditLogger,
-    ):
-        """
-        Initialize the JWT service.
-
-        Args:
-            token_repo: Repository for managing tokens
-            blacklist_repo: Repository for managing blacklisted tokens
-            audit_logger: Service for audit logging
-        """
-        self.token_repo = token_repo
-        self.blacklist_repo = blacklist_repo
-        self.audit_logger = audit_logger
-        self.algorithm = "HS256"  # HMAC with SHA-256
-
-        # Validate that we have required secrets
-        if not self.settings.jwt_secret_key:
-            raise ValueError("JWT_SECRET_KEY is required")
 
     def __init__(
         self,
@@ -108,23 +93,24 @@ class JWTService(IJwtService):
         # Validate that we have required secrets
         if not self.settings.jwt_secret_key:
             raise ValueError("JWT_SECRET_KEY is required")
-            
+
     def create_access_token(
         self,
         data: dict[str, Any],
         expires_delta: timedelta | None = None,
         expires_delta_minutes: int | None = None,
-    ) -> str:
+    ) -> Union[str, Tuple[str, int]]:
         """
-        Creates a new access token.
-        
+        Create a new JWT access token.
+
         Args:
-            data: Dictionary containing token data (user_id, email, role, permissions, session_id)
+            data: Dictionary containing token data (user_id, email, role, session_id)
             expires_delta: Optional custom expiration time
             expires_delta_minutes: Optional custom expiration time in minutes
-            
+
         Returns:
-            The encoded JWT token string
+            The encoded JWT token string, or a tuple of the token and expires_in seconds
+            if self._return_expires_in is True
         """
         # Extract data from dictionary
         user_id = data.get("user_id") or data.get("sub")
@@ -132,17 +118,16 @@ class JWTService(IJwtService):
         role = data.get("role", "")
         permissions = data.get("permissions", [])
         session_id = data.get("session_id", str(uuid.uuid4()))
-        
+
         if not user_id:
             raise ValueError("user_id or sub is required in data dictionary")
-        """
+
         # Calculate expiration time
-        if expires_delta is None:
-            if expires_delta_minutes is not None:
-                expires_delta = timedelta(minutes=expires_delta_minutes)
-            else:
-                expires_delta = timedelta(minutes=self.settings.access_token_expire_minutes)
-        
+        if expires_delta_minutes:
+            expires_delta = timedelta(minutes=expires_delta_minutes)
+        elif not expires_delta:
+            expires_delta = timedelta(minutes=self.settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
+
         expire = utcnow() + expires_delta
         expires_in = int(expires_delta.total_seconds())
 
@@ -151,15 +136,16 @@ class JWTService(IJwtService):
 
         # Create payload
         payload = {
-            "sub": user_id,
+            "sub": str(user_id),
             "exp": int(expire.timestamp()),
             "iat": int(utcnow().timestamp()),
             "jti": token_id,
             "session_id": session_id,
-            "user_id": user_id,
+            "user_id": str(user_id),
             "email": email,
             "role": role,
             "permissions": permissions,
+            "token_type": "access",
         }
 
         # Create token
@@ -167,7 +153,7 @@ class JWTService(IJwtService):
 
         # Log token creation
         self.audit_logger.log_security_event(
-            event_type="TOKEN_CREATED",
+            event_type="ACCESS_TOKEN_CREATED",
             user_id=user_id,
             description=f"Access token created for user {email}",
             metadata={
@@ -177,7 +163,7 @@ class JWTService(IJwtService):
             },
         )
 
-        # For compatibility with existing code that expects a tuple
+        # Check if we need to return expires_in
         if hasattr(self, "_return_expires_in") and self._return_expires_in:
             return access_token, expires_in
             
@@ -332,7 +318,7 @@ class JWTService(IJwtService):
             session_id = token_data.get("session_id", "unknown")
 
             # Blacklist the token
-            self.blacklist_repo.add_to_blacklist(token, token_id)
+            await self.blacklist_repo.add_to_blacklist(token, token_id)
 
             # Log the blacklisting
             self.audit_logger.log_security_event(
@@ -345,7 +331,7 @@ class JWTService(IJwtService):
 
         except Exception as e:
             # If we can't decode, still try to blacklist the raw token
-            self.blacklist_repo.add_to_blacklist(token)
+            await self.blacklist_repo.add_to_blacklist(token)
 
             # Log the issue
             self.audit_logger.log_security_event(

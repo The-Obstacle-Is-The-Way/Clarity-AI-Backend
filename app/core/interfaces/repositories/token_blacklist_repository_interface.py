@@ -1,96 +1,68 @@
 """
-Token Blacklist Repository Interface.
+Interface for Token Blacklist Repository.
 
-This module defines the interface for token blacklist repository operations,
-supporting secure token revocation and logout functionality
-while maintaining HIPAA compliance and clean architecture.
+This module defines the interface for a repository that manages blacklisted tokens
+to enforce secure token invalidation for compliance with HIPAA security requirements.
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime
+from typing import Optional
 
 
 class ITokenBlacklistRepository(ABC):
     """
-    Interface for token blacklist repository operations.
-
-    This interface encapsulates the functionality required for managing
-    blacklisted (revoked) tokens to ensure proper security controls
-    like session invalidation and logout.
+    Interface for a token blacklist repository.
+    
+    This interface defines the contract for repositories that handle the blacklisting
+    of JWT tokens (e.g., after logout or token revocation) to prevent token reuse.
+    Implementations should provide secure, persistent storage for blacklisted tokens.
     """
-
+    
     @abstractmethod
-    async def add_to_blacklist(
-        self, token: str, jti: str, expires_at: datetime, reason: str | None = None
-    ) -> None:
+    async def add_to_blacklist(self, token: str, token_id: Optional[str] = None) -> None:
         """
         Add a token to the blacklist.
-
+        
         Args:
-            token: The token to blacklist (typically a hash of the token)
-            jti: JWT ID - unique identifier for the token
-            expires_at: When the token expires
-            reason: Reason for blacklisting
-
-        Raises:
-            RepositoryError: If blacklisting fails
+            token: The token value to blacklist
+            token_id: The token's JTI (JWT ID) if available
         """
         pass
-
+    
     @abstractmethod
     async def is_blacklisted(self, token: str) -> bool:
         """
         Check if a token is blacklisted.
-
+        
         Args:
-            token: The token to check (typically a hash of the token)
-
+            token: The token value to check
+            
         Returns:
-            True if blacklisted, False otherwise
-
-        Raises:
-            RepositoryError: If check fails
+            True if the token is blacklisted, False otherwise
         """
         pass
-
+    
     @abstractmethod
-    async def is_jti_blacklisted(self, jti: str) -> bool:
+    async def is_jti_blacklisted(self, token_id: str) -> bool:
         """
-        Check if a token with specific JWT ID is blacklisted.
-
+        Check if a token ID (JTI) is blacklisted.
+        
         Args:
-            jti: JWT ID to check
-
+            token_id: The token ID (JTI) to check
+            
         Returns:
-            True if blacklisted, False otherwise
-
-        Raises:
-            RepositoryError: If check fails
+            True if the token ID is blacklisted, False otherwise
         """
         pass
-
+    
     @abstractmethod
-    async def blacklist_session(self, session_id: str) -> None:
+    async def clear_expired_tokens(self) -> int:
         """
-        Blacklist all tokens for a specific session.
-
-        Args:
-            session_id: The session ID to blacklist
-
-        Raises:
-            RepositoryError: If blacklisting fails
-        """
-        pass
-
-    @abstractmethod
-    async def remove_expired_entries(self) -> int:
-        """
-        Remove expired entries from the blacklist.
-
+        Remove expired tokens from the blacklist.
+        
+        This should be called periodically to clean up the blacklist.
+        
         Returns:
-            Number of entries removed
-
-        Raises:
-            RepositoryError: If cleanup fails
+            The number of tokens removed from the blacklist
         """
         pass
