@@ -12,8 +12,7 @@ import traceback
 from collections.abc import Callable
 from datetime import datetime
 from functools import wraps
-from typing import Any, TypeVar, cast
-
+from typing import Any, Optional, TypeVar, Union, ParamSpec
 from app.core.constants import LogLevel
 
 # Type variables for function signatures
@@ -104,7 +103,16 @@ def get_logger(name: str) -> logging.Logger:
     return logger
 
 
-def log_execution_time(func=None, *, logger=None, level=LogLevel.DEBUG):
+# Define type variables for generic function signatures
+T = TypeVar('T')
+P = ParamSpec('P')
+
+def log_execution_time(
+    func: Optional[Callable[P, T]] = None, 
+    *, 
+    logger: Optional[logging.Logger] = None, 
+    level: Union[LogLevel, int] = LogLevel.DEBUG
+) -> Union[Callable[[Callable[P, T]], Callable[P, T]], Callable[P, T]]:
     """
     Decorator to log the execution time of a function.
     Can be used with or without arguments:
@@ -135,7 +143,7 @@ def log_execution_time(func=None, *, logger=None, level=LogLevel.DEBUG):
     }
     
     # This is the actual decorator that will be returned when used with parameters
-    def decorator_with_args(fn):
+    def decorator_with_args(fn: Callable[P, T]) -> Callable[P, T]:
         nonlocal logger, level
         
         # Get logger or create a new one based on the module
@@ -147,7 +155,7 @@ def log_execution_time(func=None, *, logger=None, level=LogLevel.DEBUG):
             level_int = level_map.get(level, logging.DEBUG)
         
         @wraps(fn)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             # Start timing
             start_time = datetime.now()
             
@@ -173,10 +181,7 @@ def log_execution_time(func=None, *, logger=None, level=LogLevel.DEBUG):
                 
                 # Log the exception with the expected format
                 error_message = f"Exception in '{fn.__name__}' after {duration_ms:.2f} ms: {str(e)}"
-                logger_instance.error(error_message)
-                
-                # Print detailed traceback to stderr for debugging
-                logger_instance.error(f"Exception details for '{fn.__name__}'")
+                logger_instance.exception(error_message)
                 
                 # Re-raise the exception
                 raise
