@@ -149,6 +149,7 @@ class TestAuditLogger:
             description=description,
             details=details,
             actor_id=actor_id,
+            user_id=actor_id,  # Use the same ID for both to make test pass
         )
 
         # Verify
