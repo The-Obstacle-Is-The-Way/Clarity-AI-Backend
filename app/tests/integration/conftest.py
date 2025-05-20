@@ -972,7 +972,55 @@ def auth_headers():
     return _auth_headers
 
 
-# Add this fixture after the db_session fixture
+# Add Redis service mock fixture
+
+@pytest.fixture
+def mock_redis_service() -> IRedisService:
+    """
+    Provides a mock Redis service implementing IRedisService for testing.
+    
+    This mock allows tests requiring Redis to run without an actual Redis instance.
+    It simulates Redis operations in memory for test isolation.
+    
+    Returns:
+        IRedisService: A mock implementation of the Redis service interface
+    """
+    return create_mock_redis_service()
+
+
+# Override Redis dependency in FastAPI app
+@pytest.fixture
+def override_redis_dependency(
+    test_app: FastAPI, mock_redis_service: IRedisService
+) -> FastAPI:
+    """
+    Overrides the Redis service dependency in the FastAPI app for testing.
+    
+    This allows tests to use a mock Redis service instead of a real one.
+    
+    Args:
+        test_app: The FastAPI application instance
+        mock_redis_service: The mock Redis service to use
+        
+    Returns:
+        FastAPI: The modified FastAPI app with Redis dependency overridden
+    """
+    # Import the dependency provider to override
+    from app.presentation.api.dependencies.redis import get_redis_service
+    
+    # Store original dependency override to restore later if needed
+    original_dependencies = test_app.dependency_overrides.copy()
+    
+    # Override the dependency
+    test_app.dependency_overrides[get_redis_service] = lambda: mock_redis_service
+    
+    yield test_app
+    
+    # Restore original dependencies after test
+    test_app.dependency_overrides = original_dependencies
+
+
+# Add this fixture after db_session_mock fixture
 
 
 @pytest_asyncio.fixture

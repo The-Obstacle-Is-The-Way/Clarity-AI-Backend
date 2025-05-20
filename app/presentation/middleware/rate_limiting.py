@@ -11,7 +11,7 @@ from collections.abc import Callable
 from fastapi import HTTPException, Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.core.security.rate_limiting.limiter import RateLimiter
+from app.core.security.rate_limiting.service import RateLimiterService
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app,
-        limiter: RateLimiter,
+        limiter: RateLimiterService,
         exclude_paths: list[str] | None = None,
         *args,
         **kwargs,
@@ -100,7 +100,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         client_ip = request.client.host if request.client else "unknown"
 
         # Check rate limit
-        allowed = await self.limiter.is_allowed(client_ip)
+        allowed = await self.limiter.check_rate_limit(request)
 
         if not allowed:
             # Rate limit exceeded

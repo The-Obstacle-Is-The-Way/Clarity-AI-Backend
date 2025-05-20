@@ -5,7 +5,7 @@ This module provides a mock implementation of the IRedisService interface
 for testing purposes, allowing tests to run without an actual Redis connection.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 from unittest.mock import AsyncMock
 
 from app.core.interfaces.services.redis_service_interface import IRedisService
@@ -21,7 +21,7 @@ class MockRedisService(IRedisService):
     
     def __init__(self):
         """Initialize the mock Redis service with empty data store."""
-        self._data: Dict[str, str] = {}
+        self._data: dict[str, str] = {}
         self._client = AsyncMock()
     
     async def get(self, name: str) -> str | None:
