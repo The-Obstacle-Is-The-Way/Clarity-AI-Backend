@@ -475,20 +475,9 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             user: The domain User entity to convert
 
         Returns:
-
-async def _get_session(self) -> AsyncSession:
-    """
-    Get an async database session.
-
-    Returns:
-        An async database session
-    """
-    if self._session_factory:
-        return await self._session_factory()
-    elif self._db_session:
-        return self._db_session
-    else:
-        raise ValueError("Either session_factory or db_session must be provided")
+            The SQLAlchemy User model
+        """
+        return UserMapper.to_persistence(user)
 
 def get_user_repository(session_factory: Optional[async_sessionmaker] = None, db_session: Optional[AsyncSession] = None) -> SQLAlchemyUserRepository:
     """
