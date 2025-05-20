@@ -274,9 +274,9 @@ async def test_read_patient_not_found(
     del app_instance.dependency_overrides[get_patient_id]
 
 
+@pytest.mark.skipif(not FAKER_AVAILABLE, reason="faker library not installed")
 @pytest.mark.asyncio
-async @pytest.mark.skipif(not FAKER_AVAILABLE, reason="faker library not installed")
-def test_create_patient_success(
+async def test_create_patient_success(
     client: tuple[FastAPI, AsyncClient],
     faker: Faker,
     authenticated_user: DomainUser,
@@ -369,9 +369,9 @@ def test_create_patient_success(
     assert "updated_at" in response_data
 
 
+@pytest.mark.skipif(not FAKER_AVAILABLE, reason="faker library not installed")
 @pytest.mark.asyncio
-async @pytest.mark.skipif(not FAKER_AVAILABLE, reason="faker library not installed")
-def test_create_patient_validation_error(
+async def test_create_patient_validation_error(
     client: tuple[FastAPI, AsyncClient],
     faker: Faker,
     authenticated_user: DomainUser,
