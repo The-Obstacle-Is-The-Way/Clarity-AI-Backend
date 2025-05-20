@@ -184,8 +184,5 @@ class User(BaseModel):
                 
     def clear_reset_token(self) -> None:
         """Clear the password reset token and expiry time."""
-        # Use object.__setattr__ to bypass type checking for dynamic attributes
-        if hasattr(self, "reset_token"):
-            object.__setattr__(self, "reset_token", None)
-        if hasattr(self, "reset_token_expires"):
-            object.__setattr__(self, "reset_token_expires", None)
+        self.reset_token = None
+        self.reset_token_expires = None
