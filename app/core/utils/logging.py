@@ -120,94 +120,76 @@ def log_execution_time(func=None, *, logger=None, level=LogLevel.DEBUG):
     Args:
         func: Function to decorate
         logger: Logger to use, if None a new logger is created using function's module name
-        level: Log level to use
+        level: Log level to use (will be converted to int)
 
     Returns:
         Decorated function or decorator function depending on usage
     """
-    # Convert LogLevel enum to integer if needed
-    log_level_int = level.value if isinstance(level, LogLevel) else level
+    # Get the integer value for common LogLevel enums to avoid conversion issues
+    level_map = {
+        LogLevel.DEBUG: 10,   # logging.DEBUG
+        LogLevel.INFO: 20,    # logging.INFO
+        LogLevel.WARNING: 30, # logging.WARNING
+        LogLevel.ERROR: 40,   # logging.ERROR
+        LogLevel.CRITICAL: 50 # logging.CRITICAL
+    }
     
-    # If called without keyword arguments @log_execution_time
-    if func is not None:
-        # Direct decorator usage: @log_execution_time
-        @wraps(func)
-        def direct_wrapper(*args, **kwargs):
-            # Get or create logger
-            actual_logger = logger
-            if actual_logger is None:
-                actual_logger = get_logger(func.__module__)
-                
-            # Start timing
-            start_time = datetime.now()
-            
-            try:
-                # Execute function
-                result = func(*args, **kwargs)
-                
-                # Calculate duration
-                end_time = datetime.now()
-                duration_ms = (end_time - start_time).total_seconds() * 1000
-                
-                # Log execution time using integer level
-                actual_logger.log(
-                    log_level_int,  # Use integer value
-                    f"Function '{func.__name__}' executed in {duration_ms:.2f} ms"
-                )
-                
-                return result
-            except Exception as e:
-                # Log exception with timing info
-                end_time = datetime.now()
-                duration_ms = (end_time - start_time).total_seconds() * 1000
-                actual_logger.error(
-                    f"Exception in '{func.__name__}' after {duration_ms:.2f} ms: {e!s}"
-                )
-                actual_logger.exception(f"Exception details for '{func.__name__}'")
-                raise
-                
-        return direct_wrapper
-        
-    # Called with keyword arguments: @log_execution_time(logger=..., level=...)
-    def decorator(func):
-        @wraps(func)
+    # Convert level to integer
+    if isinstance(level, LogLevel):
+        level_int = level_map.get(level, 10)  # Default to DEBUG (10) if not found
+    elif isinstance(level, int):
+        level_int = level
+    else:
+        level_int = 10  # Default to DEBUG
+    
+    def create_decorator(fn):
+        @wraps(fn)
         def wrapper(*args, **kwargs):
             # Get or create logger
             actual_logger = logger
             if actual_logger is None:
-                actual_logger = get_logger(func.__module__)
-                
+                actual_logger = get_logger(fn.__module__)
+            
             # Start timing
             start_time = datetime.now()
             
             try:
                 # Execute function
-                result = func(*args, **kwargs)
+                result = fn(*args, **kwargs)
                 
                 # Calculate duration
                 end_time = datetime.now()
                 duration_ms = (end_time - start_time).total_seconds() * 1000
                 
-                # Log execution time using integer level
+                # Use hardcoded integer log level
                 actual_logger.log(
-                    log_level_int,  # Use integer value
-                    f"Function '{func.__name__}' executed in {duration_ms:.2f} ms"
+                    level_int,  # Use integer value directly
+                    f"Function '{fn.__name__}' executed in {duration_ms:.2f} ms"
                 )
                 
                 return result
             except Exception as e:
-                # Log exception with timing info
+                # Calculate duration even for exceptions
                 end_time = datetime.now()
                 duration_ms = (end_time - start_time).total_seconds() * 1000
-                actual_logger.error(
-                    f"Exception in '{func.__name__}' after {duration_ms:.2f} ms: {e!s}"
+                
+                # Log exception info with the format expected by tests
+                actual_logger.exception(
+                    f"Exception in '{fn.__name__}' after {duration_ms:.2f} ms: {e!s}"
                 )
-                actual_logger.exception(f"Exception details for '{func.__name__}'")
+                
+                # Re-raise the exception
                 raise
                 
         return wrapper
     
-    return decorator
+    # Handle both decorator usage patterns
+    if func is not None:
+        # Used as @log_execution_time
+        return create_decorator(func)
+    
+    # Used as @log_execution_time(logger=..., level=...)
+    return create_decorator
 
 
 def log_method_calls(
