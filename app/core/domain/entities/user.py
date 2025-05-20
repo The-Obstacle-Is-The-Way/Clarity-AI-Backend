@@ -8,7 +8,7 @@ without any dependency on infrastructure or application layers.
 
 import enum
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
