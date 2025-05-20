@@ -12,6 +12,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+# Import Redis service interface and mock implementation
+from app.core.interfaces.services.redis_service_interface import IRedisService
+from app.tests.utils.mock_redis_service import create_mock_redis_service
+
 import pytest
 import pytest_asyncio
 from asgi_lifespan import LifespanManager
