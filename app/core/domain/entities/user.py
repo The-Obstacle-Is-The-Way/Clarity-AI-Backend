@@ -126,3 +126,60 @@ class User(BaseModel):
         """Deactivate the user account by setting status to INACTIVE."""
         self.status = UserStatus.INACTIVE
         self.is_active = False
+        
+    # Authentication-related methods
+    def reset_attempts(self) -> None:
+        """Reset failed login attempts counter."""
+        if hasattr(self, "failed_login_attempts"):
+            self.failed_login_attempts = 0
+            
+    def record_login(self) -> None:
+        """Record a successful login by updating last_login timestamp."""
+        if not hasattr(self, "last_login"):
+            from datetime import datetime
+            self.last_login = datetime.now()
+        else:
+            from datetime import datetime
+            self.last_login = datetime.now()
+            
+    def record_login_attempt(self) -> None:
+        """Record a failed login attempt and increment the counter."""
+        if not hasattr(self, "failed_login_attempts"):
+            self.failed_login_attempts = 1
+        else:
+            self.failed_login_attempts = getattr(self, "failed_login_attempts", 0) + 1
+            
+    # Password reset methods
+    def set_reset_token(self, token: str, expires: Optional[datetime] = None) -> None:
+        """Set a password reset token and its expiry time.
+        
+        Args:
+            token: The reset token string
+            expires: Optional expiration datetime, defaults to 24 hours from now
+        """
+        from datetime import datetime, timedelta
+        self.reset_token = token
+        self.reset_token_expires = expires if expires is not None else datetime.now() + timedelta(hours=24)
+        
+    def is_reset_token_valid(self, token: str) -> bool:
+        """Check if a reset token is valid and not expired.
+        
+        Args:
+            token: The reset token to validate
+            
+        Returns:
+            bool: True if token is valid and not expired
+        """
+        from datetime import datetime
+        if not hasattr(self, "reset_token") or not hasattr(self, "reset_token_expires"):
+            return False
+            
+        return (self.reset_token == token and 
+                self.reset_token_expires > datetime.now())
+                
+    def clear_reset_token(self) -> None:
+        """Clear the password reset token and expiry time."""
+        if hasattr(self, "reset_token"):
+            self.reset_token = None
+        if hasattr(self, "reset_token_expires"):
+            self.reset_token_expires = None
