@@ -5,7 +5,7 @@ This module tests the Redis implementation of token blacklist functionality,
 a critical component for HIPAA-compliant authentication and session management.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock
 
 import pytest
@@ -47,13 +47,13 @@ def mock_jti():
 @pytest.fixture
 def future_expiry():
     """Future expiration time for tokens."""
-    return datetime.now(UTC) + timedelta(hours=1)
+    return datetime.now(timezone.utc) + timedelta(hours=1)
 
 
 @pytest.fixture
 def past_expiry():
     """Past expiration time for tokens."""
-    return datetime.now(UTC) - timedelta(minutes=5)
+    return datetime.now(timezone.utc) - timedelta(minutes=5)
 
 
 class TestRedisTokenBlacklistRepository:
