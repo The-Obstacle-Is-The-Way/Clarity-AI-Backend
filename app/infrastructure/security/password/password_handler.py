@@ -9,14 +9,14 @@ import logging
 import re
 import secrets
 import string
+from typing import Any
 
 from passlib.context import CryptContext
 from zxcvbn import zxcvbn
 
 # Import the interface
-from app.core.interfaces.security.password_handler_interface import IPasswordHandler
-# Use canonical config import
 from app.core.config.settings import get_settings
+from app.core.interfaces.security.password_handler_interface import IPasswordHandler
 
 # Initialize logger
 # logger = get_logger(__name__) # Use the standard logger function
@@ -152,20 +152,20 @@ class PasswordHandler(IPasswordHandler):
         return password_str
 
     # ------------------------------------------------------------------
-    # Legacy aliases – several historical tests rely on older method names
+    # Legacy aliases - several historical tests rely on older method names
     # ------------------------------------------------------------------
 
     # pylint: disable=invalid-name
 
     def hash_password(self, password: str) -> str:
-        """Alias for :py:meth:`get_password_hash` (retained for backwards‑compat)."""
+        """Alias for :py:meth:`get_password_hash` (retained for backwards-compat)."""
         return self.get_password_hash(password)
 
     def check_password(self, plain_password: str, hashed_password: str) -> bool:
-        """Alias for :py:meth:`verify_password` (retained for backwards‑compat)."""
+        """Alias for :py:meth:`verify_password` (retained for backwards-compat)."""
         return self.verify_password(plain_password, hashed_password)
 
-    def validate_password_strength(self, password: str) -> tuple[bool, str | None]:
+    def validate_password_strength(self, password: str) -> tuple[bool, str]:
         """
         Validate password strength against HIPAA-compliant security requirements.
 
@@ -213,9 +213,9 @@ class PasswordHandler(IPasswordHandler):
 
         # All checks passed
         logger.debug("Password strength validation passed")
-        return True, None
+        return True, ""
 
-    def validate_password_complexity(self, password: str) -> tuple[bool, str | None]:
+    def validate_password_complexity(self, password: str) -> tuple[bool, str]:
         """
         Validate if a password meets complexity requirements.
 
@@ -240,9 +240,9 @@ class PasswordHandler(IPasswordHandler):
         if self.require_special and not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/~`" for c in password):
             return False, "Password must contain at least one special character"
 
-        return True, None
+        return True, ""
 
-    def check_password_breach(self, password: str) -> bool:
+    def is_common_password(self, password: str) -> bool:
         """
         Check if a password has been compromised in known breaches.
 
@@ -289,7 +289,7 @@ class PasswordHandler(IPasswordHandler):
         if len(password) < 12:
             suggestions.append("Consider using a longer password (12+ characters)")
 
-        if self.check_password_breach(password):
+        if self.is_common_password(password):
             suggestions.append("This password appears in common password lists")
 
         # Check for patterns
@@ -303,6 +303,54 @@ class PasswordHandler(IPasswordHandler):
             return "Password meets complexity requirements"
 
         return "Suggestions: " + "; ".join(suggestions)
+        
+    def get_password_strength_feedback(self, password: str) -> dict[str, Any]:
+        """
+        Get detailed feedback on password strength.
+
+        Args:
+            password: The password to analyze
+
+        Returns:
+            Dict[str, any]: Detailed feedback containing strength score,
+                            suggestions for improvement, and other metrics
+        """
+        # Use zxcvbn for comprehensive password strength analysis
+        try:
+            result = zxcvbn(password)
+            
+            # Extract useful information from zxcvbn result
+            feedback = {
+                "score": result.get("score", 0),  # 0-4 score (0=weak, 4=strong)
+                "estimated_guesses": result.get("guesses", 0),
+                "estimated_crack_time_seconds": result.get("crack_times_seconds", {}).get("offline_slow_hashing_1e4_per_second", 0),
+                "estimated_crack_time_display": result.get("crack_times_display", {}).get("offline_slow_hashing_1e4_per_second", "unknown"),
+                "feedback": result.get("feedback", {}),
+                "warning": result.get("feedback", {}).get("warning", ""),
+                "suggestions": result.get("feedback", {}).get("suggestions", [])
+            }
+            
+            # Add our custom checks
+            is_valid, error = self.validate_password_complexity(password)
+            feedback["meets_complexity_requirements"] = is_valid
+            if not is_valid and error:
+                feedback["complexity_error"] = error
+                
+            # Check for common password
+            feedback["is_common_password"] = self.is_common_password(password)
+            
+            return feedback
+            
+        except Exception as e:
+            logger.warning(f"Error generating password strength feedback: {e}")
+            # Provide basic feedback if zxcvbn fails
+            return {
+                "score": 0 if len(password) < 12 else 1,
+                "warning": "Unable to perform comprehensive strength analysis",
+                "suggestions": ["Use a longer password with a mix of character types"],
+                "meets_complexity_requirements": len(password) >= 12,
+                "is_common_password": self.is_common_password(password)
+            }
 
 
 # Default instance for direct use (optional, depends on usage pattern)

@@ -24,6 +24,7 @@ from app.core.interfaces.services.audit_logger_interface import (
     AuditSeverity,
     IAuditLogger,
 )
+from app.core.interfaces.services.jwt_service import IJwtService
 from app.core.utils.date_utils import utcnow
 from app.domain.exceptions.auth_exceptions import (
     InvalidTokenException,
@@ -47,7 +48,7 @@ class TokenPayload(BaseModel):
     token_type: str  # Token type
 
 
-class JWTService:
+class JWTService(IJwtService):
     """
     Service for JWT token generation, validation, and management.
 
@@ -84,27 +85,38 @@ class JWTService:
 
     def create_access_token(
         self,
-        user_id: str,
-        email: str,
-        role: str,
-        permissions: list[str],
-        session_id: str,
-    ) -> tuple[str, int]:
+        data: dict[str, Any],
+        expires_delta: timedelta | None = None,
+        expires_delta_minutes: int | None = None,
+    ) -> str:
         """
-        Create a new access token for a user.
-
+        Creates a new access token.
+        
         Args:
-            user_id: The ID of the user
-            email: The email of the user
-            role: The role of the user
-            permissions: The permissions of the user
-            session_id: The session ID associated with this token
-
+            data: Dictionary containing token data (user_id, email, role, permissions, session_id)
+            expires_delta: Optional custom expiration time
+            expires_delta_minutes: Optional custom expiration time in minutes
+            
         Returns:
-            A tuple containing the access token and its expiration time in seconds
+            The encoded JWT token string
+        """
+        # Extract data from dictionary
+        user_id = data.get("user_id") or data.get("sub")
+        email = data.get("email", "")
+        role = data.get("role", "")
+        permissions = data.get("permissions", [])
+        session_id = data.get("session_id", str(uuid.uuid4()))
+        
+        if not user_id:
+            raise ValueError("user_id or sub is required in data dictionary")
         """
         # Calculate expiration time
-        expires_delta = timedelta(minutes=self.settings.access_token_expire_minutes)
+        if expires_delta is None:
+            if expires_delta_minutes is not None:
+                expires_delta = timedelta(minutes=expires_delta_minutes)
+            else:
+                expires_delta = timedelta(minutes=self.settings.access_token_expire_minutes)
+        
         expire = utcnow() + expires_delta
         expires_in = int(expires_delta.total_seconds())
 
@@ -139,20 +151,37 @@ class JWTService:
             },
         )
 
-        return access_token, expires_in
+        # For compatibility with existing code that expects a tuple
+        if hasattr(self, "_return_expires_in") and self._return_expires_in:
+            return access_token, expires_in
+            
+        return access_token
 
-    def create_refresh_token(self, user_id: str, email: str, session_id: str) -> str:
+    def create_refresh_token(
+        self,
+        data: dict[str, Any],
+        expires_delta: timedelta | None = None,
+        expires_delta_minutes: int | None = None,
+    ) -> str:
         """
-        Create a new refresh token for a user.
-
+        Creates a new refresh token.
+        
         Args:
-            user_id: The ID of the user
-            email: The email of the user
-            session_id: The session ID associated with this token
-
+            data: Dictionary containing token data (user_id, email, session_id)
+            expires_delta: Optional custom expiration time
+            expires_delta_minutes: Optional custom expiration time in minutes
+            
         Returns:
-            The refresh token string
+            The encoded JWT refresh token string
         """
+        # Extract data from dictionary
+        user_id = data.get("user_id") or data.get("sub")
+        email = data.get("email", "")
+        session_id = data.get("session_id", str(uuid.uuid4()))
+        
+        if not user_id:
+            raise ValueError("user_id or sub is required in data dictionary")
+
         # Calculate expiration time
         expires_delta = timedelta(days=self.settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
         expire = utcnow() + expires_delta
@@ -189,7 +218,7 @@ class JWTService:
 
         return refresh_token
 
-    def validate_token(self, token: str, token_type: str = "access") -> dict[str, Any]:
+    def decode_token(self, token: str, token_type: str = "access") -> TokenPayload:
         """
         Validate a JWT token and return its payload.
 
@@ -233,7 +262,7 @@ class JWTService:
                 raise TokenExpiredException(f"{token_type.capitalize()} token has expired.")
 
             # Return payload
-            return token_payload.model_dump()
+            return token_payload
 
         except jwt.ExpiredSignatureError as e:
             self.audit_logger.log_security_event(
