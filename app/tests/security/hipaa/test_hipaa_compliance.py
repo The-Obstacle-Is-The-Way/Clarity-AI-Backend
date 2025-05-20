@@ -126,10 +126,8 @@ except ImportError as e:
     # Updated mock to match the token data expected by tests
     def decode_token(token):
         # For invalid token test
-# Add type ignore for JWT.JWTError references - around line 130
-if token == "invalid.token.format":
-    raise jwt.JWTError("Invalid token format")  # type: ignore
-
+        if token == "invalid.token.format":
+            raise jwt.JWTError("Invalid token format")  # type: ignore
 
         # For expired token test - check if this specific token structure exists
         try:
