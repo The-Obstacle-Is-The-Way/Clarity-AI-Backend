@@ -15,6 +15,8 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+)
+from sqlalchemy import (
     UUID as SQLAlchemyUUID,
 )
 from sqlalchemy.ext.mutable import MutableDict

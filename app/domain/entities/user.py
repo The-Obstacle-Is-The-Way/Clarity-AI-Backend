@@ -17,7 +17,7 @@ from app.core.domain.entities.user import User as CoreUser
 from app.core.domain.entities.user import UserRole, UserStatus  # Re-exported for compatibility
 
 # Explicitly define what symbols are exported from this module
-__all__ = ['User', 'UserRole', 'UserStatus', 'set_test_mode']
+__all__ = ["User", "UserRole", "UserStatus", "set_test_mode"]
 
 # Define a test mode flag for backward compatibility
 _IN_TEST_MODE = False
@@ -29,6 +29,7 @@ warnings.warn(
     DeprecationWarning,
     stacklevel=2,
 )
+
 
 # Create a compatibility wrapper for the User class
 class User(CoreUser):
@@ -49,18 +50,19 @@ class User(CoreUser):
         """
         # Add default values for required fields if in test mode
         if _IN_TEST_MODE:
-            if 'first_name' not in data:
-                data['first_name'] = 'Test'
-            if 'last_name' not in data:
-                data['last_name'] = 'User'
+            if "first_name" not in data:
+                data["first_name"] = "Test"
+            if "last_name" not in data:
+                data["last_name"] = "User"
 
         # Handle 'role' field for backward compatibility
-        if 'role' in data and 'roles' not in data:
-            role_value = data.pop('role')
-            data['roles'] = [role_value]
+        if "role" in data and "roles" not in data:
+            role_value = data.pop("role")
+            data["roles"] = [role_value]
 
         # Initialize the parent class
         super().__init__(**data)
+
 
 def set_test_mode(enabled: bool = True) -> None:
     """Set the test mode flag for the User entity.

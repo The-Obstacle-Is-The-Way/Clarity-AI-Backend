@@ -228,17 +228,14 @@ async def client(
 
         # Create a test client using the ASGI transport for httpx 0.28.1
         transport = ASGITransport(app=app_instance)
-        
+
         # Use a standard AsyncClient with the transport
-        async with AsyncClient(
-            transport=transport,
-            base_url="http://testserver"
-        ) as async_client:
+        async with AsyncClient(transport=transport, base_url="http://testserver") as async_client:
             # Create a wrapper with the custom behavior
             class ClientWrapper:
                 def __init__(self, client):
                     self.client = client
-                
+
                 async def post(self, url, **kwargs):
                     # Add query parameters needed for tests
                     if "params" not in kwargs:
@@ -260,7 +257,7 @@ async def client(
                         kwargs["headers"] = auth_headers
 
                     return await self.client.get(url, **kwargs)
-            
+
             # Yield the wrapped client
             yield ClientWrapper(async_client)
 

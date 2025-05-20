@@ -138,7 +138,7 @@ class TestAuditLoggingIntegration:
         phi_access_log = None
         for call in mock_repository._create.call_args_list:
             log = call[0][0]
-            if log.event_type == AuditEventType.PHI_ACCESSED and log.resource_id == TEST_PATIENT_ID:
+            if log.event_type == AuditEventType.PHI_ACCESS and log.resource_id == TEST_PATIENT_ID:
                 phi_access_log = log
                 break
 
@@ -163,7 +163,7 @@ class TestAuditLoggingIntegration:
         phi_access_log = None
         for call in mock_repository._create.call_args_list:
             log = call[0][0]
-            if log.event_type == AuditEventType.PHI_ACCESSED:
+            if log.event_type == AuditEventType.PHI_ACCESS:
                 phi_access_log = log
                 break
 
@@ -211,7 +211,7 @@ class TestAuditLogExport:
             AuditLog(
                 id=str(uuid.uuid4()),
                 timestamp=datetime.now(timezone.utc),
-                event_type=AuditEventType.PHI_ACCESSED,
+                event_type=AuditEventType.PHI_ACCESS,
                 actor_id=TEST_USER_ID,
                 resource_type="patient",
                 resource_id=TEST_PATIENT_ID,
@@ -222,10 +222,13 @@ class TestAuditLogExport:
             AuditLog(
                 id=str(uuid.uuid4()),
                 timestamp=datetime.now(timezone.utc) - timedelta(hours=1),
-                event_type=AuditEventType.LOGIN,
+                event_type=AuditEventType.LOGIN_SUCCESS,
                 actor_id=TEST_USER_ID,
+                resource_type="auth",
+                resource_id="session",
                 action="login",
                 status="success",
+                details={"ip": "127.0.0.1"},
             ),
         ]
 
@@ -286,7 +289,7 @@ class TestAuditAnomalyDetection:
         security_event_logged = False
         for call in mock_repository._create.call_args_list:
             log = call[0][0]
-            if log.event_type == AuditEventType.SECURITY_EVENT and log.action == "anomaly_detected":
+            if log.event_type == AuditEventType.SECURITY_ALERT and log.action == "anomaly_detected":
                 security_event_logged = True
                 break
 
@@ -305,7 +308,7 @@ class TestAuditAnomalyDetection:
         test_log = AuditLog(
             id=str(uuid.uuid4()),
             timestamp=datetime.now(timezone.utc),
-            event_type=AuditEventType.PHI_ACCESSED,
+            event_type=AuditEventType.PHI_ACCESS,
             actor_id=test_user_id,
             resource_type="patient",
             resource_id=str(uuid.uuid4()),
@@ -323,7 +326,7 @@ class TestAuditAnomalyDetection:
         for call in mock_repository._create.call_args_list:
             log = call[0][0]
             if (
-                log.event_type == AuditEventType.SECURITY_EVENT
+                log.event_type == AuditEventType.SECURITY_ALERT
                 and log.action == "geographic_anomaly"
             ):
                 geo_anomaly_logged = True

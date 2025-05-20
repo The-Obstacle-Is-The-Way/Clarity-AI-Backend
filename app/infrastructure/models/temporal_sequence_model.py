@@ -16,6 +16,7 @@ from app.infrastructure.persistence.sqlalchemy.types import (
 # Create a properly typed declarative base for mypy
 BaseType = declarative_base()
 
+
 # This class provides proper typing for SQLAlchemy models
 class Base(BaseType):  # type: ignore
     __abstract__ = True

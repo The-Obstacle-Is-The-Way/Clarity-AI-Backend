@@ -18,6 +18,8 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     String,
+)
+from sqlalchemy import (
     UUID as SQLAlchemyUUID,
 )
 from sqlalchemy.ext.mutable import MutableDict

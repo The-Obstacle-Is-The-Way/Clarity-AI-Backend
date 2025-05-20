@@ -12,11 +12,15 @@ from sqlalchemy import (
     JSON,
     Column,
     DateTime,
-    Enum as SQLAlchemyEnum,
     ForeignKey,
     String,
     Text,
+)
+from sqlalchemy import (
     UUID as SQLAlchemyUUID,
+)
+from sqlalchemy import (
+    Enum as SQLAlchemyEnum,
 )
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import relationship
