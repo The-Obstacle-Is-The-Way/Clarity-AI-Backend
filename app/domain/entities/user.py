@@ -12,7 +12,6 @@ from __future__ import annotations
 import warnings
 
 # Re-export the User entity from app.core.domain.entities.user
-from app.core.domain.entities.user import User, UserRole, UserStatus
 
 # Show a deprecation warning when this module is imported
 warnings.warn(
