@@ -205,12 +205,54 @@ class JWTService(IJwtService):
 
     def create_access_token(
         self,
-        subject: str,
+        subject: str | None = None,
         additional_claims: Dict[str, Any] | None = None,
         expires_delta: timedelta | None = None,
         expires_delta_minutes: int | None = None,
+        data: Any = None,
     ) -> str:
-        """Creates a new access token."""
+        """Creates a new access token.
+        
+        Args:
+            subject: The subject of the token (typically a user ID)
+            additional_claims: Additional claims to include in the token
+            expires_delta: Custom expiration time as timedelta
+            expires_delta_minutes: Custom expiration time in minutes
+            data: Alternative way to provide token data (for compatibility with tests)
+        """
+        # Handle the 'data' parameter which many tests provide instead of subject/claims directly
+        processed_subject = subject
+        processed_claims = additional_claims or {}
+        
+        if data is not None:
+            # Extract subject from data if not explicitly provided
+            if processed_subject is None:
+                if isinstance(data, dict):
+                    processed_subject = data.get('sub') or data.get('user_id')
+                elif hasattr(data, 'sub'):
+                    processed_subject = getattr(data, 'sub')
+                elif hasattr(data, 'user_id'):
+                    processed_subject = getattr(data, 'user_id')
+            
+            # Add data as claims if it's a dictionary
+            if isinstance(data, dict):
+                # Make a copy to avoid modifying original data
+                extra_claims = data.copy()
+                # Remove standard claims that will be set separately
+                for key in ['sub', 'exp', 'iat', 'jti', 'type']:
+                    if key in extra_claims:
+                        extra_claims.pop(key)
+                # Update processed claims with data
+                processed_claims.update(extra_claims)
+            elif hasattr(data, '__dict__'):
+                # If data is an object with attributes, add them as claims
+                extra_claims = {k: v for k, v in data.__dict__.items() 
+                               if k not in ['sub', 'exp', 'iat', 'jti', 'type']}
+                processed_claims.update(extra_claims)
+                
+        if processed_subject is None:
+            raise ValueError("Token subject is required")
+                
         # Generate a unique JTI for the token
         jti = str(uuid4())
         
@@ -225,7 +267,7 @@ class JWTService(IJwtService):
         # Create claim set
         now = datetime.now(timezone.utc)
         claims = {
-            "sub": str(subject),
+            "sub": str(processed_subject),
             "iat": int(now.timestamp()),
             "exp": int((now + expires_delta).timestamp()),
             "jti": jti,
@@ -264,12 +306,54 @@ class JWTService(IJwtService):
 
     def create_refresh_token(
         self,
-        subject: str,
+        subject: str | None = None,
         additional_claims: Dict[str, Any] | None = None,
         expires_delta: timedelta | None = None,
         expires_delta_days: int | None = None,
+        data: Any = None,
     ) -> str:
-        """Creates a new refresh token."""
+        """Creates a new refresh token.
+        
+        Args:
+            subject: The subject of the token (typically a user ID)
+            additional_claims: Additional claims to include in the token
+            expires_delta: Custom expiration time as timedelta
+            expires_delta_days: Custom expiration time in days
+            data: Alternative way to provide token data (for compatibility with tests)
+        """
+        # Handle the 'data' parameter which many tests provide instead of subject/claims directly
+        processed_subject = subject
+        processed_claims = additional_claims or {}
+        
+        if data is not None:
+            # Extract subject from data if not explicitly provided
+            if processed_subject is None:
+                if isinstance(data, dict):
+                    processed_subject = data.get('sub') or data.get('user_id')
+                elif hasattr(data, 'sub'):
+                    processed_subject = getattr(data, 'sub')
+                elif hasattr(data, 'user_id'):
+                    processed_subject = getattr(data, 'user_id')
+            
+            # Add data as claims if it's a dictionary
+            if isinstance(data, dict):
+                # Make a copy to avoid modifying original data
+                extra_claims = data.copy()
+                # Remove standard claims that will be set separately
+                for key in ['sub', 'exp', 'iat', 'jti', 'type']:
+                    if key in extra_claims:
+                        extra_claims.pop(key)
+                # Update processed claims with data
+                processed_claims.update(extra_claims)
+            elif hasattr(data, '__dict__'):
+                # If data is an object with attributes, add them as claims
+                extra_claims = {k: v for k, v in data.__dict__.items() 
+                               if k not in ['sub', 'exp', 'iat', 'jti', 'type']}
+                processed_claims.update(extra_claims)
+                
+        if processed_subject is None:
+            raise ValueError("Token subject is required")
+                
         # Generate a unique JTI for the token
         jti = str(uuid4())
         
@@ -284,7 +368,7 @@ class JWTService(IJwtService):
         # Create claim set
         now = datetime.now(timezone.utc)
         claims = {
-            "sub": str(subject),
+            "sub": str(processed_subject),
             "iat": int(now.timestamp()),
             "exp": int((now + expires_delta).timestamp()),
             "jti": jti,
@@ -303,8 +387,8 @@ class JWTService(IJwtService):
             claims["aud"] = self.audience
             
         # Add additional claims if provided
-        if additional_claims:
-            claims.update(additional_claims)
+        if processed_claims:
+            claims.update(processed_claims)
             
         # Encode the token
         try:

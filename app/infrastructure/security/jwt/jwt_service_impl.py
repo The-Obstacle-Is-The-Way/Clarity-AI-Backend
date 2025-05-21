@@ -225,7 +225,7 @@ class JWTServiceImpl(IJwtService):
             
         logger.info(f"JWT Service initialized with algorithm {self.algorithm}")
 
-    def create_access_token(self, data: Union[Dict[str, Any], Any], subject: Optional[str] = None, expires_delta: Optional[timedelta] = None, expires_delta_minutes: Optional[int] = None, additional_claims: Optional[Dict[str, Any]] = None) -> str:
+    def create_access_token(self, data: Union[Dict[str, Any], Any] = None, subject: Optional[str] = None, expires_delta: Optional[timedelta] = None, expires_delta_minutes: Optional[int] = None, additional_claims: Optional[Dict[str, Any]] = None) -> str:
         """Create a JWT access token.
         
         Args:
@@ -243,34 +243,52 @@ class JWTServiceImpl(IJwtService):
             Exception: For any errors during token creation
         """
         now = datetime.now(timezone.utc)
+        processed_additional_claims = {}
         
-        # Extract subject from data if not provided
-        if subject is None and data:
-            if isinstance(data, dict):
-                subject = data.get('sub')
-                if not subject:
-                    subject = data.get('user_id')
-            else:
-                # Object-like input
-                try:
-                    subject = getattr(data, 'sub', None)
-                    if not subject:
-                        subject = getattr(data, 'user_id', None)
-                except (AttributeError, TypeError):
-                    pass  # Could not extract subject from data
-                    
-            # Use data as additional claims
+        # Special handling for tests that pass 'data' as a dict with all claims
+        # and expect it to be used directly without separate subject/additional_claims
+        if isinstance(data, dict) and subject is None and additional_claims is None:
+            # Direct use of data as claims - BACKWARD COMPATIBILITY MODE
+            processed_subject = data.get('sub') or data.get('user_id')
+            processed_additional_claims = data.copy()
+            
+            # Remove standard claims that we'll set separately
+            for key in ['sub', 'exp', 'iat', 'jti', 'type']:
+                if key in processed_additional_claims:
+                    processed_additional_claims.pop(key)
+        else:
+            # Standard parameter processing
+            processed_subject = subject
+            
+            # Extract subject from data if not provided
+            if processed_subject is None and data:
+                if isinstance(data, dict):
+                    processed_subject = data.get('sub')
+                    if not processed_subject:
+                        processed_subject = data.get('user_id')
+                else:
+                    # Object-like input
+                    try:
+                        processed_subject = getattr(data, 'sub', None)
+                        if not processed_subject:
+                            processed_subject = getattr(data, 'user_id', None)
+                    except (AttributeError, TypeError):
+                        pass  # Could not extract subject from data
+                        
+            # Use data as additional claims if not explicitly provided
             if additional_claims is None:
                 if isinstance(data, dict):
-                    additional_claims = data
+                    processed_additional_claims = data.copy()
                 else:
                     # Convert object to dict if possible
                     try:
-                        additional_claims = data.__dict__
+                        processed_additional_claims = data.__dict__.copy()
                     except (AttributeError, TypeError):
-                        additional_claims = {}
+                        processed_additional_claims = {}
+            else:
+                processed_additional_claims = additional_claims.copy()
                         
-        if subject is None:
+        if processed_subject is None:
             raise ValueError("Subject is required for token creation")
             
         # Calculate expiration time
@@ -279,13 +297,12 @@ class JWTServiceImpl(IJwtService):
         elif expires_delta_minutes is not None and expires_delta_minutes > 0:
             expiration = now + timedelta(minutes=expires_delta_minutes)
         else:
-            # For tests compatibility, use exactly 30 minutes
-            # This value is expected by test_token_timestamps_are_correct and other tests
-            expiration = now + timedelta(minutes=30)
+            # Use access token expiration from settings or default
+            expiration = now + timedelta(minutes=self.access_token_expire_minutes or 30)
             
         # Base claims
         claims = {
-            "sub": str(subject),
+            "sub": str(processed_subject),
             "exp": int(expiration.timestamp()),
             "iat": int(now.timestamp()),
             "jti": str(uuid4()),  # Unique token ID
@@ -299,18 +316,18 @@ class JWTServiceImpl(IJwtService):
             claims["aud"] = self.audience
             
         # Add additional claims
-        if additional_claims:
+        if processed_additional_claims:
             # Process role claim - convert to roles list if present
-            if "role" in additional_claims and "roles" not in additional_claims:
-                role = additional_claims.get("role")
+            if "role" in processed_additional_claims and "roles" not in processed_additional_claims:
+                role = processed_additional_claims.get("role")
                 if role is not None:
                     if isinstance(role, list):
-                        additional_claims["roles"] = role
+                        processed_additional_claims["roles"] = role
                     else:
-                        additional_claims["roles"] = [role]
+                        processed_additional_claims["roles"] = [role]
                 
             # Add all claims after pre-processing
-            claims.update(additional_claims)
+            claims.update(processed_additional_claims)
         
         # Encode and return
         try:
@@ -349,7 +366,7 @@ class JWTServiceImpl(IJwtService):
                         "TOKEN_CREATION_FAILED", 
                         user_id=str(subject),
                         success=False, 
-                        description=f"Failed to create access token: {str(e)}"
+                        metadata={"error": str(e)}
                     )
             raise
                 
@@ -374,34 +391,52 @@ class JWTServiceImpl(IJwtService):
             Encoded JWT refresh token
         """
         now = datetime.now(timezone.utc)
+        processed_additional_claims = {}
         
-        # Extract subject from data if not provided
-        if subject is None and data:
-            if isinstance(data, dict):
-                subject = data.get('sub')
-                if not subject:
-                    subject = data.get('user_id')
-            else:
-                # Object-like input
-                try:
-                    subject = getattr(data, 'sub', None)
-                    if not subject:
-                        subject = getattr(data, 'user_id', None)
-                except (AttributeError, TypeError):
-                    pass  # Could not extract subject from data
-                    
-            # Use data as additional claims
+        # Special handling for tests that pass 'data' as a dict with all claims
+        # and expect it to be used directly without separate subject/additional_claims
+        if isinstance(data, dict) and subject is None and additional_claims is None:
+            # Direct use of data as claims - BACKWARD COMPATIBILITY MODE
+            processed_subject = data.get('sub') or data.get('user_id')
+            processed_additional_claims = data.copy()
+            
+            # Remove standard claims that we'll set separately
+            for key in ['sub', 'exp', 'iat', 'jti', 'type']:
+                if key in processed_additional_claims:
+                    processed_additional_claims.pop(key)
+        else:
+            # Extract subject from data if not provided
+            processed_subject = subject
+            
+            # Extract subject from data if not provided
+            if processed_subject is None and data:
+                if isinstance(data, dict):
+                    processed_subject = data.get('sub')
+                    if not processed_subject:
+                        processed_subject = data.get('user_id')
+                else:
+                    # Object-like input
+                    try:
+                        processed_subject = getattr(data, 'sub', None)
+                        if not processed_subject:
+                            processed_subject = getattr(data, 'user_id', None)
+                    except (AttributeError, TypeError):
+                        pass  # Could not extract subject from data
+                        
+            # Use data as additional claims if not explicitly provided
             if additional_claims is None:
                 if isinstance(data, dict):
-                    additional_claims = data.copy()  # Use a copy to avoid modifying the original
+                    processed_additional_claims = data.copy()
                 else:
                     # Convert object to dict if possible
                     try:
-                        additional_claims = data.__dict__.copy()  # Use a copy to avoid modifying the original
+                        processed_additional_claims = data.__dict__.copy()
                     except (AttributeError, TypeError):
-                        additional_claims = {}
+                        processed_additional_claims = {}
+            else:
+                processed_additional_claims = additional_claims.copy()
                         
-        if subject is None:
+        if processed_subject is None:
             raise ValueError("Subject is required for token creation")
         
         # Calculate expiration time (longer than access token)
@@ -414,7 +449,7 @@ class JWTServiceImpl(IJwtService):
             
         # Include minimal claims in refresh token for security
         claims = {
-            "sub": str(subject),
+            "sub": str(processed_subject),
             "iat": int(now.timestamp()),
             "exp": int(expiration.timestamp()),
             "jti": str(uuid4()),  # Unique token ID
@@ -431,12 +466,12 @@ class JWTServiceImpl(IJwtService):
             
         # Add additional claims, but more restricted than access token
         safe_claims = {}
-        if additional_claims:
+        if processed_additional_claims:
             # Only include safe claims in refresh token, but also allow role/roles for tests
             safe_fields = ["session_id", "user_id", "role", "roles"]
             for key in safe_fields:
-                if key in additional_claims:
-                    safe_claims[key] = additional_claims[key]
+                if key in processed_additional_claims:
+                    safe_claims[key] = processed_additional_claims[key]
                     
         claims.update(safe_claims)
         
@@ -448,15 +483,16 @@ class JWTServiceImpl(IJwtService):
                 try:
                     self.audit_logger.log_auth_event(
                         event_type=AuditEventType.TOKEN_CREATED,
-                        user_id=str(subject),
+                        user_id=str(processed_subject),
                         severity=AuditSeverity.INFO,
                         details={"token_type": "refresh", "expiration": expiration.isoformat()}
                     )
                 except (TypeError, AttributeError):
                     self.audit_logger.log_auth_event(
                         "TOKEN_CREATED", 
-                        user_id=str(subject),
+                        user_id=str(processed_subject),
                         success=True, 
+                        description="Created refresh token",
                         metadata={"token_type": "refresh", "expiration": expiration.isoformat()}
                     )
                 

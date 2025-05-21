@@ -23,23 +23,49 @@ class IJwtService(ABC):
     @abstractmethod
     def create_access_token(
         self,
-        subject: str,
+        subject: str | None = None,
         additional_claims: dict[str, Any] | None = None,
         expires_delta: timedelta | None = None,
         expires_delta_minutes: int | None = None,
+        data: dict[str, Any] | Any | None = None,
     ) -> str:
-        """Creates a new access token."""
+        """Creates a new access token.
+        
+        Args:
+            subject: The subject of the token (typically a user ID)
+            additional_claims: Additional claims to include in the token
+            expires_delta: Custom expiration time as timedelta
+            expires_delta_minutes: Custom expiration time in minutes
+            data: Alternative way to provide token data (for compatibility with tests)
+                  When provided, this can contain both subject and claims in one object
+        
+        Returns:
+            The encoded JWT token as a string
+        """
         pass
 
     @abstractmethod
     def create_refresh_token(
         self,
-        subject: str,
+        subject: str | None = None,
         additional_claims: dict[str, Any] | None = None,
         expires_delta: timedelta | None = None,
         expires_delta_minutes: int | None = None,
+        data: dict[str, Any] | Any | None = None,
     ) -> str:
-        """Creates a new refresh token."""
+        """Creates a new refresh token.
+        
+        Args:
+            subject: The subject of the token (typically a user ID)
+            additional_claims: Additional claims to include in the token
+            expires_delta: Custom expiration time as timedelta
+            expires_delta_minutes: Custom expiration time in minutes
+            data: Alternative way to provide token data (for compatibility with tests)
+                  When provided, this can contain both subject and claims in one object
+                  
+        Returns:
+            The encoded JWT refresh token as a string
+        """
         pass
 
     @abstractmethod
