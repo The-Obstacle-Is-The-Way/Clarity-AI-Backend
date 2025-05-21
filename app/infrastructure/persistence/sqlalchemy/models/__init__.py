@@ -10,8 +10,9 @@ IMPORTANT: This module follows clean architecture principles:
 """
 
 import logging
+import sys
 from importlib import import_module
-from typing import List
+from typing import Any, List, Optional, Type, TYPE_CHECKING, cast
 
 # First import the Base class to establish registry
 from app.infrastructure.persistence.sqlalchemy.registry import (
@@ -26,78 +27,86 @@ from .base import AuditMixin, Base, TimestampMixin
 from .provider import ProviderModel
 from .user import User, UserRole
 
-# Biometric and Digital Twin models should be imported before Patient if Patient refers to them
-try:  # MODIFIED: Comment out try
+# Create forward references for models that might not be available
+if TYPE_CHECKING:
+    from .biometric_alert_model import BiometricAlertModel as BiometricAlertModelType
+    from .biometric_rule import BiometricRuleModel as BiometricRuleModelType
+    from .biometric_twin_model import BiometricTwinModel as BiometricTwinModelType
+    from .digital_twin import DigitalTwinModel as DigitalTwinModelType
+    from .appointment import AppointmentModel as AppointmentModelType
+    from .clinical_note import ClinicalNoteModel as ClinicalNoteModelType
+    from .medication import MedicationModel as MedicationModelType
+    from .audit_log import AuditLog as AuditLogType
+
+# Optional model imports - these may not be available in all environments
+# Using Any as a fallback type for models that couldn't be imported
+BiometricAlertModel: Optional[Type[Any]] = None
+BiometricRuleModel: Optional[Type[Any]] = None
+BiometricTwinModel: Optional[Type[Any]] = None
+DigitalTwinModel: Optional[Type[Any]] = None
+
+# Try to import the biometric and digital twin models
+try:
     from .biometric_alert_model import BiometricAlertModel
     from .biometric_rule import BiometricRuleModel
-    from .biometric_twin_model import (  # Contains BiometricDataPointModel as well
-        BiometricTwinModel,
-    )
-    from .digital_twin import (  # Contains its own BiometricDataPointModel and BiometricTimeseriesModel
-        DigitalTwinModel,
-    )
-except ImportError as e:  # MODIFIED: Comment out except
+    from .biometric_twin_model import BiometricTwinModel
+    from .digital_twin import DigitalTwinModel
+except ImportError as e:
     logging.warning(f"Some biometric or digital twin models could not be imported: {e}")
-    BiometricAlertModel = None
-    BiometricRuleModel = None
-    BiometricTwinModel = None
-    DigitalTwinModel = None
 
 from .patient import Patient
 
-# Import models safely with try/except blocks to avoid breaking imports
-try:  # MODIFIED: Comment out try
+# Import other optional models
+AppointmentModel: Optional[Type[Any]] = None
+try:
     from .appointment import AppointmentModel
-except ImportError:  # MODIFIED: Comment out except
-    AppointmentModel = None
+except ImportError:
     logging.warning("AppointmentModel could not be imported")
 
-try:  # MODIFIED: Comment out try
+ClinicalNoteModel: Optional[Type[Any]] = None
+try:
     from .clinical_note import ClinicalNoteModel
-except ImportError:  # MODIFIED: Comment out except
-    ClinicalNoteModel = None
+except ImportError:
     logging.warning("ClinicalNoteModel could not be imported")
 
-try:  # MODIFIED: Comment out try
+MedicationModel: Optional[Type[Any]] = None
+try:
     from .medication import MedicationModel
-except ImportError:  # MODIFIED: Comment out except
-    MedicationModel = None
+except ImportError:
     logging.warning("MedicationModel could not be imported")
 
-try:  # MODIFIED: Comment out try
+AuditLog: Optional[Type[Any]] = None
+try:
     from .audit_log import AuditLog
-except ImportError:  # MODIFIED: Comment out except
-    AuditLog = None
+except ImportError:
     logging.warning("AuditLog could not be imported")
 
-# Optional: Import additional models if they exist and are needed
-# try: # MODIFIED: Comment out try
-# from .biometric_alert_model import BiometricAlertModel # Already imported above
-# from .biometric_rule import BiometricRuleModel # Already imported above
-# from .biometric_twin_model import BiometricTwinModel # Already imported above
-# from .digital_twin import DigitalTwinModel # Already imported above
-# except ImportError as e: # MODIFIED: Comment out except
-#     logging.warning(f"Some biometric models could not be imported: {e}")
+# Define a helper function to conditionally include models in __all__
+def _include_if_available(model_name: str, model_obj: Any) -> List[str]:
+    """Helper function to conditionally include models in __all__."""
+    return [model_name] if model_obj is not None else []
 
 # Comprehensive list of all models for proper export
 __all__ = [
     "AnalyticsEventModel",
-    "AppointmentModel",
-    "AuditLog",  # Updated from AuditLogModel to AuditLog
     "AuditMixin",
     "Base",
-    "BiometricAlertModel",
-    "BiometricRuleModel",
-    "BiometricTwinModel",
-    "ClinicalNoteModel",
-    "DigitalTwinModel",
-    "MedicationModel",
     "Patient",
     "ProviderModel",
     "TimestampMixin",
     "User",
     "UserRole",
 ]
+
+# Extend __all__ with optional models that were successfully imported
+__all__.extend(_include_if_available("AppointmentModel", AppointmentModel))
+__all__.extend(_include_if_available("AuditLog", AuditLog))
+__all__.extend(_include_if_available("BiometricAlertModel", BiometricAlertModel))
+__all__.extend(_include_if_available("BiometricRuleModel", BiometricRuleModel))
+__all__.extend(_include_if_available("BiometricTwinModel", BiometricTwinModel))
+__all__.extend(_include_if_available("ClinicalNoteModel", ClinicalNoteModel))
+__all__.extend(_include_if_available("DigitalTwinModel", DigitalTwinModel))
+__all__.extend(_include_if_available("MedicationModel", MedicationModel))
 
 # This ensures all models are properly validated during application startup
 # Commented out to avoid auto-execution on import which can cause issues in tests

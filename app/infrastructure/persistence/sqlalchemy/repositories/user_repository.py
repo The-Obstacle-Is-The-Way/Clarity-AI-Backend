@@ -1,7 +1,6 @@
-"""
-User repository implementation using SQLAlchemy.
+"""User repository implementation using SQLAlchemy.
 
-This module implements the UserRepository interface for persisting and retrieving
+This module implements the IUserRepository interface for persisting and retrieving
 User entities using SQLAlchemy ORM, following clean architecture principles.
 
 ARCHITECTURAL NOTE: This is the canonical SQLAlchemy implementation of the UserRepository.
@@ -10,25 +9,26 @@ All other implementations should be considered deprecated.
 
 import logging
 import uuid
+from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from sqlalchemy.future import select
 
-# Domain imports
-from app.core.domain.entities.user import User as DomainUser
-from app.domain.repositories.user_repository import UserRepository as UserRepositoryInterface
+# Core layer imports - Clean Architecture canonical interfaces and entities
+from app.core.domain.entities.user import User
+from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.domain.utils.datetime_utils import now_utc
-from app.infrastructure.persistence.sqlalchemy.mappers.user_mapper import UserMapper
 
 # Infrastructure imports
+from app.infrastructure.persistence.sqlalchemy.mappers.user_mapper import UserMapper
 from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel
 from app.infrastructure.persistence.sqlalchemy.models.user import UserRole
 
 logger = logging.getLogger(__name__)
 
 
-class SQLAlchemyUserRepository(UserRepositoryInterface):
+class SQLAlchemyUserRepository(IUserRepository):
     """
     SQLAlchemy implementation of the UserRepository interface.
 
@@ -52,6 +52,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
         Raises:
             ValueError: If neither session_factory nor db_session is provided.
         """
+        self._mapper = UserMapper()
         if session_factory is not None:
             self._session_factory = session_factory
             self._external_session = None
@@ -64,7 +65,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
         else:
             raise ValueError("Either session_factory or db_session must be provided")
 
-        self._mapper = UserMapper()
+        # _mapper initialized above
 
     async def _get_session(self) -> AsyncSession:
         """
@@ -78,9 +79,11 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
         """
         if self._session_factory is not None:
             return self._session_factory()
-        return self._external_session
+        if self._external_session is not None:
+            return self._external_session
+        raise ValueError("No session available. This should never happen.")
 
-    async def create(self, user: DomainUser) -> DomainUser:
+    async def create(self, user: User) -> User:
         """
         Create a new user in the database.
 
@@ -133,7 +136,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
                 logger.error(f"Database error when creating user: {e}")
                 raise
 
-    async def get_by_id(self, user_id: str | uuid.UUID) -> DomainUser | None:
+    async def get_by_id(self, user_id: str | UUID) -> User | None:
         """
         Retrieve a user by their ID.
 
@@ -179,23 +182,18 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
                 logger.error(f"Error retrieving user by id: {e}")
                 return None
 
-    async def get_user_by_id(self, user_id: str | uuid.UUID) -> DomainUser | None:
-        """
-        Alias for get_by_id to maintain API compatibility with auth dependencies.
-
-        This method exists to address an architectural inconsistency where:
-        - The core interface uses get_by_id (as per IUserRepository)
-        - Auth dependencies call get_user_by_id
+    async def get_user_by_id(self, user_id: str | uuid.UUID) -> User | None:
+        """Alias method for get_by_id for backward compatibility.
 
         Args:
-            user_id: The ID of the user to retrieve
+            user_id: Unique identifier for the user
 
         Returns:
-            The User domain entity if found, None otherwise
+            User entity if found, None otherwise
         """
         return await self.get_by_id(user_id)
 
-    async def get_by_username(self, username: str) -> DomainUser | None:
+    async def get_by_username(self, username: str) -> User | None:
         """
         Retrieve a user by their username.
 
@@ -221,7 +219,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
                 logger.error(f"Database error when retrieving user by username {username}: {e}")
                 raise
 
-    async def get_by_email(self, email: str) -> DomainUser | None:
+    async def get_by_email(self, email: str) -> User | None:
         """
         Retrieve a user by their email address.
 
@@ -249,7 +247,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
                 logger.error(f"Database error when retrieving user by email {email}: {e}")
                 raise
 
-    async def update(self, user: DomainUser) -> DomainUser:
+    async def update(self, user: User) -> User:
         """
         Update an existing user in the database.
 
@@ -285,14 +283,16 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
                 await session.refresh(updated_model)
 
                 # Convert back to domain entity using the mapper
+                await session.commit()
                 return UserMapper.to_domain(updated_model)
             except IntegrityError as e:
-                logger.error(f"Integrity error when updating user: {e}")
                 await session.rollback()
+                logger.error(f"Database integrity error when updating user {user.id}: {e}")
+                # Propagate meaningful error message to the caller
                 raise
             except SQLAlchemyError as e:
-                logger.error(f"Database error when updating user: {e}")
                 await session.rollback()
+                logger.error(f"Database error when updating user {user.id}: {e}")
                 raise
 
     async def delete(self, user_id: str | uuid.UUID) -> bool:
@@ -318,19 +318,23 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
                 # Check if user exists
                 user_model = await session.get(UserModel, user_id)
                 if not user_model:
+                    await session.commit()
                     return False
 
                 # Delete user
                 await session.delete(user_model)
-                await session.flush()
-
+                await session.commit()
                 return True
-            except SQLAlchemyError as e:
-                logger.error(f"Database error when deleting user: {e}")
+            except IntegrityError as e:
                 await session.rollback()
+                logger.error(f"Database integrity error when deleting user {user_id}: {e}")
+                return False
+            except SQLAlchemyError as e:
+                await session.rollback()
+                logger.error(f"Database error when deleting user {user_id}: {e}")
                 raise
 
-    async def list_all(self, skip: int = 0, limit: int = 100) -> list[DomainUser]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[User]:
         """
         Retrieve a list of users from the database.
 
@@ -358,11 +362,40 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
                 raise
 
     # Maintain backward compatibility with existing code that might call list_users
-    async def list_users(self, skip: int = 0, limit: int = 100) -> list[DomainUser]:
+    async def list_users(self, skip: int = 0, limit: int = 100) -> list[User]:
         """Alias for list_all to maintain backward compatibility."""
         return await self.list_all(skip, limit)
+        
+    async def search(self, search_term: str, skip: int = 0, limit: int = 100) -> list[User]:
+        """Search for users with a search term matching username or email.
+        
+        Args:
+            search_term: The search term to use
+            skip: Number of records to skip
+            limit: Maximum number of records to return
+            
+        Returns:
+            List of User entities matching the search criteria
+        """
+        session = await self._get_session()
+        try:
+            # Use ilike for case-insensitive search
+            from sqlalchemy import or_
+            stmt = select(UserModel).where(
+                or_(
+                    UserModel.username.ilike(f"%{search_term}%"),
+                    UserModel.email.ilike(f"%{search_term}%")
+                )
+            ).offset(skip).limit(limit)
+            
+            result = await session.execute(stmt)
+            db_users = result.scalars().all()
+            return [self._mapper.to_domain(db_user) for db_user in db_users]
+        except SQLAlchemyError as e:
+            logger.error(f"Database error when searching for users: {e}")
+            raise
 
-    async def get_by_role(self, role: str, skip: int = 0, limit: int = 100) -> list[DomainUser]:
+    async def get_by_role(self, role: str, skip: int = 0, limit: int = 100) -> list[User]:
         """
         Get users by role.
 
@@ -375,32 +408,31 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             List of users with the specified role
         """
         session = await self._get_session()
-        async with session as session:
+        try:
+            # Try to convert role string to UserRole enum
             try:
-                # Try to convert role string to UserRole enum
-                try:
-                    role_enum = UserRole(role)
-                    # Prepare query with enum
-                    query = (
-                        select(UserModel)
-                        .where(UserModel.role == role_enum)
-                        .offset(skip)
-                        .limit(limit)
-                    )
-                except ValueError:
-                    # If role is not in UserRole enum, return empty list
-                    logger.warning(f"Role {role} not found in UserRole enum")
-                    return []
+                role_enum = UserRole(role)
+                # Prepare query with enum
+                query = (
+                    select(UserModel)
+                    .where(UserModel.role == role_enum)
+                    .offset(skip)
+                    .limit(limit)
+                )
+            except ValueError:
+                # If role is not in UserRole enum, return empty list
+                logger.warning(f"Role {role} not found in UserRole enum")
+                return []
 
-                # Execute query
-                result = await session.execute(query)
-                user_models = result.scalars().all()
+            # Execute query
+            result = await session.execute(query)
+            user_models = result.scalars().all()
 
-                # Convert to domain entities using the mapper for consistency
-                return [UserMapper.to_domain(model) for model in user_models]
-            except SQLAlchemyError as e:
-                logger.error(f"Database error when retrieving users by role {role}: {e}")
-                raise
+            # Convert to domain entities using the mapper for consistency
+            return [self._mapper.to_domain(model) for model in user_models]
+        except SQLAlchemyError as e:
+            logger.error(f"Database error when retrieving users by role {role}: {e}")
+            raise
 
     async def count(self) -> int:
         """
@@ -414,7 +446,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
         session = await self._get_session()
         async with session as session:
             try:
-                stmt = select(func.count()).select_from(UserModel)
+                stmt = select(func.count(UserModel.id))
                 result = await session.execute(stmt)
                 count = result.scalar_one_or_none()
                 return count if count is not None else 0
@@ -468,7 +500,21 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
                 logger.error(f"Database error when checking if user exists by email {email}: {e}")
                 raise
 
-    async def _to_model(self, user: DomainUser) -> UserModel:
+    def _to_domain_model(self, db_model: UserModel) -> User:
+        """
+        Convert a User model to a User domain entity.
+
+        This is a private helper method used internally by the repository.
+
+        Args:
+            db_model: The SQLAlchemy User model to convert
+
+        Returns:
+            A domain User entity
+        """
+        return self._mapper.to_domain(db_model)
+        
+    def _to_model(self, user: User) -> UserModel:
         """
         Convert a User domain entity to a User model.
 
@@ -478,9 +524,9 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             user: The domain User entity to convert
 
         Returns:
-            The SQLAlchemy User model
+            A SQLAlchemy User model
         """
-        return UserMapper.to_persistence(user)
+        return self._mapper.to_persistence(user)
 
 
 def get_user_repository(
@@ -506,3 +552,15 @@ def get_user_repository(
 
 # Export aliases to maintain backward compatibility with names used in UnitOfWorkFactory
 UserRepositoryImpl = SQLAlchemyUserRepository
+
+# Provide a clean, type-safe factory function to create repository instances
+def create_user_repository(session: AsyncSession) -> IUserRepository:
+    """Create a properly configured SQLAlchemyUserRepository instance.
+    
+    Args:
+        session: The SQLAlchemy async session to use
+        
+    Returns:
+        A properly configured IUserRepository implementation
+    """
+    return SQLAlchemyUserRepository(db_session=session)
