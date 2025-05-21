@@ -24,7 +24,7 @@ class IJwtService(ABC):
     def create_access_token(
         self,
         subject: str,
-        additional_claims: Dict[str, Any] | None = None,
+        additional_claims: dict[str, Any] | None = None,
         expires_delta: timedelta | None = None,
         expires_delta_minutes: int | None = None,
     ) -> str:
@@ -35,7 +35,6 @@ class IJwtService(ABC):
     def create_refresh_token(
         self,
         subject: str,
-        additional_claims: Dict[str, Any] | None = None,
         additional_claims: dict[str, Any] | None = None,
         expires_delta: timedelta | None = None,
         expires_delta_minutes: int | None = None,
@@ -44,19 +43,25 @@ class IJwtService(ABC):
         pass
 
     @abstractmethod
-    def decode_token(self, token: str, verify_signature: bool = True) -> Any:
-        """
-        Decodes a token and returns its payload.
-        
+    def decode_token(
+        self,
+        token: str,
+        verify_signature: bool = True,
+        options: dict[str, Any] | None = None,
+        audience: str | None = None,
+        algorithms: list[str] | None = None,
+    ) -> Any:
+        """Decode and validate a JWT token.
+
         Args:
             token: JWT token to decode
-            verify_signature: Whether to verify the token signature
-            
+            verify_signature: Whether to verify token signature 
+            options: Options for decoding
+            audience: Expected audience
+            algorithms: List of allowed algorithms
+
         Returns:
-            Token payload
-            
-        Raises:
-            AuthenticationError: If the token is invalid or expired
+            Decoded token payload
         """
         pass
 
@@ -92,7 +97,7 @@ class IJwtService(ABC):
         """Revokes a token by adding its JTI to the blacklist.
         
         Args:
-            token: JWT token to revoke
+            token: Token to revoke
             
         Returns:
             True if token was successfully revoked, False otherwise
