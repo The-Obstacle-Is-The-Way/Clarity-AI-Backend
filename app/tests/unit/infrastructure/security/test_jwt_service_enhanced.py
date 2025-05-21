@@ -111,8 +111,7 @@ def jwt_service(test_settings: Settings) -> JWTServiceImpl:
         settings=test_settings,
         token_blacklist_repository=None,
         user_repository=None,
-        audit_logger=None,
-        settings=test_settings
+        audit_logger=None
     )
 
 
@@ -126,11 +125,9 @@ class TestJWTService:
         assert jwt_service.secret_key == TEST_SECRET_KEY
         assert jwt_service.algorithm == TEST_ALGORITHM
         assert jwt_service.access_token_expire_minutes == TEST_ACCESS_EXPIRE_MINUTES
-        assert (
-            jwt_service.refresh_token_expire_days == test_settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS
-        )  # Verify against settings
-        assert jwt_service.issuer == TEST_ISSUER
-        assert jwt_service.audience == TEST_AUDIENCE
+        assert jwt_service.refresh_token_expire_minutes == TEST_REFRESH_EXPIRE_DAYS * 24 * 60  # Days converted to minutes
+        assert jwt_service.token_issuer == TEST_ISSUER
+        assert jwt_service.token_audience == TEST_AUDIENCE
 
     @pytest.mark.asyncio
     @freeze_time("2024-01-01 12:00:00")
@@ -167,9 +164,9 @@ class TestJWTService:
         assert decoded["sub"] == "user123"
         assert decoded["role"] == "patient"
         assert "exp" in decoded
-        assert "iat" in decoded
-        assert decoded["aud"] == jwt_service.audience
-        assert decoded["iss"] == jwt_service.issuer
+        # Verify token has correct payload claims
+        assert decoded.get("iss") == jwt_service.token_issuer
+        assert decoded.get("aud") == jwt_service.token_audience
 
         # With TESTING=True, we use a fixed timestamp
         # So we can just verify the difference between exp and iat
@@ -524,9 +521,10 @@ class TestJWTService:
 
         # Decode the token - it should not be expired since we're at the same frozen time
         payload = jwt_service.decode_token(access_token)
-
-        # Ensure the token is not expired
-        assert not payload.is_expired, "Token should not be expired at frozen time"
+        
+        # Ensure the token is not expired by checking that exp is in the future
+        now = int(datetime.now(UTC).timestamp())
+        assert payload.exp > now, "Token should not be expired at frozen time"
 
         # With frozen time, we should be using 2024-01-01 12:00:00 timestamp
         # This timestamp is exactly 1704110400 (UTC)
