@@ -42,7 +42,7 @@ TEST_SECRET_KEY = "enhanced-secret-key-for-testing-purpose-only-32+"
 logger = logging.getLogger(__name__)
 
 
-class TokenPayload(BaseModel):
+class TokenPayload:
     """Special token payload class designed for test compatibility.
     
     This class has multiple behaviors to maintain compatibility with all tests:
@@ -52,9 +52,6 @@ class TokenPayload(BaseModel):
     
     JWT claims spec: https://tools.ietf.org/html/rfc7519#section-4.1
     """
-    class Config:
-        arbitrary_types_allowed = True
-        extra = "allow"
     
     def __init__(self, data):
         # Store all data in internal dict
@@ -75,9 +72,6 @@ class TokenPayload(BaseModel):
         # Ensure subject is a string for compatibility
         if 'sub' in self._data and self._data['sub'] is not None:
             self._data['sub'] = str(self._data['sub'])
-            
-        # Call parent constructor for pydantic compatibility
-        super().__init__(**self._data)
             
     def __getattr__(self, name):
         """Allow attribute access to dict keys."""
