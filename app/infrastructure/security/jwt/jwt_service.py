@@ -8,6 +8,7 @@ HIPAA security standards and best practices for healthcare applications.
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, ClassVar, Dict, List, Optional, Union
+# Make sure List is properly imported
 from uuid import UUID, uuid4
 
 from jose.exceptions import ExpiredSignatureError, JWTError

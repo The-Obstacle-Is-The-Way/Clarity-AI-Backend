@@ -26,6 +26,9 @@ except ImportError:
     # Create a no-op placeholder for freeze_time decorator to avoid syntax errors
     def freeze_time(time_str):
         return lambda x: x
+        
+# Import JWTServiceImpl instead of JWTService 
+from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
 
 
 # Use canonical config path
@@ -94,10 +97,19 @@ def test_settings() -> Settings:
 
 
 @pytest.fixture
-def jwt_service(test_settings: Settings) -> JWTService:
-    return JWTService(
-        settings=test_settings, user_repository=None
-    )  # Assuming no user repo needed here
+def jwt_service(test_settings: Settings) -> JWTServiceImpl:
+    return JWTServiceImpl(
+        secret_key=TEST_SECRET_KEY,
+        algorithm=TEST_ALGORITHM,
+        access_token_expire_minutes=TEST_ACCESS_EXPIRE_MINUTES,
+        refresh_token_expire_days=TEST_REFRESH_EXPIRE_DAYS,
+        issuer=TEST_ISSUER,
+        audience=TEST_AUDIENCE,
+        token_blacklist_repository=None,
+        user_repository=None,
+        audit_logger=None,
+        settings=test_settings
+    )
 
 
 # Skip the entire test class if freezegun is not available
@@ -500,7 +512,7 @@ class TestJWTService:
     @pytest.mark.asyncio
     @freeze_time("2024-01-01 12:00:00")
     @pytest.mark.asyncio
-    async def test_token_timestamps_are_correct(self, jwt_service: JWTService):
+    async def test_token_timestamps_are_correct(self, jwt_service: JWTServiceImpl):
         """Test token timestamps are set correctly."""
         # Create token with fixed time
         user_data = {"sub": "user_ts_test"}
