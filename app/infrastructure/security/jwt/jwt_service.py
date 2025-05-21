@@ -32,13 +32,7 @@ except ImportError:
     def jwt_decode(token: str, key: str, algorithms: list[str] = None, options: dict[str, Any] = None, **kwargs: Any) -> dict[str, Any]:
         return jose_jwt.decode(token, key, algorithms=algorithms, options=options, **kwargs)
 
-    # Import JWTClaimsError at the module level to ensure it's available everywhere
-    JWTClaimsError = jose_jwt.JWTClaimsError
-
-
 from pydantic import BaseModel, ValidationError, computed_field
-
-from pydantic import BaseModel, ValidationError
 
 # Import interfaces and domain models
 from app.core.interfaces.services.jwt_service import IJwtService
@@ -715,7 +709,7 @@ class JWTService(IJwtService):
         # For backward compatibility with tests, set the enum-based type field
         if refresh or token_type == "refresh":
             to_encode["type"] = "refresh"
-            to_encode["refresh"] = True  # Boolean flag
+            to_encode["refresh"] = "true"  # String representation for compatibility
             to_encode["scope"] = "refresh_token"
         else:
             to_encode["type"] = "access"
