@@ -210,6 +210,7 @@ class JWTService(IJwtService):
         expires_delta: timedelta | None = None,
         expires_delta_minutes: int | None = None,
         data: Any = None,
+        jti: str | None = None,
     ) -> str:
         """Creates a new access token.
         
@@ -253,8 +254,8 @@ class JWTService(IJwtService):
         if processed_subject is None:
             raise ValueError("Token subject is required")
                 
-        # Generate a unique JTI for the token
-        jti = str(uuid4())
+        # Generate a unique JTI for the token if not provided
+        token_jti = jti if jti is not None else str(uuid4())
         
         # Get the expiration time
         if expires_delta_minutes is not None:
@@ -270,7 +271,7 @@ class JWTService(IJwtService):
             "sub": str(processed_subject),
             "iat": int(now.timestamp()),
             "exp": int((now + expires_delta).timestamp()),
-            "jti": jti,
+            "jti": token_jti,
             "type": "access"
         }
         
@@ -311,6 +312,7 @@ class JWTService(IJwtService):
         expires_delta: timedelta | None = None,
         expires_delta_days: int | None = None,
         data: Any = None,
+        jti: str | None = None,
     ) -> str:
         """Creates a new refresh token.
         
@@ -354,8 +356,8 @@ class JWTService(IJwtService):
         if processed_subject is None:
             raise ValueError("Token subject is required")
                 
-        # Generate a unique JTI for the token
-        jti = str(uuid4())
+        # Generate a unique JTI for the token if not provided
+        token_jti = jti if jti is not None else str(uuid4())
         
         # Get the expiration time
         if expires_delta_days is not None:
@@ -371,7 +373,7 @@ class JWTService(IJwtService):
             "sub": str(processed_subject),
             "iat": int(now.timestamp()),
             "exp": int((now + expires_delta).timestamp()),
-            "jti": jti,
+            "jti": token_jti,
             "type": "refresh",
             "refresh": True
         }
@@ -395,7 +397,7 @@ class JWTService(IJwtService):
             token = jwt_encode(claims, self.secret_key, algorithm=self.algorithm)
             
             # Track the token family
-            self._token_families[family_id] = jti
+            self._token_families[family_id] = token_jti
             
             # Log the security event
             if self.audit_logger:
@@ -492,7 +494,8 @@ class JWTService(IJwtService):
                     metadata={"jti": payload.get("jti", "unknown")}
                 )
                 
-            return payload
+            # Convert to TokenPayload object for attribute access instead of dict
+            return TokenPayload(**payload)
             
         except ExpiredSignatureError:
             # Handle expired tokens
@@ -572,7 +575,8 @@ class JWTService(IJwtService):
                     # This is a reused token from this family
                     raise InvalidTokenError("Refresh token reuse detected")
 
-            return payload
+            # Convert to TokenPayload object for attribute access instead of dict
+            return TokenPayload(**payload)
 
         except TokenExpiredError:
             # Specifically handle expired refresh tokens
@@ -764,7 +768,8 @@ class JWTService(IJwtService):
                         # Raise token blacklisted exception
                         raise TokenBlacklistedError(f"Token has been blacklisted: {reason}")
             
-            return payload
+            # Convert to TokenPayload object for attribute access instead of dict
+            return TokenPayload(**payload)
             
         except TokenBlacklistedError:
             # Re-raise blacklist exceptions without modification
