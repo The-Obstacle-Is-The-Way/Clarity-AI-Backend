@@ -1,72 +1,89 @@
 """
-Interface for Token Blacklist Repository.
+Interface for token blacklist repository to maintain clean architecture boundaries and
+provide a consistent contract for token invalidation operations.
 
-This module defines the interface for a repository that manages blacklisted tokens
-to enforce secure token invalidation for compliance with HIPAA security requirements.
+Supports HIPAA compliance by ensuring secure session management and token revocation.
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime
+from typing import List, Optional
+from uuid import UUID
 
 
 class ITokenBlacklistRepository(ABC):
+    """Interface for token blacklist repository operations.
+    
+    Defines contract for blacklisting JWT tokens to prevent their reuse,
+    supporting secure session management and token invalidation according to
+    HIPAA security requirements.
     """
-    Interface for a token blacklist repository.
-
-    This interface defines the contract for repositories that handle the blacklisting
-    of JWT tokens (e.g., after logout or token revocation) to prevent token reuse.
-    Implementations should provide secure, persistent storage for blacklisted tokens.
-    """
-
+    
     @abstractmethod
-    async def add_to_blacklist(
-        self, token: str, jti: str, expires_at: datetime, reason: str | None = None
-    ) -> None:
-        """
-        Add a token to the blacklist.
-
+    async def add_to_blacklist(self, token_id: str, expires_at: Optional[int] = None) -> bool:
+        """Add a token ID to the blacklist.
+        
         Args:
-            token: The token value to blacklist
-            jti: JWT ID - unique identifier for the token
-            expires_at: When the token expires
-            reason: Reason for blacklisting (optional)
+            token_id: JWT token ID (jti) to blacklist
+            expires_at: Optional Unix timestamp when token expires
+            
+        Returns:
+            True if successfully added to the blacklist
         """
         pass
-
+    
     @abstractmethod
     async def is_blacklisted(self, token: str) -> bool:
-        """
-        Check if a token is blacklisted.
-
+        """Check if a token is blacklisted by its full token string.
+        
         Args:
-            token: The token value to check
-
+            token: Full JWT token string
+            
         Returns:
-            True if the token is blacklisted, False otherwise
+            True if token is blacklisted
         """
         pass
-
+    
     @abstractmethod
-    async def is_jti_blacklisted(self, token_id: str) -> bool:
-        """
-        Check if a token ID (JTI) is blacklisted.
-
+    async def is_jti_blacklisted(self, jti: str) -> bool:
+        """Check if a token ID is blacklisted.
+        
         Args:
-            token_id: The token ID (JTI) to check
-
+            jti: JWT token ID to check
+            
         Returns:
-            True if the token ID is blacklisted, False otherwise
+            True if the token ID is blacklisted
         """
         pass
-
+    
+    @abstractmethod
+    async def blacklist_session(self, session_id: str) -> bool:
+        """Blacklist all tokens associated with a session.
+        
+        Args:
+            session_id: Session identifier to blacklist
+            
+        Returns:
+            True if session was successfully blacklisted
+        """
+        pass
+    
+    @abstractmethod
+    async def blacklist_user_tokens(self, user_id: str) -> bool:
+        """Blacklist all tokens for a specific user.
+        
+        Args:
+            user_id: User identifier whose tokens should be blacklisted
+            
+        Returns:
+            True if user tokens were successfully blacklisted
+        """
+        pass
+    
     @abstractmethod
     async def clear_expired_tokens(self) -> int:
-        """
-        Remove expired tokens from the blacklist.
-
-        This should be called periodically to clean up the blacklist.
-
+        """Remove expired tokens from the blacklist.
+        
         Returns:
-            The number of tokens removed from the blacklist
+            Number of tokens removed from blacklist
         """
         pass

@@ -1,153 +1,103 @@
 """
-Interface for Audit Logger classes.
+Interface for audit logging services to maintain a clean architecture boundary between
+layers and ensure HIPAA compliance for security logging.
 
-This module defines the interface for audit logging services that record security,
-access, and system events for compliance with HIPAA and other regulatory requirements.
+This interface defines the contract that all audit logging implementations must follow,
+allowing the application layer to depend on abstractions rather than concrete implementations.
 """
+
 from abc import ABC, abstractmethod
-from typing import Any
-
-from app.core.constants.audit import AuditEventType, AuditSeverity
-
-# Export these constants for use by implementations
-__all__ = ["AuditEventType", "AuditSeverity", "IAuditLogger"]
+from typing import Any, Dict, Optional
 
 
 class IAuditLogger(ABC):
+    """Interface for HIPAA-compliant audit logging services.
+    
+    This interface ensures all audit logging implementations provide consistent
+    methods for recording security events, errors, and other audit information
+    while maintaining separation of concerns in the clean architecture.
     """
-    Interface for audit logging services.
-
-    Implementations of this interface should handle the logging of security,
-    access, and system events in a manner that complies with HIPAA and other
-    regulatory requirements.
-    """
-
+    
     @abstractmethod
     def log_security_event(
-        self,
+        self, 
         event_type: str,
-        description: str = None,
-        user_id: str | None = None,
-        actor_id: str | None = None,
-        severity: AuditSeverity = AuditSeverity.INFO,
-        details: str | None = None,
-        status: str | None = None,
-        metadata: dict[str, Any] | None = None,
-        ip_address: str | None = None,
+        description: str,
+        severity: str = "INFO",
+        user_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None
     ) -> None:
-        """
-        Log a security-related event.
-
+        """Log a security-related event for audit purposes.
+        
         Args:
-            event_type: Type of security event (e.g., "LOGIN_SUCCESS", "ACCESS_DENIED")
+            event_type: Type of security event (e.g., LOGIN, LOGOUT, TOKEN_ISSUED)
             description: Human-readable description of the event
-            user_id: ID of the user associated with the event (if applicable)
-            actor_id: Alternative identifier for the actor causing the event (alias for user_id)
-            severity: Severity level of the event
-            details: Detailed information about the event (alias for description)
-            status: Status of the event (success/failure)
+            severity: Severity level (INFO, WARNING, ERROR)
+            user_id: Optional user identifier associated with the event
             metadata: Additional contextual information about the event
-            ip_address: IP address associated with the event
         """
         pass
-
+    
     @abstractmethod
-    def log_phi_access(
+    def log_data_access(
         self,
-        actor_id: str,
-        patient_id: str | None = None,
-        resource_id: str | None = None,
-        data_accessed: str | None = None,
-        resource_type: str | None = None,
-        access_reason: str | None = None,
-        action: str | None = None,
-        ip_address: str | None = None,
-        details: str | None = None,
-        metadata: dict[str, Any] | None = None,
+        resource_type: str,
+        resource_id: str,
+        action: str,
+        user_id: str,
+        reason: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None
     ) -> None:
-        """
-        Log access to Protected Health Information (PHI).
-
+        """Log access to sensitive data for HIPAA compliance.
+        
         Args:
-            actor_id: ID of the user or system accessing the PHI
-            patient_id: ID of the patient whose PHI was accessed
-            resource_id: ID of the resource being accessed (alternative to patient_id)
-            data_accessed: Description of the PHI data that was accessed
-            resource_type: Type of resource being accessed
-            access_reason: Reason for accessing the PHI
-            action: Action being performed (view, modify, delete)
-            ip_address: IP address of the actor
-            details: Additional human-readable details
+            resource_type: Type of resource being accessed (e.g., PATIENT, RECORD)
+            resource_id: Identifier of the resource
+            action: Action performed (e.g., VIEW, EDIT, DELETE)
+            user_id: User who performed the action
+            reason: Optional reason for access
             metadata: Additional contextual information about the access
         """
         pass
-
+    
     @abstractmethod
-    def log_auth_event(
+    def log_api_request(
         self,
-        event_type: str,
-        user_id: str,
-        success: bool,
-        description: str,
-        ip_address: str | None = None,
-        metadata: dict[str, Any] | None = None,
+        endpoint: str,
+        method: str,
+        status_code: int,
+        user_id: Optional[str] = None,
+        request_id: Optional[str] = None,
+        duration_ms: Optional[float] = None,
+        metadata: Optional[Dict[str, Any]] = None
     ) -> None:
-        """
-        Log an authentication or authorization event.
-
+        """Log API request information for audit trails.
+        
         Args:
-            event_type: Type of auth event (e.g., "LOGIN", "LOGOUT", "TOKEN_VALIDATION")
-            user_id: ID of the user associated with the event
-            success: Whether the auth operation succeeded
-            description: Human-readable description of the event
-            ip_address: IP address of the actor
-            metadata: Additional contextual information about the event
+            endpoint: API endpoint that was accessed
+            method: HTTP method used (GET, POST, etc.)
+            status_code: HTTP status code of the response
+            user_id: Optional user identifier who made the request
+            request_id: Optional unique identifier for the request
+            duration_ms: Optional request duration in milliseconds
+            metadata: Additional contextual information about the request
         """
         pass
-
+    
     @abstractmethod
     def log_system_event(
         self,
         event_type: str,
         description: str,
-        severity: AuditSeverity = AuditSeverity.INFO,
-        metadata: dict[str, Any] | None = None,
+        severity: str = "INFO",
+        metadata: Optional[Dict[str, Any]] = None
     ) -> None:
-        """
-        Log a system-level event.
-
+        """Log system-level events for operational auditing.
+        
         Args:
-            event_type: Type of system event (e.g., "STARTUP", "SHUTDOWN", "ERROR")
+            event_type: Type of system event
             description: Human-readable description of the event
-            severity: Severity level of the event
+            severity: Severity level (INFO, WARNING, ERROR)
             metadata: Additional contextual information about the event
-        """
-        pass
-
-    @abstractmethod
-    def get_audit_trail(
-        self,
-        user_id: str | None = None,
-        patient_id: str | None = None,
-        event_type: str | None = None,
-        start_date: str | None = None,
-        end_date: str | None = None,
-        limit: int | None = 100,
-        offset: int | None = 0,
-    ) -> list[dict[str, Any]]:
-        """
-        Retrieve audit trail entries based on filtering criteria.
-
-        Args:
-            user_id: Filter by user ID
-            patient_id: Filter by patient ID
-            event_type: Filter by event type
-            start_date: Filter by start date (ISO format)
-            end_date: Filter by end date (ISO format)
-            limit: Maximum number of entries to return
-            offset: Offset for pagination
-
-        Returns:
-            List of audit log entries matching the criteria
         """
         pass
