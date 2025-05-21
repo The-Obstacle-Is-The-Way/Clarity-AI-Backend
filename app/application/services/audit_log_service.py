@@ -13,7 +13,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from fastapi import Request
 
@@ -47,6 +47,8 @@ class AuditLogService(IAuditLogger):
     - Anomaly detection for suspicious activity
     - Integrity protection with hash chaining
     - Secure export capabilities for compliance reporting
+    - API request logging
+    - Data access auditing
     """
 
     def __init__(self, repository: IAuditLogRepository):
@@ -64,217 +66,302 @@ class AuditLogService(IAuditLogger):
         self._user_access_history: dict[str, list[datetime]] = {}
         self._suspicious_ips: set[str] = set()
 
-    async def log_event(
-        self,
-        event_type: AuditEventType,
-        actor_id: str | None = None,
-        target_resource: str | None = None,
-        target_id: str | None = None,
-        action: str | None = None,
-        status: str | None = None,
-        details: dict[str, Any] | None = None,
-        severity: AuditSeverity = AuditSeverity.INFO,
-        metadata: dict[str, Any] | None = None,
-        timestamp: datetime | None = None,
-        request: Request | None = None,
-        _skip_anomaly_check: bool = False,  # Internal flag to prevent recursion
-    ) -> str:
-        """
-        Log an audit event in the system.
-
-        Args:
-            event_type: Type of audit event
-            actor_id: ID of the user/system performing the action
-            target_resource: Type of resource being acted upon (e.g., "patient")
-            target_id: ID of the specific resource instance
-            action: Specific action taken (e.g., "view", "update")
-            status: Result status of the action (e.g., "success", "failure")
-            details: Additional details about the event
-            severity: Severity level of the event
-            metadata: Additional metadata for the event
-            timestamp: When the event occurred (defaults to now if None)
-            request: Optional FastAPI request object for extracting IP and headers
-            _skip_anomaly_check: Internal flag to prevent recursion
-
-        Returns:
-            str: Unique identifier for the audit log entry
-        """
-        # Create a new audit log entry
-        audit_log = AuditLog(
-            id=str(uuid.uuid4()),
-            timestamp=timestamp or datetime.now(timezone.utc),
-            event_type=event_type,
-            actor_id=actor_id,
-            resource_type=target_resource,
-            resource_id=target_id,
-            action=action or str(event_type),
-            status=status or "success",
-            ip_address=self._extract_ip_from_request(request) if request else None,
-            details={
-                **(details or {}),
-                **(metadata or {}),
-                "severity": severity,
-                "hash_chain": self._calculate_chain_hash(
-                    str(uuid.uuid4()),
-                    timestamp or datetime.now(timezone.utc).isoformat(),
-                    actor_id,
-                    action or str(event_type),
-                ),
-            },
-            success=status == "success" if status else True,
-        )
-
-        # Check for anomalies if enabled and not a security event itself
-        # This prevents infinite recursion
-        if (
-            self._anomaly_detection_enabled
-            and actor_id
-            and not _skip_anomaly_check
-            and event_type != AuditEventType.SECURITY_ALERT
-        ):
-            await self._check_for_anomalies(actor_id, audit_log)
-
-        # Store the audit log
-        log_id = await self._repository.create(audit_log)
-
-        # Update chain hash
-        self._previous_hash = audit_log.details.get("hash_chain", self._previous_hash)
-
-        # Log to standard logger at appropriate level
-        log_method = getattr(logger, severity.lower(), logger.info)
-        log_method(f"AUDIT: {event_type} - {action} by {actor_id} on {target_resource}:{target_id}")
-
-        return log_id
-
     async def log_security_event(
         self,
-        description: str,
-        actor_id: str | None = None,
-        status: str | None = None,
+        event_type: AuditEventType | str,
+        description: str = None,
         severity: AuditSeverity = AuditSeverity.HIGH,
-        details: dict[str, Any] | None = None,
-        request: Request | None = None,
+        actor_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None
     ) -> str:
         """
-        Log a security-related event.
+        Log a security-related event for audit purposes.
 
         Args:
-            description: Description of the security event
-            actor_id: ID of the user/system involved
-            status: Status of the security event
+            event_type: Type of security event (e.g., LOGIN, LOGOUT, TOKEN_ISSUED)
+            description: Human-readable description of the event
             severity: Severity level of the event
-            details: Additional details about the event
-            request: Optional FastAPI request object for extracting IP and headers
-
-        Returns:
-            str: Unique identifier for the audit log entry
+            user_id: User ID associated with the event (if applicable)
+            metadata: Additional contextual information about the event
         """
-        # Map to a standard event type
-        if "login" in description.lower():
-            event_type = (
-                AuditEventType.LOGIN_SUCCESS
-                if status == "success"
-                else AuditEventType.LOGIN_FAILURE
-            )
-        elif "logout" in description.lower():
-            event_type = AuditEventType.LOGOUT
-        elif "password" in description.lower():
-            event_type = AuditEventType.PASSWORD_CHANGE
-        elif "permission" in description.lower() or "role" in description.lower():
-            event_type = AuditEventType.PERMISSION_CHANGE
-        elif "access denied" in description.lower():
-            event_type = AuditEventType.ACCESS_DENIED
+        if isinstance(event_type, AuditEventType):
+            event_type_str = event_type.value
         else:
-            event_type = AuditEventType.OTHER
+            event_type_str = event_type
 
-        # Include the description in the details
-        full_details = {"description": description, **(details or {})}
-
-        # Log the security event using the general log_event method
-        return await self.log_event(
-            event_type=event_type,
+        log = await self.log_event(
+            event_type=event_type_str,
             actor_id=actor_id,
             action="security_event",
-            status=status,
-            details=full_details,
+            status="info",
+            details={
+                "description": description,
+                "metadata": metadata or {},
+            },
             severity=severity,
-            request=request,
         )
+        return log.id
+
+    async def log_data_access(
+        self,
+        resource_type: str,
+        resource_id: str,
+        action: str,
+        user_id: str,
+        reason: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Log access to sensitive data for HIPAA compliance.
+        
+        Args:
+            resource_type: Type of resource being accessed (e.g., PATIENT, RECORD)
+            resource_id: Identifier of the resource
+            action: Action performed (e.g., VIEW, EDIT, DELETE)
+            user_id: User who performed the action
+            reason: Optional reason for access
+            metadata: Additional contextual information about the access
+        """
+        # Leverage our existing PHI access logging infrastructure
+        phi_fields = None
+        if metadata and "phi_fields" in metadata:
+            phi_fields = metadata.pop("phi_fields")
+            
+        status = "success"  # Default status if not provided in metadata
+        if metadata and "status" in metadata:
+            status = metadata.pop("status")
+            
+        # Create request context
+        request_context = metadata or {}
+        
+        # Use our existing PHI access logging method
+        await self.log_phi_access(
+            actor_id=user_id,
+            resource_id=resource_id,
+            resource_type=resource_type,
+            action=action,
+            status=status,
+            phi_fields=phi_fields,
+            reason=reason,
+            request_context=request_context
+        )
+        
+    async def log_api_request(
+        self,
+        endpoint: str,
+        method: str,
+        status_code: int,
+        user_id: Optional[str] = None,
+        request_id: Optional[str] = None,
+        duration_ms: Optional[float] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Log API request information for audit trails.
+        
+        Args:
+            endpoint: API endpoint that was accessed
+            method: HTTP method used (GET, POST, etc.)
+            status_code: HTTP status code of the response
+            user_id: Optional user identifier who made the request
+            request_id: Optional unique identifier for the request
+            duration_ms: Optional request duration in milliseconds
+            metadata: Additional contextual information about the request
+        """
+        # Create a unique request ID if not provided
+        if not request_id:
+            request_id = str(uuid.uuid4())
+            
+        # Determine severity based on status code
+        if status_code >= 500:
+            severity = AuditSeverity.ERROR
+        elif status_code >= 400:
+            severity = AuditSeverity.WARNING
+        else:
+            severity = AuditSeverity.INFO
+            
+        # Build event details
+        details = {
+            "endpoint": endpoint,
+            "method": method,
+            "status_code": status_code,
+            "request_id": request_id,
+            "duration_ms": duration_ms
+        }
+        
+        # Add additional metadata if provided
+        if metadata:
+            details.update(metadata)
+            
+        # Log the event using our existing event logging infrastructure
+        await self.log_event(
+            event_type=AuditEventType.API_REQUEST.value if isinstance(AuditEventType.API_REQUEST, AuditEventType) else "API_REQUEST",
+            actor_id=user_id,
+            action=f"{method} {endpoint}",
+            status="success" if status_code < 400 else "failure",
+            details=details,
+            severity=severity
+        )
+        
+    async def log_system_event(
+        self,
+        event_type: str,
+        description: str,
+        severity: AuditSeverity = AuditSeverity.INFO,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Log system-level events for operational auditing.
+        
+        Args:
+            event_type: Type of system event
+            description: Human-readable description of the event
+            severity: Severity level (INFO, WARNING, ERROR)
+            metadata: Additional contextual information about the event
+        """
+        # Prepend 'SYSTEM_' to the event type if not already present
+        if not event_type.startswith("SYSTEM_"):
+            event_type = f"SYSTEM_{event_type}"
+            
+        # Log the event using our existing event logging infrastructure
+        await self.log_event(
+            event_type=event_type,
+            actor_id=None,  # System events often don't have a user
+            action="system_operation",
+            status="info",
+            details={
+                "description": description,
+                "metadata": metadata or {}
+            },
+            severity=severity
+        )
+
+    async def log_event(
+        self,
+        event_type: str,
+        actor_id: Optional[str] = None,
+        action: Optional[str] = None,
+        status: str = "success",
+        details: Optional[Dict[str, Any]] = None,
+        severity: AuditSeverity = AuditSeverity.INFO,
+        request: Optional[Request] = None,
+        _skip_anomaly_check: bool = False,
+    ) -> AuditLog:
+        """
+        Create and store a new audit log entry.
+
+        Args:
+            event_type: Type of event being logged
+            actor_id: ID of the user performing the action (if applicable)
+            action: Action being performed
+            status: Result of the action (success, failure, etc.)
+            details: Additional details about the event
+            severity: Severity level of the event
+            request: FastAPI request object (for extracting client info)
+            _skip_anomaly_check: Internal flag to prevent recursive anomaly checks
+
+        Returns:
+            The created audit log entry
+        """
+        # Create a log entry with timestamp and event ID
+        timestamp = datetime.now(timezone.utc)
+        event_id = str(uuid.uuid4())
+        
+        # Extract client information from request if available
+        client_info = await self._get_client_information(request) if request else {}
+        
+        # Ensure details is a dictionary even if None was passed
+        if details is None:
+            details = {}
+            
+        # Add client information to details
+        if client_info:
+            details["client"] = client_info
+            
+        # Create the audit log entry
+        log = AuditLog(
+            id=event_id,
+            timestamp=timestamp,
+            event_type=event_type,
+            actor_id=actor_id,
+            action=action,
+            status=status,
+            details=details,
+            severity=severity.value if hasattr(severity, "value") else severity,
+            previous_hash=self._previous_hash,
+        )
+        
+        # Calculate and store hash for this entry (for tamper detection)
+        self._previous_hash = self._calculate_hash(log)
+        log.hash = self._previous_hash
+        
+        # Store the log entry
+        await self._repository.create(log)
+        
+        # Check for anomalies if enabled and not explicitly skipped
+        if self._anomaly_detection_enabled and not _skip_anomaly_check:
+            # Run anomaly detection for this log (non-blocking)
+            if actor_id:
+                await self._check_velocity_anomalies(actor_id, timestamp)
+                
+                # If client IP is available, check for location anomalies
+                if client_info and "ip_address" in client_info:
+                    await self._check_location_anomalies(
+                        actor_id, 
+                        client_info["ip_address"], 
+                        log
+                    )
+        
+        # Return the created log entry
+        return log
 
     async def log_phi_access(
         self,
-        actor_id: str,
-        patient_id: str = None,
-        resource_type: str = None,
-        resource_id: str = None,
-        action: str = None,
-        status: str = "success",
+        resource_id: str,
+        resource_type: str,
+        action: str,
+        actor_id: str = None,
         phi_fields: list[str] | None = None,
         reason: str | None = None,
-        request: Request | None = None,
+        status: str = "success",
+        request: Any | None = None,
         request_context: dict[str, Any] | None = None,
-        metadata: dict[str, Any] | None = None,
-        ip_address: str | None = None,
-        details: str | None = None,
     ) -> str:
         """
-        Log access to Protected Health Information (PHI).
+        Log PHI access events in compliance with HIPAA requirements.
 
         Args:
-            actor_id: ID of the user/system accessing the PHI
-            patient_id: ID of the patient whose PHI was accessed (legacy param, use resource_id instead)
-            resource_type: Type of PHI resource (e.g., "patient", "medical_record")
-            resource_id: ID of the specific PHI resource
-            action: Action performed (e.g., "view", "update", "delete")
-            status: Outcome of the access attempt (e.g., "success", "failure")
-            phi_fields: Specific PHI fields accessed (without values)
-            reason: Business reason for accessing the PHI
-            request: Optional FastAPI request object for extracting IP and headers
-            request_context: Additional context from the request (location, device, etc.)
-            metadata: Additional contextual information
-            ip_address: IP address of the actor
-            details: Additional details about the access
+            user_id: ID of the user accessing PHI
+            resource_id: ID of the resource being accessed
+            resource_type: Type of resource (e.g., patient, record)
+            action: Action being performed (e.g., view, edit)
+            status: Result of the access attempt (success, failure)
+            phi_fields: Specific PHI fields accessed (if applicable)
+            reason: Reason for accessing PHI
+            request: Original request object (for extraction of additional context)
+            request_context: Additional request context (IP, user agent, etc.)
 
         Returns:
-            ID of the created audit log entry
+            The generated audit event ID
         """
-        # Use the correct enum value for PHI access
-        event_type = AuditEventType.PHI_ACCESS
-
-        # Support the older patient_id parameter by mapping it to resource_id
-        if patient_id and not resource_id:
-            resource_id = patient_id
-
-        # Build details object that includes phi_fields and reason if provided
-        detailed_info = {}
-        if phi_fields:
-            detailed_info["phi_fields"] = phi_fields
-        if reason:
-            detailed_info["reason"] = reason
-        if request_context:
-            detailed_info["context"] = request_context
-
-        # If string details were provided, add them to the detailed_info
-        if details and isinstance(details, str):
-            detailed_info["description"] = details
-
-        # If details is already a dict, use it directly
-        details_dict = (
-            detailed_info if detailed_info else details if isinstance(details, dict) else None
-        )
-
-        return await self.log_event(
-            event_type=event_type,
+        details = {
+            "resource_id": resource_id,
+            "resource_type": resource_type,
+            "phi_fields": phi_fields or [],
+            "reason": reason,
+            "context": request_context or {},
+        }
+        
+        # Log the PHI access event
+        log = await self.log_event(
+            event_type=AuditEventType.PHI_ACCESS.value,
             actor_id=actor_id,
-            target_resource=resource_type,
-            target_id=resource_id,
             action=action,
             status=status,
-            metadata=metadata,
-            details=details_dict,
-            severity=AuditSeverity.HIGH,  # PHI access is always high severity for HIPAA
-            request=request,
+            details=details,
+            severity=AuditSeverity.INFO if status == "success" else AuditSeverity.WARNING,
+            request=request if isinstance(request, Request) else None,
         )
+        
+        # Return the event ID
+        return log.id
 
     async def get_audit_trail(
         self,
@@ -283,86 +370,28 @@ class AuditLogService(IAuditLogger):
         end_time: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[dict[str, Any]]:
+    ) -> list[AuditLog]:
         """
-        Retrieve audit trail entries based on filters.
+        Retrieve audit log entries based on filters and time range.
 
         Args:
-            filters: Optional filters to apply (e.g., event_type, actor_id)
-            start_time: Optional start time for the audit trail
-            end_time: Optional end time for the audit trail
-            limit: Maximum number of entries to return
-            offset: Offset for pagination
+            filters: Dictionary of field-value pairs to filter logs by
+            start_time: Start of time range to retrieve logs from
+            end_time: End of time range to retrieve logs from
+            limit: Maximum number of log entries to return
+            offset: Number of entries to skip (for pagination)
 
         Returns:
-            List[Dict[str, Any]]: List of audit log entries matching the criteria
+            List of matching audit log entries
         """
-        # Search the repository
-        logs = await self._repository.search(
+        # Delegate to repository method
+        return await self._repository.search(
             filters=filters,
             start_time=start_time,
             end_time=end_time,
             limit=limit,
             offset=offset,
         )
-
-        # Convert to dictionaries for API response
-        return [log.model_dump() for log in logs]
-
-    async def get_security_dashboard_data(self, days: int = 7) -> dict[str, Any]:
-        """
-        Get data for a security dashboard.
-
-        Args:
-            days: Number of days to include in the dashboard
-
-        Returns:
-            Dict[str, Any]: Dashboard data
-        """
-        # Calculate time range
-        end_time = datetime.now(timezone.utc)
-        start_time = end_time - timedelta(days=days)
-
-        # Get statistics
-        stats = await self._repository.get_statistics(start_time=start_time, end_time=end_time)
-
-        # Get recent security events
-        security_filters = {
-            "event_type": [
-                AuditEventType.ACCESS_DENIED,
-                AuditEventType.LOGIN_FAILED,
-                AuditEventType.PERMISSION_CHANGED,
-            ]
-        }
-        security_events = await self._repository.search(
-            filters=security_filters, start_time=start_time, end_time=end_time, limit=10
-        )
-
-        # Get recent PHI access events
-        phi_filters = {
-            "event_type": [
-                AuditEventType.PHI_ACCESS,
-                AuditEventType.PHI_MODIFIED,
-                AuditEventType.PHI_DELETED,
-                AuditEventType.PHI_EXPORTED,
-            ]
-        }
-        phi_events = await self._repository.search(
-            filters=phi_filters, start_time=start_time, end_time=end_time, limit=10
-        )
-
-        # Return dashboard data
-        return {
-            "statistics": stats,
-            "recent_security_events": [log.model_dump() for log in security_events],
-            "recent_phi_access": [log.model_dump() for log in phi_events],
-            "anomalies_detected": len(self._suspicious_ips),
-            "time_range": {
-                "start": start_time.isoformat(),
-                "end": end_time.isoformat(),
-                "days": days,
-            },
-        }
 
     async def export_audit_logs(
         self,
@@ -376,310 +405,261 @@ class AuditLogService(IAuditLogger):
         Export audit logs to a file in the specified format.
 
         Args:
-            start_time: Start time for logs to export
-            end_time: End time for logs to export
-            format: Export format (json, csv, xml)
-            file_path: Path to save the export file (generated if None)
-            filters: Additional filters for the export (actor_id, resource_type, etc.)
+            start_time: Start of time range to export logs from
+            end_time: End of time range to export logs from
+            format: Export format (json, csv, etc.)
+            file_path: Path to save exported logs
+            filters: Dictionary of field-value pairs to filter logs by
 
         Returns:
-            str: Path to the exported file
+            Path to the exported file
         """
-        # Set default time range if not provided
-        start_time = start_time or datetime.now(timezone.utc) - timedelta(days=7)
-        end_time = end_time or datetime.now(timezone.utc)
-
+        # Get logs to export
+        logs = await self.get_audit_trail(
+            filters=filters,
+            start_time=start_time,
+            end_time=end_time,
+            limit=10000,  # Export with high limit
+            offset=0,
+        )
+        
         # Generate default file path if not provided
         if not file_path:
-            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-            file_path = f"logs/audit_export_{timestamp}.{format}"
+            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            file_path = f"audit_logs_export_{timestamp}.{format}"
+            
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(os.path.abspath(file_path)), exist_ok=True)
+        
+        # Convert logs to serializable format
+        serializable_logs = [log.dict() for log in logs]
+        
+        # Export logs in the requested format
+        if format.lower() == "json":
+            with open(file_path, "w") as f:
+                json.dump(serializable_logs, f, indent=2, default=str)
+        elif format.lower() == "csv":
+            # Simple CSV export implementation
+            import csv
+            with open(file_path, "w", newline="") as f:
+                # Define CSV columns
+                fieldnames = [
+                    "id", "timestamp", "event_type", "actor_id", 
+                    "action", "status", "severity"
+                ]
+                
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                
+                # Write each log as a CSV row
+                for log in logs:
+                    log_dict = log.dict()
+                    # Convert timestamp to string
+                    log_dict["timestamp"] = log_dict["timestamp"].isoformat()
+                    # Extract just the fields we want for the CSV
+                    row = {field: log_dict.get(field, "") for field in fieldnames}
+                    writer.writerow(row)
+        else:
+            logger.error(f"Unsupported export format: {format}")
+            return ""
+        
+        return file_path
 
-        # Build search parameters
-        search_params = {
-            "start_time": start_time,
-            "end_time": end_time,
+    async def get_security_dashboard_data(self, days: int = 7) -> dict[str, Any]:
+        """
+        Get summary statistics for security dashboard.
+
+        Args:
+            days: Number of days to include in the summary
+
+        Returns:
+            Dictionary of security metrics and statistics
+        """
+        # Calculate start time based on days parameter
+        start_time = datetime.now(timezone.utc) - timedelta(days=days)
+        
+        # Get relevant audit logs for the time period
+        logs = await self.get_audit_trail(
+            start_time=start_time,
+            limit=10000,  # High limit to ensure we get all logs
+        )
+        
+        # Count different event types
+        total_events = len(logs)
+        security_incidents = sum(1 for log in logs 
+                             if log.severity in [AuditSeverity.HIGH.value, AuditSeverity.ERROR.value, AuditSeverity.CRITICAL.value])
+        phi_access_count = sum(1 for log in logs if log.event_type == "PHI_ACCESS")
+        failed_logins = sum(
+            1 for log in logs
+            if log.event_type == AuditEventType.LOGIN.value and log.status == "failure"
+        )
+        
+        # Additional metrics - login count by day
+        login_by_day = {}
+        for log in logs:
+            if log.event_type == AuditEventType.LOGIN.value:
+                day = log.timestamp.date().isoformat()
+                login_by_day[day] = login_by_day.get(day, 0) + 1
+        
+        # Calculate active users
+        unique_users = set(log.actor_id for log in logs if log.actor_id)
+        active_users = len(unique_users)
+        
+        return {
+            "total_events": total_events,
+            "security_incidents": security_incidents,
+            "phi_access_count": phi_access_count,
+            "failed_logins": failed_logins,
+            "login_by_day": login_by_day,
+            "active_users": active_users,
+            "days": days,
         }
 
-        # Add any additional filters
-        if filters:
-            search_params.update(filters)
-
-        # Retrieve logs
-        logs = await self._repository.search(**search_params)
-
-        try:
-            # Ensure the directory exists
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
-            # Write to file in specified format
-            # Use regular open since aiofiles is causing issues
-            with open(file_path, "w") as f:
-                if format.lower() == "json":
-                    # Convert to JSON serializable format
-                    serializable_logs = [log.model_dump() for log in logs]
-                    f.write(json.dumps(serializable_logs, default=str, indent=2))
-
-                elif format.lower() == "csv":
-                    # Write CSV header
-                    if logs:
-                        headers = [
-                            "id",
-                            "timestamp",
-                            "event_type",
-                            "actor_id",
-                            "resource_type",
-                            "resource_id",
-                            "action",
-                            "status",
-                            "ip_address",
-                            "details",
-                        ]
-                        f.write(",".join(headers) + "\n")
-
-                        # Write each log as CSV row
-                        for log in logs:
-                            log_dict = log.model_dump()
-                            # Convert complex fields to strings
-                            if isinstance(log_dict.get("details"), dict):
-                                log_dict["details"] = json.dumps(log_dict["details"])
-
-                            row = [str(log_dict.get(header, "")) for header in headers]
-                            f.write(",".join(row) + "\n")
-
-                elif format.lower() == "xml":
-                    f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-                    f.write("<AuditLogs>\n")
-
-                    for log in logs:
-                        log_dict = log.model_dump()
-                        f.write("  <AuditLog>\n")
-
-                        for key, value in log_dict.items():
-                            if value is not None:
-                                # Handle complex values
-                                if isinstance(value, dict):
-                                    f.write(f"    <{key}>{json.dumps(value)}</{key}>\n")
-                                else:
-                                    f.write(f"    <{key}>{value}</{key}>\n")
-
-                        f.write("  </AuditLog>\n")
-
-                    f.write("</AuditLogs>\n")
-
-                else:
-                    raise ValueError(f"Unsupported export format: {format}")
-
-            logger.info(f"Exported {len(logs)} audit logs to {file_path}")
-            return file_path
-
-        except Exception as e:
-            logger.error(f"Failed to export audit logs: {e}", exc_info=True)
-            raise
-
-    async def log_auth_event(
-        self,
-        event_type: str,
-        user_id: str,
-        success: bool,
-        description: str,
-        ip_address: str | None = None,
-        metadata: dict[str, Any] | None = None,
-    ) -> None:
-        """
-        Log an authentication or authorization event.
-
+    async def _check_for_anomalies(self, user_id: str, timestamp: datetime, ip_address: str = None, log: AuditLog = None) -> bool:
+        """Check for various anomalies in audit logs.
+        
+        This method integrates various anomaly checks including velocity and geographic anomalies.
+        
         Args:
-            event_type: Type of auth event (e.g., "LOGIN", "LOGOUT", "TOKEN_VALIDATION")
-            user_id: ID of the user associated with the event
-            success: Whether the auth operation succeeded
-            description: Human-readable description of the event
-            ip_address: IP address of the actor
-            metadata: Additional contextual information about the event
-        """
-        # Map to appropriate AuditEventType
-        audit_event_type = None
-        if "login" in event_type.lower():
-            audit_event_type = (
-                AuditEventType.LOGIN_SUCCESS if success else AuditEventType.LOGIN_FAILURE
-            )
-        elif "logout" in event_type.lower():
-            audit_event_type = AuditEventType.LOGOUT
-        elif "token" in event_type.lower():
-            audit_event_type = (
-                AuditEventType.TOKEN_VALIDATED if success else AuditEventType.TOKEN_INVALID
-            )
-        else:
-            audit_event_type = AuditEventType.OTHER
-
-        # Log the auth event using the general log_event method
-        await self.log_event(
-            event_type=audit_event_type,
-            actor_id=user_id,
-            action=event_type,
-            status="success" if success else "failure",
-            details={"description": description},
-            metadata=metadata,
-            severity=AuditSeverity.HIGH if not success else AuditSeverity.INFO,
-        )
-
-    async def log_system_event(
-        self,
-        event_type: str,
-        description: str,
-        severity: AuditSeverity = AuditSeverity.INFO,
-        metadata: dict[str, Any] | None = None,
-    ) -> None:
-        """
-        Log a system-level event.
-
-        Args:
-            event_type: Type of system event (e.g., "STARTUP", "SHUTDOWN", "ERROR")
-            description: Human-readable description of the event
-            severity: Severity level of the event
-            metadata: Additional contextual information about the event
-        """
-        # Map to appropriate AuditEventType
-        audit_event_type = AuditEventType.SYSTEM_EVENT
-
-        # For specific system events, use more specific types
-        if "error" in event_type.lower() or "exception" in event_type.lower():
-            audit_event_type = AuditEventType.SYSTEM_ERROR
-
-        # Log the system event using the general log_event method
-        await self.log_event(
-            event_type=audit_event_type,
-            actor_id="SYSTEM",
-            action=event_type,
-            details={"description": description},
-            metadata=metadata,
-            severity=severity,
-        )
-
-    # Private methods
-
-    def _extract_ip_from_request(self, request: Request) -> str:
-        """
-        Extract IP address from a FastAPI request.
-
-        Args:
-            request: FastAPI request object
-
+            user_id: User ID to check for anomalies
+            timestamp: Current event timestamp
+            ip_address: IP address of the request, if available
+            log: Audit log entry to analyze
+            
         Returns:
-            str: IP address
+            True if anomalies were detected, False otherwise
         """
-        if not request:
-            return "127.0.0.1"
-
-        # Try to get the real IP from forwarded headers
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            # Get the first IP in the list (client IP)
-            ip = forwarded.split(",")[0].strip()
-            try:
-                # Validate it's a real IP
-                ipaddress.ip_address(ip)
-                return ip
-            except ValueError:
-                pass
-
-        # Fall back to client host
-        return request.client.host if request.client else "127.0.0.1"
-
-    def _calculate_chain_hash(
-        self, log_id: str, timestamp: str, user_id: str | None, action: str
-    ) -> str:
+        # First check velocity anomalies
+        velocity_anomaly = await self._check_velocity_anomalies(user_id, timestamp)
+        
+        # Then check location anomalies if IP address is provided
+        location_anomaly = False
+        if ip_address and log:
+            location_anomaly = await self._check_location_anomalies(user_id, ip_address, log)
+            
+        # Return True if any anomaly was detected
+        return velocity_anomaly or location_anomaly
+        
+    async def _check_velocity_anomalies(self, user_id: str, timestamp: datetime) -> bool:
         """
-        Calculate hash chain value for tamper evidence.
-
-        Args:
-            log_id: ID of the log entry
-            timestamp: Timestamp of the log entry
-            user_id: ID of the user
-            action: Action being logged
-
-        Returns:
-            str: Hash chain value
-        """
-        # Combine previous hash with current log data
-        data = f"{self._previous_hash}:{log_id}:{timestamp}:{user_id or 'system'}:{action}"
-
-        # Calculate new hash
-        return hashlib.sha256(data.encode()).hexdigest()
-
-    async def _check_for_anomalies(self, user_id: str, log: AuditLog) -> bool:
-        """
-        Check for suspicious activity patterns that may indicate security issues.
-
-        This implements behavioral analytics for HIPAA security compliance by
-        detecting unusual access patterns that might indicate unauthorized access.
+        Check for velocity-based anomalies for a specific user.
 
         Args:
             user_id: ID of the user to check
-            log: The current audit log entry
+            timestamp: Timestamp of the current event
 
         Returns:
-            bool: True if any anomalies were detected
+            True if an anomaly was detected, False otherwise
         """
-        now = datetime.now(timezone.utc)
-        anomalies_detected = []
-
-        # Track user access history for velocity analysis
+        # Create user history if it doesn't exist
         if user_id not in self._user_access_history:
             self._user_access_history[user_id] = []
-
-        # Add this access to history
-        self._user_access_history[user_id].append(now)
-
-        # Keep only recent history (last 1 hour)
-        self._user_access_history[user_id] = [
-            t for t in self._user_access_history[user_id] if now - t < timedelta(hours=1)
-        ]
-
-        # Check for rapid access velocity (more than 10 accesses in 1 minute)
-        recent_accesses = [
-            t for t in self._user_access_history[user_id] if now - t < timedelta(minutes=1)
-        ]
-
-        if len(recent_accesses) >= 10:
+            
+        # Add current timestamp to history
+        self._user_access_history[user_id].append(timestamp)
+        
+        # Keep only the last 100 timestamps to limit memory usage
+        if len(self._user_access_history[user_id]) > 100:
+            self._user_access_history[user_id] = self._user_access_history[user_id][-100:]
+            
+        # Get timestamps within the last minute
+        one_minute_ago = timestamp - timedelta(minutes=1)
+        recent_accesses = [t for t in self._user_access_history[user_id] if t >= one_minute_ago]
+        
+        # Check if access frequency exceeds threshold
+        # In a real system, this would be configurable and more sophisticated
+        if len(recent_accesses) > 30:  # More than 30 accesses in 1 minute is suspicious
+            # Log an anomaly event
             anomaly_detail = {
                 "type": "velocity",
-                "description": f"Unusual access velocity detected: {len(recent_accesses)} accesses in 1 minute",
-                "accesses_count": len(recent_accesses),
-                "timeframe": "1 minute",
+                "description": f"excessive access rate: {len(recent_accesses)} in 1 minute",
                 "user_id": user_id,
+                "threshold": 30,
+                "actual": len(recent_accesses),
             }
-
-            anomalies_detected.append(anomaly_detail)
-
-            # Log a security event for the anomaly - pass _skip_anomaly_check=True to prevent recursion
+            
             await self.log_event(
-                event_type=AuditEventType.SECURITY_ALERT,
+                event_type=AuditEventType.SECURITY_ALERT.value,
                 actor_id=user_id,
-                action="anomaly_detected",
+                action="velocity_anomaly",
                 status="warning",
                 details=anomaly_detail,
                 severity=AuditSeverity.HIGH,
                 _skip_anomaly_check=True,  # Prevent recursion
             )
+            
+            return True
+            
+        return False
 
-        # Check for geographic anomalies if IP address is available
-        ip_address = log.ip_address
-        if ip_address:
-            # Special handling for test IP "not_an_ip" to ensure tests pass
-            if ip_address == "not_an_ip":
+    async def _check_location_anomalies(
+        self, user_id: str, ip_address: str, log: AuditLog
+    ) -> bool:
+        """
+        Check for location-based anomalies for a specific user.
+
+        Args:
+            user_id: ID of the user to check
+            ip_address: IP address to check
+            log: The audit log entry to analyze
+
+        Returns:
+            True if an anomaly was detected, False otherwise
+        """
+        # Skip if IP is None
+        if not ip_address:
+            return False
+            
+        # Track suspicious IPs
+        anomalies_detected = []
+        
+        # Check if IP is in suspicious list
+        if ip_address in self._suspicious_ips:
+            # Known suspicious IP - log immediately
+            anomaly_detail = {
+                "type": "location",
+                "description": "access from known suspicious IP",
+                "ip_address": ip_address,
+                "user_id": user_id,
+            }
+            
+            anomalies_detected.append(anomaly_detail)
+            
+            # Log a security event for the anomaly
+            await self.log_event(
+                event_type=AuditEventType.SECURITY_ALERT.value,
+                actor_id=user_id,
+                action="geographic_anomaly",
+                status="warning",
+                details=anomaly_detail,
+                severity=AuditSeverity.HIGH,
+                _skip_anomaly_check=True,  # Prevent recursion
+            )
+            
+            # Return true to indicate anomaly was detected
+            return True
+            
+        # Normal case for real applications
+        elif hasattr(log, "details") and log.details:
+            # Get location info from details if available
+            location_info = log.details.get("client", {}).get("location", {})
+            
+            # For this example, we'll use a simple check - in a real system this would be more sophisticated
+            if location_info and not location_info.get("is_private", True):
+                # Consider it an anomaly if the user is accessing from a non-private IP
+                # In a real system, we'd check against known locations, impossible travel, etc.
                 anomaly_detail = {
                     "type": "geographic",
-                    "description": "Access from unusual location (test case)",
+                    "description": "access from unusual location",
                     "ip_address": ip_address,
                     "user_id": user_id,
                 }
-
+                
                 anomalies_detected.append(anomaly_detail)
-
-                # Log a security event for the anomaly - directly using internal service methods
-                # to avoid issues with recursion and different repository interfaces
-                security_event_id = await self.log_event(
-                    event_type=AuditEventType.SECURITY_ALERT,
+                
+                # Log a security event for the anomaly - pass _skip_anomaly_check=True to prevent recursion
+                await self.log_event(
+                    event_type=AuditEventType.SECURITY_ALERT.value,
                     actor_id=user_id,
                     action="geographic_anomaly",
                     status="warning",
@@ -687,38 +667,68 @@ class AuditLogService(IAuditLogger):
                     severity=AuditSeverity.HIGH,
                     _skip_anomaly_check=True,  # Prevent recursion
                 )
-
-                # Return true to indicate anomaly was detected
-                return True
-
-            # Normal case for real applications
-            elif hasattr(log, "details") and log.details:
-                # Get location info from details if available
-                location_info = log.details.get("context", {}).get("location", {})
-
-                # For this example, we'll use a simple check - in a real system this would be more sophisticated
-                if location_info and not location_info.get("is_private", True):
-                    # Consider it an anomaly if the user is accessing from a non-private IP
-                    # In a real system, we'd check against known locations, impossible travel, etc.
-                    anomaly_detail = {
-                        "type": "geographic",
-                        "description": "access from unusual location",
-                        "ip_address": ip_address,
-                        "user_id": user_id,
-                    }
-
-                    anomalies_detected.append(anomaly_detail)
-
-                    # Log a security event for the anomaly - pass _skip_anomaly_check=True to prevent recursion
-                    await self.log_event(
-                        event_type=AuditEventType.SECURITY_ALERT,
-                        actor_id=user_id,
-                        action="geographic_anomaly",
-                        status="warning",
-                        details=anomaly_detail,
-                        severity=AuditSeverity.HIGH,
-                        _skip_anomaly_check=True,  # Prevent recursion
-                    )
-
+        
         # Return True if any anomalies were detected
         return len(anomalies_detected) > 0
+
+    async def _get_client_information(self, request: Request | None) -> dict[str, Any]:
+        """
+        Extract relevant client information from a request for audit logging.
+
+        Args:
+            request: FastAPI request object
+
+        Returns:
+            Dictionary containing client information
+        """
+        if not request:
+            return {}
+
+        try:
+            # Extract basic request information
+            client_info = {
+                "ip_address": request.client.host if hasattr(request, "client") else None,
+                "user_agent": request.headers.get("user-agent"),
+                "method": request.method if hasattr(request, "method") else None,
+                "url": str(request.url) if hasattr(request, "url") else None,
+                "referer": request.headers.get("referer"),
+            }
+
+            # Add location information (in a real system, we would use a GeoIP lookup)
+            if client_info["ip_address"]:
+                try:
+                    ip = ipaddress.ip_address(client_info["ip_address"])
+                    client_info["location"] = {
+                        "is_private": ip.is_private,
+                        "is_global": ip.is_global,
+                        # In a real implementation, we would include country, city, etc.
+                        # based on GeoIP lookup
+                    }
+                except Exception as e:
+                    logger.warning(f"Error processing IP address: {str(e)}")
+
+            return client_info
+        except Exception as e:
+            logger.warning(f"Error extracting client information: {str(e)}")
+            return {"error": str(e)}
+
+    def _calculate_hash(self, log: AuditLog) -> str:
+        """
+        Calculate a hash for an audit log entry for tamper detection.
+
+        Args:
+            log: The audit log entry to hash
+
+        Returns:
+            SHA-256 hash of the log entry
+        """
+        # Create a string representation of the log
+        log_str = (
+            f"{log.id}|{log.timestamp.isoformat()}|{log.event_type}|"
+            f"{log.actor_id or ''}|{log.action or ''}|{log.status}|"
+            f"{json.dumps(log.details) if log.details else '{}'}|"
+            f"{log.severity}|{log.previous_hash}"
+        )
+        
+        # Calculate SHA-256 hash
+        return hashlib.sha256(log_str.encode()).hexdigest()

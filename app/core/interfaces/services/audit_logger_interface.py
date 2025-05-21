@@ -17,6 +17,7 @@ class AuditEventType(str, Enum):
     LOGIN = "LOGIN"
     LOGOUT = "LOGOUT"
     LOGIN_FAILURE = "LOGIN_FAILURE"
+    LOGIN_SUCCESS = "LOGIN_SUCCESS"  # Added for test compatibility
     PASSWORD_CHANGE = "PASSWORD_CHANGE"
     PASSWORD_RESET = "PASSWORD_RESET"
     
@@ -34,6 +35,7 @@ class AuditEventType(str, Enum):
     
     # Data events
     DATA_ACCESS = "DATA_ACCESS"
+    PHI_ACCESS = "PHI_ACCESS"  # Added for HIPAA logging
     DATA_MODIFICATION = "DATA_MODIFICATION"
     DATA_DELETION = "DATA_DELETION"
     DATA_EXPORT = "DATA_EXPORT"
