@@ -124,28 +124,37 @@ class JWTServiceImpl(IJwtService):
 
     def create_access_token(
             self,
-            subject: Union[str, UUID],
-            roles: List[str] = None,
+            subject: Optional[Union[str, UUID]] = None,
+            additional_claims: Optional[Dict[str, Any]] = None,
             expires_delta: Optional[timedelta] = None,
-            claims: Optional[Dict[str, Any]] = None,
-            token_type: str = "access",
-            jti: Optional[str] = None,
-            session_id: Optional[str] = None
+            expires_delta_minutes: Optional[int] = None,
+            data: Optional[Union[Dict[str, Any], Any]] = None,
+            roles: Optional[List[str]] = None
     ) -> str:
         """Create a new access token with claims.
         
         Args:
             subject: User identifier (str or UUID)
+            additional_claims: Additional claims to include
+            expires_delta: Optional custom expiration time as timedelta
+            expires_delta_minutes: Optional custom expiration time in minutes
+            data: Alternative way to provide token data
             roles: User roles for RBAC
-            expires_delta: Optional custom expiration time
-            claims: Additional claims to include
-            token_type: Token type identifier (default: access)
-            jti: Optional JWT ID (defaults to generated UUID)
-            session_id: Optional session identifier
             
         Returns:
             Encoded JWT token string
         """
+        # Support various data formats for backward compatibility
+        if data:
+            if isinstance(data, dict) and "sub" in data:
+                subject = data["sub"]
+                # Extract roles if they exist
+                roles = data.get("roles", roles)
+            elif hasattr(data, "id"):  # Support User object
+                subject = data.id
+                # Extract roles if they exist
+                roles = getattr(data, "roles", roles)
+        
         # Convert UUID to string if needed
         if isinstance(subject, UUID):
             subject = str(subject)
@@ -153,12 +162,13 @@ class JWTServiceImpl(IJwtService):
         # Defaults and sanitization
         if roles is None:
             roles = []
-        if claims is None:
-            claims = {}
+        claims = additional_claims or {}
             
         # Handle expiration time
-        if expires_delta is not None:
+        if expires_delta:
             expire = datetime.now(timezone.utc) + expires_delta
+        elif expires_delta_minutes is not None:
+            expire = datetime.now(timezone.utc) + timedelta(minutes=expires_delta_minutes)
         elif self.access_token_expire_minutes < 0:
             # Negative value means create an already expired token for testing
             expire = datetime.now(timezone.utc) - timedelta(minutes=abs(self.access_token_expire_minutes))
@@ -168,16 +178,12 @@ class JWTServiceImpl(IJwtService):
         # Create and encode payload
         payload = {
             "sub": subject,
-            "type": token_type,
+            "type": "access",
             "exp": int(expire.timestamp()),
             "roles": roles,
-            "jti": jti or str(uuid4()),
+            "jti": str(uuid4()),
         }
         
-        # Add optional session ID if provided
-        if session_id:
-            payload["session_id"] = session_id
-            
         # Add issuer and audience if configured
         if self.issuer:
             payload["iss"] = self.issuer
@@ -193,7 +199,7 @@ class JWTServiceImpl(IJwtService):
                 self.audit_logger.log_security_event(
                     event_type=AuditEventType.TOKEN_CREATION,
                     description=f"Access token created for {subject}",
-                    metadata={"subject": subject, "roles": roles, "token_type": token_type}
+                    metadata={"subject": subject, "roles": roles, "token_type": "access"}
                 )
             except Exception as e:
                 logger.warning(f"Failed to log token creation: {str(e)}")
@@ -203,68 +209,120 @@ class JWTServiceImpl(IJwtService):
 
     def create_refresh_token(
             self,
-            subject: Union[str, UUID],
-            roles: List[str] = None,
+            subject: Optional[Union[str, UUID]] = None,
+            additional_claims: Optional[Dict[str, Any]] = None,
             expires_delta: Optional[timedelta] = None,
-            claims: Optional[Dict[str, Any]] = None,
-            jti: Optional[str] = None,
-            session_id: Optional[str] = None
+            expires_delta_minutes: Optional[int] = None,
+            data: Optional[Union[Dict[str, Any], Any]] = None
     ) -> str:
         """Create a refresh token for the user.
         
         Args:
             subject: User identifier
-            roles: User roles
+            additional_claims: Additional claims
             expires_delta: Optional custom expiration
-            claims: Additional claims 
-            jti: Optional token ID
-            session_id: Optional session identifier
+            expires_delta_minutes: Optional custom expiration in minutes
+            data: Alternative way to provide token data
             
         Returns:
             Encoded refresh token
         """
+        # Handle different parameter combinations for compatibility
+        if data:
+            if isinstance(data, dict) and "sub" in data:
+                subject = data["sub"]
+                roles = data.get("roles", [])
+            elif hasattr(data, "id"):  # Support User object
+                subject = data.id
+                roles = getattr(data, "roles", [])
+        else:
+            roles = additional_claims.get("roles", []) if additional_claims else []
+            
         # Use custom expiration or default refresh expiration time
-        if expires_delta is None:
-            expires_delta = timedelta(days=self.refresh_token_expire_days)
+        if expires_delta:
+            custom_expires = expires_delta
+        elif expires_delta_minutes is not None:
+            custom_expires = timedelta(minutes=expires_delta_minutes)
+        else:
+            custom_expires = timedelta(days=self.refresh_token_expire_days)
             
         # Create token with refresh type
-        token_claims = claims or {}
-        return self.create_access_token(
-            subject=subject,
-            roles=roles,
-            expires_delta=expires_delta,
-            claims=token_claims,
-            token_type="refresh",
-            jti=jti,
-            session_id=session_id
-        )
+        token_claims = additional_claims or {}
+        token_claims["type"] = "refresh"
+        
+        # Use the same method as access token but with different type and expiration
+        subject_str = str(subject) if subject else None
+        
+        # Create payload explicitly for refresh token
+        payload = {
+            "sub": subject_str,
+            "type": "refresh",  # Critical for type checks
+            "roles": roles,
+            "jti": str(uuid4()),
+        }
+        
+        # Add expiration
+        expire = datetime.now(timezone.utc) + custom_expires
+        payload["exp"] = int(expire.timestamp())
+        
+        # Add additional claims
+        if additional_claims:
+            payload.update(additional_claims)
+            
+        # Log refresh token creation
+        if self.audit_logger:
+            try:
+                self.audit_logger.log_security_event(
+                    event_type=AuditEventType.TOKEN_CREATION,
+                    description=f"Refresh token created for {subject_str}",
+                    metadata={"subject": subject_str, "token_type": "refresh"}
+                )
+            except Exception as e:
+                logger.warning(f"Failed to log token creation: {str(e)}")
+                
+        # Encode and return the token
+        return jwt_encode(payload, self.secret_key, algorithm=self.algorithm)
 
     def decode_token(
             self,
             token: str,
             verify_signature: bool = True,
-            verify_exp: bool = True,
-            refresh_token: bool = False,
-            leeway: int = 0
+            options: Optional[Dict[str, Any]] = None,
+            audience: Optional[str] = None,
+            algorithms: Optional[List[str]] = None
     ) -> TokenPayload:
         """Decode and validate a JWT token.
         
         Args:
             token: JWT token to decode
             verify_signature: Whether to verify token signature
-            verify_exp: Whether to verify token expiration
-            refresh_token: Whether this is a refresh token
-            leeway: Time leeway in seconds for expiration check
+            options: Optional decoding options
+            audience: Expected audience
+            algorithms: Allowed algorithms for verification
             
         Returns:
             TokenPayload containing the decoded claims
             
         Raises:
-            TokenExpiredError: If token has expired
-            InvalidTokenError: If token is invalid
-            TokenBlacklistedError: If token has been blacklisted
+            TokenExpiredException: If token has expired
+            InvalidTokenException: If token is invalid
+            TokenBlacklistedException: If token has been blacklisted
         """
         try:
+            # Default options - these can be overridden by the options parameter
+            decode_options = {
+                "verify_signature": verify_signature,
+                "verify_exp": True,
+                "leeway": 0,
+            }
+            
+            # Override with any provided options
+            if options:
+                decode_options.update(options)
+            
+            # Use provided algorithms or default
+            algs = algorithms or [self.algorithm]
+            
             # Log decode attempt
             if self.audit_logger:
                 try:
@@ -280,18 +338,11 @@ class JWTServiceImpl(IJwtService):
             payload = jwt_decode(
                 token=token,
                 key=self.secret_key,
-                algorithms=[self.algorithm],
-                options={
-                    "verify_signature": verify_signature,
-                    "verify_exp": verify_exp,
-                    "leeway": leeway,
-                }
+                algorithms=algs,
+                audience=audience,
+                options=decode_options
             )
             
-            # Check token type if validating a refresh token
-            if refresh_token and payload.get("type") != "refresh":
-                raise InvalidTokenException("Invalid refresh token: Token type is not 'refresh'")
-                
             # Return the payload as a TokenPayload object
             return TokenPayload(**payload)
             
@@ -335,12 +386,12 @@ class JWTServiceImpl(IJwtService):
             Decoded token payload
             
         Raises:
-            TokenExpiredError: If token has expired
-            InvalidTokenError: If token is invalid
-            TokenBlacklistedError: If token has been blacklisted
+            TokenExpiredException: If token has expired
+            InvalidTokenException: If token is invalid
+            TokenBlacklistedException: If token has been blacklisted
         """
         # First decode and validate the token
-        payload = self.decode_token(token, refresh_token=(token_type == "refresh"))
+        payload = self.decode_token(token)
         
         # Check if token is blacklisted
         if self.token_blacklist_repository:
@@ -361,6 +412,76 @@ class JWTServiceImpl(IJwtService):
             
         return payload
 
+    def verify_refresh_token(self, refresh_token: str) -> TokenPayload:
+        """Verify that a token is a valid refresh token.
+        
+        Args:
+            refresh_token: Refresh token to verify
+            
+        Returns:
+            Decoded token payload if valid
+            
+        Raises:
+            InvalidTokenException: If token is not a valid refresh token
+            TokenExpiredException: If refresh token has expired
+        """
+        try:
+            # Decode the token
+            payload = self.decode_token(refresh_token)
+            
+            # Verify it's a refresh token
+            if payload.get("type") != "refresh":
+                raise InvalidTokenException("Invalid refresh token: Token type is not 'refresh'")
+                
+            return payload
+        except ExpiredSignatureError:
+            raise TokenExpiredException("Refresh token has expired")
+        except JWTError as e:
+            raise InvalidTokenException(f"Invalid refresh token: {str(e)}")
+
+    def get_token_payload_subject(self, payload: Any) -> Optional[str]:
+        """Extract the subject (user identifier) from token payload.
+        
+        Args:
+            payload: Token payload object
+            
+        Returns:
+            Subject string if found, None otherwise
+        """
+        if isinstance(payload, TokenPayload):
+            return payload.sub
+        elif isinstance(payload, dict):
+            return payload.get("sub")
+        elif hasattr(payload, "sub"):
+            return payload.sub
+        return None
+
+    def refresh_access_token(self, refresh_token: str) -> str:
+        """Generate a new access token using a valid refresh token.
+        
+        Args:
+            refresh_token: Refresh token to use
+            
+        Returns:
+            New access token
+            
+        Raises:
+            TokenExpiredException: If refresh token has expired
+            InvalidTokenException: If refresh token is invalid
+        """
+        # Verify the refresh token
+        payload = self.verify_refresh_token(refresh_token)
+        
+        # Extract claims needed for new token
+        subject = self.get_token_payload_subject(payload)
+        roles = payload.get("roles", [])
+        
+        if not subject:
+            raise InvalidTokenException("Invalid refresh token: missing subject")
+        
+        # Create new access token
+        return self.create_access_token(subject=subject, roles=roles)
+
     async def revoke_token(self, token: str) -> bool:
         """Revoke a token by adding it to the blacklist.
         
@@ -372,7 +493,7 @@ class JWTServiceImpl(IJwtService):
         """
         try:
             # Decode without verification to extract JTI
-            payload = self.decode_token(token, verify_signature=False, verify_exp=False)
+            payload = self.decode_token(token, verify_signature=False, options={"verify_exp": False})
             jti = payload.get("jti")
             
             if not jti:
@@ -399,47 +520,78 @@ class JWTServiceImpl(IJwtService):
             logger.error(f"Failed to revoke token: {str(e)}")
             return False
 
-    async def refresh_access_token(self, refresh_token: str) -> Dict[str, str]:
-        """Generate a new access token using a valid refresh token.
+    async def logout(self, token: str) -> bool:
+        """Log out a user by revoking their token.
         
         Args:
-            refresh_token: Refresh token to use
+            token: JWT token to revoke
             
         Returns:
-            Dictionary with new access token and refresh token
-            
-        Raises:
-            TokenExpiredError: If refresh token has expired
-            InvalidTokenError: If refresh token is invalid
-            TokenBlacklistedError: If refresh token has been blacklisted
+            True if logout was successful
         """
-        # Verify the refresh token
-        payload = await self.verify_token(refresh_token, token_type="refresh")
-        
-        # Extract claims needed for new token
-        subject = payload.get("sub")
-        roles = payload.get("roles", [])
-        
-        # Create new tokens
-        new_access_token = self.create_access_token(subject=subject, roles=roles)
-        new_refresh_token = self.create_refresh_token(subject=subject, roles=roles)
-        
-        # Revoke the old refresh token (prevent refresh token reuse)
-        await self.revoke_token(refresh_token)
-        
-        # Log refresh operation
-        if self.audit_logger:
-            self.audit_logger.log_security_event(
-                event_type=AuditEventType.TOKEN_REFRESH,
-                description=f"Tokens refreshed for {subject}",
-                metadata={"subject": subject},
-            )
+        try:
+            # Revoke the token
+            success = await self.revoke_token(token)
             
-        return {
-            "access_token": new_access_token,
-            "refresh_token": new_refresh_token,
-            "token_type": "bearer"
-        }
+            # Log the logout event
+            if success and self.audit_logger:
+                try:
+                    # Try to extract user info without verification
+                    payload = self.decode_token(token, verify_signature=False, options={"verify_exp": False})
+                    subject = self.get_token_payload_subject(payload)
+                    
+                    self.audit_logger.log_security_event(
+                        event_type=AuditEventType.USER_LOGOUT,
+                        description=f"User logged out: {subject}",
+                        metadata={"user_id": subject or "unknown"}
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to log logout event: {str(e)}")
+                    
+            return success
+        except Exception as e:
+            logger.error(f"Logout failed: {str(e)}")
+            return False
+
+    async def blacklist_session(self, session_id: str) -> bool:
+        """Blacklist all tokens associated with a session.
+        
+        Args:
+            session_id: ID of the session to blacklist
+            
+        Returns:
+            True if session was blacklisted, False otherwise
+        """
+        try:
+            if not self.token_blacklist_repository:
+                logger.warning("No token blacklist repository configured")
+                return False
+                
+            # Blacklist the session
+            await self.token_blacklist_repository.blacklist_session(session_id)
+            
+            # Log session revocation
+            if self.audit_logger:
+                self.audit_logger.log_security_event(
+                    event_type=AuditEventType.SESSION_REVOCATION,
+                    description=f"Session blacklisted: {session_id}",
+                    metadata={"session_id": session_id},
+                )
+                
+            return True
+        except Exception as e:
+            logger.error(f"Failed to blacklist session: {str(e)}")
+            if self.audit_logger:
+                try:
+                    self.audit_logger.log_security_event(
+                        event_type=AuditEventType.SESSION_REVOCATION,
+                        description=f"Failed to blacklist session: {str(e)}",
+                        severity=AuditSeverity.ERROR,
+                        metadata={"session_id": session_id},
+                    )
+                except Exception as log_err:
+                    logger.error(f"Failed to log session blacklist error: {str(log_err)}")
+            return False
 
     async def get_user_from_token(self, token: str) -> Optional[User]:
         """Retrieve user details from a token.
@@ -451,8 +603,8 @@ class JWTServiceImpl(IJwtService):
             User object if found
             
         Raises:
-            TokenExpiredError: If token has expired
-            InvalidTokenError: If token is invalid
+            TokenExpiredException: If token has expired
+            InvalidTokenException: If token is invalid
         """
         if not self.user_repository:
             logger.warning("User repository not configured")
@@ -460,7 +612,7 @@ class JWTServiceImpl(IJwtService):
             
         # Verify and decode the token
         payload = await self.verify_token(token)
-        subject = payload.get("sub")
+        subject = self.get_token_payload_subject(payload)
         
         if not subject:
             raise InvalidTokenException("Token missing subject claim")
@@ -500,51 +652,6 @@ class JWTServiceImpl(IJwtService):
             return True
         except Exception as e:
             logger.error(f"Failed to revoke user tokens: {str(e)}")
-            return False
-
-    async def revoke_session(self, session_id: str) -> bool:
-        """Revoke a specific session.
-        
-        Args:
-            session_id: Session identifier
-            
-        Returns:
-            True if session was successfully revoked
-        """
-        if not self.token_blacklist_repository:
-            logger.warning("Token blacklist repository not configured")
-            return False
-            
-        try:
-            # Blacklist the session
-            await self.token_blacklist_repository.blacklist_session(session_id)
-            
-            # Log session revocation
-            if self.audit_logger:
-                self.audit_logger.log_security_event(
-                    event_type=AuditEventType.SESSION_REVOCATION,
-                    description=f"Session blacklisted: {session_id}",
-                    metadata={"session_id": session_id},
-                )
-                
-            return True
-        except Exception as e:
-            logger.error(f"Failed to blacklist session: {str(e)}")
-            if self.audit_logger:
-                try:
-                    self.audit_logger.log_auth_event(
-                        event_type=AuditEventType.SESSION_REVOCATION_ERROR,
-                        user_id="unknown",
-                        severity=AuditSeverity.ERROR,
-                        details={"session_id": session_id, "error": str(e)}
-                    )
-                except (TypeError, AttributeError):
-                    self.audit_logger.log_security_event(
-                        event_type=AuditEventType.SESSION_REVOCATION,
-                        description=f"Failed to blacklist session: {str(e)}",
-                        severity=AuditSeverity.ERROR,
-                        metadata={"session_id": session_id},
-                    )
             return False
             
     async def _is_token_blacklisted(self, token: str) -> bool:
