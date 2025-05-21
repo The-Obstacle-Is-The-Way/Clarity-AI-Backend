@@ -103,36 +103,63 @@ class JWTServiceImpl(IJwtService):
         
         logger.info(f"JWT Service initialized with algorithm {self.algorithm}")
     
-    async def create_access_token(
+    def create_access_token(
         self,
-        subject: Union[str, UUID],
-        roles: List[str] = None,
-        additional_claims: Dict[str, Any] = None
+        subject: Optional[str] = None,
+        additional_claims: Optional[Dict[str, Any]] = None,
+        expires_delta: Optional[timedelta] = None,
+        expires_delta_minutes: Optional[int] = None,
+        data: Optional[Union[Dict[str, Any], Any]] = None,
     ) -> str:
         """Create an access token for a user.
         
         Args:
             subject: User identifier
-            roles: User roles for authorization
-            additional_claims: Any additional claims to include
+            additional_claims: Additional claims to include
+            expires_delta: Custom expiration time
+            expires_delta_minutes: Custom expiration in minutes
+            data: Alternative way to provide token data
             
         Returns:
-            str: Encoded JWT access token
+            Encoded JWT access token
         """
+        # Handle data parameter for backward compatibility
+        if data is not None:
+            if isinstance(data, dict):
+                subject = data.get("sub") or subject
+                additional_claims = {**data, **additional_claims} if additional_claims else data
+            elif hasattr(data, "id"):
+                # Handle User object or similar with id attribute
+                subject = str(data.id)
+                if hasattr(data, "roles") and not additional_claims:
+                    additional_claims = {"roles": data.roles}
+        
+        if subject is None and (not additional_claims or "sub" not in additional_claims):
+            raise ValueError("Subject is required for token creation")
+            
+        # Use subject from additional_claims if not provided directly
+        if subject is None and additional_claims and "sub" in additional_claims:
+            subject = additional_claims.pop("sub")
+        
         # Convert UUID to string if needed
         if isinstance(subject, UUID):
             subject = str(subject)
         
-        # Default roles if none provided
-        if roles is None:
-            roles = []
+        # Get roles from additional_claims
+        roles = []
+        if additional_claims and "roles" in additional_claims:
+            roles = additional_claims.pop("roles", [])
         
         # Get current time
         now = datetime.now(timezone.utc)
         
-        # Set token expiration
-        expires_delta = timedelta(minutes=self.access_token_expire_minutes)
-        expire = now + expires_delta
+        # Set token expiration based on provided options
+        if expires_delta:
+            expire = now + expires_delta
+        elif expires_delta_minutes:
+            expire = now + timedelta(minutes=expires_delta_minutes)
+        else:
+            expire = now + timedelta(minutes=self.access_token_expire_minutes)
         
         # Create token claims
         claims = {
@@ -176,36 +203,63 @@ class JWTServiceImpl(IJwtService):
         
         return token
     
-    async def create_refresh_token(
+    def create_refresh_token(
         self,
-        subject: Union[str, UUID],
-        roles: List[str] = None,
-        additional_claims: Dict[str, Any] = None
+        subject: Optional[str] = None,
+        additional_claims: Optional[Dict[str, Any]] = None,
+        expires_delta: Optional[timedelta] = None,
+        expires_delta_minutes: Optional[int] = None,
+        data: Optional[Union[Dict[str, Any], Any]] = None,
     ) -> str:
         """Create a refresh token for a user.
         
         Args:
             subject: User identifier
-            roles: User roles
-            additional_claims: Any additional claims to include
+            additional_claims: Additional claims to include
+            expires_delta: Custom expiration time
+            expires_delta_minutes: Custom expiration in minutes
+            data: Alternative way to provide token data
             
         Returns:
-            str: Encoded JWT refresh token
+            Encoded JWT refresh token
         """
+        # Handle data parameter for backward compatibility
+        if data is not None:
+            if isinstance(data, dict):
+                subject = data.get("sub") or subject
+                additional_claims = {**data, **additional_claims} if additional_claims else data
+            elif hasattr(data, "id"):
+                # Handle User object or similar with id attribute
+                subject = str(data.id)
+                if hasattr(data, "roles") and not additional_claims:
+                    additional_claims = {"roles": data.roles}
+        
+        if subject is None and (not additional_claims or "sub" not in additional_claims):
+            raise ValueError("Subject is required for token creation")
+            
+        # Use subject from additional_claims if not provided directly
+        if subject is None and additional_claims and "sub" in additional_claims:
+            subject = additional_claims.pop("sub")
+        
         # Convert UUID to string if needed
         if isinstance(subject, UUID):
             subject = str(subject)
         
-        # Default roles if none provided
-        if roles is None:
-            roles = []
+        # Get roles from additional_claims
+        roles = []
+        if additional_claims and "roles" in additional_claims:
+            roles = additional_claims.pop("roles", [])
         
         # Get current time
         now = datetime.now(timezone.utc)
         
-        # Set token expiration
-        expires_delta = timedelta(minutes=self.refresh_token_expire_minutes)
-        expire = now + expires_delta
+        # Set token expiration based on provided options
+        if expires_delta:
+            expire = now + expires_delta
+        elif expires_delta_minutes:
+            expire = now + timedelta(minutes=expires_delta_minutes)
+        else:
+            expire = now + timedelta(minutes=self.refresh_token_expire_minutes)
         
         # Create token claims
         claims = {
@@ -249,11 +303,28 @@ class JWTServiceImpl(IJwtService):
         
         return token
     
-    async def decode_token(self, token: str) -> TokenPayload:
+    def decode_token(
+        self,
+        token: str,
+        verify_signature: bool = True,
+        verify_exp: bool = True,
+        verify_aud: bool = True,
+        verify_iss: bool = True,
+        options: Optional[Dict[str, Any]] = None,
+        audience: Optional[str] = None,
+        algorithms: Optional[List[str]] = None,
+    ) -> TokenPayload:
         """Decode and validate a JWT token.
         
         Args:
             token: JWT token to decode
+            verify_signature: Whether to verify signature
+            verify_exp: Whether to verify expiration
+            verify_aud: Whether to verify audience
+            verify_iss: Whether to verify issuer
+            options: Additional decoding options
+            audience: Override audience
+            algorithms: Override algorithms
             
         Returns:
             TokenPayload: Decoded token payload
@@ -274,20 +345,39 @@ class JWTServiceImpl(IJwtService):
         except Exception as e:
             logger.warning(f"Failed to log token validation: {str(e)}")
         
+        # Set up decoding options
+        decode_options = {
+            "verify_signature": verify_signature,
+            "verify_exp": verify_exp,
+            "verify_aud": verify_aud,
+            "verify_iss": verify_iss,
+        }
+        
+        if options:
+            decode_options.update(options)
+        
+        # Use provided algorithms or default
+        if algorithms is None:
+            algorithms = [self.algorithm]
+        
+        # Use provided audience or default
+        if audience is None:
+            audience = self.token_audience if verify_aud else None
+        
         try:
             # Decode token with minimal validation first to get the JTI
             try:
                 unverified_payload = jwt_decode(
                     token=token,
                     key=self.secret_key,
-                    algorithms=[self.algorithm],
+                    algorithms=algorithms,
                     options={"verify_signature": True, "verify_exp": False}
                 )
                 
                 # Check if token is blacklisted
                 if self.token_blacklist_repository and "jti" in unverified_payload:
                     jti = unverified_payload["jti"]
-                    is_blacklisted = await self.token_blacklist_repository.is_blacklisted(jti)
+                    is_blacklisted = self.token_blacklist_repository.is_blacklisted(jti)
                     if is_blacklisted:
                         if self.audit_logger:
                             self.audit_logger.log_security_event(
@@ -305,10 +395,10 @@ class JWTServiceImpl(IJwtService):
             payload = jwt_decode(
                 token=token,
                 key=self.secret_key,
-                algorithms=[self.algorithm],
-                options={"verify_exp": True},
-                issuer=self.token_issuer if self.token_issuer else None,
-                audience=self.token_audience if self.token_audience else None
+                algorithms=algorithms,
+                options=decode_options,
+                issuer=self.token_issuer if verify_iss else None,
+                audience=audience
             )
             
             # Convert to TokenPayload model for consistency
@@ -355,6 +445,104 @@ class JWTServiceImpl(IJwtService):
                 logger.warning(f"Failed to log token validation failure: {str(log_error)}")
             
             raise InvalidTokenException(f"Invalid token: {str(e)}")
+    
+    async def get_user_from_token(self, token: str) -> Optional[User]:
+        """Get user from a token.
+        
+        Args:
+            token: JWT token
+            
+        Returns:
+            Optional[User]: User if found, None otherwise
+        """
+        if not self.user_repository:
+            logger.warning("User repository not configured")
+            return None
+        
+        try:
+            # Decode token
+            payload = self.decode_token(token)
+            subject = payload.sub
+            
+            # Get user from repository
+            return await self.user_repository.get_by_id(subject)
+        except Exception as e:
+            logger.error(f"Failed to get user from token: {str(e)}")
+            return None
+    
+    def verify_refresh_token(self, refresh_token: str) -> TokenPayload:
+        """Verify that a token is a valid refresh token.
+        
+        Args:
+            refresh_token: Token to verify
+            
+        Returns:
+            TokenPayload: Decoded token payload
+            
+        Raises:
+            InvalidTokenException: If token is not a refresh token
+        """
+        # Decode refresh token
+        payload = self.decode_token(refresh_token)
+        
+        # Verify it's a refresh token
+        if not payload.type or payload.type != TokenType.REFRESH.value:
+            raise InvalidTokenException("Not a refresh token")
+        
+        return payload
+    
+    def get_token_payload_subject(self, payload: Any) -> Optional[str]:
+        """Get the subject from a token payload.
+        
+        Args:
+            payload: Token payload
+            
+        Returns:
+            Optional[str]: Subject if present
+        """
+        if isinstance(payload, TokenPayload):
+            return payload.sub
+        elif isinstance(payload, dict) and "sub" in payload:
+            return payload["sub"]
+        elif hasattr(payload, "sub"):
+            return payload.sub
+        return None
+    
+    def refresh_access_token(self, refresh_token: str) -> str:
+        """Refresh an access token using a refresh token.
+        
+        Args:
+            refresh_token: Refresh token to use
+            
+        Returns:
+            str: New access token
+            
+        Raises:
+            InvalidTokenException: If token is not a refresh token
+        """
+        # Decode refresh token
+        payload = self.verify_refresh_token(refresh_token)
+        
+        # Get subject and roles
+        subject = payload.sub
+        roles = payload.roles or []
+        
+        # Create new access token
+        return self.create_access_token(
+            subject=subject,
+            additional_claims={"roles": roles}
+        )
+    
+    async def revoke_token(self, token: str) -> bool:
+        """Revoke a token by adding it to the blacklist.
+        
+        Args:
+            token: Token to revoke
+            
+        Returns:
+            bool: True if token was successfully revoked
+        """
+        return await self.blacklist_token(token)
     
     async def blacklist_token(self, token: str) -> bool:
         """Add a token to the blacklist.
@@ -406,67 +594,51 @@ class JWTServiceImpl(IJwtService):
             logger.error(f"Failed to blacklist token: {str(e)}")
             return False
     
-    async def get_user_from_token(self, token: str) -> Optional[User]:
-        """Get user from a token.
+    async def logout(self, token: str) -> bool:
+        """Log out a user by revoking their token.
         
         Args:
-            token: JWT token
+            token: JWT token to revoke
             
         Returns:
-            Optional[User]: User if found, None otherwise
+            bool: True if logout was successful
         """
-        if not self.user_repository:
-            logger.warning("User repository not configured")
-            return None
+        # Just revoke the token
+        return await self.revoke_token(token)
+    
+    async def blacklist_session(self, session_id: str) -> bool:
+        """Blacklist all tokens associated with a session.
+        
+        Args:
+            session_id: ID of the session to blacklist
+            
+        Returns:
+            bool: True if session was blacklisted
+        """
+        if not self.token_blacklist_repository:
+            logger.warning("Token blacklist repository not configured")
+            return False
         
         try:
-            # Decode token
-            payload = await self.decode_token(token)
-            subject = payload.sub
-            
-            # Get user from repository
-            return await self.user_repository.get_by_id(subject)
+            # This assumes the repository has a method to blacklist by session ID
+            # You may need to implement this method in the repository
+            if hasattr(self.token_blacklist_repository, "blacklist_session"):
+                await self.token_blacklist_repository.blacklist_session(session_id)
+                
+                # Log blacklisting
+                if self.audit_logger:
+                    self.audit_logger.log_security_event(
+                        event_type=AuditEventType.TOKEN_REVOCATION,
+                        description=f"Session blacklisted: {session_id}",
+                        severity=AuditSeverity.INFO,
+                        metadata={"session_id": session_id}
+                    )
+                
+                return True
+            else:
+                logger.warning("Token blacklist repository does not support session blacklisting")
+                return False
+                
         except Exception as e:
-            logger.error(f"Failed to get user from token: {str(e)}")
-            return None
-    
-    async def refresh_access_token(self, refresh_token: str) -> str:
-        """Refresh an access token using a refresh token.
-        
-        Args:
-            refresh_token: Refresh token to use
-            
-        Returns:
-            str: New access token
-            
-        Raises:
-            InvalidTokenException: If token is not a refresh token
-        """
-        # Decode refresh token
-        payload = await self.decode_token(refresh_token)
-        
-        # Verify it's a refresh token
-        if not payload.type or payload.type != TokenType.REFRESH.value:
-            raise InvalidTokenException("Not a refresh token")
-        
-        # Get subject and roles
-        subject = payload.sub
-        roles = payload.roles or []
-        
-        # Create new access token
-        return await self.create_access_token(subject, roles)
-    
-    async def verify_token(self, token: str) -> bool:
-        """Verify a token is valid.
-        
-        Args:
-            token: Token to verify
-            
-        Returns:
-            bool: True if token is valid
-        """
-        try:
-            await self.decode_token(token)
-            return True
-        except Exception:
+            logger.error(f"Failed to blacklist session: {str(e)}")
             return False
