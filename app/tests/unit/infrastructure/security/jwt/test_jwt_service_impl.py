@@ -18,7 +18,7 @@ from app.config.settings import Settings
 from app.core.interfaces.repositories.token_blacklist_repository_interface import ITokenBlacklistRepository
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.audit_logger_interface import IAuditLogger
-from app.domain.exceptions import InvalidTokenError, TokenExpiredError
+from app.domain.exceptions import InvalidTokenException, TokenExpiredError, TokenBlacklistedException
 from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
 
 # Test constants
@@ -62,7 +62,10 @@ def mock_user_repository() -> IUserRepository:
 @pytest.fixture
 def mock_token_blacklist_repository() -> ITokenBlacklistRepository:
     """Create a mock token blacklist repository."""
-    return MagicMock(spec=ITokenBlacklistRepository)
+    mock = MagicMock(spec=ITokenBlacklistRepository)
+    # Configure is_blacklisted to return False by default (not blacklisted)
+    mock.is_blacklisted.return_value = False
+    return mock
 
 
 @pytest.fixture
@@ -210,8 +213,8 @@ class TestJWTServiceImpl:
         # Tamper with the token by changing the last character
         tampered_token = token[:-1] + ('A' if token[-1] != 'A' else 'B')
         
-        # Verification should raise InvalidTokenError
-        with pytest.raises(InvalidTokenError):
+        # Verification should raise InvalidTokenException (the actual implementation uses this class)
+        with pytest.raises(InvalidTokenException):
             jwt_service_impl.decode_token(tampered_token)
             
     def test_token_blacklist(self, jwt_service_impl: JWTServiceImpl, user_claims: Dict[str, Any], mock_token_blacklist_repository: ITokenBlacklistRepository):
@@ -220,21 +223,27 @@ class TestJWTServiceImpl:
             subject=user_claims["sub"]
         )
         
-        # Mock blacklist check to return True (token is blacklisted)
-        mock_token_blacklist_repository.is_blacklisted.return_value = True
+        # For this specific test, we want to override the behavior to simulate a blacklisted token
+        # First, restore any mocks or lambdas that might have been set up
+        if hasattr(mock_token_blacklist_repository.is_blacklisted, "__self__"):
+            # It's a real mock method, we can set its return value
+            mock_token_blacklist_repository.is_blacklisted.return_value = True
+        else:
+            # It's already been replaced, let's restore it to a mock and then set return value
+            mock_token_blacklist_repository.is_blacklisted = MagicMock(return_value=True)
         
-        # Set up the token blacklist to work synchronously in tests
-        mock_token_blacklist_repository.is_blacklisted = lambda x: True
-        
-        # Verification should raise appropriate exception
-        with pytest.raises(InvalidTokenError, match="blacklisted"):
-            # Need to use a synchronous version for testing or mock the async call
+        # Verification should raise the correct exception - TokenBlacklistedException
+        with pytest.raises(TokenBlacklistedException, match="blacklisted"):
             jwt_service_impl.decode_token(token)
             
-        # Since we replaced is_blacklisted with a lambda, we can't verify the call
+        # Verify the blacklist was checked
+        mock_token_blacklist_repository.is_blacklisted.assert_called_once()
 
     def test_audit_logging(self, jwt_service_impl: JWTServiceImpl, user_claims: Dict[str, Any], mock_audit_logger: IAuditLogger):
         """Test audit logging during token operations."""
+        # Configure the mock_audit_logger to properly track calls
+        mock_audit_logger.log_security_event = MagicMock()
+        
         # Create a token and verify it to trigger audit logs
         token = jwt_service_impl.create_access_token(
             subject=user_claims["sub"]
