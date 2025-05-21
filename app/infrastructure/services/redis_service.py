@@ -1,24 +1,39 @@
 """
-Interface for Redis service to maintain a clean architecture boundary between
-infrastructure and application layers.
+Redis service implementation for interacting with Redis.
 
-This interface defines the contract that Redis service implementations must follow,
-allowing the application layer to depend on abstractions rather than concrete implementations.
+This module provides a clean Redis service implementation that follows the IRedisService
+interface, allowing for proper dependency injection and testing.
 """
 
-from abc import ABC, abstractmethod
+import logging
 from typing import Any, Dict, List, Optional, Union
 
+import redis.asyncio as redis
+from fastapi import Depends, Request
 
-class IRedisService(ABC):
-    """Interface for Redis operations.
+from app.core.config.settings import Settings
+from app.core.interfaces.services.redis_service_interface import IRedisService
+
+
+logger = logging.getLogger(__name__)
+
+
+class RedisService(IRedisService):
+    """Redis service implementation that wraps aioredis.
     
-    This interface ensures all Redis implementations provide consistent
-    methods for interacting with Redis while maintaining separation of concerns
-    in the clean architecture.
+    This service abstracts Redis operations and provides a consistent interface
+    for working with Redis in the application, enabling clean architecture design.
     """
     
-    @abstractmethod
+    def __init__(self, redis_client: redis.Redis):
+        """Initialize the Redis service.
+        
+        Args:
+            redis_client: Redis client instance to use
+        """
+        self._redis = redis_client
+        logger.info("Redis service initialized")
+    
     async def get(self, key: str) -> Optional[bytes]:
         """Get a value from Redis.
         
@@ -28,9 +43,8 @@ class IRedisService(ABC):
         Returns:
             Optional[bytes]: Value if found, None otherwise
         """
-        pass
+        return await self._redis.get(key)
     
-    @abstractmethod
     async def set(
         self, 
         key: str, 
@@ -53,9 +67,9 @@ class IRedisService(ABC):
         Returns:
             bool: True if operation was successful
         """
-        pass
+        result = await self._redis.set(key, value, ex=ex, px=px, nx=nx, xx=xx)
+        return result is not None
     
-    @abstractmethod
     async def delete(self, *keys: str) -> int:
         """Delete one or more keys.
         
@@ -65,9 +79,10 @@ class IRedisService(ABC):
         Returns:
             int: Number of keys deleted
         """
-        pass
+        if not keys:
+            return 0
+        return await self._redis.delete(*keys)
     
-    @abstractmethod
     async def exists(self, *keys: str) -> int:
         """Check if one or more keys exist.
         
@@ -77,9 +92,10 @@ class IRedisService(ABC):
         Returns:
             int: Number of keys that exist
         """
-        pass
+        if not keys:
+            return 0
+        return await self._redis.exists(*keys)
     
-    @abstractmethod
     async def expire(self, key: str, seconds: int) -> bool:
         """Set expiration on a key.
         
@@ -90,9 +106,8 @@ class IRedisService(ABC):
         Returns:
             bool: True if expiration was set
         """
-        pass
+        return await self._redis.expire(key, seconds)
     
-    @abstractmethod
     async def ttl(self, key: str) -> int:
         """Get time to live for a key.
         
@@ -102,9 +117,8 @@ class IRedisService(ABC):
         Returns:
             int: TTL in seconds, -1 if no expiry, -2 if key doesn't exist
         """
-        pass
+        return await self._redis.ttl(key)
     
-    @abstractmethod
     async def keys(self, pattern: str) -> List[bytes]:
         """Get keys matching a pattern.
         
@@ -114,9 +128,8 @@ class IRedisService(ABC):
         Returns:
             List[bytes]: List of matching keys
         """
-        pass
+        return await self._redis.keys(pattern)
     
-    @abstractmethod
     async def hget(self, name: str, key: str) -> Optional[bytes]:
         """Get a value from a hash.
         
@@ -127,9 +140,8 @@ class IRedisService(ABC):
         Returns:
             Optional[bytes]: Value if found, None otherwise
         """
-        pass
+        return await self._redis.hget(name, key)
     
-    @abstractmethod
     async def hset(self, name: str, key: str, value: Union[str, bytes, int, float]) -> int:
         """Set a key in a hash.
         
@@ -141,9 +153,8 @@ class IRedisService(ABC):
         Returns:
             int: 1 if field was new, 0 if field was updated
         """
-        pass
+        return await self._redis.hset(name, key, value)
     
-    @abstractmethod
     async def hdel(self, name: str, *keys: str) -> int:
         """Delete keys from a hash.
         
@@ -154,9 +165,10 @@ class IRedisService(ABC):
         Returns:
             int: Number of keys deleted
         """
-        pass
+        if not keys:
+            return 0
+        return await self._redis.hdel(name, *keys)
     
-    @abstractmethod
     async def hgetall(self, name: str) -> Dict[bytes, bytes]:
         """Get all fields and values from a hash.
         
@@ -166,9 +178,8 @@ class IRedisService(ABC):
         Returns:
             Dict[bytes, bytes]: All fields and values in the hash
         """
-        pass
+        return await self._redis.hgetall(name)
     
-    @abstractmethod
     async def incr(self, key: str, amount: int = 1) -> int:
         """Increment a key by an amount.
         
@@ -179,4 +190,30 @@ class IRedisService(ABC):
         Returns:
             int: New value
         """
-        pass
+        return await self._redis.incr(key, amount)
+
+
+async def get_redis_service(request: Request) -> IRedisService:
+    """Dependency provider for Redis service.
+    
+    Args:
+        request: FastAPI request
+        
+    Returns:
+        IRedisService: Redis service implementation
+    """
+    # Use the redis client from app state
+    if not hasattr(request.app.state, "redis"):
+        # In case Redis is not configured, log warning
+        logger.warning("Redis client not found in app state, creating in-memory instance for testing")
+        
+        # Create an in-memory Redis client for testing
+        settings = Settings()
+        redis_client = redis.Redis.from_url(
+            settings.redis_url or "redis://localhost:6379/0", 
+            decode_responses=False
+        )
+        
+        return RedisService(redis_client)
+    
+    return RedisService(request.app.state.redis)

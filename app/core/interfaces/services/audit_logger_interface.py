@@ -7,7 +7,52 @@ allowing the application layer to depend on abstractions rather than concrete im
 """
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import Any, Dict, Optional
+
+
+class AuditEventType(str, Enum):
+    """Standardized audit event types for consistent logging across the application."""
+    # Authentication events
+    LOGIN = "LOGIN"
+    LOGOUT = "LOGOUT"
+    LOGIN_FAILURE = "LOGIN_FAILURE"
+    PASSWORD_CHANGE = "PASSWORD_CHANGE"
+    PASSWORD_RESET = "PASSWORD_RESET"
+    
+    # Token events
+    TOKEN_CREATION = "TOKEN_CREATION"
+    TOKEN_VALIDATION = "TOKEN_VALIDATION"
+    TOKEN_VALIDATION_FAILED = "TOKEN_VALIDATION_FAILED"
+    TOKEN_REFRESH = "TOKEN_REFRESH"
+    TOKEN_REVOCATION = "TOKEN_REVOCATION"
+    
+    # Access control events
+    ACCESS_GRANTED = "ACCESS_GRANTED"
+    ACCESS_DENIED = "ACCESS_DENIED"
+    PERMISSION_CHANGE = "PERMISSION_CHANGE"
+    
+    # Data events
+    DATA_ACCESS = "DATA_ACCESS"
+    DATA_MODIFICATION = "DATA_MODIFICATION"
+    DATA_DELETION = "DATA_DELETION"
+    DATA_EXPORT = "DATA_EXPORT"
+    
+    # System events
+    SYSTEM_STARTUP = "SYSTEM_STARTUP"
+    SYSTEM_SHUTDOWN = "SYSTEM_SHUTDOWN"
+    CONFIG_CHANGE = "CONFIG_CHANGE"
+    ERROR = "ERROR"
+    WARNING = "WARNING"
+
+
+class AuditSeverity(str, Enum):
+    """Standardized severity levels for audit events."""
+    DEBUG = "DEBUG"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    CRITICAL = "CRITICAL"
 
 
 class IAuditLogger(ABC):
@@ -21,9 +66,9 @@ class IAuditLogger(ABC):
     @abstractmethod
     def log_security_event(
         self, 
-        event_type: str,
+        event_type: AuditEventType,
         description: str,
-        severity: str = "INFO",
+        severity: AuditSeverity = AuditSeverity.INFO,
         user_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> None:
@@ -89,7 +134,7 @@ class IAuditLogger(ABC):
         self,
         event_type: str,
         description: str,
-        severity: str = "INFO",
+        severity: AuditSeverity = AuditSeverity.INFO,
         metadata: Optional[Dict[str, Any]] = None
     ) -> None:
         """Log system-level events for operational auditing.

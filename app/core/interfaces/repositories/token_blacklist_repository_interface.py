@@ -1,89 +1,72 @@
 """
-Interface for token blacklist repository to maintain clean architecture boundaries and
-provide a consistent contract for token invalidation operations.
+Interface for token blacklist repository to maintain a clean architecture boundary and
+ensure proper token invalidation capabilities for enhanced security.
 
-Supports HIPAA compliance by ensuring secure session management and token revocation.
+This interface defines the contract that token blacklist implementations must follow,
+enabling proper JWT invalidation while maintaining Clean Architecture principles.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
-from uuid import UUID
+from datetime import datetime
+from typing import Optional, List
 
 
 class ITokenBlacklistRepository(ABC):
-    """Interface for token blacklist repository operations.
+    """Interface for JWT token blacklisting repository.
     
-    Defines contract for blacklisting JWT tokens to prevent their reuse,
-    supporting secure session management and token invalidation according to
-    HIPAA security requirements.
+    This interface ensures all token blacklist implementations provide consistent
+    methods for tracking invalidated tokens, supporting features like token revocation,
+    logout, and security breach responses.
     """
     
     @abstractmethod
-    async def add_to_blacklist(self, token_id: str, expires_at: Optional[int] = None) -> bool:
-        """Add a token ID to the blacklist.
+    async def add_to_blacklist(self, token_jti: str, expires_at: datetime) -> None:
+        """Add a token to the blacklist by its JTI (JWT ID).
         
         Args:
-            token_id: JWT token ID (jti) to blacklist
-            expires_at: Optional Unix timestamp when token expires
-            
-        Returns:
-            True if successfully added to the blacklist
+            token_jti: The unique JWT ID of the token to blacklist
+            expires_at: When the token would normally expire
         """
         pass
     
     @abstractmethod
-    async def is_blacklisted(self, token: str) -> bool:
-        """Check if a token is blacklisted by its full token string.
+    async def is_blacklisted(self, token_jti: str) -> bool:
+        """Check if a token is blacklisted by its JTI.
         
         Args:
-            token: Full JWT token string
+            token_jti: The unique JWT ID to check
             
         Returns:
-            True if token is blacklisted
+            bool: True if token is blacklisted, False otherwise
         """
         pass
     
     @abstractmethod
-    async def is_jti_blacklisted(self, jti: str) -> bool:
-        """Check if a token ID is blacklisted.
+    async def remove_expired(self) -> int:
+        """Remove expired tokens from the blacklist to maintain performance.
         
-        Args:
-            jti: JWT token ID to check
-            
         Returns:
-            True if the token ID is blacklisted
+            int: Number of expired tokens removed from blacklist
         """
         pass
     
     @abstractmethod
-    async def blacklist_session(self, session_id: str) -> bool:
-        """Blacklist all tokens associated with a session.
+    async def get_all_blacklisted(self) -> List[dict]:
+        """Get all blacklisted tokens.
         
-        Args:
-            session_id: Session identifier to blacklist
-            
         Returns:
-            True if session was successfully blacklisted
+            List[dict]: List of dictionaries containing token_jti and expires_at
         """
         pass
     
     @abstractmethod
-    async def blacklist_user_tokens(self, user_id: str) -> bool:
-        """Blacklist all tokens for a specific user.
+    async def remove_from_blacklist(self, token_jti: str) -> bool:
+        """Remove a specific token from the blacklist.
         
         Args:
-            user_id: User identifier whose tokens should be blacklisted
+            token_jti: The unique JWT ID to remove
             
         Returns:
-            True if user tokens were successfully blacklisted
-        """
-        pass
-    
-    @abstractmethod
-    async def clear_expired_tokens(self) -> int:
-        """Remove expired tokens from the blacklist.
-        
-        Returns:
-            Number of tokens removed from blacklist
+            bool: True if token was removed, False if not found
         """
         pass
