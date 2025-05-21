@@ -27,8 +27,9 @@ except ImportError:
 from app.config.settings import Settings  # Import actual Settings
 from app.domain.exceptions import InvalidTokenError, TokenExpiredError
 
-# Corrected imports
-from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload
+# Corrected imports for clean architecture implementation
+from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
+from app.infrastructure.security.jwt.jwt_service import TokenPayload
 
 # Define test constants directly
 TEST_SECRET_KEY = "test-jwt-secret-key-must-be-at-least-32-chars-long"
@@ -82,11 +83,21 @@ def mock_user_repository():
 
 
 @pytest.fixture
-def jwt_service(mock_settings: Settings, mock_user_repository) -> JWTService:
+def jwt_service(mock_settings: Settings, mock_user_repository):
     """Create a JWT service instance for testing using mock settings."""
-    # Instantiate JWTService with mock settings and repository
-    service = JWTService(settings=mock_settings, user_repository=mock_user_repository)
-    # No need to set refresh_token_expire_days directly anymore
+    # Instantiate JWTServiceImpl with required parameters following clean architecture
+    service = JWTServiceImpl(
+        secret_key=TEST_SECRET_KEY,
+        algorithm=TEST_ALGORITHM,
+        access_token_expire_minutes=TEST_ACCESS_EXPIRE_MINUTES,
+        refresh_token_expire_days=TEST_REFRESH_EXPIRE_DAYS,
+        user_repository=mock_user_repository,
+        token_blacklist_repository=None,
+        audit_logger=None,
+        issuer=TEST_ISSUER,
+        audience=TEST_AUDIENCE,
+        settings=mock_settings
+    )
     return service
 
 
