@@ -152,8 +152,8 @@ class TestJWTService:
             token,
             jwt_service.secret_key,
             algorithms=[jwt_service.algorithm],
-            audience=jwt_service.audience,
-            issuer=jwt_service.issuer,
+            audience=jwt_service.token_audience,
+            issuer=jwt_service.token_issuer,
             options={
                 "verify_iat": False,
                 "verify_exp": False,
@@ -201,8 +201,8 @@ class TestJWTService:
             token,
             jwt_service.secret_key,
             algorithms=[jwt_service.algorithm],
-            audience=jwt_service.audience,
-            issuer=jwt_service.issuer,
+            audience=jwt_service.token_audience,
+            issuer=jwt_service.token_issuer,
             options={
                 "verify_iat": False,
                 "verify_exp": False,
