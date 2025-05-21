@@ -25,7 +25,7 @@ except ImportError:
 
 
 from app.config.settings import Settings  # Import actual Settings
-from app.domain.exceptions import InvalidTokenException, TokenExpiredException
+from app.domain.exceptions import InvalidTokenError, TokenExpiredError
 
 # Corrected imports
 from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload
@@ -171,7 +171,7 @@ class TestJWTService:
         )
 
         # No need to sleep or fast-forward time, decode should fail immediately
-        with pytest.raises(TokenExpiredException):
+        with pytest.raises(TokenExpiredError):
             jwt_service.decode_token(expired_token)
 
     @pytest.mark.asyncio
@@ -184,7 +184,7 @@ class TestJWTService:
         # Tamper with the signature
         tampered_token = token[:-5] + "XXXXX"
 
-        with pytest.raises(InvalidTokenException) as exc_info:
+        with pytest.raises(InvalidTokenError) as exc_info:
             jwt_service.decode_token(tampered_token)
         assert "Signature verification failed" in str(exc_info.value) or "Invalid signature" in str(
             exc_info.value
@@ -195,7 +195,7 @@ class TestJWTService:
         """Test validation of a token with invalid format."""
         invalid_token = "not.a.valid.jwt.token.format"
 
-        with pytest.raises(InvalidTokenException) as exc_info:
+        with pytest.raises(InvalidTokenError) as exc_info:
             jwt_service.decode_token(invalid_token)
         assert "Invalid header string" in str(exc_info.value) or "Not enough segments" in str(
             exc_info.value
@@ -250,7 +250,7 @@ class TestJWTService:
 
         # Attempt to decode with original service (expecting original audience)
         # This should fail now with our fixed verification
-        with pytest.raises(InvalidTokenException) as exc_info:
+        with pytest.raises(InvalidTokenError) as exc_info:
             jwt_service.decode_token(token_wrong_aud)
 
         assert (
@@ -273,7 +273,7 @@ class TestJWTService:
         token_wrong_iss = wrong_issuer_jwt.create_access_token(data)
 
         # Act & Assert
-        with pytest.raises(InvalidTokenException, match="Invalid issuer"):
+        with pytest.raises(InvalidTokenError, match="Invalid issuer"):
             jwt_service.decode_token(token_wrong_iss)
 
     # Add more tests as needed, e.g., for blacklisting, etc.

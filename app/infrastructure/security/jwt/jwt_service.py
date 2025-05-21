@@ -24,7 +24,7 @@ try:
 except ImportError:
     # Fallback to direct imports if adapter is not available
     from jose import jwt as jose_jwt
-    from jose.exceptions import ExpiredSignatureError, JWTError
+    from jose.exceptions import ExpiredSignatureError, JWTError, JWTClaimsError
 
     def jwt_encode(claims: dict[str, Any], key: str, algorithm: str, **kwargs: Any) -> str:
         return jose_jwt.encode(claims, key, algorithm=algorithm, **kwargs)
@@ -44,8 +44,8 @@ from app.core.interfaces.services.jwt_service import IJwtService
 try:
     from app.domain.exceptions import (
         AuthenticationError,
-        InvalidTokenException, 
-        TokenExpiredException
+        InvalidTokenError, 
+        TokenExpiredError
     )
 except ImportError:
     # Define fallbacks if imports fail
@@ -53,17 +53,13 @@ except ImportError:
         """Authentication failed."""
         pass
         
-    class InvalidTokenException(Exception):
+    class InvalidTokenError(Exception):
         """Invalid token exception."""
         pass
         
-    class TokenExpiredException(Exception):
+    class TokenExpiredError(Exception):
         """Token expired exception."""
         pass
-        
-    # Define alias names used in the implementation
-    InvalidTokenError = InvalidTokenException
-    TokenExpiredError = TokenExpiredException
 
 # Import token type enum
 try:
@@ -136,17 +132,17 @@ except ImportError:
 # Import necessary exceptions from domain layer
 try:
     from app.core.exceptions.auth import (
-        InvalidTokenException,
+        InvalidTokenError,
         RevokedTokenException,
         TokenBlacklistedException,
         TokenGenerationException,
-        TokenExpiredException,
+        TokenExpiredError,
         TokenDecodingException,
     )
     from app.core.constants.audit import AuditEventType, AuditSeverity
 except ImportError:
     # Fallback for imports during testing
-    class InvalidTokenException(Exception):
+    class InvalidTokenError(Exception):
         """Invalid token exception."""
         pass
         
@@ -162,7 +158,7 @@ except ImportError:
         """Token generation exception."""
         pass
         
-    class TokenExpiredException(Exception):
+    class TokenExpiredError(Exception):
         """Token expired exception."""
         pass
         
@@ -776,24 +772,24 @@ class JWTService(IJwtService):
 
         Raises:
             ExpiredSignatureError: If the token has expired (passed through)
-            InvalidTokenException: For other validation errors
+            InvalidTokenError: For other validation errors
         """
         if not token:
-            raise InvalidTokenException("Invalid token: Token is empty or None")
+            raise InvalidTokenError("Invalid token: Token is empty or None")
 
         # Basic token format validation before attempting to decode
         if not isinstance(token, str):
             # Handle binary tokens or other non-string inputs consistently
             if isinstance(token, bytes):
                 # Binary data usually results in header parsing errors
-                raise InvalidTokenException("Invalid token: Invalid header string")
+                raise InvalidTokenError("Invalid token: Invalid header string")
             else:
                 # Other non-string types
-                raise InvalidTokenException("Invalid token: Not enough segments")
+                raise InvalidTokenError("Invalid token: Not enough segments")
 
         # Check if token follows the standard JWT format: header.payload.signature
         if token.count(".") != 2:
-            raise InvalidTokenException("Invalid token: Not enough segments")
+            raise InvalidTokenError("Invalid token: Not enough segments")
 
         if options is None:
             options = {}
@@ -829,7 +825,7 @@ class JWTService(IJwtService):
             raise
         except Exception as e:
             logger.error(f"Error decoding token: {e}")
-            raise InvalidTokenException(f"Invalid token: {e}")
+            raise InvalidTokenError(f"Invalid token: {e}")
 
     def decode_token(
         self,
@@ -853,24 +849,24 @@ class JWTService(IJwtService):
             TokenPayload: Decoded token payload
 
         Raises:
-            InvalidTokenException: If the token is invalid
+            InvalidTokenError: If the token is invalid
         """
         if not token:
-            raise InvalidTokenException("Invalid token: Token is empty or None")
+            raise InvalidTokenError("Invalid token: Token is empty or None")
 
         # Basic token format validation before attempting to decode
         if not isinstance(token, str):
             # Handle binary tokens or other non-string inputs consistently
             if isinstance(token, bytes):
                 # Binary data usually results in header parsing errors
-                raise InvalidTokenException("Invalid token: Invalid header string")
+                raise InvalidTokenError("Invalid token: Invalid header string")
             else:
                 # Other non-string types
-                raise InvalidTokenException("Invalid token: Not enough segments")
+                raise InvalidTokenError("Invalid token: Not enough segments")
 
         # Check if token follows the standard JWT format: header.payload.signature
         if token.count(".") != 2:
-            raise InvalidTokenException("Invalid token: Not enough segments")
+            raise InvalidTokenError("Invalid token: Not enough segments")
 
         if options is None:
             options = {}
@@ -938,7 +934,7 @@ class JWTService(IJwtService):
             if token_payload.jti and self._is_token_blacklisted(token_payload.jti):
                 logger.warning(f"Token with JTI {token_payload.jti} is blacklisted")
                 raise InvalidTokenError("Invalid token: Token has been revoked")
-
+                
             # Log the security event
             if self.audit_logger:
                 self.audit_logger.log_security_event(
@@ -955,6 +951,15 @@ class JWTService(IJwtService):
         except TokenExpiredError:
             # Pass through our specific exception without wrapping it
             raise
+        except JWTClaimsError as e:
+            # For claims errors, preserve the specific message
+            error_message = str(e)
+            if "Invalid issuer" in error_message:
+                raise InvalidTokenError("Invalid issuer") from None
+            elif "Invalid audience" in error_message:
+                raise InvalidTokenError("Invalid audience") from None
+            else:
+                raise InvalidTokenError(f"Claims validation failed: {error_message}") from None
         except JWTError as e:
             logger.error(f"Error decoding token: {e}")
             raise InvalidTokenError(f"Invalid token: {e}")
@@ -997,7 +1002,7 @@ class JWTService(IJwtService):
                     severity=AuditSeverity.WARNING,
                     status="failure",
                 )
-                raise InvalidTokenException("Invalid token: user not found")
+                raise InvalidTokenError("Invalid token: user not found")
 
             # Type annotation to ensure correct type is returned
             return user  # type: ignore[no-any-return]
@@ -1016,8 +1021,8 @@ class JWTService(IJwtService):
             TokenPayload: The decoded token payload
 
         Raises:
-            InvalidTokenException: If the token is not a refresh token or otherwise invalid
-            TokenExpiredException: If the token is expired
+            InvalidTokenError: If the token is not a refresh token or otherwise invalid
+            TokenExpiredError: If the token is expired
             TokenBlacklistedException: If the token is blacklisted
         """
         # Decode the token first to verify its basic validity
@@ -1043,24 +1048,24 @@ class JWTService(IJwtService):
             is_refresh = True
 
         if not is_refresh:
-            raise InvalidTokenException("Token is not a refresh token")
+            raise InvalidTokenError("Token is not a refresh token")
 
         # If we reach here, the token is a valid refresh token
         # Now check if it's expired
         if options.get("verify_exp", True):
             # Only check expiration if verify_exp is True
             if hasattr(payload, "is_expired") and payload.is_expired:
-                raise TokenExpiredException("Refresh token has expired")
+                raise TokenExpiredError("Refresh token has expired")
 
             # Additional expiration check using raw timestamp
             if hasattr(payload, "exp"):
                 now = datetime.now(timezone.utc).timestamp()
                 if payload.exp < now:
-                    raise TokenExpiredException("Refresh token has expired")
+                    raise TokenExpiredError("Refresh token has expired")
 
         # Check if token is blacklisted
         if payload.jti and self._is_token_blacklisted(payload.jti):
-            raise InvalidTokenException("Refresh token has been revoked")
+            raise InvalidTokenError("Refresh token has been revoked")
 
         # Log the security event
         if self.audit_logger:
@@ -1090,7 +1095,7 @@ class JWTService(IJwtService):
             str: New access token
 
         Raises:
-            InvalidTokenException: If the refresh token is invalid or expired
+            InvalidTokenError: If the refresh token is invalid or expired
         """
         try:
             # Decode and verify the refresh token - skip expiration check initially
@@ -1098,19 +1103,19 @@ class JWTService(IJwtService):
 
             # Now check if it's expired manually if needed
             if payload.is_expired:
-                raise TokenExpiredException("Refresh token has expired")
+                raise TokenExpiredError("Refresh token has expired")
 
             # Check if it's actually a refresh token
             token_type = getattr(payload, "type", None)
             is_refresh = getattr(payload, "refresh", False)
 
             if not (token_type == TokenType.REFRESH or is_refresh):
-                raise InvalidTokenException("Token is not a refresh token")
+                raise InvalidTokenError("Token is not a refresh token")
 
             # Extract user ID and create a new access token
             user_id = payload.sub
             if not user_id:
-                raise InvalidTokenException("Invalid token: missing subject claim")
+                raise InvalidTokenError("Invalid token: missing subject claim")
 
             # Create a new access token with the same user ID
             new_access_token = self.create_access_token({"sub": user_id})
@@ -1127,9 +1132,9 @@ class JWTService(IJwtService):
 
             return new_access_token
 
-        except (JWTError, ExpiredSignatureError, InvalidTokenException) as e:
+        except (JWTError, ExpiredSignatureError, InvalidTokenError) as e:
             logger.warning(f"Failed to refresh token: {e}")
-            raise InvalidTokenException("Invalid or expired refresh token")
+            raise InvalidTokenError("Invalid or expired refresh token")
 
     async def revoke_token(self, token: str) -> bool:
         """Revokes a token by adding its JTI to the blacklist.
@@ -1347,7 +1352,7 @@ class JWTService(IJwtService):
             # For now, return True for testing
             return True
 
-        except (InvalidTokenException, TokenExpiredException) as e:
+        except (InvalidTokenError, TokenExpiredError) as e:
             logger.warning(f"Token validation failed during resource access check: {e}")
             return False
         except Exception as e:
@@ -1453,8 +1458,8 @@ class JWTService(IJwtService):
             str: A new refresh token
 
         Raises:
-            InvalidTokenException: If the token is invalid
-            TokenExpiredException: If the token is expired
+            InvalidTokenError: If the token is invalid
+            TokenExpiredError: If the token is expired
             RevokedTokenException: If the token has been revoked
         """
         # Decode and verify the token
