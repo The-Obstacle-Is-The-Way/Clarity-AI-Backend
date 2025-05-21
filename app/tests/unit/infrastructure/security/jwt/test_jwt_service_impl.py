@@ -18,7 +18,8 @@ from app.config.settings import Settings
 from app.core.interfaces.repositories.token_blacklist_repository_interface import ITokenBlacklistRepository
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.audit_logger_interface import IAuditLogger
-from app.domain.exceptions import InvalidTokenException, TokenExpiredError, TokenBlacklistedException
+from app.domain.exceptions import InvalidTokenException, TokenBlacklistedException
+from app.domain.exceptions.token_exceptions import TokenExpiredException as TokenExpiredError
 from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
 
 # Test constants

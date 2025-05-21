@@ -36,7 +36,7 @@ InvalidTokenError = InvalidTokenException  # Ensure consistent exception types
 TokenExpiredError = TokenExpiredException  # Ensure consistent exception types
 
 # Constants for testing and defaults
-TEST_SECRET_KEY = "enhanced-secret-key-for-testing-purpose-only-32+"
+TEST_SECRET_KEY = "test-jwt-secret-key-must-be-at-least-32-chars-long"
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -587,12 +587,13 @@ class JWTServiceImpl(IJwtService):
             # Log successful validation if audit logger is available
             if self.audit_logger:
                 try:
-                    # Try new interface
-                    self.audit_logger.log_auth_event(
+                    # Use log_security_event as expected by tests
+                    self.audit_logger.log_security_event(
                         event_type=AuditEventType.TOKEN_VALIDATED,
+                        description="Token validated successfully",
                         user_id=str(payload.get("sub", "unknown")),
                         severity=AuditSeverity.INFO,
-                        details={
+                        metadata={
                             "token_type": payload.get("type", "unknown"),
                             "token_id": payload.get("jti", "unknown")
                         }
@@ -624,11 +625,12 @@ class JWTServiceImpl(IJwtService):
             # Special handling for expired tokens to match test expectations
             if self.audit_logger:
                 try:
-                    self.audit_logger.log_auth_event(
+                    self.audit_logger.log_security_event(
                         event_type=AuditEventType.TOKEN_EXPIRED,
+                        description="Token has expired",
                         user_id="unknown",
                         severity=AuditSeverity.WARNING,
-                        details={"error": str(e)}
+                        metadata={"error": str(e)}
                     )
                 except (TypeError, AttributeError):
                     self.audit_logger.log_auth_event(
@@ -639,17 +641,18 @@ class JWTServiceImpl(IJwtService):
                     )
             # Important: This exact error message format is expected by tests
             # Using the domain-specific exception type to match test expectations
-            raise TokenExpiredException("Token has expired: Signature has expired")
+            raise TokenExpiredError("Token has expired: Signature has expired")
             
         except JWTError as e:
             # Handle JWT library specific errors
             if self.audit_logger:
                 try:
-                    self.audit_logger.log_auth_event(
+                    self.audit_logger.log_security_event(
                         event_type=AuditEventType.TOKEN_INVALID,
+                        description="Token is invalid",
                         user_id="unknown",
                         severity=AuditSeverity.WARNING,
-                        details={"error": str(e)}
+                        metadata={"error": str(e)}
                     )
                 except (TypeError, AttributeError):
                     self.audit_logger.log_auth_event(
@@ -664,11 +667,12 @@ class JWTServiceImpl(IJwtService):
             # Generic error handling for any other exceptions
             if self.audit_logger:
                 try:
-                    self.audit_logger.log_auth_event(
+                    self.audit_logger.log_security_event(
                         event_type=AuditEventType.TOKEN_DECODE_ERROR,
+                        description="Error decoding token",
                         user_id="unknown",
                         severity=AuditSeverity.ERROR,
-                        details={"error": str(e)}
+                        metadata={"error": str(e)}
                     )
                 except (TypeError, AttributeError):
                     self.audit_logger.log_auth_event(
