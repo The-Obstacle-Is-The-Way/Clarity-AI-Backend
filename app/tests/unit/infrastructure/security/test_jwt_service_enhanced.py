@@ -34,10 +34,8 @@ from app.domain.exceptions.token_exceptions import (
     InvalidTokenException,
     TokenExpiredException,
 )
-from app.infrastructure.security.jwt.jwt_service import (
-    JWTService,
-    TokenType,
-)
+from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
+from app.domain.enums.token_type import TokenType
 
 # Define UTC if not imported elsewhere (Python 3.11+)
 try:
