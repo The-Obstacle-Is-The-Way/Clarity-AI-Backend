@@ -104,7 +104,7 @@ class MemoryTokenBlacklistRepository(ITokenBlacklistRepository):
         """
         return await self.cleanup_expired()
         
-    async def blacklist_session(self, session_id: str) -> None:
+    async def blacklist_session(self, session_id: str) -> bool:
         """
         Blacklist all tokens associated with a session.
         
@@ -113,8 +113,12 @@ class MemoryTokenBlacklistRepository(ITokenBlacklistRepository):
         """
         # In memory implementation just stores the session ID
         # A real implementation would blacklist all tokens related to this session
-        self._blacklist[f"session:{session_id}"] = {
-            "expires_at": datetime.now() + timedelta(days=30),  # Long expiry for sessions
-            "reason": "Session blacklisted",
-            "blacklisted_at": datetime.now(),
-        }
+        try:
+            self._blacklist[f"session:{session_id}"] = {
+                "expires_at": datetime.now() + timedelta(days=30),  # Long expiry for sessions
+                "reason": "Session blacklisted",
+                "blacklisted_at": datetime.now(),
+            }
+            return True
+        except Exception:
+            return False

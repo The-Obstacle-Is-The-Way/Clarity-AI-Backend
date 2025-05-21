@@ -7,7 +7,7 @@ HIPAA security standards and best practices for healthcare applications.
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, ClassVar, Dict, List, Optional, Union
+from typing import Any, ClassVar, Dict, Optional, Union, List
 from uuid import UUID, uuid4
 
 from jose.exceptions import ExpiredSignatureError, JWTError
@@ -31,15 +31,16 @@ from app.core.interfaces.repositories.token_blacklist_repository_interface impor
 from app.domain.exceptions import (
     AuthenticationError,
     InvalidTokenError,
-    TokenExpiredError
+    TokenExpiredError,
+    TokenBlacklistedException,
+    InvalidTokenException
 )
 
 from app.domain.enums.token_type import TokenType
 
 # Define custom exceptions if they don't exist in domain.exceptions
-class TokenBlacklistedError(InvalidTokenError):
-    """Exception raised when a token is blacklisted."""
-    pass
+# Using TokenBlacklistedException from domain.exceptions instead
+TokenBlacklistedError = TokenBlacklistedException
 
 class TokenManagementError(InvalidTokenError):
     """Exception raised for token management operations failures."""
@@ -833,6 +834,9 @@ class JWTService(IJwtService):
 
 
 # Define dependency injection function
+# Import implementation to avoid circular imports
+from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
+
 def get_jwt_service(
     settings: Any, 
     user_repository: Any = None, 
@@ -887,8 +891,8 @@ def get_jwt_service(
     issuer = getattr(settings, "JWT_ISSUER", None)
     audience = getattr(settings, "JWT_AUDIENCE", None)
 
-    # Create and return a JWTService instance with validated settings
-    return JWTService(
+    # Create and return a JWTServiceImpl instance with validated settings
+    return JWTServiceImpl(
         secret_key=secret_key,
         algorithm=algorithm,
         access_token_expire_minutes=access_token_expire_minutes,
