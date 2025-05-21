@@ -60,6 +60,10 @@ except ImportError:
     class TokenExpiredException(Exception):
         """Token expired exception."""
         pass
+        
+    # Define alias names used in the implementation
+    InvalidTokenError = InvalidTokenException
+    TokenExpiredError = TokenExpiredException
 
 # Import token type enum
 try:
