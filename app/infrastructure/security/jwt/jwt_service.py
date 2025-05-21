@@ -9,7 +9,7 @@ import json
 import logging
 import re
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
 from enum import Enum
 from typing import Any, Optional, Union, cast
 
@@ -461,6 +461,8 @@ class JWTService(IJwtService):
         expires_delta: Optional[timedelta] = None,
         expires_delta_minutes: Optional[int] = None,
         additional_claims: Optional[dict[str, Any]] = None,
+        family_id: Optional[str] = None,
+        parent_token_jti: Optional[str] = None,
     ) -> str:
         """
         Create a refresh token for a user.
@@ -503,7 +505,9 @@ class JWTService(IJwtService):
         effective_claims["refresh"] = True
 
         # Add token family for refresh token rotation tracking if enabled
-        family_id = str(uuid.uuid4())
+        if not family_id:
+            family_id = str(uuid.uuid4())
+            
         if effective_claims.get("family_id"):
             # Preserve existing family ID for token rotation
             family_id = effective_claims["family_id"]
@@ -518,6 +522,10 @@ class JWTService(IJwtService):
         # Create a unique ID for this token
         token_jti = str(uuid.uuid4())
         
+        # Add parent token reference if provided (for token rotation)
+        if parent_token_jti:
+            effective_claims["parent_jti"] = parent_token_jti
+
         # Create the token
         token = self._create_jwt(
             subject=effective_subject,
@@ -708,7 +716,7 @@ class JWTService(IJwtService):
         # For backward compatibility with tests, set the enum-based type field
         if refresh or token_type == "refresh":
             to_encode["type"] = "refresh"
-            to_encode["refresh"] = True
+            to_encode["refresh"] = True  # Boolean flag
             to_encode["scope"] = "refresh_token"
         else:
             to_encode["type"] = "access"
@@ -815,9 +823,9 @@ class JWTService(IJwtService):
             raise TokenExpiredError("Token has expired") from e
         except JWTError as e:
             logger.error(f"Error decoding token: {e}")
-            raise InvalidTokenException(f"Invalid token: {e}")
-        except InvalidTokenException:
-            # Rethrow without changing the message if it's already an InvalidTokenException
+            raise InvalidTokenError(f"Invalid token: {e}")
+        except InvalidTokenError:
+            # Rethrow without changing the message if it's already an InvalidTokenError
             raise
         except Exception as e:
             logger.error(f"Error decoding token: {e}")
