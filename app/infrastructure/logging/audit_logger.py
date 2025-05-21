@@ -7,19 +7,17 @@ modifications, ensuring compliance with HIPAA Security Rule § 164.312(b).
 
 import json
 import logging
-import os
-import tempfile
-from datetime import date
-from typing import Any
+import json
+import logging
+from datetime import UTC, date, datetime
+from pathlib import Path
+from tempfile import gettempdir
+from typing import Any, Dict, Optional
 
 # Corrected import path
-# from app.config.settings import settings # Keep only get_settings
 from app.core.config.settings import get_settings
-from app.core.interfaces.services.audit_logger_interface import (
-    AuditEventType,
-    AuditSeverity,
-    IAuditLogger,
-)
+from app.core.constants.audit import AuditEventType, AuditSeverity
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
 from app.core.utils.date_utils import format_date_iso, utcnow
 
 # Load settings once
@@ -27,12 +25,16 @@ settings = get_settings()
 
 # Import settings with fallback for tests
 try:
-    AUDIT_ENABLED = settings.DATABASE_AUDIT_ENABLED  # Use loaded settings
-    AUDIT_LOG_DIR = settings.AUDIT_LOG_FILE  # Use main AUDIT_LOG_FILE setting
+    AUDIT_ENABLED = getattr(settings, "AUDIT_ENABLED", True)  # More robust attribute access
+    AUDIT_LOG_DIR = getattr(settings, "AUDIT_LOG_FILE", None)  # Use main AUDIT_LOG_FILE setting
 except (ImportError, AttributeError):
     # Fallback for tests
     AUDIT_ENABLED = True
-    AUDIT_LOG_DIR = os.path.join(tempfile.gettempdir(), "novamind_audit")
+    AUDIT_LOG_DIR = None
+
+# If no directory is configured, use a temp directory
+if not AUDIT_LOG_DIR:
+    AUDIT_LOG_DIR = Path(gettempdir()) / "novamind_audit"
 
 
 class AuditLogger(IAuditLogger):
@@ -51,7 +53,7 @@ class AuditLogger(IAuditLogger):
     _configured = False
 
     @classmethod
-    def setup(cls, log_dir: str | None = None) -> None:
+    def setup(cls, log_dir: Optional[str] = None) -> None:
         """
         Set up the audit logger with appropriate handlers.
 
@@ -70,12 +72,17 @@ class AuditLogger(IAuditLogger):
         # For tests, use memory handler if audit_log_dir is None or not writable
         try:
             # Create log directory if it doesn't exist
-            os.makedirs(audit_log_dir, exist_ok=True)
+            if isinstance(audit_log_dir, str):
+                audit_log_path = Path(audit_log_dir)
+            else:  # Already a Path object
+                audit_log_path = audit_log_dir
+                
+            audit_log_path.mkdir(parents=True, exist_ok=True)
 
             # Create a file handler for the audit log
             today = date.today()
-            audit_file = os.path.join(audit_log_dir, f"hipaa_audit_{today.isoformat()}.log")
-            handler = logging.FileHandler(audit_file)
+            audit_file = audit_log_path / f"hipaa_audit_{today.isoformat()}.log"
+            handler = logging.FileHandler(str(audit_file))
         except (OSError, PermissionError):
             # Fallback to memory handler for tests
             handler = logging.StreamHandler()
@@ -98,10 +105,16 @@ class AuditLogger(IAuditLogger):
         cls._logger.addHandler(handler)
 
         # Log startup message
-        cls._logger.info(f"HIPAA audit logging initialized (dir: {audit_log_dir})")
+        cls._logger.info(f"HIPAA audit logging initialized (dir: {audit_log_dir})")")
 
+    def __init__(self) -> None:
+        """Initialize the audit logger with proper configuration."""
+        # Configure if not already done
+        if not self.__class__._configured:
+            self.__class__.setup()
+            
     @classmethod
-    def log_transaction(cls, metadata: dict[str, Any]) -> None:
+    def log_transaction(cls, metadata: Dict[str, Any]) -> None:
         """
         Log a transaction for audit purposes.
 
@@ -138,122 +151,336 @@ class AuditLogger(IAuditLogger):
         # Log the transaction
         cls._logger.info(f"PHI_ACCESS: {message}")
 
-    @classmethod
     def log_phi_access(
-        cls,
-        user_id: str,
-        patient_id: str,
-        action: str,
-        details: dict[str, Any] | None = None,
+        self,
+        actor_id: str,
+        patient_id: Optional[str] = None,
+        resource_id: Optional[str] = None,
+        data_accessed: Optional[str] = None,
+        resource_type: Optional[str] = None,
+        access_reason: Optional[str] = None,
+        action: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        details: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
-        Log PHI access for audit purposes.
+        Log access to Protected Health Information (PHI).
 
         Args:
-            user_id: ID of the user accessing the PHI
+            actor_id: ID of the user or system accessing the PHI
             patient_id: ID of the patient whose PHI was accessed
-            action: Type of access (read, write, delete)
-            details: Additional details about the access
+            resource_id: ID of the resource being accessed (alternative to patient_id)
+            data_accessed: Description of the PHI data that was accessed
+            resource_type: Type of resource being accessed
+            access_reason: Reason for accessing the PHI
+            action: Action being performed (view, modify, delete)
+            ip_address: IP address of the actor
+            details: Additional human-readable details
+            metadata: Additional contextual information about the access
         """
-        metadata = {
-            "user_id": user_id,
-            "patient_id": patient_id,
-            "action": action,
+        # Configure if not already done
+        if not self.__class__._configured:
+            self.__class__.setup()
+
+        # Skip logging if disabled
+        if not AUDIT_ENABLED:
+            return
+
+        # Build log data
+        log_data = {
+            "user_id": actor_id,  # For backward compatibility
+            "actor_id": actor_id,
             "timestamp": format_date_iso(utcnow()),
-            "details": details or {},
+            "action": action or "access",
         }
 
-        cls.log_transaction(metadata)
+        # Add optional fields if provided
+        optional_fields = {
+            "patient_id": patient_id,
+            "resource_id": resource_id,
+            "data_accessed": data_accessed,
+            "resource_type": resource_type,
+            "access_reason": access_reason,
+            "ip_address": ip_address,
+            "details": details,
+        }
 
-    @classmethod
+        for key, value in optional_fields.items():
+            if value is not None:
+                log_data[key] = value
+
+        # Add any additional metadata
+        if metadata:
+            log_data.update(metadata)
+
+        # Log the transaction
+        self.__class__.log_transaction(log_data)
+
     def log_security_event(
-        cls,
+        self,
         event_type: str,
-        user_id: str | None = None,
-        details: dict[str, Any] | None = None,
+        description: Optional[str] = None,
+        user_id: Optional[str] = None,
+        actor_id: Optional[str] = None,
+        severity: AuditSeverity = AuditSeverity.INFO,
+        details: Optional[str] = None,
+        status: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        ip_address: Optional[str] = None,
     ) -> None:
         """
-        Log a security event for audit purposes.
+        Log a security-related event.
 
         Args:
-            event_type: Type of security event
-            user_id: ID of the user involved (if applicable)
-            details: Additional details about the event
+            event_type: Type of security event (e.g., "LOGIN_SUCCESS", "ACCESS_DENIED")
+            description: Human-readable description of the event
+            user_id: ID of the user associated with the event (if applicable)
+            actor_id: Alternative identifier for the actor causing the event (alias for user_id)
+            severity: Severity level of the event
+            details: Detailed information about the event (alias for description)
+            status: Status of the event (success/failure)
+            metadata: Additional contextual information about the event
+            ip_address: IP address associated with the event
         """
-        metadata = {
+        # Configure if not already done
+        if not self.__class__._configured:
+            self.__class__.setup()
+
+        # Skip logging if disabled
+        if not AUDIT_ENABLED:
+            return
+
+        # Normalize inputs for backward compatibility
+        effective_user_id = user_id or actor_id or "system"
+        effective_description = description or details or ""
+
+        # Build log data
+        log_data = {
             "event_type": event_type,
-            "user_id": user_id or "system",
-            "action": "security_event",
+            "user_id": effective_user_id,
             "timestamp": format_date_iso(utcnow()),
-            "details": details or {},
+            "action": "security_event",
+            "severity": severity.value if isinstance(severity, AuditSeverity) else str(severity),
         }
 
-        cls.log_transaction(metadata)
+        # Add optional fields if provided
+        optional_fields = {
+            "description": effective_description,
+            "status": status,
+            "ip_address": ip_address,
+        }
 
-        # Log at appropriate level based on event type
-        if event_type in [
-            "authentication_failure",
-            "authorization_failure",
-            "tampering_detected",
-        ]:
-            cls._logger.warning(f"SECURITY_EVENT: {json.dumps(metadata)}")
+        for key, value in optional_fields.items():
+            if value is not None:
+                log_data[key] = value
+
+        # Add any additional metadata
+        if metadata:
+            log_data.update(metadata)
+
+        # Log at appropriate level based on severity
+        log_message = json.dumps(log_data)
+        
+        if severity in (AuditSeverity.ERROR, AuditSeverity.CRITICAL):
+            self.__class__._logger.error(f"SECURITY_EVENT: {log_message}")
+        elif severity == AuditSeverity.WARNING:
+            self.__class__._logger.warning(f"SECURITY_EVENT: {log_message}")
         else:
-            cls._logger.info(f"SECURITY_EVENT: {json.dumps(metadata)}")
+            self.__class__._logger.info(f"SECURITY_EVENT: {log_message}")
+            
+        # Log the transaction for persistent storage
+        self.__class__.log_transaction(log_data)
 
 
 # Initialize the audit logger when the module is imported - but defer actual setup
 # to ensure we don't have issues during import for tests
 AuditLogger._configured = False
 
-# ---------------------------------------------------------------------------
-# Convenience aliases for legacy test‑suite compatibility
-# ---------------------------------------------------------------------------
 
-# A large portion of the legacy and security‑focused test‑suite expects the
-# module itself (i.e. ``app.infrastructure.logging.audit_logger``) to expose
-# *functions* named ``log_phi_access`` and ``log_security_event`` that delegate
-# to the corresponding ``AuditLogger`` class methods.  Export thin wrappers so
-# we don't have to refactor every single test file:
+# Implement the log_auth_event method required by IAuditLogger
+    def log_auth_event(
+        self,
+        event_type: str,
+        user_id: str,
+        success: bool,
+        description: str,
+        ip_address: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Log an authentication or authorization event.
+
+        Args:
+            event_type: Type of auth event (e.g., "LOGIN", "LOGOUT", "TOKEN_VALIDATION")
+            user_id: ID of the user associated with the event
+            success: Whether the auth operation succeeded
+            description: Human-readable description of the event
+            ip_address: IP address associated with the event
+            metadata: Additional contextual information about the event
+        """
+        if not self._configured:
+            self.setup()
+
+        # Skip logging if disabled
+        if not AUDIT_ENABLED:
+            return
+
+        severity = AuditSeverity.INFO if success else AuditSeverity.WARNING
+        status = "success" if success else "failure"
+
+        log_data = {
+            "event_type": event_type,
+            "user_id": user_id,
+            "success": success,
+            "status": status,
+            "description": description,
+            "ip_address": ip_address,
+            "timestamp": format_date_iso(utcnow()),
+            **(metadata or {}),
+        }
+
+        # Remove None values
+        log_data = {k: v for k, v in log_data.items() if v is not None}
+
+        # Format the message as JSON for machine readability
+        message = json.dumps(log_data)
+        
+        # Log at appropriate level based on success/failure
+        if success:
+            self._logger.info(f"AUTH_EVENT: {message}")
+        else:
+            self._logger.warning(f"AUTH_EVENT: {message}")
 
 
-def log_phi_access(*args, **kwargs):  # type: ignore[missing-return-type-doc]
-    """Convenience alias for AuditLogger.log_phi_access."""
-    return AuditLogger.log_phi_access(*args, **kwargs)
+# Define a simple function that acts as a bridge for legacy code
+def log_audit_event(event_type: str, user_id: str, success: bool, description: str, **kwargs):
+    """Convenience function for logging audit events using the AuditLogger."""
+    logger = AuditLogger()
+    return logger.log_auth_event(event_type, user_id, success, description, **kwargs)
 
 
-def audit_log_phi_access(
-    user_id: str, patient_id: str, action: str, details: dict[str, Any] | None = None
+    def log_auth_event(
+        self,
+        event_type: str,
+        user_id: str,
+        success: bool,
+        description: str,
+        ip_address: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """
+        Log an authentication or authorization event.
+
+        Args:
+            event_type: Type of auth event (e.g., "LOGIN", "LOGOUT", "TOKEN_VALIDATION")
+            user_id: ID of the user associated with the event
+            success: Whether the auth operation succeeded
+            description: Human-readable description of the event
+            ip_address: IP address associated with the event
+            metadata: Additional contextual information about the event
+        """
+        # Configure if not already done
+        if not self.__class__._configured:
+            self.__class__.setup()
+
+        # Skip logging if disabled
+        if not AUDIT_ENABLED:
+            return
+
+        # Set severity based on success/failure
+        severity = AuditSeverity.INFO if success else AuditSeverity.WARNING
+        status = "success" if success else "failure"
+
+        # Build log data
+        log_data = {
+            "event_type": event_type,
+            "user_id": user_id,
+            "success": success,
+            "status": status,
+            "description": description,
+            "timestamp": format_date_iso(utcnow()),
+            "severity": severity.value,
+        }
+
+        # Add optional fields if provided
+        if ip_address:
+            log_data["ip_address"] = ip_address
+
+        # Add any additional metadata
+        if metadata:
+            log_data.update(metadata)
+
+        # Log the message at the appropriate level
+        log_message = json.dumps(log_data)
+        if success:
+            self.__class__._logger.info(f"AUTH_EVENT: {log_message}")
+        else:
+            self.__class__._logger.warning(f"AUTH_EVENT: {log_message}")
+
+        # Log the transaction for persistent storage
+        self.__class__.log_transaction(log_data)
+
+
+# Function wrappers for backward compatibility
+def log_phi_access(
+    user_id: str,
+    patient_id: str,
+    action: str,
+    details: Optional[Dict[str, Any]] = None,
 ) -> None:
-    """
-    Log PHI access for audit purposes.
-
-    This is an alias for AuditLogger.log_phi_access to maintain compatibility
-    with imports from different parts of the codebase.
-
-    Args:
-        user_id: ID of the user accessing the PHI
-        patient_id: ID of the patient whose PHI was accessed
-        action: Type of access (read, write, delete)
-        details: Additional details about the access
-    """
-    return AuditLogger.log_phi_access(user_id, patient_id, action, details)
+    """Backward-compatible function for logging PHI access."""
+    logger = AuditLogger()
+    return logger.log_phi_access(
+        actor_id=user_id,
+        patient_id=patient_id,
+        action=action,
+        metadata=details,
+    )
 
 
-def log_security_event(*args, **kwargs):  # type: ignore[missing-return-type-doc]
-    """Convenience alias for AuditLogger.log_security_event."""
-    return AuditLogger.log_security_event(*args, **kwargs)
+def log_security_event(
+    event_type: str,
+    user_id: Optional[str] = None,
+    details: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Backward-compatible function for logging security events."""
+    logger = AuditLogger()
+    return logger.log_security_event(
+        event_type=event_type,
+        user_id=user_id,
+        metadata=details,
+    )
 
 
-# Explicit re‑export so ``from app.infrastructure.logging.audit_logger import
-# log_phi_access`` resolves correctly without requiring an intermediate import
-# of *AuditLogger*.
+def log_auth_event(
+    event_type: str,
+    user_id: str,
+    success: bool,
+    description: str,
+    ip_address: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Function for logging authentication events."""
+    logger = AuditLogger()
+    return logger.log_auth_event(
+        event_type=event_type,
+        user_id=user_id,
+        success=success,
+        description=description,
+        ip_address=ip_address,
+        metadata=metadata,
+    )
 
+
+# Explicit re-export so external modules can import these functions
+# without requiring an intermediate import of AuditLogger
 __all__ = [
     "AuditEventType",
     "AuditLogger",
     "AuditSeverity",
     "IAuditLogger",
-    "log_audit_event",
+    "log_auth_event",
     "log_phi_access",
     "log_security_event",
 ]
