@@ -14,7 +14,7 @@ from app.infrastructure.repositories.sqla.user_repository import SQLAlchemyUserR
 from app.presentation.api.dependencies.db_session import get_db_session
 
 
-def get_user_repository() -> IUserRepository:
+def get_user_repository():
     """
     Provides a user repository implementation.
     
@@ -28,4 +28,7 @@ def get_user_repository() -> IUserRepository:
 
 
 # Type annotation for dependency injection
-UserRepositoryDep = Annotated[IUserRepository, Depends(get_user_repository)]
+# Use concrete implementation for FastAPI compatibility while preserving
+# clean architecture inside the application
+from app.infrastructure.repositories.sqla.user_repository import SQLAlchemyUserRepository
+UserRepositoryDep = Annotated[SQLAlchemyUserRepository, Depends(get_user_repository)]

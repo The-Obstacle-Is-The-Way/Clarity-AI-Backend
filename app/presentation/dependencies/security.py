@@ -18,7 +18,7 @@ _redis_token_blacklist_repository_instance: RedisTokenBlacklistRepository | None
 
 async def get_token_blacklist_repository(
     cache_service: CacheService = Depends(get_cache_service),
-) -> ITokenBlacklistRepository:
+) -> RedisTokenBlacklistRepository:
     """
     Dependency provider for Token Blacklist Repository.
 

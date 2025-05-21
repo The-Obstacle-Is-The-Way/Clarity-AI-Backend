@@ -17,7 +17,7 @@ from app.presentation.api.dependencies.token_blacklist import get_token_blacklis
 from app.presentation.api.dependencies.user_repository import get_user_repository
 
 
-def get_jwt_service_from_request(request: Request) -> IJwtService:
+def get_jwt_service_from_request(request: Request):
     """
     Provides a fully configured JWT service with all required dependencies.
     
@@ -44,4 +44,7 @@ def get_jwt_service_from_request(request: Request) -> IJwtService:
 
 
 # Type annotation for dependency injection
-JwtServiceDep = Annotated[IJwtService, Depends(get_jwt_service_from_request)]
+# Use concrete implementation for FastAPI compatibility while preserving
+# clean architecture inside the application
+from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
+JwtServiceDep = Annotated[JWTServiceImpl, Depends(get_jwt_service_from_request)]

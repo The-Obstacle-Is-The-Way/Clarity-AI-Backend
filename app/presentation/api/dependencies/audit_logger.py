@@ -13,7 +13,7 @@ from app.core.interfaces.services.audit_logger_interface import IAuditLogger
 from app.infrastructure.logging.audit_logger import AuditLogger
 
 
-def get_audit_logger() -> IAuditLogger:
+def get_audit_logger():
     """
     Provides an audit logger implementation.
     
@@ -26,4 +26,7 @@ def get_audit_logger() -> IAuditLogger:
 
 
 # Type annotation for dependency injection
-AuditLoggerDep = Annotated[IAuditLogger, Depends(get_audit_logger)]
+# Use concrete implementation for FastAPI compatibility while preserving
+# clean architecture inside the application
+from app.infrastructure.logging.audit_logger import AuditLogger
+AuditLoggerDep = Annotated[AuditLogger, Depends(get_audit_logger)]

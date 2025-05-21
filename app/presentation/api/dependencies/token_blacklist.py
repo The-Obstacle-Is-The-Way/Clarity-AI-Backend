@@ -13,7 +13,7 @@ from app.core.interfaces.repositories.token_blacklist_repository_interface impor
 from app.infrastructure.repositories.memory_token_blacklist_repository import MemoryTokenBlacklistRepository
 
 
-def get_token_blacklist_repository() -> ITokenBlacklistRepository:
+def get_token_blacklist_repository():
     """
     Provides a token blacklist repository implementation.
     
@@ -29,4 +29,7 @@ def get_token_blacklist_repository() -> ITokenBlacklistRepository:
 
 
 # Type annotation for dependency injection
-TokenBlacklistRepositoryDep = Annotated[ITokenBlacklistRepository, Depends(get_token_blacklist_repository)]
+# Use concrete implementation for FastAPI compatibility while preserving
+# clean architecture inside the application
+from app.infrastructure.repositories.memory_token_blacklist_repository import MemoryTokenBlacklistRepository
+TokenBlacklistRepositoryDep = Annotated[MemoryTokenBlacklistRepository, Depends(get_token_blacklist_repository)]
