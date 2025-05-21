@@ -920,7 +920,6 @@ class JWTService(IJwtService):
             verify_exp = options.get("verify_exp", True)
             if verify_exp and token_payload.exp < datetime.now(timezone.utc).timestamp():  # Compare with current timestamp
                 logger.warning(f"Token with JTI {token_payload.jti} has expired")
-{{ ... }}
                 raise TokenExpiredError("Token has expired")
 
             # Check if token is blacklisted
