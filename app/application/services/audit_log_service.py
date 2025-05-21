@@ -113,6 +113,8 @@ class AuditLogService(IAuditLogger):
             action=action,
             status=status,
             details=details or {},
+            resource_type=details.get("resource_type") if details else None,
+            resource_id=details.get("resource_id") if details else None,
             ip_address=client_info.get("ip_address") if client_info else None,
         )
         
@@ -582,7 +584,7 @@ class AuditLogService(IAuditLogger):
         
         # Check if access frequency exceeds threshold
         # In a real system, this would be configurable and more sophisticated
-        if len(recent_accesses) > 30:  # More than 30 accesses in 1 minute is suspicious
+        if len(recent_accesses) > 10:  # More than 10 accesses in 1 minute is suspicious
             # Log an anomaly event
             anomaly_detail = {
                 "type": "velocity",

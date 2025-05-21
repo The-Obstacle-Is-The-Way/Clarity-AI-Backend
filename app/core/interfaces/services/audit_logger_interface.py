@@ -40,6 +40,9 @@ class AuditEventType(str, Enum):
     DATA_DELETION = "DATA_DELETION"
     DATA_EXPORT = "DATA_EXPORT"
     
+    # Security events
+    SECURITY_ALERT = "SECURITY_ALERT"  # Added for security anomaly detection
+    
     # System events
     SYSTEM_STARTUP = "SYSTEM_STARTUP"
     SYSTEM_SHUTDOWN = "SYSTEM_SHUTDOWN"
