@@ -44,12 +44,12 @@ def mock_settings() -> Settings:
     mock_secret_key.get_secret_value.return_value = TEST_SECRET_KEY
     
     # Configure the mock settings with test values
-    settings.JWT_SECRET_KEY = mock_secret_key
-    settings.JWT_ALGORITHM = TEST_ALGORITHM
-    settings.ACCESS_TOKEN_EXPIRE_MINUTES = TEST_ACCESS_EXPIRE_MINUTES
-    settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS = TEST_REFRESH_EXPIRE_DAYS
-    settings.JWT_ISSUER = TEST_ISSUER
-    settings.JWT_AUDIENCE = TEST_AUDIENCE
+    settings.jwt_secret_key = TEST_SECRET_KEY
+    settings.jwt_algorithm = TEST_ALGORITHM
+    settings.access_token_expire_minutes = TEST_ACCESS_EXPIRE_MINUTES
+    settings.refresh_token_expire_minutes = TEST_REFRESH_EXPIRE_DAYS * 24 * 60  # Convert days to minutes
+    settings.token_issuer = TEST_ISSUER
+    settings.token_audience = TEST_AUDIENCE
     
     return settings
 
@@ -83,17 +83,19 @@ def jwt_service_impl(
     mock_audit_logger: IAuditLogger
 ) -> JWTServiceImpl:
     """Create a JWT service implementation for testing."""
+    # Update Settings mock with test values
+    mock_settings.jwt_secret_key = TEST_SECRET_KEY
+    mock_settings.jwt_algorithm = TEST_ALGORITHM
+    mock_settings.access_token_expire_minutes = TEST_ACCESS_EXPIRE_MINUTES
+    mock_settings.refresh_token_expire_minutes = TEST_REFRESH_EXPIRE_DAYS * 24 * 60  # Convert days to minutes
+    mock_settings.token_issuer = TEST_ISSUER
+    mock_settings.token_audience = TEST_AUDIENCE
+    
     return JWTServiceImpl(
-        secret_key=TEST_SECRET_KEY,
-        algorithm=TEST_ALGORITHM,
-        access_token_expire_minutes=TEST_ACCESS_EXPIRE_MINUTES,
-        refresh_token_expire_days=TEST_REFRESH_EXPIRE_DAYS,
+        settings=mock_settings,
         user_repository=mock_user_repository,
         token_blacklist_repository=mock_token_blacklist_repository,
-        audit_logger=mock_audit_logger,
-        issuer=TEST_ISSUER,
-        audience=TEST_AUDIENCE,
-        settings=mock_settings
+        audit_logger=mock_audit_logger
     )
 
 
@@ -116,9 +118,9 @@ class TestJWTServiceImpl:
         assert jwt_service_impl.secret_key == TEST_SECRET_KEY
         assert jwt_service_impl.algorithm == TEST_ALGORITHM
         assert jwt_service_impl.access_token_expire_minutes == TEST_ACCESS_EXPIRE_MINUTES
-        assert jwt_service_impl.refresh_token_expire_days == TEST_REFRESH_EXPIRE_DAYS
-        assert jwt_service_impl.issuer == TEST_ISSUER
-        assert jwt_service_impl.audience == TEST_AUDIENCE
+        assert jwt_service_impl.refresh_token_expire_minutes == TEST_REFRESH_EXPIRE_DAYS * 24 * 60  # Days converted to minutes
+        assert jwt_service_impl.token_issuer == TEST_ISSUER
+        assert jwt_service_impl.token_audience == TEST_AUDIENCE
 
     def test_create_access_token(self, jwt_service_impl: JWTServiceImpl, user_claims: Dict[str, Any]):
         """Test creating an access token with user claims."""
