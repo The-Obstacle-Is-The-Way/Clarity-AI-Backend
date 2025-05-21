@@ -41,6 +41,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             redis_service: Redis service for storage operations
         """
         self._redis = redis_service
+        # Redis key prefixes for different blacklist types
         self._token_prefix = "blacklist:token:"
         self._jti_prefix = "blacklist:jti:"
         self._session_prefix = "blacklist:session:"
@@ -91,7 +92,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             logger.info(f"Token {jti} blacklisted until {expires_at.isoformat()}, reason: {reason}")
         except Exception as e:
             logger.error(f"Failed to blacklist token: {e!s}")
-            raise RepositoryException(f"Failed to blacklist token: {e!s}")
+            raise RepositoryException(f"Failed to blacklist token: {e!s}") from e
 
     async def is_blacklisted(self, token: str) -> bool:
         """
@@ -164,7 +165,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             logger.info(f"Session {session_id} blacklisted for 30 days")
         except Exception as e:
             logger.error(f"Failed to blacklist session: {e!s}")
-            raise RepositoryException(f"Failed to blacklist session: {e!s}")
+            raise RepositoryException(f"Failed to blacklist session: {e!s}") from e
 
     async def remove_expired_entries(self) -> int:
         """
@@ -197,17 +198,117 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         logger.debug("Expired token cleanup not needed with Redis TTL - handled automatically")
         return 0
 
-    def _hash_token(self, token: str) -> str:
+    async def hash_token(self, token: str) -> str:
         """
-        Create a hash of the token for storage.
-
-        Using a hash instead of the raw token improves security and
-        reduces storage space requirements.
+        Create a secure hash of a token for storage.
 
         Args:
             token: The token to hash
 
         Returns:
-            SHA-256 hash of the token
+            str: Hashed token value for secure storage
         """
-        return hashlib.sha256(token.encode()).hexdigest()
+        # Use SHA-256 for token hashing - secure and suitable for tokens
+        hash_obj = hashlib.sha256(token.encode())
+        return hash_obj.hexdigest()
+
+    async def get_all_blacklisted(self) -> list[dict]:
+        """
+        Get all blacklisted tokens.
+        
+        Returns:
+            List[dict]: List of dictionaries containing token_jti and expires_at
+        """
+        try:
+            # Get all keys matching the JTI pattern
+            jti_keys = await self._redis.keys(f"{self._jti_prefix}*")
+            
+            result = []
+            for key in jti_keys:
+                # Extract the JTI from the key
+                jti = key.replace(self._jti_prefix, "")
+                
+                # Get the expiration timestamp
+                expires_at_str = await self._redis.get(key)
+                if expires_at_str:
+                    try:
+                        expires_at = datetime.fromisoformat(expires_at_str)
+                        result.append({"token_jti": jti, "expires_at": expires_at})
+                    except (ValueError, TypeError):
+                        logger.warning(f"Invalid expiration format for JTI {jti}")
+            
+            return result
+        except Exception as e:
+            logger.error(f"Error retrieving blacklisted tokens: {e!s}")
+            raise RepositoryException(f"Failed to retrieve blacklisted tokens: {e!s}") from e
+
+    async def remove_expired(self) -> int:
+        """
+        Remove expired tokens from the blacklist to maintain performance.
+        
+        Returns:
+            int: Number of expired tokens removed from blacklist
+        """
+        try:
+            # Current time for comparison
+            now = datetime.now(UTC)
+            
+            # Get all blacklisted tokens
+            all_tokens = await self.get_all_blacklisted()
+            
+            # Filter for expired tokens
+            expired_tokens = [token for token in all_tokens if token["expires_at"] < now]
+            
+            # Remove each expired token
+            removed_count = 0
+            for token in expired_tokens:
+                jti = token["token_jti"]
+                removed = await self.remove_from_blacklist(jti)
+                if removed:
+                    removed_count += 1
+            
+            logger.info(f"Removed {removed_count} expired tokens from blacklist")
+            return removed_count
+        except Exception as e:
+            logger.error(f"Error removing expired tokens: {e!s}")
+            # Don't raise an exception here as this is typically called in background tasks
+            return 0
+
+    async def remove_from_blacklist(self, token_jti: str) -> bool:
+        """
+        Remove a specific token from the blacklist.
+        
+        Args:
+            token_jti: The unique JWT ID to remove
+            
+        Returns:
+            bool: True if token was removed, False if not found
+        """
+        try:
+            # Check if JTI exists in blacklist
+            jti_key = f"{self._jti_prefix}{token_jti}"
+            exists = await self._redis.exists(jti_key)
+            
+            if not exists:
+                return False
+                
+            # Remove the JTI entry
+            await self._redis.delete(jti_key)
+            
+            # Also try to remove any token entry if it exists
+            # Note: This is a best-effort approach since we may not have the original token
+            token_pattern = f"{self._token_prefix}*"
+            token_keys = await self._redis.keys(token_pattern)
+            
+            for key in token_keys:
+                # Check if this token entry corresponds to our JTI
+                stored_jti = await self._redis.get(key)
+                if stored_jti == token_jti:
+                    await self._redis.delete(key)
+                    break
+            
+            logger.info(f"Removed token with JTI {token_jti} from blacklist")
+            return True
+        except Exception as e:
+            logger.error(f"Error removing token from blacklist: {e!s}")
+            raise RepositoryException(f"Failed to remove token from blacklist: {e!s}") from e
