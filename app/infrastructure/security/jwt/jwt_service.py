@@ -6,17 +6,14 @@ HIPAA security standards and best practices for healthcare applications.
 """
 
 import logging
-from calendar import timegm
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Union
-
+from typing import Any, ClassVar, Dict, List, Optional, Union
 from uuid import UUID, uuid4
 
-from jose import jwt as jose_jwt
-from jose.exceptions import ExpiredSignatureError, JWTClaimsError, JWTError, JWSError
+from jose.exceptions import ExpiredSignatureError, JWTError
 from jose.jwt import decode as jwt_decode, encode as jwt_encode
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel
 
 # For type annotations and interface definitions
 try:
@@ -65,9 +62,11 @@ class TokenPayload(BaseModel):
     iat: Optional[int] = None  # Issued At time
     jti: Optional[str] = None  # JWT ID
 
-    # Custom claims
-    type: Optional[str] = None  # Token type ("access", "refresh")
-    refresh: bool = False  # Is this a refresh token
+    # Constants for class-wide use
+    TOKEN_TYPE_CLAIM: ClassVar[str] = "type"  # Standardized claim for token type
+    ACCESS_TOKEN_TYPE: ClassVar[str] = "access"
+    REFRESH_TOKEN_TYPE: ClassVar[str] = "refresh"
+    RESET_TOKEN_TYPE: ClassVar[str] = "reset"  # Is this a refresh token
     scope: Optional[str] = None  # Token scope
     roles: List[str] = []  # User roles
 
@@ -95,6 +94,25 @@ class JWTService(IJwtService):
     # In-memory blacklist fallback
     _token_blacklist = {}
     
+    # Standard algorithm configs - add more as needed for tests
+    ALGORITHMS: ClassVar[Dict[str, Dict[str, str]]] = {
+        "HS256": {
+            "description": "HMAC with SHA-256", 
+            "key_requirements": "Symmetric key (32+ bytes recommended)",
+            "security_level": "Medium",
+        },
+        "HS384": {
+            "description": "HMAC with SHA-384",
+            "key_requirements": "Symmetric key (48+ bytes recommended)",
+            "security_level": "Medium-High",
+        },
+        "HS512": {
+            "description": "HMAC with SHA-512",
+            "key_requirements": "Symmetric key (64+ bytes recommended)",
+            "security_level": "High",
+        },
+    }
+
     def __init__(
         self,
         settings: Any = None,
@@ -129,10 +147,11 @@ class JWTService(IJwtService):
         self.audit_logger = audit_logger
         
         # Initialize token family tracking for refresh token rotation
-        self._token_families: dict[str, dict] = {}
+        self._token_families: Dict[str, Dict] = {}
         
         # Initialize in-memory token blacklist
-        self._token_blacklist: dict[str, dict] = {}
+        # In-memory blacklist for immediate revocation
+        self._token_blacklist: Dict[str, Dict[str, Any]] = {}
         
         # Get secret key from parameters or settings
         if secret_key:
@@ -185,19 +204,21 @@ class JWTService(IJwtService):
     def create_access_token(
         self,
         subject: str,
-        additional_claims: Optional[Dict[str, Any]] = None,
-        expires_delta: Optional[timedelta] = None,
-        expires_delta_minutes: Optional[int] = None,
+        additional_claims: Dict[str, Any] | None = None,
+        expires_delta: timedelta | None = None,
+        expires_delta_minutes: int | None = None,
     ) -> str:
         """Creates a new access token."""
         # Generate a unique JTI for the token
         jti = str(uuid4())
         
-        # Set the expiration time
-        if expires_delta_minutes:
-            expires_delta = timedelta(minutes=expires_delta_minutes)
-        if expires_delta is None:
-            expires_delta = timedelta(minutes=self.access_token_expire_minutes)
+        # Get the expiration time
+        if expires_delta_minutes is not None:
+            expires_delta = timedelta(minutes=float(expires_delta_minutes))
+        if not expires_delta:
+            # Default from settings or fallback value
+            minutes = getattr(self.settings, "ACCESS_TOKEN_EXPIRE_MINUTES", None) or 30
+            expires_delta = timedelta(minutes=float(minutes))
             
         # Create claim set
         now = datetime.now(timezone.utc)
@@ -242,19 +263,21 @@ class JWTService(IJwtService):
     def create_refresh_token(
         self,
         subject: str,
-        additional_claims: Optional[Dict[str, Any]] = None,
-        expires_delta: Optional[timedelta] = None,
-        expires_delta_minutes: Optional[int] = None,
+        additional_claims: Dict[str, Any] | None = None,
+        expires_delta: timedelta | None = None,
+        expires_delta_days: int | None = None,
     ) -> str:
         """Creates a new refresh token."""
         # Generate a unique JTI for the token
         jti = str(uuid4())
         
-        # Set the expiration time
-        if expires_delta_minutes:
-            expires_delta = timedelta(minutes=expires_delta_minutes)
-        elif expires_delta is None:
-            expires_delta = timedelta(days=self.refresh_token_expire_days)
+        # Get the expiration time
+        if expires_delta_days is not None:
+            expires_delta = timedelta(days=float(expires_delta_days))
+        if not expires_delta:
+            # Default from settings or fallback value
+            days = getattr(self.settings, "REFRESH_TOKEN_EXPIRE_DAYS", None) or 7
+            expires_delta = timedelta(days=float(days))
             
         # Create claim set
         now = datetime.now(timezone.utc)
@@ -442,16 +465,18 @@ class JWTService(IJwtService):
             logger.error(f"Error retrieving user from token: {e}")
             raise InvalidTokenError(str(e))
             
-    def verify_refresh_token(self, refresh_token: str) -> Any:
+    def verify_refresh_token(
+        self, token: str, enforce_refresh_type: bool = True
+    ) -> Dict[str, Any]:
         """Verify that a token is a valid refresh token."""
         # Decode the token
         try:
             # Use standard options 
             options = {"verify_signature": True, "verify_exp": True}
-            payload = self.decode_token(refresh_token, options=options)
+            payload = self.decode_token(token, options=options)
 
             # Check that it's a refresh token
-            if not payload.get("refresh", False) and payload.get("type") != "refresh":
+            if enforce_refresh_type and not payload.get("refresh", False) and payload.get("type") != "refresh":
                 raise InvalidTokenError("Not a refresh token")
                 
             # Check token family for reuse
