@@ -611,6 +611,314 @@ class JWTService(IJwtService):
             bool: True if the token is a refresh token
         """
         return payload.get("refresh", False)
+        
+    def refresh_access_token(self, refresh_token: str) -> str:
+        """
+        Create a new access token using a valid refresh token.
+
+        Args:
+            refresh_token: Valid refresh token
+
+        Returns:
+            str: New access token
+
+        Raises:
+            InvalidTokenError: If the refresh token is invalid or expired
+        """
+        try:
+            # Verify the refresh token
+            payload = self.verify_refresh_token(refresh_token)
+            
+            # Extract user ID and create a new access token
+            user_id = payload.get("sub")
+            if not user_id:
+                raise InvalidTokenError("Invalid token: missing subject claim")
+
+            # Create a new access token with the same user ID
+            data = {"sub": user_id}
+            # Copy over any preserved claims
+            for claim in self.preserved_claims:
+                if claim in payload and claim not in self.exclude_from_refresh:
+                    data[claim] = payload[claim]
+                    
+            new_access_token = self.create_access_token(data=data)
+            
+            # Log the security event
+            if self.audit_logger:
+                self.audit_logger.log_security_event(
+                    event_type=AuditEventType.TOKEN_CREATED,
+                    description="Access token created from refresh token",
+                    user_id=user_id,
+                    severity=AuditSeverity.INFO,
+                    metadata={"user_id": user_id}
+                )
+
+            return new_access_token
+
+        except Exception as e:
+            logger.warning(f"Failed to refresh token: {e}")
+            raise InvalidTokenError("Invalid or expired refresh token")
+            
+    def verify_refresh_token(self, refresh_token: str) -> dict[str, Any]:
+        """Verify that a token is a valid refresh token.
+
+        Args:
+            refresh_token: The refresh token to verify
+
+        Returns:
+            dict: The decoded token payload
+
+        Raises:
+            InvalidTokenError: If the token is not a refresh token or otherwise invalid
+            TokenExpiredError: If the token is expired
+            TokenBlacklistedException: If the token is blacklisted
+        """
+        # Decode the token
+        try:
+            # Use standard options 
+            options = {"verify_signature": True, "verify_exp": True}
+            payload = self.decode_token(refresh_token, options=options)
+
+            # Check that it's a refresh token
+            if not self._is_refresh_token(payload):
+                raise InvalidTokenError("Not a refresh token")
+                
+            # Check token family for reuse
+            if "family" in payload and payload["family"] in self._token_families:
+                latest_jti = self._token_families[payload["family"]]
+                if payload.get("jti") != latest_jti:
+                    # This is a reused token from this family
+                    raise InvalidTokenError("Refresh token reuse detected")
+
+            return payload
+
+        except TokenExpiredError:
+            # Specifically handle expired refresh tokens
+            raise TokenExpiredError("Refresh token has expired")
+        except InvalidTokenError:
+            # Pass through our specific exception type
+            raise
+        except Exception as e:
+            logger.error(f"Error verifying refresh token: {e}")
+            raise InvalidTokenError(f"Invalid refresh token: {e}")
+            
+    async def get_user_from_token(self, token: str) -> Any:
+        """Get the user associated with a token.
+
+        Args:
+            token: JWT token
+
+        Returns:
+            User: The user object associated with the token
+
+        Raises:
+            InvalidTokenError: If the user is not found or token is invalid
+        """
+        try:
+            # Decode the token first to validate it's not garbage
+            payload = self.decode_token(token)
+            user_id = payload.get("sub")
+            if not user_id:
+                logger.warning("Token doesn't contain 'sub' claim with user ID")
+                raise InvalidTokenError("Invalid token: missing user ID")
+
+            # Look up user using repository
+            if self.user_repository:
+                user = await self.user_repository.get_by_id(user_id)
+                if not user:
+                    logger.warning(f"User {user_id} from token not found in database")
+                    if self.audit_logger:
+                        await self.audit_logger.log_security_event(
+                            AuditEventType.TOKEN_REJECTED,
+                            "Invalid token: user not found",
+                            user_id=user_id,
+                            severity=AuditSeverity.WARNING,
+                            status="failure",
+                        )
+                    raise InvalidTokenError("Invalid token: user not found")
+                return user
+            else:
+                logger.warning("No user repository available to look up user")
+                return {"id": user_id}
+                
+        except Exception as e:
+            logger.error(f"Error retrieving user from token: {e}")
+            raise InvalidTokenError(str(e))
+            
+    def get_token_payload_subject(self, payload: dict) -> str:
+        """Get the subject (user ID) from a token payload.
+        
+        Args:
+            payload: The token payload containing claims
+            
+        Returns:
+            The subject (user ID) or None if not present
+        """
+        return payload.get("sub", "")
+        
+    def revoke_token(self, token: str) -> bool:
+        """Revokes a token by adding its JTI to the blacklist.
+
+        Args:
+            token: The JWT token to revoke
+            
+        Returns:
+            bool: True if the token was successfully revoked, False otherwise
+        """
+        try:
+            # Decode the token to get the JTI
+            payload = self.decode_token(token, options={"verify_signature": True, "verify_exp": False})
+            jti = payload.get("jti")
+            if not jti:
+                logger.warning("Token has no JTI, cannot be blacklisted")
+                return False
+
+            # Get expiration time and user ID
+            exp = payload.get("exp", int(datetime.now(timezone.utc).timestamp()) + 3600)
+            user_id = payload.get("sub", "unknown")
+
+            # Add to blacklist
+            if self.token_blacklist_repository:
+                # Convert exp to datetime
+                expiry_datetime = datetime.fromtimestamp(exp, tz=timezone.utc)
+                
+                # Log the security event
+                if self.audit_logger:
+                    self.audit_logger.log_security_event(
+                        event_type=AuditEventType.TOKEN_REVOKED,
+                        description="Token revoked",
+                        user_id=user_id,
+                        severity=AuditSeverity.INFO,
+                        metadata={"jti": jti}
+                    )
+                    
+                # Store asynchronously in blacklist repository if we're in an async context
+                # In a sync context, we'll handle this by adding to in-memory blacklist
+                import asyncio
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        # We're in an async context
+                        loop.create_task(self.token_blacklist_repository.add_to_blacklist(
+                            token="",  # We don't store the actual token, just the JTI
+                            jti=jti,
+                            expires_at=expiry_datetime,
+                            reason="Token revoked"
+                        ))
+                    else:
+                        # We can run the coroutine in the loop
+                        loop.run_until_complete(
+                            self.token_blacklist_repository.add_to_blacklist(
+                                token="",  # We don't store the actual token, just the JTI
+                                jti=jti,
+                                expires_at=expiry_datetime,
+                                reason="Token revoked"
+                            )
+                        )
+                except (RuntimeError, ImportError, Exception) as e:
+                    # No event loop available or other error, use in-memory fallback
+                    logger.error(f"Error using token blacklist repository: {e}")
+                    self._token_blacklist[jti] = True
+            else:
+                # Fallback to in-memory blacklist
+                self._token_blacklist[jti] = True
+
+            logger.info(f"Token with JTI {jti} has been blacklisted")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error revoking token: {e}")
+            return False
+            
+    def logout(self, token: str) -> bool:
+        """Log out a user by revoking their token.
+
+        Args:
+            token: Token to revoke
+
+        Returns:
+            bool: True if logout was successful, False otherwise
+        """
+        try:
+            # Try to decode the token first to get user information for audit logging
+            try:
+                payload = self.decode_token(token, options={"verify_signature": True, "verify_exp": False})
+                user_id = payload.get("sub", "unknown")
+            except Exception:
+                # If token is invalid, still try to revoke it but without user info
+                user_id = "unknown"
+                
+            # Revoke the token
+            result = self.revoke_token(token)
+            
+            # Log the security event
+            if self.audit_logger:
+                self.audit_logger.log_security_event(
+                    event_type=AuditEventType.TOKEN_REVOKED,
+                    description="User logged out",
+                    user_id=user_id,
+                    severity=AuditSeverity.INFO,
+                    status="success" if result else "failure"
+                )
+                
+            return result
+        except Exception as e:
+            logger.error(f"Error during logout: {e}")
+            return False
+            
+    def blacklist_session(self, session_id: str) -> bool:
+        """Blacklist all tokens associated with a session ID.
+        
+        Args:
+            session_id: The session ID to blacklist
+            
+        Returns:
+            bool: True if the session was successfully blacklisted, False otherwise
+        """
+        if not session_id:
+            logger.warning("Empty session ID provided for blacklisting")
+            return False
+            
+        try:
+            if self.token_blacklist_repository:
+                # Use repository to store session in blacklist
+                if hasattr(self.token_blacklist_repository, "blacklist_session"):
+                    # This would normally be awaited in an async context
+                    import asyncio
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            # We're in an async context
+                            loop.create_task(self.token_blacklist_repository.blacklist_session(session_id))
+                            logger.info(f"Scheduled blacklisting of session {session_id}")
+                        else:
+                            # We can run the coroutine in the loop
+                            loop.run_until_complete(self.token_blacklist_repository.blacklist_session(session_id))
+                            logger.info(f"Blacklisted session {session_id}")
+                    except (RuntimeError, ImportError, Exception) as e:
+                        logger.error(f"Error blacklisting session {session_id}: {e}")
+                        return False
+                else:
+                    logger.warning("Repository doesn't implement blacklist_session")
+                    return False
+            else:
+                logger.warning(f"Cannot blacklist session {session_id} - no repository configured")
+                return False
+                
+            # Log the event
+            if self.audit_logger:
+                self.audit_logger.log_security_event(
+                    event_type=AuditEventType.TOKEN_REVOKED,
+                    description="Session blacklisted",
+                    severity=AuditSeverity.INFO,
+                    metadata={"session_id": session_id}
+                )
+                
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error blacklisting session {session_id}: {e}")
+            return False
 
 # Define dependency injection function
 def get_jwt_service(
