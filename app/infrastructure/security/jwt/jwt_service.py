@@ -39,9 +39,13 @@ from app.domain.exceptions import (
 
 from app.domain.enums.token_type import TokenType
 
-# Define the TokenBlacklistedException if it doesn't exist in domain.exceptions
+# Define custom exceptions if they don't exist in domain.exceptions
 class TokenBlacklistedError(InvalidTokenError):
     """Exception raised when a token is blacklisted."""
+    pass
+
+class TokenManagementError(InvalidTokenError):
+    """Exception raised for token management operations failures."""
     pass
 
 # Initialize logger
@@ -123,7 +127,13 @@ class JWTService(IJwtService):
         self.settings = settings
         self.user_repository = user_repository
         self.audit_logger = audit_logger
-
+        
+        # Initialize token family tracking for refresh token rotation
+        self._token_families: dict[str, dict] = {}
+        
+        # Initialize in-memory token blacklist
+        self._token_blacklist: dict[str, dict] = {}
+        
         # Get secret key from parameters or settings
         if secret_key:
             self.secret_key = secret_key
@@ -154,9 +164,6 @@ class JWTService(IJwtService):
         # Get optional issuer and audience
         self.issuer = issuer or getattr(settings, "JWT_ISSUER", None)
         self.audience = audience or getattr(settings, "JWT_AUDIENCE", None)
-
-        # Initialize token family tracking for refresh token rotation
-        self._token_families = {}
         
         logger.info(f"JWT service initialized with algorithm {self.algorithm}")
 
@@ -697,6 +704,8 @@ class JWTService(IJwtService):
             logger.error(f"Error blacklisting token: {e}")
             raise TokenManagementError(f"Failed to blacklist token: {self._sanitize_error_message(str(e))}") from e
         
+    # This is a helper method that was refactored into the actual implementation below
+    # Keeping the method signature for backward compatibility
     async def is_token_blacklisted(self, token: str) -> bool:
         """Check if a token is blacklisted.
         
@@ -706,27 +715,7 @@ class JWTService(IJwtService):
         Returns:
             True if the token is blacklisted, False otherwise
         """
-        try:
-            # Decode the token to get the JTI
-            payload = self.decode_token(token, verify_signature=True)
-            jti = payload.get("jti")
-            
-            if not jti:
-                logger.warning("Token has no JTI claim, cannot check blacklist")
-                return False
-                
-            # Check in-memory blacklist
-            if jti in self._token_blacklist:
-                return True
-                
-            # Check repository if available
-            if self.token_blacklist_repository:
-                return await self.token_blacklist_repository.is_blacklisted(jti)
-                
-            return False
-        except Exception as e:
-            logger.error(f"Error checking if token is blacklisted: {e}")
-            return False
+        return await self._is_token_blacklisted_internal(token)
                 
     async def revoke_token_by_jti(self, jti: str, expires_at: datetime, reason: str = "Token revoked") -> None:
         """Revoke a token using its JTI.
@@ -766,8 +755,15 @@ class JWTService(IJwtService):
             logger.error(f"Error revoking token JTI {jti}: {e}")
             raise TokenManagementError(f"Failed to revoke token: {self._sanitize_error_message(str(e))}") from e
             
-    async def is_token_blacklisted(self, token: str) -> bool:
-        """Check if a token has been blacklisted."""
+    async def _is_token_blacklisted_internal(self, token: str) -> bool:
+        """Internal implementation to check if a token is blacklisted.
+        
+        Args:
+            token: The JWT token to check
+            
+        Returns:
+            True if the token is blacklisted, False otherwise
+        """
         try:
             # Decode the token to get the JTI
             payload = self.decode_token(token, options={"verify_signature": True, "verify_exp": False})
