@@ -841,9 +841,9 @@ from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
 def get_jwt_service(
     settings: Any, 
     user_repository: Any = None, 
-    token_blacklist_repository: Optional[ITokenBlacklistRepository] = None,
-    audit_logger: Optional[IAuditLogger] = None
-) -> JWTService:
+    token_blacklist_repository = None,  # Remove type annotation for FastAPI compatibility
+    audit_logger = None  # Remove type annotation for FastAPI compatibility
+):
     """Dependency injection factory for JWT service."""
     # Get secret key with proper error handling
     secret_key = None
