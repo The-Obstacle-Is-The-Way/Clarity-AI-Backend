@@ -28,6 +28,7 @@ from app.config.settings import Settings  # Import actual Settings
 from app.domain.exceptions import InvalidTokenError, TokenExpiredError
 
 # Corrected imports for clean architecture implementation
+from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
 from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
 from app.infrastructure.security.jwt.jwt_service import TokenPayload
 
