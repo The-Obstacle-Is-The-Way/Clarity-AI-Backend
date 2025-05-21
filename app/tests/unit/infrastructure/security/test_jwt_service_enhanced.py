@@ -99,13 +99,16 @@ def test_settings() -> Settings:
 
 @pytest.fixture
 def jwt_service(test_settings: Settings) -> JWTServiceImpl:
+    # Set required JWT settings on the settings object
+    test_settings.jwt_secret_key = TEST_SECRET_KEY
+    test_settings.jwt_algorithm = TEST_ALGORITHM
+    test_settings.access_token_expire_minutes = TEST_ACCESS_EXPIRE_MINUTES
+    test_settings.refresh_token_expire_minutes = TEST_REFRESH_EXPIRE_DAYS * 24 * 60  # Convert days to minutes
+    test_settings.token_issuer = TEST_ISSUER
+    test_settings.token_audience = TEST_AUDIENCE
+    
     return JWTServiceImpl(
-        secret_key=TEST_SECRET_KEY,
-        algorithm=TEST_ALGORITHM,
-        access_token_expire_minutes=TEST_ACCESS_EXPIRE_MINUTES,
-        refresh_token_expire_days=TEST_REFRESH_EXPIRE_DAYS,
-        issuer=TEST_ISSUER,
-        audience=TEST_AUDIENCE,
+        settings=test_settings,
         token_blacklist_repository=None,
         user_repository=None,
         audit_logger=None,
