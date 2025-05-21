@@ -625,7 +625,7 @@ class JWTService(IJwtService):
             # Regular timestamp handling for production
             try:
                 # Use timezone-aware datetime
-                now = datetime.now(UTC)
+                now = datetime.now(timezone.utc)
                 now_timestamp = int(now.timestamp())
 
                 # Determine expiration based on token type and provided override
