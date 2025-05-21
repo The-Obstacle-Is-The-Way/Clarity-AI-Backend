@@ -29,8 +29,11 @@ except ImportError:
     def jwt_encode(claims: dict[str, Any], key: str, algorithm: str, **kwargs: Any) -> str:
         return jose_jwt.encode(claims, key, algorithm=algorithm, **kwargs)
 
-    def jwt_decode(token: str, key: str, algorithms: list[str], **kwargs: Any) -> dict[str, Any]:
-        return jose_jwt.decode(token, key, algorithms=algorithms, **kwargs)
+    def jwt_decode(token: str, key: str, algorithms: list[str] = None, options: dict[str, Any] = None, **kwargs: Any) -> dict[str, Any]:
+        return jose_jwt.decode(token, key, algorithms=algorithms, options=options, **kwargs)
+
+    # Import JWTClaimsError at the module level to ensure it's available everywhere
+    JWTClaimsError = jose_jwt.JWTClaimsError
 
 
 from pydantic import BaseModel, ValidationError, computed_field
