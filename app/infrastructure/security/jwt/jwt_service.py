@@ -1034,6 +1034,17 @@ class JWTService(IJwtService):
             logger.error(f"Error retrieving user from token: {e!s}", exc_info=True)
             raise InvalidTokenError(e.args[0]) from e
 
+    def get_token_payload_subject(self, payload: TokenPayload) -> str | None:
+        """Get the subject (user ID) from a token payload.
+        
+        Args:
+            payload: The token payload containing claims
+            
+        Returns:
+            The subject (user ID) or None if not present
+        """
+        return payload.sub if hasattr(payload, "sub") else None
+        
     def verify_refresh_token(self, refresh_token: str) -> TokenPayload:
         """Verify that a token is a valid refresh token.
 
