@@ -25,18 +25,24 @@ except ImportError:
     from app.domain.entities.user import User
 
 from app.core.interfaces.services.jwt_service import IJwtService
-from app.core.settings.base import BaseAppSettings
+from app.core.config.settings import Settings
 
 # Import IAuditLogger and ITokenBlacklistRepository interfaces
 from app.core.interfaces.services.audit_logger_interface import IAuditLogger, AuditEventType, AuditSeverity
 from app.core.interfaces.repositories.token_blacklist_repository_interface import ITokenBlacklistRepository
 
-from app.core.exceptions.auth import (
-    AuthError,
+from app.domain.exceptions import (
+    AuthenticationError,
     InvalidTokenError,
-    TokenExpiredError,
-    TokenBlacklistedException
+    TokenExpiredError
 )
+
+from app.domain.enums.token_type import TokenType
+
+# Define the TokenBlacklistedException if it doesn't exist in domain.exceptions
+class TokenBlacklistedError(InvalidTokenError):
+    """Exception raised when a token is blacklisted."""
+    pass
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -617,37 +623,39 @@ class JWTService(IJwtService):
 
     async def verify_token(self, token: str) -> Dict[str, Any]:
         """Verify a JWT token's validity and return its decoded payload."""
-        # Decode and validate the token
-        payload = self.decode_token(token)
-        
-        # Check if token is blacklisted
-        jti = payload.get("jti")
-        if jti:
-            # Check in-memory blacklist first
-            if jti in self._token_blacklist:
-                raise TokenBlacklistedException("Token has been blacklisted")
-                
-            # Check repository if available
-            if self.token_blacklist_repository:
-                is_blacklisted = await self.token_blacklist_repository.is_blacklisted(jti)
-                if is_blacklisted:
-                    raise TokenBlacklistedException("Token has been blacklisted")
-        
-        return payload
-
-    # Helper method for internal use
-    async def _is_token_blacklisted(self, jti: str) -> bool:
-        """Check if a token JTI is blacklisted."""
-        # Check in-memory blacklist first
-        if jti in self._token_blacklist:
-            return True
+        try:
+            # Decode and validate the token
+            payload = self.decode_token(token)
             
-        # Check repository if available
-        if self.token_blacklist_repository:
-            return await self.token_blacklist_repository.is_blacklisted(jti)
+            # Check if token is blacklisted
+            jti = payload.get("jti")
+            if jti:
+                # Check in-memory blacklist first
+                if jti in self._token_blacklist:
+                    raise TokenBlacklistedError("Token has been blacklisted")
+                    
+                # Check repository if available
+                if self.token_blacklist_repository:
+                    is_blacklisted = await self.token_blacklist_repository.is_blacklisted(jti)
+                    if is_blacklisted:
+                        reason = "Unknown reason"
+                        blacklist_info = await self.token_blacklist_repository.get_blacklist_info(jti)
+                        if blacklist_info and "reason" in blacklist_info:
+                            reason = blacklist_info["reason"]
+                        
+                        # Raise token blacklisted exception
+                        raise TokenBlacklistedError(f"Token has been blacklisted: {reason}")
             
-        return False
-
+            return payload
+            
+        except TokenBlacklistedError:
+            # Re-raise blacklist exceptions without modification
+            raise
+        except Exception as e:
+            # Log and sanitize other errors
+            logger.error(f"Error verifying token: {e}")
+            raise InvalidTokenError(self._sanitize_error_message(str(e)))
+            
     # Implementing required abstract methods from the interface
     async def blacklist_token(self, token: str, expires_at: datetime) -> None:
         """Add a token to the blacklist to prevent its future use."""
@@ -659,7 +667,14 @@ class JWTService(IJwtService):
                 logger.warning("Token has no JTI, cannot be blacklisted")
                 raise InvalidTokenError("Token has no JTI, cannot be blacklisted")
 
-            # Add to blacklist
+            # Add to in-memory blacklist
+            self._token_blacklist[jti] = {
+                "expires_at": expires_at,
+                "reason": "Token blacklisted",
+                "blacklisted_at": datetime.now()
+            }
+            
+            # Add to blacklist repository if available
             if self.token_blacklist_repository:
                 # Add to blacklist repository
                 await self.token_blacklist_repository.add_to_blacklist(
@@ -669,24 +684,88 @@ class JWTService(IJwtService):
                     reason="Token blacklisted"
                 )
                 
-                # Log the security event
-                if self.audit_logger:
-                    self.audit_logger.log_security_event(
-                        event_type=AuditEventType.TOKEN_REVOKED,
-                        description="Token blacklisted",
-                        user_id=payload.get("sub", "unknown"),
-                        severity=AuditSeverity.INFO,
-                        metadata={"jti": jti}
-                    )
-            else:
-                # Fallback to in-memory blacklist
-                self._token_blacklist[jti] = True
-                logger.warning("Using in-memory blacklist as fallback - not suitable for production")
-
+            # Log the security event
+            if self.audit_logger:
+                self.audit_logger.log_security_event(
+                    event_type=AuditEventType.TOKEN_REVOKED,
+                    description="Token blacklisted",
+                    severity=AuditSeverity.INFO,
+                    metadata={"jti": jti}
+                )
+                
         except Exception as e:
             logger.error(f"Error blacklisting token: {e}")
-            raise InvalidTokenError(f"Failed to blacklist token: {e}")
-
+            raise TokenManagementError(f"Failed to blacklist token: {self._sanitize_error_message(str(e))}") from e
+        
+    async def is_token_blacklisted(self, token: str) -> bool:
+        """Check if a token is blacklisted.
+        
+        Args:
+            token: The JWT token to check
+            
+        Returns:
+            True if the token is blacklisted, False otherwise
+        """
+        try:
+            # Decode the token to get the JTI
+            payload = self.decode_token(token, verify_signature=True)
+            jti = payload.get("jti")
+            
+            if not jti:
+                logger.warning("Token has no JTI claim, cannot check blacklist")
+                return False
+                
+            # Check in-memory blacklist
+            if jti in self._token_blacklist:
+                return True
+                
+            # Check repository if available
+            if self.token_blacklist_repository:
+                return await self.token_blacklist_repository.is_blacklisted(jti)
+                
+            return False
+        except Exception as e:
+            logger.error(f"Error checking if token is blacklisted: {e}")
+            return False
+                
+    async def revoke_token_by_jti(self, jti: str, expires_at: datetime, reason: str = "Token revoked") -> None:
+        """Revoke a token using its JTI.
+        
+        Args:
+            jti: The JTI of the token to revoke
+            expires_at: When the token expires
+            reason: The reason for revocation
+        """
+        try:
+            # Add to in-memory blacklist
+            self._token_blacklist[jti] = {
+                "expires_at": expires_at,
+                "reason": reason,
+                "blacklisted_at": datetime.now()
+            }
+            
+            # Add to repository if available
+            if self.token_blacklist_repository:
+                await self.token_blacklist_repository.add_to_blacklist(
+                    token="",  # We don't store the actual token
+                    jti=jti,
+                    expires_at=expires_at,
+                    reason=reason
+                )
+            
+            # Log the event if logger is available
+            if self.audit_logger:
+                self.audit_logger.log_security_event(
+                    event_type=AuditEventType.TOKEN_REVOKED,
+                    description=reason,
+                    severity=AuditSeverity.INFO,
+                    metadata={"jti": jti}
+                )
+                
+        except Exception as e:
+            logger.error(f"Error revoking token JTI {jti}: {e}")
+            raise TokenManagementError(f"Failed to revoke token: {self._sanitize_error_message(str(e))}") from e
+            
     async def is_token_blacklisted(self, token: str) -> bool:
         """Check if a token has been blacklisted."""
         try:
@@ -695,10 +774,18 @@ class JWTService(IJwtService):
             jti = payload.get("jti")
             if not jti:
                 # Tokens without JTI can't be in blacklist
+                logger.warning("Token has no JTI claim, cannot check blacklist")
                 return False
                 
-            # Check if the JTI is blacklisted
-            return await self._is_token_blacklisted(jti)
+            # Check in-memory blacklist first
+            if jti in self._token_blacklist:
+                return True
+                
+            # Check repository if available
+            if self.token_blacklist_repository:
+                return await self.token_blacklist_repository.is_blacklisted(jti)
+                
+            return False
                 
         except Exception as e:
             logger.error(f"Error checking if token is blacklisted: {e}")

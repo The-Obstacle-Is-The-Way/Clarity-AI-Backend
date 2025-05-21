@@ -5,8 +5,7 @@ This is primarily for testing and development environments.
 For production, use RedisTokenBlacklistRepository or another persistent implementation.
 """
 
-from datetime import datetime
-from typing import Dict, Optional
+from datetime import datetime, timedelta
 
 from app.core.interfaces.repositories.token_blacklist_repository_interface import ITokenBlacklistRepository
 
@@ -22,11 +21,11 @@ class MemoryTokenBlacklistRepository(ITokenBlacklistRepository):
     
     def __init__(self):
         """Initialize the in-memory blacklist."""
-        self._blacklist: Dict[str, Dict] = {}  # JTI -> token info
-        self._token_to_jti: Dict[str, str] = {}  # token -> JTI mapping
+        self._blacklist: dict[str, dict] = {}  # JTI -> token info
+        self._token_to_jti: dict[str, str] = {}  # token -> JTI mapping
     
     async def add_to_blacklist(
-        self, token: str, jti: str, expires_at: datetime, reason: Optional[str] = None
+        self, token: str, jti: str, expires_at: datetime, reason: str | None = None
     ) -> None:
         """
         Add a token to the blacklist.
@@ -94,3 +93,28 @@ class MemoryTokenBlacklistRepository(ITokenBlacklistRepository):
             del self._blacklist[jti]
             
         return len(expired_jtis)
+        
+    async def clear_expired_tokens(self) -> int:
+        """
+        Remove expired tokens from the blacklist.
+        This is an alias for cleanup_expired to satisfy the interface.
+        
+        Returns:
+            Number of expired tokens removed
+        """
+        return await self.cleanup_expired()
+        
+    async def blacklist_session(self, session_id: str) -> None:
+        """
+        Blacklist all tokens associated with a session.
+        
+        Args:
+            session_id: The session ID to blacklist
+        """
+        # In memory implementation just stores the session ID
+        # A real implementation would blacklist all tokens related to this session
+        self._blacklist[f"session:{session_id}"] = {
+            "expires_at": datetime.now() + timedelta(days=30),  # Long expiry for sessions
+            "reason": "Session blacklisted",
+            "blacklisted_at": datetime.now(),
+        }
