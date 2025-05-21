@@ -1551,10 +1551,19 @@ class JWTService(IJwtService):
             # Extract information from the claims
             user_id = payload.sub
             
-            # Create a new token family for this refresh
-            family_id = str(uuid.uuid4())
+            # Extract the family_id from the original token if present
+            # This is crucial for maintaining token family relationships for security
+            family_id = None
+            if hasattr(payload, "family_id"):
+                family_id = payload.family_id
+            elif hasattr(payload, "fid"):
+                family_id = payload.fid
+                
+            # If no family ID exists, create a new one
+            if not family_id:
+                family_id = str(uuid.uuid4())
             
-            # Create a new refresh token
+            # Create a new refresh token with the same family
             return self.create_refresh_token(
                 subject=user_id,
                 family_id=family_id
