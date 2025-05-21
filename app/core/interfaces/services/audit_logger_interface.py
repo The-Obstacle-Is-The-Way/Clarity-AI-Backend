@@ -53,6 +53,7 @@ class AuditSeverity(str, Enum):
     WARNING = "WARNING"
     ERROR = "ERROR"
     CRITICAL = "CRITICAL"
+    HIGH = "HIGH"  # Added for backward compatibility
 
 
 class IAuditLogger(ABC):
