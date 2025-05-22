@@ -5,7 +5,7 @@ This module provides functions to convert between domain entities and database m
 for biometric rules, maintaining a clean separation between the domain and infrastructure layers.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from app.domain.entities.biometric_rule import (
@@ -44,7 +44,7 @@ def map_rule_entity_to_model(rule: BiometricRule) -> BiometricRuleModel:
         conditions_json.append(condition_dict)
 
     # Set updated_at to current time if updating
-    updated_at = datetime.now(datetime.timezone.utc) if rule.id else None
+    updated_at = datetime.now(timezone.utc) if rule.id else None
 
     # Convert alert_priority to string value
     priority_str = (
@@ -64,9 +64,9 @@ def map_rule_entity_to_model(rule: BiometricRule) -> BiometricRuleModel:
         is_active=rule.is_active,
         patient_id=rule.patient_id,
         provider_id=rule.provider_id,
-        created_at=rule.created_at if rule.created_at else datetime.now(datetime.timezone.utc),
+        created_at=rule.created_at if rule.created_at else datetime.now(timezone.utc),
         updated_at=updated_at,
-        rule_metadata=rule.metadata,
+        rule_metadata=getattr(rule, 'metadata', None),
     )
 
 
@@ -83,18 +83,20 @@ def map_rule_model_to_entity(model: BiometricRuleModel) -> BiometricRule:
     # Convert JSON conditions to domain RuleCondition objects
     conditions = []
     for condition_dict in model.conditions:
-        # Convert operator string to enum
-        operator_str = condition_dict.get("operator")
-        operator = RuleOperator(operator_str) if operator_str else RuleOperator.GREATER_THAN
+        # Ensure condition_dict is a dictionary
+        if isinstance(condition_dict, dict):
+            # Convert operator string to enum
+            operator_str = condition_dict.get("operator")
+            operator = RuleOperator(operator_str) if operator_str else RuleOperator.GREATER_THAN
 
-        # Create RuleCondition object
-        condition = RuleCondition(
-            metric_name=condition_dict.get("metric_name"),
-            operator=operator,
-            threshold_value=condition_dict.get("threshold_value"),
-            data_type=condition_dict.get("data_type"),
-        )
-        conditions.append(condition)
+            # Create RuleCondition object
+            condition = RuleCondition(
+                metric_name=condition_dict.get("metric_name"),
+                operator=operator,
+                threshold_value=condition_dict.get("threshold_value"),
+                data_type=condition_dict.get("data_type"),
+            )
+            conditions.append(condition)
 
     # Convert alert_priority string to enum
     try:
