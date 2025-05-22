@@ -543,9 +543,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     async def simulate_neurotransmitter_cascade(
         self,
         patient_id: UUID,
-        initial_changes: dict,
-        simulation_steps: int = 10,
-        time_resolution_hours: int = 24,
+        initial_changes: dict[Neurotransmitter, float],
+        simulation_steps: int = 3,
+        min_effect_threshold: float = 0.1,
     ) -> dict:
         """Simulate neurotransmitter cascade effects."""
         logger.info(f"Simulating neurotransmitter cascade for patient {patient_id}")
@@ -553,14 +553,26 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         timeline = []
         for step in range(simulation_steps):
             timeline.append({
-                "time_hours": step * time_resolution_hours,
+                "step": step,
                 "neurotransmitter_levels": {
                     nt.value: level + random.uniform(-0.1, 0.1)
                     for nt, level in initial_changes.items()
                 }
             })
         
-        return {"timeline": timeline}
+        return {
+            "timeline": timeline,
+            "cascade_pathways": [
+                {
+                    "source": "serotonin",
+                    "target": "dopamine",
+                    "effect": random.uniform(0.1, 0.3),
+                    "confidence": random.uniform(0.7, 0.9)
+                }
+            ],
+            "affected_regions": [BrainRegion.PREFRONTAL_CORTEX.value, BrainRegion.AMYGDALA.value],
+            "confidence": random.uniform(0.7, 0.9)
+        }
 
     async def analyze_neurotransmitter_interactions(
         self,
