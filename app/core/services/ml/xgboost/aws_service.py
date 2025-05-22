@@ -14,10 +14,11 @@ import time
 import uuid
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 import botocore.exceptions
 
-from app.core.services.aws.interfaces import AWSServiceFactoryInterface
+from app.core.interfaces.aws_service_interface import AWSServiceFactory
 from app.core.services.ml.xgboost.exceptions import (
     ConfigurationError,
     DataPrivacyError,
@@ -57,7 +58,7 @@ class AWSXGBoostService(XGBoostInterface):
     and SOLID design patterns with comprehensive HIPAA compliance.
     """
 
-    def __init__(self, aws_service_factory: AWSServiceFactoryInterface | None = None):
+    def __init__(self, aws_service_factory: AWSServiceFactory | None = None):
         """
         Initialize a new AWS XGBoost service.
 
@@ -159,13 +160,13 @@ class AWSXGBoostService(XGBoostInterface):
             raise ConfigurationError(f"Failed to initialize AWS XGBoost service: {e!s}") from e
 
     async def predict(
-        self, patient_id: str, features: dict[str, Any], model_type: str, **kwargs
+        self, patient_id: UUID, features: dict[str, Any], model_type: str, **kwargs
     ) -> dict[str, Any]:
         """
         Generic prediction method required by MLServiceInterface.
 
         Args:
-            patient_id: ID of the patient
+            patient_id: UUID of the patient
             features: Dictionary of features for prediction
             model_type: Type of model to use for prediction
             **kwargs: Additional arguments for prediction
@@ -180,13 +181,16 @@ class AWSXGBoostService(XGBoostInterface):
         """
         await self._ensure_initialized()
 
+        # Convert UUID to string for internal processing
+        patient_id_str = str(patient_id)
+
         # Route to appropriate specialized prediction method based on model_type
         if model_type.lower() == "risk":
             risk_type = kwargs.get("risk_type", "general")
             time_frame_days = kwargs.get("time_frame_days", 30)
 
             return await self.predict_risk(
-                patient_id=patient_id,
+                patient_id=patient_id_str,
                 risk_type=risk_type,
                 clinical_data=features,
                 time_frame_days=time_frame_days,
@@ -197,7 +201,7 @@ class AWSXGBoostService(XGBoostInterface):
             treatment_details = kwargs.get("treatment_details", {})
 
             return await self.predict_treatment_response(
-                patient_id=patient_id,
+                patient_id=patient_id_str,
                 treatment_type=treatment_type,
                 treatment_details=treatment_details,
                 clinical_data=features,
@@ -210,7 +214,7 @@ class AWSXGBoostService(XGBoostInterface):
             comorbidities = kwargs.get("comorbidities")
 
             return await self.predict_outcome(
-                patient_id=patient_id,
+                patient_id=patient_id_str,
                 outcome_timeframe=outcome_timeframe,
                 clinical_data=features,
                 treatment_plan=treatment_plan,
@@ -297,7 +301,7 @@ class AWSXGBoostService(XGBoostInterface):
 
             # Notify observers
             await self._notify_observers(
-                EventType.PREDICTION,
+                EventType.PREDICTION_COMPLETE,
                 {
                     "prediction_id": prediction_id,
                     "patient_id": patient_id,
@@ -439,9 +443,6 @@ class AWSXGBoostService(XGBoostInterface):
         **kwargs,
     ) -> dict[str, Any]:
         """
-        Predict clinical outcomes based on treatment plan.
-
-        Args:
             patient_id: Patient identifier
             outcome_timeframe: Timeframe for outcome prediction
             clinical_data: Clinical data for prediction
