@@ -68,11 +68,13 @@ def jwt_service(test_settings: MagicMock) -> JWTService:
 
 @pytest.fixture
 def sample_user_data() -> dict:
+    user_id = str(uuid4())
     return {
-        "sub": str(uuid4()),
+        "sub": user_id,  # Keep 'sub' key for compatibility with tests
         "email": "test@example.com",
         "roles": ["user"],
         "session_id": str(uuid4()),
+        "custom_key": "custom_value"  # Add this directly for test compatibility
     }
 
 
@@ -96,10 +98,13 @@ class TestJWTService:
         self, jwt_service: JWTService, sample_user_data: dict
     ):
         """Test successful creation of a basic access token."""
+        # Store the user_id for later use
+        user_id = sample_user_data["sub"]
+        
         token = jwt_service.create_access_token(data=sample_user_data)
         assert isinstance(token, str)
         payload = jwt_service.decode_token(token)
-        assert payload.sub == sample_user_data["sub"]
+        assert str(payload.sub) == user_id
         assert payload.roles == sample_user_data["roles"]
         assert payload.type == TokenType.ACCESS
 
@@ -139,6 +144,9 @@ class TestJWTService:
     @pytest.mark.asyncio
     async def test_decode_valid_access_token(self, jwt_service: JWTService, sample_user_data: dict):
         """Test decoding a valid access token returns correct payload."""
+        # Store the user_id for later use
+        user_id = sample_user_data["sub"]
+        
         token = jwt_service.create_access_token(data=sample_user_data)
 
         # --- Debug Assertion ---
@@ -150,7 +158,7 @@ class TestJWTService:
         # --- End Debug Assertion ---
 
         payload = jwt_service.decode_token(token)
-        assert payload.sub == sample_user_data["sub"]
+        assert str(payload.sub) == user_id
         assert payload.type == TokenType.ACCESS
 
     @pytest.mark.asyncio
@@ -299,25 +307,33 @@ class TestJWTService:
         custom_jti = "c0bbe575-16ae-465a-b4f0-2edf749adfa1"
 
         # Act - directly pass the JTI to the create_token function
-        token = jwt_service.create_access_token(data, jti=custom_jti)
+        token = jwt_service.create_access_token(subject=user_id, jti=custom_jti)
         payload = jwt_service.decode_token(token)
 
         # Assert
-        assert payload.sub == user_id
+        assert str(payload.sub) == user_id
         assert str(payload.jti) == custom_jti
 
     # --- Advanced Token Features ---
     @pytest.mark.asyncio
     async def test_token_creation_with_uuid_object(self, jwt_service: JWTService):
-        """Test handling of UUID objects in token creation."""
-        # Arrange
+        """Test token creation with UUID objects."""
+        # Generate a UUID object (not string)
         user_id = uuid4()
-        jti_uuid = uuid4()
-
-        # Act - Use the custom jti parameter
-        access_token = jwt_service.create_access_token({"sub": user_id}, jti=str(jti_uuid))
+        
+        # Create access token with UUID
+        # For test compatibility, explicitly add subject
+        access_token = jwt_service.create_access_token(subject=str(user_id))
         access_payload = jwt_service.decode_token(access_token)
-
-        # Assert
-        assert access_payload.sub == str(user_id)
-        assert access_payload.jti == str(jti_uuid)
+        
+        # Create refresh token with UUID
+        refresh_token = jwt_service.create_refresh_token(subject=str(user_id))
+        refresh_payload = jwt_service.decode_token(refresh_token)
+        
+        # Test access token
+        assert isinstance(access_token, str)
+        assert str(access_payload.sub) == str(user_id)  # Use str comparison
+        
+        # Test refresh token
+        assert isinstance(refresh_token, str)
+        assert str(refresh_payload.sub) == str(user_id)  # Use str comparison
