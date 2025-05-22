@@ -632,17 +632,33 @@ class JWTService(IJwtService):
             # Verify the refresh token
             payload = self.verify_refresh_token(refresh_token)
             
-            # Extract user ID and create a new access token
-            user_id = payload.get("sub")
+            # Extract user ID from payload
+            user_id = None
+            if isinstance(payload, dict):
+                user_id = payload.get("sub")
+            elif hasattr(payload, "sub"):
+                user_id = payload.sub
+                
             if not user_id:
                 raise InvalidTokenError("Invalid token: missing subject claim")
 
             # Create a new access token with the same claims
             claims = {}
-            for claim in self.preserved_claims:
-                if claim in payload and claim not in self.exclude_from_refresh:
-                    claims[claim] = payload[claim]
-                    
+            
+            # Handle claims based on payload type
+            if isinstance(payload, dict):
+                # Dictionary-style payload
+                for claim in self.preserved_claims:
+                    if claim in payload and claim not in self.exclude_from_refresh:
+                        claims[claim] = payload[claim]
+            else:
+                # Object-style payload (TokenPayload)
+                for claim in self.preserved_claims:
+                    if hasattr(payload, claim) and claim not in self.exclude_from_refresh:
+                        value = getattr(payload, claim)
+                        if value is not None:  # Only include non-None values
+                            claims[claim] = value
+                            
             # Create a new access token
             new_access_token = self.create_access_token(
                 subject=user_id,
@@ -670,14 +686,25 @@ class JWTService(IJwtService):
         try:
             # Decode the token to get the JTI
             payload = self.decode_token(token, options={"verify_signature": True, "verify_exp": False})
-            jti = payload.get("jti")
+            
+            # Get jti, exp, and user_id from payload
+            jti = None
+            exp = None
+            user_id = "unknown"
+            
+            # Extract values based on payload type
+            if isinstance(payload, dict):
+                jti = payload.get("jti")
+                exp = payload.get("exp", int(datetime.now(timezone.utc).timestamp()) + 3600)
+                user_id = payload.get("sub", "unknown")
+            elif hasattr(payload, "jti") and hasattr(payload, "exp") and hasattr(payload, "sub"):
+                jti = payload.jti
+                exp = payload.exp or int(datetime.now(timezone.utc).timestamp()) + 3600
+                user_id = payload.sub or "unknown"
+            
             if not jti:
                 logger.warning("Token has no JTI, cannot be blacklisted")
                 return False
-
-            # Get expiration time and user ID
-            exp = payload.get("exp", int(datetime.now(timezone.utc).timestamp()) + 3600)
-            user_id = payload.get("sub", "unknown")
 
             # Add to blacklist
             if self.token_blacklist_repository:
