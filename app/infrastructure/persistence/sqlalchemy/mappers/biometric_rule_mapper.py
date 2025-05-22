@@ -44,7 +44,7 @@ def map_rule_entity_to_model(rule: BiometricRule) -> BiometricRuleModel:
         conditions_json.append(condition_dict)
 
     # Set updated_at to current time if updating
-    updated_at = datetime.now(datetime.UTC) if rule.id else None
+    updated_at = datetime.now(datetime.timezone.utc) if rule.id else None
 
     # Convert alert_priority to string value
     priority_str = (
@@ -64,7 +64,7 @@ def map_rule_entity_to_model(rule: BiometricRule) -> BiometricRuleModel:
         is_active=rule.is_active,
         patient_id=rule.patient_id,
         provider_id=rule.provider_id,
-        created_at=rule.created_at if rule.created_at else datetime.now(datetime.UTC),
+        created_at=rule.created_at if rule.created_at else datetime.now(datetime.timezone.utc),
         updated_at=updated_at,
         rule_metadata=rule.metadata,
     )

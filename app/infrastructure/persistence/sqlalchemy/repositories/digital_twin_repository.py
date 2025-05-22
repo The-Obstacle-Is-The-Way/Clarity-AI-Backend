@@ -1,6 +1,7 @@
 # app/infrastructure/persistence/sqlalchemy/repositories/digital_twin_repository.py
 # Placeholder for digital twin repository implementation
 
+from datetime import datetime
 import json
 import logging
 from uuid import UUID

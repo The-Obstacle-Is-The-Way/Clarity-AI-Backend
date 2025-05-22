@@ -55,7 +55,7 @@ class JWTTokenService(ITokenService):
         """
         try:
             # Create payload for access token
-            access_token_expires = datetime.now(datetime.UTC) + timedelta(
+            access_token_expires = datetime.now(datetime.timezone.utc) + timedelta(
                 minutes=self.access_token_expire_minutes
             )
             access_token_payload = {
@@ -67,7 +67,7 @@ class JWTTokenService(ITokenService):
             }
 
             # Create payload for refresh token
-            refresh_token_expires = datetime.now(datetime.UTC) + timedelta(
+            refresh_token_expires = datetime.now(datetime.timezone.utc) + timedelta(
                 days=self.refresh_token_expire_days
             )
             refresh_token_payload = {

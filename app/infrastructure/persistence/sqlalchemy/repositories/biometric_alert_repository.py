@@ -4,7 +4,9 @@ SQLAlchemy implementation of the BiometricAlertRepository.
 This module provides a concrete implementation of the BiometricAlertRepository
 interface using SQLAlchemy ORM for database operations.
 """
+from datetime import timezone
 
+from uuid import uuid4
 from datetime import datetime
 from uuid import UUID
 
