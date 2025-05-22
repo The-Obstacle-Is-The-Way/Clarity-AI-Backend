@@ -21,18 +21,20 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID, uuid4
 
-from app.domain.entities.digital_twin.digital_twin import DigitalTwinState
+# Import types exactly as the interface expects them
+from app.domain.entities.digital_twin import DigitalTwinState
+from app.domain.entities.digital_twin_enums import BrainRegion, Neurotransmitter
+# Import additional types needed for mock implementation
 from app.domain.entities.digital_twin_entity import (
     BrainRegionState,
     ClinicalInsight,
+    ClinicalSignificance,
+    NeuralConnection,
+    NeurotransmitterState,
     TemporalPattern,
 )
 from app.domain.entities.digital_twin_enums import (
-    BrainRegion,
-    Neurotransmitter,
-    ClinicalSignificance,
     BrainRegionStatus,
-    NeurotransmitterState,
 )
 from app.domain.entities.knowledge_graph import (
     BayesianBeliefNetwork,
@@ -90,56 +92,21 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         Returns:
             Tuple containing the initial digital twin state, knowledge graph, and belief network
         """
-        # Create initial digital twin state
-        now = datetime.now()
+        # Create initial digital twin state using the correct simple dataclass structure
+        from app.domain.utils.datetime_utils import now_utc
+        
         initial_state = DigitalTwinState(
-            patient_id=patient_id,
-            timestamp=now,
+            last_sync_time=now_utc(),
+            overall_risk_level="moderate",
+            dominant_symptoms=["mood_instability", "sleep_disturbance"],
+            current_treatment_effectiveness="stable",
+            predicted_phq9_trajectory=[
+                {"week": 1, "score": 12.0},
+                {"week": 2, "score": 11.5},
+                {"week": 3, "score": 11.0},
+                {"week": 4, "score": 10.5},
+            ]
         )
-
-        # Generate mock brain region states
-        brain_regions = {}
-        for region in BrainRegion:
-            brain_regions[region] = BrainRegionState(
-                region=region,
-                activation_level=random.uniform(0.3, 0.8),
-                confidence=random.uniform(0.7, 0.95),
-                related_symptoms=self._generate_mock_symptoms(region),
-                clinical_significance=random.choice(list(ClinicalSignificance)),
-            )
-
-        # Generate mock neurotransmitter states
-        neurotransmitters = {}
-        for nt in Neurotransmitter:
-            neurotransmitters[nt] = NeurotransmitterState(
-                neurotransmitter=nt,
-                level=random.uniform(0.2, 0.9),
-                confidence=random.uniform(0.6, 0.9),
-                clinical_significance=random.choice(list(ClinicalSignificance)),
-            )
-
-        # Update the state with generated data
-        initial_state.brain_regions = brain_regions
-        initial_state.neurotransmitters = neurotransmitters
-
-        # Generate initial clinical insights
-        insights = [
-            ClinicalInsight(
-                id=uuid4(),
-                title="Initial Assessment",
-                description="Baseline digital twin assessment completed",
-                source="MockEnhancedDigitalTwinCore",
-                confidence=0.85,
-                timestamp=now,
-                patient_id=str(patient_id),
-                clinical_significance=ClinicalSignificance.MODERATE,
-                brain_regions=[BrainRegion.PREFRONTAL_CORTEX],
-                neurotransmitters=[Neurotransmitter.SEROTONIN, Neurotransmitter.DOPAMINE],
-                supporting_evidence=["Baseline measurements", "Initial data analysis"],
-                recommended_actions=["Continue monitoring", "Schedule follow-up"],
-            )
-        ]
-        initial_state.clinical_insights = insights
 
         # Create mock knowledge graph
         knowledge_graph = self._create_mock_knowledge_graph(patient_id)
@@ -179,54 +146,75 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             result = await self.initialize_digital_twin(patient_id)
             current_state = result[0]
 
-        # Create updated state
+        # Create updated state using correct DigitalTwinState structure
         now = datetime.now()
         updated_state = DigitalTwinState(
-            patient_id=patient_id,
-            timestamp=now,
+            last_sync_time=now,
+            overall_risk_level=current_state.overall_risk_level or "moderate",
+            dominant_symptoms=current_state.dominant_symptoms.copy() if current_state.dominant_symptoms else [],
+            current_treatment_effectiveness=current_state.current_treatment_effectiveness or "stable",
+            predicted_phq9_trajectory=current_state.predicted_phq9_trajectory.copy() if current_state.predicted_phq9_trajectory else []
         )
 
-        # Copy and update brain regions
-        updated_brain_regions = {}
-        for region, state in current_state.brain_regions.items():
-            # Apply small random variations to simulate updates
-            variance = self._simulation_config["brain_region_variance"]
-            new_activation = max(0.0, min(1.0, state.activation_level + random.uniform(-variance, variance)))
-            
-            updated_brain_regions[region] = BrainRegionState(
-                region=region,
-                activation_level=new_activation,
-                confidence=min(1.0, state.confidence + random.uniform(-0.05, 0.1)),
-                related_symptoms=state.related_symptoms,
-                clinical_significance=state.clinical_significance,
-            )
+        # Simulate updates to the simple state structure
+        # Update risk level based on data source
+        risk_levels = ["low", "moderate", "high"]
+        current_risk = updated_state.overall_risk_level or "moderate"
+        
+        if data_source == "emergency":
+            updated_state.overall_risk_level = "high"
+        elif data_source == "therapy_session":
+            # Therapy tends to reduce risk
+            current_idx = risk_levels.index(current_risk)
+            updated_state.overall_risk_level = risk_levels[max(0, current_idx - 1)]
+        elif random.random() < 0.3:  # 30% chance of risk level change
+            current_idx = risk_levels.index(current_risk)
+            change = random.choice([-1, 1])
+            new_idx = max(0, min(len(risk_levels) - 1, current_idx + change))
+            updated_state.overall_risk_level = risk_levels[new_idx]
 
-        # Copy and update neurotransmitters
-        updated_neurotransmitters = {}
-        for nt, state in current_state.neurotransmitters.items():
-            variance = self._simulation_config["neurotransmitter_variance"]
-            new_level = max(0.0, min(1.0, state.level + random.uniform(-variance, variance)))
-            
-            updated_neurotransmitters[nt] = NeurotransmitterState(
-                neurotransmitter=nt,
-                level=new_level,
-                confidence=min(1.0, state.confidence + random.uniform(-0.05, 0.1)),
-                clinical_significance=state.clinical_significance,
-            )
+        # Update dominant symptoms
+        all_symptoms = ["anxiety", "depression", "insomnia", "mood_swings", "concentration_issues", "fatigue"]
+        if random.random() < 0.4:  # 40% chance of symptom change
+            # Add or remove a symptom
+            if len(updated_state.dominant_symptoms) < 3 and random.random() < 0.7:
+                # Add a symptom
+                available_symptoms = [s for s in all_symptoms if s not in updated_state.dominant_symptoms]
+                if available_symptoms:
+                    updated_state.dominant_symptoms.append(random.choice(available_symptoms))
+            elif updated_state.dominant_symptoms and random.random() < 0.3:
+                # Remove a symptom
+                updated_state.dominant_symptoms.remove(random.choice(updated_state.dominant_symptoms))
 
-        # Update the state
-        updated_state.brain_regions = updated_brain_regions
-        updated_state.neurotransmitters = updated_neurotransmitters
-        updated_state.clinical_insights = current_state.clinical_insights.copy()
-        updated_state.neural_connections = current_state.neural_connections.copy()
-        updated_state.temporal_patterns = current_state.temporal_patterns.copy()
-        updated_state.update_source = data_source
-        updated_state.version = current_state.version + 1
+        # Update treatment effectiveness
+        effectiveness_levels = ["worsening", "stable", "improving"]
+        current_effectiveness = updated_state.current_treatment_effectiveness or "stable"
+        
+        if data_source == "medication_adherence" and random.random() < 0.6:
+            # Good adherence tends to improve effectiveness
+            current_idx = effectiveness_levels.index(current_effectiveness)
+            updated_state.current_treatment_effectiveness = effectiveness_levels[min(len(effectiveness_levels) - 1, current_idx + 1)]
+        elif random.random() < 0.2:  # 20% chance of effectiveness change
+            updated_state.current_treatment_effectiveness = random.choice(effectiveness_levels)
 
-        # Generate new insights if threshold met
-        if random.random() < self._simulation_config["insight_generation_rate"]:
-            new_insight = self._generate_mock_insight(patient_id, data_source)
-            updated_state.clinical_insights.append(new_insight)
+        # Update PHQ-9 trajectory
+        if not updated_state.predicted_phq9_trajectory:
+            updated_state.predicted_phq9_trajectory = []
+        
+        # Add new trajectory point
+        current_week = len(updated_state.predicted_phq9_trajectory)
+        base_score = 10 if updated_state.overall_risk_level == "high" else 6 if updated_state.overall_risk_level == "moderate" else 3
+        score_variance = random.uniform(-2, 2)
+        new_score = max(0, min(27, base_score + score_variance))
+        
+        updated_state.predicted_phq9_trajectory.append({
+            "week": current_week + 1,
+            "score": round(new_score, 1)
+        })
+        
+        # Keep only last 12 weeks of trajectory
+        if len(updated_state.predicted_phq9_trajectory) > 12:
+            updated_state.predicted_phq9_trajectory = updated_state.predicted_phq9_trajectory[-12:]
 
         # Store updated state
         self._mock_states[patient_id] = updated_state
@@ -276,28 +264,62 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             "clinical_summary": {},
         }
 
-        # Analyze brain regions
-        for region, region_state in state.brain_regions.items():
+        # Generate mock brain region analysis based on current state
+        brain_region_list = [BrainRegion.PREFRONTAL_CORTEX, BrainRegion.AMYGDALA, BrainRegion.HIPPOCAMPUS, BrainRegion.ANTERIOR_CINGULATE_CORTEX]
+        for region in brain_region_list:
+            # Generate activation level based on risk level and symptoms
+            base_activation = 0.5
+            if state.overall_risk_level == "high":
+                base_activation += 0.3
+            elif state.overall_risk_level == "low":
+                base_activation -= 0.2
+            
+            # Adjust based on symptoms
+            if "anxiety" in state.dominant_symptoms and region == BrainRegion.AMYGDALA:
+                base_activation += 0.2
+            if "depression" in state.dominant_symptoms and region == BrainRegion.PREFRONTAL_CORTEX:
+                base_activation -= 0.2
+                
+            activation_level = max(0.0, min(1.0, base_activation + random.uniform(-0.1, 0.1)))
+            
             analysis["brain_regions"][region.value] = {
-                "activation_level": region_state.activation_level,
-                "confidence": region_state.confidence,
-                "clinical_significance": region_state.clinical_significance.value,
-                "related_symptoms": region_state.related_symptoms,
-                "status": self._categorize_activation_level(region_state.activation_level),
+                "activation_level": round(activation_level, 3),
+                "confidence": round(random.uniform(0.7, 0.95), 3),
+                "clinical_significance": "moderate",
+                "related_symptoms": [s for s in state.dominant_symptoms if random.random() < 0.4],
+                "status": self._categorize_activation_level(activation_level),
             }
 
-        # Analyze neurotransmitters
-        for nt, nt_state in state.neurotransmitters.items():
+        # Generate mock neurotransmitter analysis
+        neurotransmitters = [Neurotransmitter.SEROTONIN, Neurotransmitter.DOPAMINE, Neurotransmitter.GABA, Neurotransmitter.NOREPINEPHRINE]
+        for nt in neurotransmitters:
+            # Generate level based on treatment effectiveness and symptoms
+            base_level = 0.5
+            if state.current_treatment_effectiveness == "improving":
+                base_level += 0.2
+            elif state.current_treatment_effectiveness == "worsening":
+                base_level -= 0.2
+                
+            # Adjust based on symptoms
+            if "depression" in state.dominant_symptoms and nt == Neurotransmitter.SEROTONIN:
+                base_level -= 0.15
+            if "anxiety" in state.dominant_symptoms and nt == Neurotransmitter.GABA:
+                base_level -= 0.1
+                
+            level = max(0.0, min(1.0, base_level + random.uniform(-0.1, 0.1)))
+            
             analysis["neurotransmitters"][nt.value] = {
-                "level": nt_state.level,
-                "confidence": nt_state.confidence,
-                "clinical_significance": nt_state.clinical_significance.value,
-                "status": self._categorize_neurotransmitter_level(nt_state.level),
-                "implications": self._get_neurotransmitter_implications(nt, nt_state.level),
+                "level": round(level, 3),
+                "confidence": round(random.uniform(0.7, 0.95), 3),
+                "clinical_significance": "moderate",
+                "status": self._categorize_neurotransmitter_level(level),
+                "implications": self._get_neurotransmitter_implications(nt, level),
             }
 
-        # Analyze neural connectivity
-        connectivity_matrix = self._generate_connectivity_matrix(state.brain_regions)
+        # Analyze neural connectivity - generate mock connectivity matrix
+        # Since DigitalTwinState doesn't have brain_regions, we'll use the regions we analyzed
+        brain_regions = [BrainRegion.PREFRONTAL_CORTEX, BrainRegion.ANTERIOR_CINGULATE_CORTEX, BrainRegion.AMYGDALA]
+        connectivity_matrix = self._generate_connectivity_matrix(brain_regions)
         analysis["neural_connectivity"] = {
             "overall_connectivity": sum(connectivity_matrix.values()) / len(connectivity_matrix),
             "strongest_connections": sorted(
@@ -459,14 +481,16 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             }
 
             # Simulate brain region changes
+            # Since DigitalTwinState doesn't have brain_regions, use mock baseline values
             for region in BrainRegion:
-                baseline = state.brain_regions[region].activation_level
+                baseline = 0.5  # Mock baseline activation level
                 treatment_effect = self._calculate_treatment_effect(region, treatment_parameters, day)
                 day_result["brain_regions"][region.value] = min(1.0, max(0.0, baseline + treatment_effect))
 
             # Simulate neurotransmitter changes
+            # Since DigitalTwinState doesn't have neurotransmitters, use mock baseline values
             for nt in Neurotransmitter:
-                baseline = state.neurotransmitters[nt].level
+                baseline = 0.5  # Mock baseline neurotransmitter level
                 treatment_effect = self._calculate_neurotransmitter_effect(nt, treatment_parameters, day)
                 day_result["neurotransmitters"][nt.value] = min(1.0, max(0.0, baseline + treatment_effect))
 
@@ -544,23 +568,24 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             Brain region insights
         """
         state = self._mock_states.get(patient_id)
-        if not state or region not in state.brain_regions:
-            return {"error": "Brain region data not found"}
+        if not state:
+            return {"error": "Patient state not found"}
 
-        region_state = state.brain_regions[region]
+        # Generate mock brain region insights since DigitalTwinState doesn't have brain_regions
+        mock_activation_level = random.uniform(0.3, 0.8)
         
         insights = {
             "patient_id": str(patient_id),
             "brain_region": region.value,
             "current_state": {
-                "activation_level": region_state.activation_level,
-                "confidence": region_state.confidence,
-                "clinical_significance": region_state.clinical_significance.value,
-                "related_symptoms": region_state.related_symptoms,
+                "activation_level": mock_activation_level,
+                "confidence": random.uniform(0.7, 0.95),
+                "clinical_significance": "moderate",
+                "related_symptoms": [s for s in state.dominant_symptoms if random.random() < 0.4],
             },
-            "functional_analysis": self._analyze_region_function(region, region_state),
-            "clinical_implications": self._get_region_clinical_implications(region, region_state),
-            "treatment_targets": self._identify_treatment_targets(region, region_state),
+            "functional_analysis": self._analyze_region_function(region, None),
+            "clinical_implications": self._get_region_clinical_implications(region, None),
+            "treatment_targets": self._identify_treatment_targets(region, None),
         }
 
         if include_connections:
@@ -588,22 +613,19 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             return {"error": "Digital twin not found"}
 
         if neurotransmitter:
-            # Analyze specific neurotransmitter
-            if neurotransmitter not in state.neurotransmitters:
-                return {"error": f"Neurotransmitter {neurotransmitter.value} not found"}
-            
-            nt_state = state.neurotransmitters[neurotransmitter]
+            # Analyze specific neurotransmitter - generate mock data since DigitalTwinState doesn't have neurotransmitters
+            mock_level = random.uniform(0.3, 0.8)
             return {
                 "patient_id": str(patient_id),
                 "neurotransmitter": neurotransmitter.value,
-                "current_level": nt_state.level,
-                "confidence": nt_state.confidence,
-                "clinical_significance": nt_state.clinical_significance.value,
-                "functional_impact": self._analyze_neurotransmitter_function(neurotransmitter, nt_state),
-                "treatment_implications": self._get_neurotransmitter_treatment_implications(neurotransmitter, nt_state),
+                "current_level": mock_level,
+                "confidence": random.uniform(0.7, 0.95),
+                "clinical_significance": "moderate",
+                "functional_impact": self._analyze_neurotransmitter_function(neurotransmitter, None),
+                "treatment_implications": self._get_neurotransmitter_treatment_implications(neurotransmitter, None),
             }
         else:
-            # Analyze all neurotransmitters
+            # Analyze all neurotransmitters - generate mock data
             analysis = {
                 "patient_id": str(patient_id),
                 "timestamp": datetime.now().isoformat(),
@@ -612,17 +634,19 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 "overall_balance": {},
             }
 
-            # Analyze each neurotransmitter
-            for nt, nt_state in state.neurotransmitters.items():
+            # Analyze each neurotransmitter with mock data
+            neurotransmitters = [Neurotransmitter.SEROTONIN, Neurotransmitter.DOPAMINE, Neurotransmitter.GABA, Neurotransmitter.NOREPINEPHRINE]
+            for nt in neurotransmitters:
+                mock_level = random.uniform(0.3, 0.8)
                 analysis["neurotransmitters"][nt.value] = {
-                    "level": nt_state.level,
-                    "confidence": nt_state.confidence,
-                    "clinical_significance": nt_state.clinical_significance.value,
-                    "status": self._categorize_neurotransmitter_level(nt_state.level),
+                    "level": mock_level,
+                    "confidence": random.uniform(0.7, 0.95),
+                    "clinical_significance": "moderate",
+                    "status": self._categorize_neurotransmitter_level(mock_level),
                 }
 
-            # Analyze interactions
-            analysis["interactions"] = self._analyze_neurotransmitter_interactions(state.neurotransmitters)
+            # Analyze interactions with mock data
+            analysis["interactions"] = self._analyze_neurotransmitter_interactions({})
 
             # Calculate overall balance
             analysis["overall_balance"] = self._calculate_neurotransmitter_balance(state.neurotransmitters)
@@ -632,27 +656,27 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     async def subscribe_to_events(
         self,
         event_types: List[str],
-        callback: str,  # Changed from Callable to str to match supertype
+        callback_url: str,  # Changed to match interface
         filters: Optional[Dict[str, Any]] = None,
-    ) -> str:
+    ) -> UUID:
         """
         Subscribe to digital twin events.
         
         Args:
             event_types: Types of events to subscribe to
-            callback: Callback identifier for event notifications
+            callback_url: URL for event notifications
             filters: Optional event filters
             
         Returns:
             Subscription identifier
         """
-        subscription_id = str(uuid4())
+        subscription_id = uuid4()
         
         # Mock subscription logic
         subscription = {
             "id": subscription_id,
             "event_types": event_types,
-            "callback": callback,
+            "callback_url": callback_url,
             "filters": filters or {},
             "created_at": datetime.now().isoformat(),
             "active": True,
@@ -809,12 +833,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
 
     def _generate_clinical_summary(self, state: DigitalTwinState) -> Dict[str, Any]:
         """Generate clinical summary from digital twin state."""
-        # Count significant findings
-        significant_regions = len([r for r in state.brain_regions.values() 
-                                 if r.clinical_significance != ClinicalSignificance.NONE])
-        
-        significant_neurotransmitters = len([nt for nt in state.neurotransmitters.values() 
-                                           if nt.clinical_significance != ClinicalSignificance.NONE])
+        # Generate mock significant findings since DigitalTwinState doesn't have brain_regions/neurotransmitters
+        significant_regions = random.randint(1, 4)
+        significant_neurotransmitters = random.randint(1, 3)
         
         return {
             "overall_status": "stable" if significant_regions < 3 else "requires_attention",
@@ -827,17 +848,15 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         """Identify primary clinical concerns."""
         concerns = []
         
-        # Check for critical insights
-        critical_insights = [i for i in state.clinical_insights 
-                           if i.clinical_significance == ClinicalSignificance.CRITICAL]
-        if critical_insights:
-            concerns.append("Critical clinical insights detected")
+        # Generate mock concerns based on available state data
+        if state.overall_risk_level == "high":
+            concerns.append("High overall risk level detected")
         
-        # Check for abnormal brain regions
-        abnormal_regions = [r for r in state.brain_regions.values() 
-                          if r.activation_level < 0.3 or r.activation_level > 0.8]
-        if len(abnormal_regions) > 2:
-            concerns.append("Multiple brain regions showing abnormal activity")
+        if state.current_treatment_effectiveness == "worsening":
+            concerns.append("Treatment effectiveness declining")
+        
+        if "severe" in str(state.dominant_symptoms).lower():
+            concerns.append("Severe symptoms present")
         
         return concerns
 
@@ -1152,8 +1171,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
 
         # Mock knowledge graph update
         knowledge_graph.last_updated = datetime.now()
-        knowledge_graph.version += 1
-        knowledge_graph.data_sources.append(data_source)
+        # Note: TemporalKnowledgeGraph doesn't have version or data_sources attributes
+        # Mock behavior: just update last_updated (which exists)
+        # Additional mock data could be stored in nodes if needed
         
         # Store updated graph
         self._mock_knowledge_graphs[patient_id] = knowledge_graph
@@ -1171,8 +1191,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
 
         # Mock belief network update
         belief_network.last_updated = datetime.now()
-        belief_network.confidence = min(1.0, belief_network.confidence + (confidence * 0.1))
-        belief_network.evidence_sources.append(source)
+        # Note: BayesianBeliefNetwork doesn't have confidence or evidence_sources attributes
+        # Mock behavior: update evidence dict and last_updated (which exist)
+        belief_network.evidence[source] = confidence
         
         # Store updated network
         self._mock_belief_networks[patient_id] = belief_network
