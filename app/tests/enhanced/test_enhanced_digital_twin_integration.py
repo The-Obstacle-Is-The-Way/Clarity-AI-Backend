@@ -16,7 +16,7 @@ from app.domain.entities.digital_twin.temporal_neurotransmitter_sequence import 
 )
 from app.domain.entities.digital_twin_enums import (
     BrainRegion,
-    ClinicalInsight,
+    ClinicalInsightType,
     ClinicalSignificance,
     Neurotransmitter,
 )
@@ -311,8 +311,8 @@ async def test_clinical_insight_generation(enhanced_services, patient_id, initia
     insights = await digital_twin_service.generate_clinical_insights(
         patient_id=patient_id,
         insight_types=[
-            ClinicalInsight.TREATMENT_RESPONSE,
-            ClinicalInsight.SYMPTOM_TRAJECTORY,
+            ClinicalInsightType.TREATMENT_RESPONSE,
+            ClinicalInsightType.SYMPTOM_TRAJECTORY,
         ],
         time_range=(
             datetime.datetime.now() - datetime.timedelta(days=30),

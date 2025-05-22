@@ -13,7 +13,7 @@ import pytest_asyncio
 from app.domain.entities.digital_twin import DigitalTwinState
 from app.domain.entities.digital_twin_enums import (
     BrainRegion,
-    ClinicalInsight,
+    ClinicalInsightType,
     ClinicalSignificance,
     Neurotransmitter,
 )
@@ -376,8 +376,8 @@ async def test_generate_clinical_insights(
     insights = await digital_twin_service.generate_clinical_insights(
         patient_id=patient_id,
         insight_types=[
-            ClinicalInsight.TREATMENT_RESPONSE,
-            ClinicalInsight.NEUROTRANSMITTER_IMBALANCE,
+            ClinicalInsightType.TREATMENT_RESPONSE,
+            ClinicalInsightType.NEUROTRANSMITTER_IMBALANCE,
         ],
     )
 
