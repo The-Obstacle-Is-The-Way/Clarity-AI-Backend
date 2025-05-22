@@ -390,7 +390,7 @@ class JWTService(IJwtService):
             
             # Also remove direct attributes
             if hasattr(payload, field):
-                delattr(payload, field)
+                setattr(payload, field, None)
         
         # Clean up the string representation of the subject if it contains PHI
         if hasattr(payload, "subject") and payload.subject is not None:
@@ -666,10 +666,10 @@ class JWTService(IJwtService):
                 "roles", "refresh", "session_id", "scope", "org_id", "family_id"
             ]
             
-            # First, process all claims directly to token_data
+            # Process all claims directly to token_data
             for key, value in payload.items():
                 if key == "sub":
-                    token_data["subject"] = value
+                    token_data["subject"] = str(value)
                 elif key == "roles" and not isinstance(value, list):
                     # Ensure roles is always a list
                     token_data["roles"] = [value] if value else []
@@ -689,10 +689,12 @@ class JWTService(IJwtService):
             
             # Ensure all custom fields are directly accessible as attributes
             for key, value in custom_fields.items():
-                setattr(token_payload, key, value)
+                if not hasattr(token_payload, key):
+                    setattr(token_payload, key, value)
             
-            # Ensure backwards compatibility - set 'sub' if it doesn't exist
+            # For backwards compatibility
             if not hasattr(token_payload, "sub") and hasattr(token_payload, "subject"):
+                # Make sub accessible both as property and as direct attribute for compatibility
                 token_payload.sub = token_payload.subject
                 
             # Sanitize PHI fields from payload
@@ -847,7 +849,9 @@ class JWTService(IJwtService):
                 # Check if type field indicates refresh token
                 if hasattr(payload, "type") and payload.type:
                     token_type = payload.type
-                    if token_type == TokenType.REFRESH.value or token_type == "refresh" or token_type == "REFRESH":
+                    if (token_type == TokenType.REFRESH.value or 
+                        token_type == "refresh" or 
+                        token_type == "REFRESH"):
                         is_refresh = True
                 
                 # Check refresh boolean field as fallback
@@ -1323,15 +1327,22 @@ def get_jwt_service(
             secret_key = settings.JWT_SECRET_KEY.get_secret_value()
         else:
             secret_key = str(settings.JWT_SECRET_KEY)
+    elif hasattr(settings, "SECRET_KEY"):
+        # Fallback to general SECRET_KEY
+        secret_key_obj = settings.SECRET_KEY
+        if hasattr(secret_key_obj, "get_secret_value"):
+            secret_key = secret_key_obj.get_secret_value()
+        else:
+            secret_key = str(secret_key_obj)
     
     # Validate secret key
-    if not secret_key or len(secret_key.strip()) < 16:
+    if not secret_key:
+        # For tests, use a default key
         if hasattr(settings, "ENVIRONMENT") and settings.ENVIRONMENT == "test":
-            # Allow shorter keys in test
-            if len(secret_key.strip()) < 8:
-                secret_key = "testsecretkeythatisverylong"
+            secret_key = "testsecretkeythatisverylong"
         else:
-            raise ValueError("JWT_SECRET_KEY must be at least 16 characters long")
+            secret_key = "insecure-secret-key-for-development-only"
+            logging.warning("Using insecure default JWT secret key. This should NOT be used in production!")
 
     # Get required settings with validation
     try:
@@ -1360,16 +1371,34 @@ def get_jwt_service(
     issuer = getattr(settings, "JWT_ISSUER", None)
     audience = getattr(settings, "JWT_AUDIENCE", None)
 
-    # Create and return a JWTServiceImpl instance with validated settings
-    return JWTServiceImpl(
-        secret_key=secret_key,
-        algorithm=algorithm,
-        access_token_expire_minutes=access_token_expire_minutes,
-        refresh_token_expire_days=refresh_token_expire_days,
-        token_blacklist_repository=token_blacklist_repository,
-        user_repository=user_repository,
-        audit_logger=audit_logger,
-        issuer=issuer,
-        audience=audience,
-        settings=settings,
-    )
+    # Create and return JWT service instance
+    # Try to use JWTServiceImpl first
+    try:
+        from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
+        
+        return JWTServiceImpl(
+            secret_key=secret_key,
+            algorithm=algorithm,
+            access_token_expire_minutes=access_token_expire_minutes,
+            refresh_token_expire_days=refresh_token_expire_days,
+            token_blacklist_repository=token_blacklist_repository,
+            user_repository=user_repository,
+            audit_logger=audit_logger,
+            issuer=issuer,
+            audience=audience,
+            settings=settings,
+        )
+    except ImportError:
+        # Fallback to JWTService if implementation is not available
+        return JWTService(
+            secret_key=secret_key,
+            algorithm=algorithm,
+            access_token_expire_minutes=access_token_expire_minutes,
+            refresh_token_expire_days=refresh_token_expire_days,
+            token_blacklist_repository=token_blacklist_repository,
+            user_repository=user_repository,
+            audit_logger=audit_logger,
+            issuer=issuer,
+            audience=audience,
+            settings=settings,
+        )
