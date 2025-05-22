@@ -8,7 +8,8 @@ interface for efficient caching in a distributed environment.
 import asyncio
 import json
 import logging
-from typing import Any
+import time  # Add missing time import for InMemoryFallback
+from typing import Any, cast
 
 # ---------------------------------------------------------------------------
 # Optional dependency handling
@@ -52,9 +53,9 @@ except ModuleNotFoundError:  # pragma: no cover – executed only in test env
         async def exists(self, key: str):
             return 1 if key in self._store else 0
 
-        async def incr(self, key: str):
+        async def incr(self, key: str) -> int:
             self._store[key] = int(self._store.get(key, 0)) + 1
-            return self._store[key]
+            return int(self._store[key])
 
         async def expire(self, key: str, ttl: int):
             # Record TTL as for set(ex=...)
@@ -150,7 +151,7 @@ class RedisCache(CacheService):
             logger.error(f"Error retrieving key {key} from cache: {e}")
             return None
 
-    async def set(self, key: str, value: Any, expiration: int = 3600) -> bool:
+    async def set(self, key: str, value: Any, expiration: int | None = 3600) -> bool:
         """
         Set a value in the cache with TTL.
 
@@ -173,8 +174,12 @@ class RedisCache(CacheService):
                 logger.error(f"Failed to serialize value for key {key}: {e}")
                 return False
 
-            # Store with expiration time
-            await self.redis_client.setex(key, expiration, serialized_value)
+            # Handle the case when expiration is None
+            if expiration is None:
+                await self.redis_client.set(key, serialized_value)
+            else:
+                # Store with expiration time
+                await self.redis_client.setex(key, expiration, serialized_value)
             return True
 
         except Exception as e:
@@ -195,7 +200,8 @@ class RedisCache(CacheService):
             return 0
 
         try:
-            return await self.redis_client.delete(key)
+            result = await self.redis_client.delete(key)
+            return cast(int, result)
         except Exception as e:
             logger.error(f"Error deleting key {key} from cache: {e}")
             return 0
@@ -256,7 +262,8 @@ class RedisCache(CacheService):
             return 0
 
         try:
-            return await self.redis_client.incrby(key, amount)
+            result = await self.redis_client.incrby(key, amount)
+            return cast(int, result)
         except Exception as e:
             logger.error(f"Error incrementing key {key} in cache: {e}")
             return 0  # Return 0 by default
@@ -277,7 +284,8 @@ class RedisCache(CacheService):
             return None
 
         try:
-            return await self.redis_client.incrby(key, amount)
+            result = await self.redis_client.incrby(key, amount)
+            return cast(int, result)
         except Exception as e:
             logger.error(f"Error incrementing key {key} in cache: {e}")
             return None
@@ -318,7 +326,8 @@ class RedisCache(CacheService):
             return -2
 
         try:
-            return await self.redis_client.ttl(key)
+            result = await self.redis_client.ttl(key)
+            return cast(int, result)
         except Exception as e:
             logger.error(f"Error getting TTL for key {key} in cache: {e}")
             return -2
@@ -339,10 +348,11 @@ class RedisCache(CacheService):
 
         try:
             ttl = await self.redis_client.ttl(key)
+            ttl_value = cast(int, ttl)
             # Redis returns -2 if the key doesn't exist, -1 if the key exists but has no TTL
-            if ttl < 0:
+            if ttl_value < 0:
                 return None
-            return ttl
+            return ttl_value
         except Exception as e:
             logger.error(f"Error getting TTL for key {key} in cache: {e}")
             return None
@@ -377,7 +387,7 @@ class InMemoryFallback:
         self._cache: dict[str, Any] = {}
         self._expirations: dict[str, float] = {}  # Store expiration timestamps
 
-    async def _check_expired(self, key: str):
+    async def _check_expired(self, key: str) -> bool:
         """Check if a key has expired and remove it if so."""
         if key in self._expirations and self._expirations[key] < time.time():
             if key in self._cache:
@@ -387,8 +397,8 @@ class InMemoryFallback:
         return False
 
     async def get(self, key: str) -> Any:
-        if self._check_expired(key):
-            return None
+        """Get a value from the cache."""
+        await self._check_expired(key)
         return self._cache.get(key)
 
     async def set(self, key: str, value: Any, ex: int | None = None) -> bool:
@@ -412,13 +422,12 @@ class InMemoryFallback:
 
     async def exists(self, key: str) -> bool:
         """Check if a key exists in the cache."""
-        if self._check_expired(key):
-            return False
+        await self._check_expired(key)
         return key in self._cache
 
     async def incr(self, key: str) -> int:
         """Increment a counter in the cache."""
-        if self._check_expired(key):
+        if await self._check_expired(key):
             self._cache[key] = 0  # Initialize if expired and accessed by incr
 
         current_value = self._cache.get(key, 0)
@@ -440,7 +449,7 @@ class InMemoryFallback:
         # Incrementing removes TTL in Redis, simulate this
         if key in self._expirations:
             del self._expirations[key]
-        return new_value
+        return int(new_value)  # Explicitly ensure int return type
 
     async def expire(self, key: str, seconds: int) -> bool:
         """Set expiration on a key."""
@@ -451,14 +460,15 @@ class InMemoryFallback:
 
     async def ttl(self, key: str) -> int:
         """Get the TTL for a key."""
-        if self._check_expired(key):
+        if await self._check_expired(key):
             return -2  # Key doesn't exist (because it expired)
         if key not in self._cache:
             return -2  # Key doesn't exist
         if key not in self._expirations:
             return -1  # Key exists but has no associated expiration
 
-        remaining_ttl = int(self._expirations[key] - time.time())
+        remaining_seconds = self._expirations[key] - time.time()
+        remaining_ttl = int(remaining_seconds)
         return max(0, remaining_ttl)  # Return 0 if expired but not yet cleaned up
 
     async def close(self) -> None:
