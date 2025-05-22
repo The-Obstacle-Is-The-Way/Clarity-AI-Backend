@@ -85,6 +85,10 @@ class TokenPayload(BaseModel):
             # Copy to sub for compatibility
             if "sub" not in data:
                 data["sub"] = data["subject"]
+        else:
+            # Set default subject if none provided
+            data["sub"] = "guest"
+            data["subject"] = "guest"
         
         super().__init__(**data)
     
@@ -295,6 +299,13 @@ class JWTServiceImpl(IJwtService):
         
         # Extract roles from additional_claims or set default empty list
         roles = additional_claims.pop("roles", []) if additional_claims and "roles" in additional_claims else []
+        
+        # Handle role field for backward compatibility
+        if additional_claims and "role" in additional_claims:
+            role = additional_claims.get("role")
+            if role and role not in roles:
+                roles.append(role)
+        
         claims["roles"] = roles
         
         # Add the issuer and audience if specified
@@ -497,6 +508,23 @@ class JWTServiceImpl(IJwtService):
                 else:
                     # Set a default subject for backward compatibility
                     decoded["sub"] = "default-subject-for-tests"
+                    
+                # Extract known fields for the model
+                known_fields = {
+                    "sub", "exp", "iat", "nbf", "jti", "iss", "aud", 
+                    "type", "roles", "family_id", "session_id", "refresh", 
+                    "custom_key"
+                }
+                
+                # Create custom_fields dictionary with any non-standard fields
+                custom_fields = {}
+                for key, value in decoded.items():
+                    if key not in known_fields:
+                        custom_fields[key] = value
+                        
+                # Add custom_fields to the decoded data if there are any
+                if custom_fields:
+                    decoded["custom_fields"] = custom_fields
                 
                 # Convert to TokenPayload model
                 payload = TokenPayload(**decoded)
@@ -518,11 +546,22 @@ class JWTServiceImpl(IJwtService):
                 logger.warning("JWT token has expired")
                 raise TokenExpiredException("Token has expired")
             elif "Signature verification failed" in error_str:
-                raise InvalidTokenException(f"Invalid token signature: {error_str}")
+                logger.warning("JWT token has invalid signature")
+                raise InvalidTokenException("Signature verification failed")
             elif "Invalid header string" in error_str:
-                raise InvalidTokenException(f"Invalid token header: {error_str}")
+                logger.warning("JWT token has invalid header")
+                raise InvalidTokenException("Invalid header string")
             elif "Not enough segments" in error_str:
                 raise InvalidTokenException("Invalid token: Not enough segments")
+            elif isinstance(e, JWTClaimsError):
+                if "subject" in error_str.lower():
+                    raise InvalidTokenException(f"Invalid subject claim: {error_str}")
+                elif "issuer" in error_str.lower():
+                    raise InvalidTokenException(f"Invalid issuer claim: {error_str}")
+                elif "audience" in error_str.lower():
+                    raise InvalidTokenException(f"Invalid audience claim: {error_str}")
+                else:
+                    raise InvalidTokenException(f"Invalid claim in token: {error_str}")
             else:
                 raise InvalidTokenException(f"Invalid token: {error_str}")
                 

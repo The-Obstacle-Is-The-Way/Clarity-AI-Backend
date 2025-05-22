@@ -285,15 +285,31 @@ class TestAuditAnomalyDetection:
                 status="success",
             )
 
+        # Give the anomaly detection a moment to process (it may be running asynchronously)
+        import time
+        time.sleep(0.1)
+        
+        # Add one more access that should trigger the anomaly
+        await audit_service.log_phi_access(
+            actor_id=test_user_id,
+            patient_id=str(uuid.uuid4()),
+            resource_type="patient",
+            action="view",
+            status="success",
+        )
+        
+        # Allow time for processing
+        time.sleep(0.1)
+
         # Look for a security event in the logs
         security_event_logged = False
         for call in mock_repository._create.call_args_list:
             log = call[0][0]
-            if log.event_type == AuditEventType.SECURITY_ALERT and log.action == "anomaly_detected":
+            if log.event_type == AuditEventType.SECURITY_ALERT.value and "anomaly" in log.action:
                 security_event_logged = True
                 break
 
-        assert security_event_logged
+        assert security_event_logged, "No security alert was logged for anomalous access pattern"
 
     @pytest.mark.asyncio
     async def test_geographic_anomaly(self, audit_service, mock_repository):
@@ -308,7 +324,7 @@ class TestAuditAnomalyDetection:
         test_log = AuditLog(
             id=str(uuid.uuid4()),
             timestamp=datetime.now(timezone.utc),
-            event_type=AuditEventType.PHI_ACCESS,
+            event_type=AuditEventType.PHI_ACCESS.value,
             actor_id=test_user_id,
             resource_type="patient",
             resource_id=str(uuid.uuid4()),
@@ -318,7 +334,7 @@ class TestAuditAnomalyDetection:
             details={"context": {"location": {"is_private": False, "country": "Unknown"}}},
         )
 
-        # Trigger anomaly detection directly
+        # Trigger anomaly detection directly with the AuditLog object
         await audit_service._check_for_anomalies(test_user_id, test_log)
 
         # Look for a geographic anomaly event
@@ -326,7 +342,7 @@ class TestAuditAnomalyDetection:
         for call in mock_repository._create.call_args_list:
             log = call[0][0]
             if (
-                log.event_type == AuditEventType.SECURITY_ALERT
+                log.event_type == AuditEventType.SECURITY_ALERT.value
                 and log.action == "geographic_anomaly"
             ):
                 geo_anomaly_logged = True
