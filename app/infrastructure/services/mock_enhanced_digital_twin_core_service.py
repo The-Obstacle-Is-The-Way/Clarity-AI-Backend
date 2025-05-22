@@ -1,22 +1,812 @@
 """
-Enhanced Digital Twin Core Service Mock Redirection Module.
+Mock implementation of the Enhanced Digital Twin Core Service.
 
-This module provides a clean redirection to the canonical implementation
-following Clean Architecture principles with proper separation of concerns.
+Provides realistic mock data for testing enhanced Digital Twin functionality.
+Follows SOLID principles with proper dependency injection and type safety.
 """
+import logging
+import random
+import uuid
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
+from uuid import UUID
 
-# Re-export from the canonical implementation for backward compatibility
-from app.infrastructure.services.mocks.mock_enhanced_digital_twin_core_service import (
-    MockEnhancedDigitalTwinCoreService,
+from app.domain.entities.digital_twin import DigitalTwinState
+from app.domain.entities.digital_twin_enums import (
+    BrainRegion,
+    ClinicalInsightType,
+    ClinicalSignificance,
+    Neurotransmitter,
 )
-
-# Re-export the neurotransmitter service implementation following clean architecture
-from app.infrastructure.services.mocks.mock_enhanced_digital_twin_neurotransmitter_service import (
-    MockEnhancedDigitalTwinNeurotransmitterService,
+from app.domain.entities.knowledge_graph import (
+    BayesianBeliefNetwork,
+    TemporalKnowledgeGraph,
 )
+from app.domain.entities.neurotransmitter_mapping import (
+    NeurotransmitterMapping,
+    ReceptorProfile,
+)
+from app.domain.services.enhanced_digital_twin_core_service import (
+    EnhancedDigitalTwinCoreService,
+)
+from app.domain.services.enhanced_mentalllama_service import EnhancedMentalLLaMAService
+from app.domain.services.enhanced_pat_service import EnhancedPATService
+from app.domain.services.enhanced_xgboost_service import EnhancedXGBoostService
 
-# Export all relevant service classes to maintain a clean interface
-__all__ = [
-    "MockEnhancedDigitalTwinCoreService",
-    "MockEnhancedDigitalTwinNeurotransmitterService",
-]
+logger = logging.getLogger(__name__)
+
+
+class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
+    """
+    Mock implementation of EnhancedDigitalTwinCoreService for testing.
+    
+    Provides realistic mock data while maintaining proper type safety
+    and following SOLID principles with dependency injection.
+    """
+
+    def __init__(
+        self,
+        mental_llama_service: EnhancedMentalLLaMAService,
+        xgboost_service: EnhancedXGBoostService,
+        pat_service: EnhancedPATService,
+    ) -> None:
+        """Initialize mock service with proper dependency injection."""
+        self.mental_llama_service = mental_llama_service
+        self.xgboost_service = xgboost_service
+        self.pat_service = pat_service
+        
+        # Initialize mock data storage
+        self._mock_states: Dict[UUID, DigitalTwinState] = {}
+        self._mock_knowledge_graphs: Dict[UUID, TemporalKnowledgeGraph] = {}
+        self._mock_belief_networks: Dict[UUID, BayesianBeliefNetwork] = {}
+        self._mock_neurotransmitter_mappings: Dict[UUID, NeurotransmitterMapping] = {}
+
+    async def initialize_digital_twin(
+        self,
+        patient_id: UUID,
+        initial_data: dict | None = None,
+        enable_knowledge_graph: bool = True,
+        enable_belief_network: bool = True,
+    ) -> tuple[DigitalTwinState, TemporalKnowledgeGraph | None, BayesianBeliefNetwork | None]:
+        """Initialize a new Digital Twin state with knowledge graph and belief network."""
+        logger.info(f"Initializing Digital Twin for patient {patient_id}")
+        
+        # Create mock Digital Twin state
+        state = self._create_mock_digital_twin_state(patient_id, initial_data)
+        self._mock_states[patient_id] = state
+        
+        # Create mock knowledge graph if enabled
+        knowledge_graph = None
+        if enable_knowledge_graph:
+            knowledge_graph = self._create_mock_knowledge_graph(patient_id)
+            self._mock_knowledge_graphs[patient_id] = knowledge_graph
+        
+        # Create mock belief network if enabled
+        belief_network = None
+        if enable_belief_network:
+            belief_network = self._create_mock_belief_network(patient_id)
+            self._mock_belief_networks[patient_id] = belief_network
+        
+        return state, knowledge_graph, belief_network
+
+    async def digital_twin_exists(self, patient_id: UUID) -> bool:
+        """Check if a Digital Twin exists for the patient."""
+        return patient_id in self._mock_states
+
+    async def add_knowledge_node(
+        self,
+        patient_id: UUID,
+        node_type: Any,
+        node_data: dict,
+    ) -> UUID:
+        """Add a new node to the knowledge graph."""
+        logger.info(f"Adding knowledge node for patient {patient_id}")
+        node_id = uuid.uuid4()
+        # Mock implementation - in real system would add to knowledge graph
+        return node_id
+
+    async def add_knowledge_relationship(
+        self,
+        patient_id: UUID,
+        source_node_id: UUID,
+        target_node_type: Any,
+        relationship_type: str,
+        relationship_data: dict,
+    ) -> UUID:
+        """Add a relationship between nodes in the knowledge graph."""
+        logger.info(f"Adding knowledge relationship for patient {patient_id}")
+        relationship_id = uuid.uuid4()
+        # Mock implementation - in real system would add to knowledge graph
+        return relationship_id
+
+    async def query_knowledge_graph(
+        self,
+        patient_id: UUID,
+        query_type: str,
+        parameters: dict,
+    ) -> dict:
+        """Query the knowledge graph."""
+        logger.info(f"Querying knowledge graph for patient {patient_id}")
+        return {
+            "relationships": [
+                {
+                    "id": str(uuid.uuid4()),
+                    "type": "symptom_of",
+                    "strength": 0.8,
+                    "evidence": "clinical_observation"
+                }
+            ]
+        }
+
+    async def update_belief(
+        self,
+        patient_id: UUID,
+        belief_node: str,
+        evidence: dict,
+        probability: float,
+    ) -> None:
+        """Update a belief in the network."""
+        logger.info(f"Updating belief for patient {patient_id}: {belief_node}")
+        # Mock implementation - in real system would update belief network
+
+    async def query_belief_network(
+        self,
+        patient_id: UUID,
+        query_node: str,
+        evidence: dict,
+    ) -> dict:
+        """Query the belief network."""
+        logger.info(f"Querying belief network for patient {patient_id}")
+        return {
+            "probability": random.uniform(0.3, 0.9),
+            "confidence": random.uniform(0.7, 0.95)
+        }
+
+    async def simulate_neurotransmitter_dynamics(
+        self,
+        patient_id: UUID,
+        intervention: dict,
+        duration_days: int,
+        time_resolution_hours: int = 24,
+    ) -> dict:
+        """Simulate neurotransmitter dynamics."""
+        logger.info(f"Simulating neurotransmitter dynamics for patient {patient_id}")
+        
+        timeline = []
+        for day in range(duration_days):
+            timeline.append({
+                "day": day,
+                "neurotransmitter_levels": {
+                    "serotonin": 0.4 + (day * 0.01),
+                    "dopamine": 0.5 + (day * 0.005),
+                    "norepinephrine": 0.6 - (day * 0.002),
+                },
+                "clinical_effects": {
+                    "mood": random.uniform(0.3, 0.8),
+                    "anxiety": random.uniform(0.2, 0.6),
+                }
+            })
+        
+        return {
+            "timeline": timeline,
+            "clinical_effects": {
+                "overall_improvement": random.uniform(0.3, 0.7),
+                "side_effects": random.uniform(0.1, 0.3)
+            }
+        }
+
+    async def add_temporal_sequence(
+        self,
+        patient_id: UUID,
+        sequence: Any,
+    ) -> None:
+        """Add a temporal sequence to the Digital Twin."""
+        logger.info(f"Adding temporal sequence for patient {patient_id}")
+        # Mock implementation
+
+    async def analyze_temporal_patterns(
+        self,
+        patient_id: UUID,
+        sequence_id: UUID,
+        analysis_type: str,
+        parameters: dict,
+    ) -> dict:
+        """Analyze temporal patterns in the sequence."""
+        logger.info(f"Analyzing temporal patterns for patient {patient_id}")
+        return {
+            "trend": "increasing",
+            "significance": random.uniform(0.6, 0.9),
+            "correlation": random.uniform(0.4, 0.8)
+        }
+
+    async def generate_clinical_insights(
+        self,
+        patient_id: UUID,
+        insight_types: list,
+        time_range: tuple | None = None,
+    ) -> list:
+        """Generate clinical insights from the Digital Twin."""
+        logger.info(f"Generating clinical insights for patient {patient_id}")
+        
+        insights = []
+        for insight_type in insight_types:
+            insights.append({
+                "type": insight_type.value if hasattr(insight_type, 'value') else str(insight_type),
+                "description": f"Mock insight for {insight_type}",
+                "significance": random.choice([
+                    ClinicalSignificance.HIGH.value,
+                    ClinicalSignificance.MEDIUM.value,
+                    ClinicalSignificance.LOW.value,
+                ]),
+                "confidence": random.uniform(0.7, 0.95),
+                "supporting_evidence": ["clinical_data", "biomarkers"]
+            })
+        
+        return insights
+
+    async def predict_treatment_response(
+        self,
+        patient_id: UUID,
+        treatment: dict,
+        prediction_timeframe_weeks: int,
+    ) -> dict:
+        """Predict treatment response using the Digital Twin."""
+        logger.info(f"Predicting treatment response for patient {patient_id}")
+        
+        return {
+            "response_probability": random.uniform(0.6, 0.9),
+            "confidence": random.uniform(0.7, 0.95),
+            "expected_symptom_changes": {
+                "depression": random.uniform(-0.5, -0.2),
+                "anxiety": random.uniform(-0.4, -0.1),
+            },
+            "expected_neurotransmitter_changes": {
+                "serotonin": random.uniform(0.2, 0.5),
+                "dopamine": random.uniform(0.1, 0.3),
+            }
+        }
+
+    async def process_clinical_event(
+        self,
+        patient_id: UUID,
+        event_type: str,
+        event_data: dict,
+    ) -> dict:
+        """Process a clinical event in the Digital Twin."""
+        logger.info(f"Processing clinical event for patient {patient_id}: {event_type}")
+        
+        return {
+            "event_id": str(uuid.uuid4()),
+            "status": "processed",
+            "effects": [
+                {
+                    "type": "neurotransmitter_change",
+                    "magnitude": random.uniform(0.1, 0.3),
+                    "confidence": random.uniform(0.7, 0.9)
+                }
+            ]
+        }
+
+    async def get_clinical_events(
+        self,
+        patient_id: UUID,
+        event_types: list,
+        time_range: tuple,
+    ) -> list:
+        """Get clinical events for the patient."""
+        logger.info(f"Getting clinical events for patient {patient_id}")
+        
+        return [
+            {
+                "event_id": str(uuid.uuid4()),
+                "event_type": event_types[0] if event_types else "medication_change",
+                "event_data": {
+                    "medication": "Escitalopram",
+                    "change_type": "dosage_increase"
+                },
+                "timestamp": datetime.now()
+            }
+        ]
+
+    async def generate_multimodal_clinical_summary(
+        self,
+        patient_id: UUID,
+        summary_types: list,
+        time_range: tuple | None = None,
+        detail_level: str = "standard",
+    ) -> dict:
+        """Generate a comprehensive multimodal clinical summary."""
+        logger.info(f"Generating clinical summary for patient {patient_id}")
+        
+        return {
+            "metadata": {
+                "patient_id": str(patient_id),
+                "generated_at": datetime.now(),
+                "detail_level": detail_level
+            },
+            "sections": {
+                "status": {
+                    "overall_status": "stable",
+                    "key_metrics": {"mood": 0.7, "anxiety": 0.4}
+                },
+                "trajectory": {
+                    "trend": "improving",
+                    "confidence": 0.85
+                }
+            },
+            "integrated_summary": "Patient showing positive response to treatment with stable mood and decreasing anxiety."
+        }
+
+    async def generate_visualization_data(
+        self,
+        patient_id: UUID,
+        visualization_type: str,
+        parameters: dict,
+        digital_twin_state_id: UUID | None = None,
+    ) -> dict:
+        """Generate data for advanced visualizations."""
+        logger.info(f"Generating visualization data for patient {patient_id}")
+        
+        if visualization_type == "brain_model":
+            return {
+                "regions": [
+                    {
+                        "id": "prefrontal_cortex",
+                        "name": "Prefrontal Cortex",
+                        "activation": random.uniform(0.4, 0.8),
+                        "coordinates": {"x": 0, "y": 0, "z": 0}
+                    },
+                    {
+                        "id": "amygdala",
+                        "name": "Amygdala",
+                        "activation": random.uniform(0.3, 0.7),
+                        "coordinates": {"x": 1, "y": 1, "z": 1}
+                    }
+                ],
+                "neurotransmitters": [
+                    {
+                        "id": "serotonin",
+                        "level": random.uniform(0.4, 0.8),
+                        "regions": ["prefrontal_cortex", "amygdala"]
+                    }
+                ]
+            }
+        
+        return {"visualization_type": visualization_type, "data": {}}
+
+    # Neurotransmitter mapping methods
+    async def initialize_neurotransmitter_mapping(
+        self,
+        patient_id: UUID,
+        use_default_mapping: bool = True,
+        custom_mapping: NeurotransmitterMapping | None = None,
+    ) -> NeurotransmitterMapping:
+        """Initialize neurotransmitter mapping for a patient."""
+        logger.info(f"Initializing neurotransmitter mapping for patient {patient_id}")
+        
+        # Create mock mapping
+        mapping = self._create_mock_neurotransmitter_mapping(patient_id)
+        self._mock_neurotransmitter_mappings[patient_id] = mapping
+        return mapping
+
+    async def add_receptor_profile(
+        self,
+        patient_id: UUID,
+        profile: ReceptorProfile,
+    ) -> None:
+        """Add a receptor profile to the patient's mapping."""
+        logger.info(f"Adding receptor profile for patient {patient_id}")
+        # Mock implementation
+
+    async def get_neurotransmitter_mapping(
+        self,
+        patient_id: UUID,
+    ) -> NeurotransmitterMapping:
+        """Get the neurotransmitter mapping for a patient."""
+        if patient_id in self._mock_neurotransmitter_mappings:
+            return self._mock_neurotransmitter_mappings[patient_id]
+        return self._create_mock_neurotransmitter_mapping(patient_id)
+
+    async def analyze_neurotransmitter_interactions(
+        self,
+        patient_id: UUID,
+        brain_region: BrainRegion,
+    ) -> dict:
+        """Analyze interactions between neurotransmitters."""
+        logger.info(f"Analyzing neurotransmitter interactions for patient {patient_id}")
+        
+        return {
+            "primary_interactions": [
+                {
+                    "source": "serotonin",
+                    "target": "dopamine",
+                    "effect_type": "modulatory",
+                    "effect_magnitude": "medium"
+                }
+            ],
+            "secondary_interactions": [],
+            "confidence": random.uniform(0.7, 0.9)
+        }
+
+    async def predict_medication_effects(
+        self,
+        patient_id: UUID,
+        medication: dict,
+        prediction_timeframe_days: int,
+    ) -> dict:
+        """Predict medication effects on neurotransmitters."""
+        logger.info(f"Predicting medication effects for patient {patient_id}")
+        
+        timeline = []
+        for day in range(prediction_timeframe_days):
+            timeline.append({
+                "day": day,
+                "neurotransmitter_levels": {
+                    "serotonin": 0.4 + (day * 0.01),
+                    "dopamine": 0.5 + (day * 0.005),
+                },
+                "expected_symptom_changes": {
+                    "mood": random.uniform(0.3, 0.8),
+                    "anxiety": random.uniform(0.2, 0.6),
+                }
+            })
+        
+        return {
+            "primary_effects": {
+                "serotonin": 0.3,
+                "dopamine": 0.1,
+            },
+            "secondary_effects": {},
+            "expected_timeline": timeline,
+            "confidence": random.uniform(0.7, 0.9)
+        }
+
+    async def analyze_temporal_response(
+        self,
+        patient_id: UUID,
+        treatment: dict,
+        brain_region: BrainRegion,
+        neurotransmitter: Neurotransmitter,
+    ) -> dict:
+        """Analyze temporal response patterns."""
+        logger.info(f"Analyzing temporal response for patient {patient_id}")
+        
+        response_curve = []
+        for day in range(30):
+            response_curve.append({
+                "day": day,
+                "response_level": random.uniform(0.3, 0.9)
+            })
+        
+        return {
+            "response_curve": response_curve,
+            "peak_response_day": random.randint(7, 21),
+            "stabilization_day": random.randint(21, 35),
+            "confidence": random.uniform(0.7, 0.9)
+        }
+
+    async def generate_clinical_insights(
+        self,
+        patient_id: UUID,
+        insight_types: list,
+        time_range: tuple | None = None,
+    ) -> list:
+        """Generate clinical insights from the Digital Twin."""
+        logger.info(f"Generating clinical insights for patient {patient_id}")
+        
+        insights = []
+        for insight_type in insight_types:
+            insights.append({
+                "type": insight_type.value if hasattr(insight_type, 'value') else str(insight_type),
+                "description": f"Mock insight for {insight_type}",
+                "significance": random.choice([
+                    ClinicalSignificance.HIGH.value,
+                    ClinicalSignificance.MEDIUM.value,
+                    ClinicalSignificance.LOW.value,
+                ]),
+                "confidence": random.uniform(0.7, 0.95),
+                "supporting_evidence": ["clinical_data", "biomarkers"]
+            })
+        
+        return insights
+
+    async def analyze_regional_effects(
+        self,
+        patient_id: UUID,
+        neurotransmitter: Neurotransmitter,
+        effect_magnitude: float,
+    ) -> dict:
+        """Analyze regional effects of neurotransmitter changes."""
+        logger.info(f"Analyzing regional effects for patient {patient_id}")
+        
+        return {
+            "affected_brain_regions": [
+                {
+                    "brain_region": "prefrontal_cortex",
+                    "neurotransmitter": neurotransmitter.value,
+                    "effect": effect_magnitude,
+                    "confidence": random.uniform(0.7, 0.9),
+                    "clinical_significance": "moderate"
+                }
+            ],
+            "expected_clinical_effects": [
+                {
+                    "symptom": "mood",
+                    "change_direction": "improvement",
+                    "magnitude": random.uniform(0.3, 0.7),
+                    "confidence": random.uniform(0.7, 0.9)
+                }
+            ],
+            "confidence": random.uniform(0.7, 0.9)
+        }
+
+    async def simulate_neurotransmitter_cascade(
+        self,
+        patient_id: UUID,
+        initial_changes: dict,
+        simulation_steps: int = 10,
+        time_resolution_hours: int = 24,
+    ) -> dict:
+        """Simulate neurotransmitter cascade effects."""
+        logger.info(f"Simulating neurotransmitter cascade for patient {patient_id}")
+        
+        timeline = []
+        for step in range(simulation_steps):
+            timeline.append({
+                "time_hours": step * time_resolution_hours,
+                "neurotransmitter_levels": {
+                    nt.value: level + random.uniform(-0.1, 0.1)
+                    for nt, level in initial_changes.items()
+                }
+            })
+        
+        return {"timeline": timeline}
+
+    async def analyze_neurotransmitter_interactions(
+        self,
+        patient_id: UUID,
+        brain_region: BrainRegion,
+    ) -> dict:
+        """Analyze interactions between neurotransmitters."""
+        logger.info(f"Analyzing neurotransmitter interactions for patient {patient_id}")
+        
+        return {
+            "primary_interactions": [
+                {
+                    "source": "serotonin",
+                    "target": "dopamine",
+                    "effect_type": "modulatory",
+                    "effect_magnitude": "medium"
+                }
+            ],
+            "secondary_interactions": [],
+            "confidence": random.uniform(0.7, 0.9)
+        }
+
+    async def predict_medication_effects(
+        self,
+        patient_id: UUID,
+        medication: dict,
+        prediction_timeframe_days: int,
+    ) -> dict:
+        """Predict medication effects on neurotransmitters."""
+        logger.info(f"Predicting medication effects for patient {patient_id}")
+        
+        timeline = []
+        for day in range(prediction_timeframe_days):
+            timeline.append({
+                "day": day,
+                "neurotransmitter_levels": {
+                    "serotonin": 0.4 + (day * 0.01),
+                    "dopamine": 0.5 + (day * 0.005),
+                },
+                "expected_symptom_changes": {
+                    "mood": random.uniform(0.3, 0.8),
+                    "anxiety": random.uniform(0.2, 0.6),
+                }
+            })
+        
+        return {
+            "primary_effects": {
+                "serotonin": 0.3,
+                "dopamine": 0.1,
+            },
+            "secondary_effects": {},
+            "expected_timeline": timeline,
+            "confidence": random.uniform(0.7, 0.9)
+        }
+
+    async def analyze_temporal_response(
+        self,
+        patient_id: UUID,
+        treatment: dict,
+        brain_region: BrainRegion,
+        neurotransmitter: Neurotransmitter,
+    ) -> dict:
+        """Analyze temporal response patterns."""
+        logger.info(f"Analyzing temporal response for patient {patient_id}")
+        
+        response_curve = []
+        for day in range(30):
+            response_curve.append({
+                "day": day,
+                "response_level": random.uniform(0.3, 0.9)
+            })
+        
+        return {
+            "response_curve": response_curve,
+            "peak_response_day": random.randint(7, 21),
+            "stabilization_day": random.randint(21, 35),
+            "confidence": random.uniform(0.7, 0.9)
+        }
+
+    async def analyze_regional_effects(
+        self,
+        patient_id: UUID,
+        neurotransmitter: Neurotransmitter,
+        effect_magnitude: float,
+    ) -> dict:
+        """Analyze regional effects of neurotransmitter changes."""
+        logger.info(f"Analyzing regional effects for patient {patient_id}")
+        
+        return {
+            "affected_brain_regions": [
+                {
+                    "brain_region": "prefrontal_cortex",
+                    "neurotransmitter": neurotransmitter.value,
+                    "effect": effect_magnitude,
+                    "confidence": random.uniform(0.7, 0.9),
+                    "clinical_significance": "moderate"
+                }
+            ],
+            "expected_clinical_effects": [
+                {
+                    "symptom": "mood",
+                    "change_direction": "improvement",
+                    "magnitude": random.uniform(0.3, 0.7),
+                    "confidence": random.uniform(0.7, 0.9)
+                }
+            ],
+            "confidence": random.uniform(0.7, 0.9)
+        }
+
+    # Stub implementations for remaining abstract methods
+    async def process_multimodal_data(self, *args, **kwargs) -> tuple:
+        logger.info("MockEnhancedDigitalTwinCoreService.process_multimodal_data called")
+        return self._mock_states.get(args[0], {}), []
+
+    async def update_knowledge_graph(self, *args, **kwargs) -> TemporalKnowledgeGraph:
+        logger.info("MockEnhancedDigitalTwinCoreService.update_knowledge_graph called")
+        return self._mock_knowledge_graphs.get(args[0], {})
+
+    async def update_belief_network(self, *args, **kwargs) -> BayesianBeliefNetwork:
+        logger.info("MockEnhancedDigitalTwinCoreService.update_belief_network called")
+        return self._mock_belief_networks.get(args[0], {})
+
+    async def perform_cross_validation(self, *args, **kwargs) -> dict:
+        logger.info("MockEnhancedDigitalTwinCoreService.perform_cross_validation called")
+        return {"validation_result": "passed", "confidence": 0.85}
+
+    async def analyze_temporal_cascade(self, *args, **kwargs) -> list:
+        logger.info("MockEnhancedDigitalTwinCoreService.analyze_temporal_cascade called")
+        return [{"path": "mock_path", "confidence": 0.8}]
+
+    async def map_treatment_effects(self, *args, **kwargs) -> dict:
+        logger.info("MockEnhancedDigitalTwinCoreService.map_treatment_effects called")
+        return {"effects": {}, "confidence": 0.8}
+
+    async def generate_intervention_response_coupling(self, *args, **kwargs) -> dict:
+        logger.info("MockEnhancedDigitalTwinCoreService.generate_intervention_response_coupling called")
+        return {"coupling_data": {}, "confidence": 0.8}
+
+    async def detect_digital_phenotype(self, *args, **kwargs) -> dict:
+        logger.info("MockEnhancedDigitalTwinCoreService.detect_digital_phenotype called")
+        return {"phenotype": "mock_phenotype", "confidence": 0.8}
+
+    async def generate_predictive_maintenance_plan(self, *args, **kwargs) -> dict:
+        logger.info("MockEnhancedDigitalTwinCoreService.generate_predictive_maintenance_plan called")
+        return {"plan": {}, "confidence": 0.8}
+
+    async def perform_counterfactual_simulation(self, *args, **kwargs) -> list:
+        logger.info("MockEnhancedDigitalTwinCoreService.perform_counterfactual_simulation called")
+        return [{"scenario": "mock_scenario", "result": {}}]
+
+    async def generate_early_warning_system(self, *args, **kwargs) -> dict:
+        logger.info("MockEnhancedDigitalTwinCoreService.generate_early_warning_system called")
+        return {"warning_system": {}, "confidence": 0.8}
+
+    async def update_receptor_profiles(self, *args, **kwargs) -> NeurotransmitterMapping:
+        logger.info("MockEnhancedDigitalTwinCoreService.update_receptor_profiles called")
+        return self._mock_neurotransmitter_mappings.get(args[0], {})
+
+    async def get_neurotransmitter_effects(self, *args, **kwargs) -> dict:
+        logger.info("MockEnhancedDigitalTwinCoreService.get_neurotransmitter_effects called")
+        return {BrainRegion.PREFRONTAL_CORTEX: {"net_effect": 0.5, "confidence": 0.8}}
+
+    async def get_brain_region_neurotransmitter_sensitivity(self, *args, **kwargs) -> dict:
+        logger.info("MockEnhancedDigitalTwinCoreService.get_brain_region_neurotransmitter_sensitivity called")
+        return {Neurotransmitter.SEROTONIN: {"sensitivity": 0.7, "confidence": 0.8}}
+
+    async def analyze_treatment_neurotransmitter_effects(self, *args, **kwargs) -> dict:
+        logger.info("MockEnhancedDigitalTwinCoreService.analyze_treatment_neurotransmitter_effects called")
+        return {"effects": {}, "confidence": 0.8}
+
+    async def subscribe_to_events(self, *args, **kwargs) -> UUID:
+        logger.info("MockEnhancedDigitalTwinCoreService.subscribe_to_events called")
+        return uuid.uuid4()
+
+    async def unsubscribe_from_events(self, *args, **kwargs) -> bool:
+        logger.info("MockEnhancedDigitalTwinCoreService.unsubscribe_from_events called")
+        return True
+
+    async def publish_event(self, *args, **kwargs) -> UUID:
+        logger.info("MockEnhancedDigitalTwinCoreService.publish_event called")
+        return uuid.uuid4()
+
+    # Helper methods
+    def _create_mock_digital_twin_state(self, patient_id: UUID, initial_data: dict | None) -> DigitalTwinState:
+        """Create a mock Digital Twin state."""
+        # This would create a proper DigitalTwinState object
+        # For now, returning a mock dict
+        return {
+            "patient_id": patient_id,
+            "timestamp": datetime.now(),
+            "status": "active",
+            "brain_regions": {},
+            "neurotransmitters": {},
+            "version": 1
+        }
+
+    def _create_mock_knowledge_graph(self, patient_id: UUID) -> TemporalKnowledgeGraph:
+        """Create a mock temporal knowledge graph."""
+        return {
+            "patient_id": patient_id,
+            "nodes": [],
+            "edges": [],
+            "temporal_data": {}
+        }
+
+    def _create_mock_belief_network(self, patient_id: UUID) -> BayesianBeliefNetwork:
+        """Create a mock Bayesian belief network."""
+        return {
+            "patient_id": patient_id,
+            "nodes": [],
+            "probabilities": {},
+            "evidence": {}
+        }
+
+    def _create_mock_neurotransmitter_mapping(self, patient_id: UUID) -> NeurotransmitterMapping:
+        """Create a mock neurotransmitter mapping."""
+        return {
+            "patient_id": patient_id,
+            "receptor_profiles": [
+                {
+                    "brain_region": BrainRegion.PREFRONTAL_CORTEX,
+                    "neurotransmitter": Neurotransmitter.SEROTONIN,
+                    "receptor_type": "excitatory",
+                    "density": 0.7,
+                    "sensitivity": 0.8
+                },
+                {
+                    "brain_region": BrainRegion.AMYGDALA,
+                    "neurotransmitter": Neurotransmitter.GABA,
+                    "receptor_type": "inhibitory",
+                    "density": 0.6,
+                    "sensitivity": 0.9
+                },
+                {
+                    "brain_region": BrainRegion.HIPPOCAMPUS,
+                    "neurotransmitter": Neurotransmitter.GLUTAMATE,
+                    "receptor_type": "excitatory",
+                    "density": 0.8,
+                    "sensitivity": 0.7
+                },
+                {
+                    "brain_region": BrainRegion.PITUITARY,
+                    "neurotransmitter": Neurotransmitter.DOPAMINE,
+                    "receptor_type": "modulatory",
+                    "density": 0.5,
+                    "sensitivity": 0.6
+                }
+            ]
+        }
