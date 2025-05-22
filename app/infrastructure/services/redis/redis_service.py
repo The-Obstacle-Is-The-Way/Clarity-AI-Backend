@@ -9,7 +9,7 @@ to the interface defined in the core layer.
 import json
 import logging
 from collections.abc import Set as AbcSet
-from typing import Any
+from typing import Any, Dict, List, Optional, Union
 
 import redis.asyncio as redis_asyncio
 from redis.asyncio.client import Redis
@@ -36,88 +36,86 @@ class RedisService(IRedisService):
         """
         self._redis = redis_client
 
-    async def get(self, name: str) -> str | None:
+    async def get(self, key: str) -> Optional[bytes]:
         """
         Retrieve a value from Redis by key.
 
         Args:
-            name: The key to retrieve
+            key: The key to retrieve
 
         Returns:
             The stored value, or None if key doesn't exist
         """
         try:
-            value = await self._redis.get(name)
-            return value.decode("utf-8") if value else None
+            return await self._redis.get(key)
         except Exception as e:
-            logger.error(f"Redis get error for key '{name}': {e!s}")
+            logger.error(f"Redis get error for key '{key}': {e!s}")
             return None
 
     async def set(
         self,
-        name: str,
-        value: str,
-        expire: int | None = None,
-        set_if_not_exists: bool | None = None,
-        set_if_exists: bool | None = None,
-    ) -> bool | None:
+        key: str,
+        value: Union[str, bytes, int, float],
+        ex: Optional[int] = None,
+        px: Optional[int] = None,
+        nx: bool = False,
+        xx: bool = False
+    ) -> bool:
         """
         Set a value in Redis.
 
         Args:
-            name: The key name
+            key: The key name
             value: The value to set
-            expire: Optional expiration time in seconds
-            set_if_not_exists: (NX) Only set the key if it does not already exist
-            set_if_exists: (XX) Only set the key if it already exists
+            ex: Expiration time in seconds
+            px: Expiration time in milliseconds
+            nx: Only set the key if it does not already exist
+            xx: Only set the key if it already exists
 
         Returns:
-            True if successful, False or None otherwise based on options
+            True if successful, False otherwise
         """
         try:
-            nx = set_if_not_exists if set_if_not_exists is not None else False
-            xx = set_if_exists if set_if_exists is not None else False
-
-            result = await self._redis.set(name, value, ex=expire, nx=nx, xx=xx)
-            return result is not None  # Redis returns None if NX/XX conditions aren't met
+            result = await self._redis.set(key, value, ex=ex, px=px, nx=nx, xx=xx)
+            return result is not None
         except Exception as e:
-            logger.error(f"Redis set error for key '{name}': {e!s}")
-            return None
+            logger.error(f"Redis set error for key '{key}': {e!s}")
+            return False
 
-    async def delete(self, *names: str) -> int:
+    async def delete(self, *keys: str) -> int:
         """
         Delete one or more keys from Redis.
 
         Args:
-            *names: One or more key names to delete
+            *keys: One or more key names to delete
 
         Returns:
             Number of keys that were deleted
         """
         try:
-            if not names:
+            if not keys:
                 return 0
-            return await self._redis.delete(*names)
+            return await self._redis.delete(*keys)
         except Exception as e:
-            logger.error(f"Redis delete error for keys {names}: {e!s}")
+            logger.error(f"Redis delete error for keys {keys}: {e!s}")
             return 0
 
-    async def exists(self, *names: str) -> int:
+    async def exists(self, *keys: str) -> int:
         """
         Check if one or more keys exist in Redis.
 
         Args:
-            *names: One or more key names to check
+            *keys: One or more key names to check
 
         Returns:
             Number of keys that exist
         """
         try:
-            if not names:
+            if not keys:
                 return 0
-            return await self._redis.exists(*names)
+            return await self._redis.exists(*keys)
         except Exception as e:
-            logger.error(f"Redis exists error for keys {names}: {e!s}")
+            logger.error(f"Redis exists error for keys {keys}: {e!s}")
             return 0
 
     async def ping(self) -> bool:
@@ -153,37 +151,37 @@ class RedisService(IRedisService):
         """
         return self._redis
 
-    async def expire(self, name: str, time: int) -> bool:
+    async def expire(self, key: str, seconds: int) -> bool:
         """
         Set a key's time to live in seconds.
 
         Args:
-            name: The key name
-            time: Time to live in seconds
+            key: The key name
+            seconds: Time to live in seconds
 
         Returns:
             True if successful, False otherwise
         """
         try:
-            return await self._redis.expire(name, time)
+            return await self._redis.expire(key, seconds)
         except Exception as e:
-            logger.error(f"Redis expire error for key '{name}': {e!s}")
+            logger.error(f"Redis expire error for key '{key}': {e!s}")
             return False
 
-    async def ttl(self, name: str) -> int:
+    async def ttl(self, key: str) -> int:
         """
         Get the time to live for a key in seconds.
 
         Args:
-            name: The key name
+            key: The key name
 
         Returns:
             TTL in seconds, -1 if key exists but has no TTL, -2 if key doesn't exist
         """
         try:
-            return await self._redis.ttl(name)
+            return await self._redis.ttl(key)
         except Exception as e:
-            logger.error(f"Redis TTL error for key '{name}': {e!s}")
+            logger.error(f"Redis TTL error for key '{key}': {e!s}")
             return -2
 
     async def setex(self, name: str, time: int, value: str) -> bool:
@@ -260,7 +258,7 @@ class RedisService(IRedisService):
             logger.error(f"Redis srem error for set '{name}': {e!s}")
             return 0
 
-    async def hset(self, name: str, key: str, value: Any) -> int:
+    async def hset(self, name: str, key: str, value: Union[str, bytes, int, float]) -> int:
         """
         Set the value of a hash field.
 
@@ -274,14 +272,14 @@ class RedisService(IRedisService):
         """
         try:
             # Convert value to string if it's not already
-            if not isinstance(value, (str, bytes)):
+            if not isinstance(value, (str, bytes, int, float)):
                 value = json.dumps(value)
             return await self._redis.hset(name, key, value)
         except Exception as e:
             logger.error(f"Redis hset error for hash '{name}', field '{key}': {e!s}")
             return 0
 
-    async def hget(self, name: str, key: str) -> str | None:
+    async def hget(self, name: str, key: str) -> Optional[bytes]:
         """
         Get the value of a hash field.
 
@@ -293,11 +291,78 @@ class RedisService(IRedisService):
             The value of the field, or None if field or hash doesn't exist
         """
         try:
-            result = await self._redis.hget(name, key)
-            return result.decode("utf-8") if result else None
+            return await self._redis.hget(name, key)
         except Exception as e:
             logger.error(f"Redis hget error for hash '{name}', field '{key}': {e!s}")
             return None
+
+    async def hdel(self, name: str, *keys: str) -> int:
+        """
+        Delete one or more hash fields.
+
+        Args:
+            name: The hash name
+            *keys: Fields to delete
+
+        Returns:
+            Number of fields that were deleted
+        """
+        try:
+            if not keys:
+                return 0
+            return await self._redis.hdel(name, *keys)
+        except Exception as e:
+            logger.error(f"Redis hdel error for hash '{name}', fields {keys}: {e!s}")
+            return 0
+
+    async def hgetall(self, name: str) -> Dict[bytes, bytes]:
+        """
+        Get all fields and values in a hash.
+
+        Args:
+            name: The hash name
+
+        Returns:
+            Dictionary of field/value pairs
+        """
+        try:
+            return await self._redis.hgetall(name)
+        except Exception as e:
+            logger.error(f"Redis hgetall error for hash '{name}': {e!s}")
+            return {}
+
+    async def incr(self, key: str, amount: int = 1) -> int:
+        """
+        Increment the value of a key.
+
+        Args:
+            key: The key to increment
+            amount: The amount to increment by
+
+        Returns:
+            The new value after incrementing
+        """
+        try:
+            return await self._redis.incr(key, amount)
+        except Exception as e:
+            logger.error(f"Redis incr error for key '{key}': {e!s}")
+            return 0
+
+    async def keys(self, pattern: str) -> List[bytes]:
+        """
+        Find all keys matching the given pattern.
+
+        Args:
+            pattern: Pattern to match (e.g., "user:*")
+
+        Returns:
+            List of matching keys
+        """
+        try:
+            return await self._redis.keys(pattern)
+        except Exception as e:
+            logger.error(f"Redis keys error for pattern '{pattern}': {e!s}")
+            return []
 
 
 def create_redis_service(redis_url: str) -> IRedisService:

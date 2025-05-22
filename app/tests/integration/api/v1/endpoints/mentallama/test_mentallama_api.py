@@ -9,7 +9,7 @@ import logging
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Optional, Dict
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -22,6 +22,7 @@ from app.core.config import Settings
 from app.core.interfaces.services.audit_logger_interface import (
     AuditEventType,
     IAuditLogger,
+    AuditSeverity,
 )
 from app.core.interfaces.services.authentication_service import IAuthenticationService
 from app.core.interfaces.services.jwt_service import IJwtService
@@ -93,6 +94,51 @@ class MockAuditLogService(IAuditLogger):
         """Log PHI access without using the database."""
         return str(uuid.uuid4())
 
+    def log_security_event(
+        self, 
+        event_type: AuditEventType,
+        description: str,
+        severity: AuditSeverity = AuditSeverity.INFO,
+        user_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Log a security-related event for audit purposes."""
+        logger.info(
+            f"MOCK SECURITY EVENT: {event_type} - {description} - Severity: {severity} - User: {user_id}"
+        )
+        return
+
+    def log_data_access(
+        self,
+        resource_type: str,
+        resource_id: str,
+        action: str,
+        user_id: str,
+        reason: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Log access to sensitive data for HIPAA compliance."""
+        logger.info(
+            f"MOCK DATA ACCESS: {resource_type}/{resource_id} - Action: {action} - User: {user_id} - Reason: {reason}"
+        )
+        return
+
+    def log_api_request(
+        self,
+        endpoint: str,
+        method: str,
+        status_code: int,
+        user_id: Optional[str] = None,
+        request_id: Optional[str] = None,
+        duration_ms: Optional[float] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Log API request information for audit trails."""
+        logger.info(
+            f"MOCK API REQUEST: {method} {endpoint} - Status: {status_code} - User: {user_id} - Duration: {duration_ms}ms"
+        )
+        return
+
     async def log_security_event(
         self,
         event_type: AuditEventType,
@@ -130,15 +176,18 @@ class MockAuditLogService(IAuditLogger):
         """Log logout event without using the database."""
         return str(uuid.uuid4())
 
-    async def log_system_event(
+    def log_system_event(
         self,
         event_type: str,
-        details: str,
-        component: str | None = None,
-        metadata: dict | None = None,
-    ) -> str:
-        """Log system event without using the database."""
-        return str(uuid.uuid4())
+        description: str,
+        severity: AuditSeverity = AuditSeverity.INFO,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Log system-level events for operational auditing."""
+        logger.info(
+            f"MOCK SYSTEM EVENT: {event_type} - {description} - Severity: {severity}"
+        )
+        return
 
     async def log_auth_event(
         self,
@@ -412,6 +461,8 @@ async def mentallama_test_client(
             is_active=True,
             is_verified=True,
             roles=[UserRole.PATIENT],
+            first_name="Test",
+            last_name="User"
         )
 
     # Override get_current_active_user to avoid account_status check

@@ -85,8 +85,6 @@ class AuditLogger(IAuditLogger):
             # Add handlers to logger
             self.logger.addHandler(file_handler)
             self.logger.addHandler(console_handler)
-
-            self.logger.info("AuditLogger initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize audit logger: {str(e)}")
             # Continue with a fallback configuration
@@ -131,31 +129,94 @@ class AuditLogger(IAuditLogger):
         if self.external_audit_enabled:
             self._send_to_external_audit_service(log_entry)
 
+    def log_auth_event(
+        self,
+        actor_id: str,
+        event_type: str,
+        success: bool,
+        details: Optional[Dict[str, Any]] = None,
+        user_id: Optional[str] = None,
+        description: Optional[str] = None,
+        ip_address: Optional[str] = None,
+    ) -> str:
+        """
+        Log an authentication-related event.
+
+        Args:
+            actor_id: ID of the actor performing the authentication action
+            event_type: Type of auth event (e.g., login, logout, password_change)
+            success: Whether the authentication action was successful
+            details: Additional details about the authentication event
+            user_id: ID of the user being authenticated (if different from actor_id)
+            description: Human-readable description of the event
+            ip_address: IP address from which the authentication attempt originated
+
+        Returns:
+            The generated audit event ID
+        """
+        event_id = str(uuid.uuid4())
+        
+        # Create the base event data
+        log_entry = {
+            "timestamp": datetime.datetime.now(timezone.utc).isoformat(),
+            "event_id": event_id,
+            "event_type": "auth_event",
+            "auth_type": event_type,
+            "actor_id": actor_id,
+            "user_id": user_id or actor_id,  # Use actor_id as fallback
+            "success": success,
+            "details": details or {},
+            "severity": AuditSeverity.INFO.value if success else AuditSeverity.WARNING.value,
+        }
+        
+        # Add description if provided
+        if description:
+            log_entry["description"] = description
+            
+        # Add IP address if provided
+        if ip_address:
+            log_entry["ip_address"] = ip_address
+        
+        # Log at the appropriate level based on success/failure
+        log_message = f"AUTH_EVENT: {json.dumps(log_entry)}"
+        if success:
+            self.logger.info(log_message)
+        else:
+            self.logger.warning(log_message)
+            
+        # Send to external audit service if enabled
+        if self.external_audit_enabled:
+            self._send_to_external_audit_service(log_entry)
+            
+        return event_id
+
     def log_phi_access(
         self,
-        user_id: str,
-        resource_id: str,
-        resource_type: str,
+        actor_id: str,
+        patient_id: str,
         action: str,
+        resource_type: str,
         status: str,
         phi_fields: list[str] | None = None,
         reason: str | None = None,
         request: Any | None = None,
         request_context: dict[str, Any] | None = None,
+        details: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
         Log PHI access events in compliance with HIPAA requirements.
 
         Args:
-            user_id: ID of the user accessing PHI
-            resource_id: ID of the resource being accessed
-            resource_type: Type of resource (e.g., patient, record)
+            actor_id: ID of the user accessing PHI
+            patient_id: ID of the patient whose PHI is being accessed
             action: Action being performed (e.g., view, edit)
+            resource_type: Type of resource (e.g., patient, record)
             status: Result of the access attempt (success, failure)
             phi_fields: Specific PHI fields accessed (if applicable)
             reason: Reason for accessing PHI
             request: Original request object (for extraction of additional context)
             request_context: Additional request context (IP, user agent, etc.)
+            details: Additional details about the access
 
         Returns:
             The generated audit event ID
@@ -180,10 +241,10 @@ class AuditLogger(IAuditLogger):
         log_entry = {
             "timestamp": datetime.datetime.now(timezone.utc).isoformat(),
             "event_id": event_id,
-            "event_type": "PHI_ACCESS",
+            "event_type": "phi_access",
             "severity": AuditSeverity.INFO.value,
-            "user_id": user_id,
-            "resource_id": resource_id,
+            "actor_id": actor_id,
+            "patient_id": patient_id,
             "resource_type": resource_type,
             "action": action,
             "status": status,
@@ -191,12 +252,17 @@ class AuditLogger(IAuditLogger):
             "reason": reason,
             "context": context,
         }
+        
+        # Add details if provided
+        if details:
+            log_entry["details"] = details
 
         # Log the entry
+        log_message = f"PHI_ACCESS: {json.dumps(log_entry)}"
         if status == "failure":
-            self.logger.warning(json.dumps(log_entry))
+            self.logger.warning(log_message)
         else:
-            self.logger.info(json.dumps(log_entry))
+            self.logger.info(log_message)
 
         # Send to external audit service if enabled
         if self.external_audit_enabled:
@@ -225,8 +291,8 @@ class AuditLogger(IAuditLogger):
         """
         # Use our existing PHI access logging functionality
         self.log_phi_access(
-            user_id=user_id,
-            resource_id=resource_id,
+            actor_id=user_id,
+            patient_id=resource_id,
             resource_type=resource_type,
             action=action,
             status="success",
@@ -284,37 +350,58 @@ class AuditLogger(IAuditLogger):
         self,
         event_type: str,
         description: str,
+        details: Optional[Dict[str, Any]] = None,
+        actor_id: Optional[str] = None,
+        user_id: Optional[str] = None,
         severity: AuditSeverity = AuditSeverity.INFO,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> None:
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> str:
         """Log system-level events for operational auditing.
         
         Args:
             event_type: Type of system event
             description: Human-readable description of the event
+            details: Details about the event
+            actor_id: ID of the actor who initiated the event
+            user_id: ID of the user associated with the event (for compatibility)
             severity: Severity level (INFO, WARNING, ERROR)
             metadata: Additional contextual information about the event
+            
+        Returns:
+            The generated audit event ID
         """
+        event_id = str(uuid.uuid4())
+        
         log_entry = {
             "timestamp": datetime.datetime.now(timezone.utc).isoformat(),
-            "event_id": str(uuid.uuid4()),
-            "event_type": f"SYSTEM_{event_type}",
-            "severity": severity.value if hasattr(severity, "value") else severity,
+            "event_id": event_id,
+            "event_type": "system_event",
+            "system_event_type": event_type,
             "description": description,
+            "actor_id": actor_id,
+            "user_id": user_id or actor_id,  # For backward compatibility
+            "severity": severity.value if hasattr(severity, "value") else severity,
             "metadata": metadata or {},
         }
+        
+        # Add details if provided
+        if details:
+            log_entry["details"] = details
 
         # Log at appropriate level based on severity
+        log_message = f"SYSTEM_EVENT: {json.dumps(log_entry)}"
         if severity in [AuditSeverity.ERROR, AuditSeverity.CRITICAL, AuditSeverity.HIGH]:
-            self.logger.error(json.dumps(log_entry))
+            self.logger.error(log_message)
         elif severity == AuditSeverity.WARNING:
-            self.logger.warning(json.dumps(log_entry))
+            self.logger.warning(log_message)
         else:
-            self.logger.info(json.dumps(log_entry))
+            self.logger.info(log_message)
 
         # Send to external audit service if enabled
         if self.external_audit_enabled:
             self._send_to_external_audit_service(log_entry)
+            
+        return event_id
 
     def get_audit_trail(
         self,
@@ -493,10 +580,10 @@ except Exception as e:
         
         def log_phi_access(
             self,
-            user_id: str,
-            resource_id: str,
-            resource_type: str,
+            actor_id: str,
+            patient_id: str,
             action: str,
+            resource_type: str,
             status: str,
             phi_fields: list[str] | None = None,
             reason: str | None = None,
@@ -537,17 +624,33 @@ except Exception as e:
                 "DummyAuditLogger.log_api_request called but logger not properly initialized"
             )
         
+        def log_auth_event(
+            self,
+            actor_id: str,
+            event_type: str,
+            success: bool,
+            details: Optional[Dict[str, Any]] = None,
+            user_id: Optional[str] = None,
+        ) -> str:
+            """Log authentication-related events."""
+            logger.warning(
+                "DummyAuditLogger.log_auth_event called but logger not properly initialized"
+            )
+            return str(uuid.uuid4())
+
         def log_system_event(
             self,
             event_type: str,
             description: str,
-            severity: AuditSeverity = AuditSeverity.INFO,
-            metadata: Optional[Dict[str, Any]] = None
-        ) -> None:
+            details: Optional[Dict[str, Any]] = None,
+            actor_id: Optional[str] = None,
+            user_id: Optional[str] = None,
+        ) -> str:
             """Log system-level events for operational auditing."""
             logger.warning(
                 "DummyAuditLogger.log_system_event called but logger not properly initialized"
             )
+            return str(uuid.uuid4())
 
         def get_audit_trail(
             self,
