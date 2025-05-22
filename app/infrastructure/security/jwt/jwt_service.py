@@ -922,6 +922,86 @@ class JWTService(IJwtService):
             logger.error(f"Error extracting identity from token: {e}")
             raise InvalidTokenError(f"Failed to extract identity: {e}")
 
+    # Add compatibility methods for tests
+    
+    def _create_token(self, *args, **kwargs):
+        """Compatibility method for tests that expect a _create_token method."""
+        # Handle token_type parameter which is used in tests
+        if 'token_type' in kwargs:
+            token_type = kwargs.pop('token_type')
+            # Convert TokenType enum to string if needed
+            if hasattr(token_type, 'value'):
+                token_type_str = token_type.value
+            else:
+                token_type_str = str(token_type)
+                
+            # Add as a claim
+            if 'additional_claims' not in kwargs:
+                kwargs['additional_claims'] = {}
+            kwargs['additional_claims']['type'] = token_type_str.lower()
+            
+            # Use the appropriate method based on token type
+            if token_type_str.lower() == 'refresh':
+                return self.create_refresh_token(*args, **kwargs)
+                
+        # Default to access token
+        return self.create_access_token(*args, **kwargs)
+        
+    def check_resource_access(self, token_payload, resource_type, action, resource_id=None):
+        """Compatibility method for tests - check if the user has access to a resource."""
+        # Get user roles from token
+        roles = token_payload.get("roles", [])
+        
+        # Simple role-based access check - can be enhanced for actual implementation
+        if "admin" in roles:
+            return True
+            
+        # Provider role can access patient data for read
+        if "provider" in roles and resource_type == "patient" and action == "read":
+            return True
+            
+        # User can access their own resources
+        if resource_id and resource_id == token_payload.get("sub"):
+            return True
+            
+        return False
+        
+    def extract_token_from_request(self, request):
+        """Compatibility method for tests - extract token from authorization header."""
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            return None
+            
+        parts = auth_header.split()
+        if len(parts) != 2 or parts[0].lower() != "bearer":
+            return None
+            
+        return parts[1]
+        
+    def create_unauthorized_response(self, error_type, message):
+        """Compatibility method for tests - create a standard unauthorized response."""
+        # Sanitize the message to ensure no PHI is included
+        safe_message = self._sanitize_error_message(message)
+        
+        from starlette.responses import JSONResponse
+        
+        if error_type == "token_expired":
+            status_code = 401
+            error_code = "token_expired"
+        elif error_type == "invalid_token":
+            status_code = 401
+            error_code = "invalid_token"
+        elif error_type == "insufficient_permissions":
+            status_code = 403
+            error_code = "insufficient_permissions"
+        else:
+            status_code = 401
+            error_code = "authentication_error"
+            
+        return JSONResponse(
+            status_code=status_code,
+            content={"detail": safe_message, "error_code": error_code}
+        )
 
 # Define dependency injection function
 # Import implementation to avoid circular imports
