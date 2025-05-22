@@ -25,9 +25,9 @@ class PHIAccessError(SecurityError, AuthorizationError):
     def __init__(
         self,
         message: str = "Unauthorized PHI access attempt",
-        user_id: str = None,
-        resource_type: str = None,
-        action: str = None,
+        user_id: str | None = None,
+        resource_type: str | None = None,
+        action: str | None = None,
         *args,
         **kwargs,
     ):
@@ -45,9 +45,9 @@ class PermissionDeniedError(SecurityError, AuthorizationError):
     def __init__(
         self,
         message: str = "Permission denied",
-        user_id: str = None,
-        permission: str = None,
-        resource: str = None,
+        user_id: str | None = None,
+        permission: str | None = None,
+        resource: str | None = None,
         *args,
         **kwargs,
     ):
@@ -74,8 +74,8 @@ class AccountLockedError(SecurityError, AuthenticationError):
     def __init__(
         self,
         message: str = "Account is locked",
-        user_id: str = None,
-        until: str = None,
+        user_id: str | None = None,
+        until: str | None = None,
         *args,
         **kwargs,
     ):
@@ -94,8 +94,8 @@ class AccountDisabledError(SecurityError, AuthenticationError):
     def __init__(
         self,
         message: str = "Account is disabled",
-        user_id: str = None,
-        reason: str = None,
+        user_id: str | None = None,
+        reason: str | None = None,
         *args,
         **kwargs,
     ):
@@ -114,8 +114,8 @@ class TooManyAttemptsError(SecurityError, AuthenticationError):
     def __init__(
         self,
         message: str = "Too many failed attempts",
-        user_id: str = None,
-        attempts: int = None,
+        user_id: str | None = None,
+        attempts: int | None = None,
         *args,
         **kwargs,
     ):
