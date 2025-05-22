@@ -485,11 +485,12 @@ class JWTServiceImpl(IJwtService):
             logger.error(f"Error retrieving user from token: {str(e)}")
             raise InvalidTokenError(str(e))
     
-    def verify_refresh_token(self, refresh_token: str) -> TokenPayload:
+    def verify_refresh_token(self, refresh_token: str, enforce_refresh_type: bool = True) -> TokenPayload:
         """Verify that a token is a valid refresh token.
         
         Args:
             refresh_token: Token to verify
+            enforce_refresh_type: Whether to enforce the token type is refresh
             
         Returns:
             TokenPayload: Decoded token payload
@@ -497,14 +498,35 @@ class JWTServiceImpl(IJwtService):
         Raises:
             InvalidTokenException: If token is not a refresh token
         """
-        # Decode refresh token
-        payload = self.decode_token(refresh_token)
-        
-        # Verify it's a refresh token
-        if not payload.type or payload.type != TokenType.REFRESH.value:
-            raise InvalidTokenException("Not a refresh token")
-        
-        return payload
+        try:
+            # Decode refresh token
+            payload = self.decode_token(refresh_token)
+            
+            # Verify it's a refresh token
+            if enforce_refresh_type:
+                # Check for refresh flag or type field
+                if hasattr(payload, "refresh") and payload.refresh:
+                    return payload
+                    
+                # Check type field directly
+                if hasattr(payload, "type"):
+                    token_type = payload.type
+                    # Handle both string and enum values
+                    if token_type == TokenType.REFRESH or token_type == "refresh" or token_type == "REFRESH":
+                        return payload
+                
+                # Not a refresh token
+                raise InvalidTokenException("Token is not a refresh token")
+            
+            return payload
+            
+        except InvalidTokenException:
+            # Re-raise specific exceptions
+            raise
+        except Exception as e:
+            # Handle other errors
+            logger.error(f"Error verifying refresh token: {str(e)}")
+            raise InvalidTokenException(f"Invalid refresh token: {e}")
     
     def get_token_payload_subject(self, payload: Any) -> Optional[str]:
         """Get the subject from a token payload.
@@ -535,18 +557,37 @@ class JWTServiceImpl(IJwtService):
         Raises:
             InvalidTokenException: If token is not a refresh token
         """
-        # Decode refresh token
-        payload = self.verify_refresh_token(refresh_token)
-        
-        # Get subject and roles
-        subject = payload.sub
-        roles = payload.roles or []
-        
-        # Create new access token
-        return self.create_access_token(
-            subject=subject,
-            additional_claims={"roles": roles}
-        )
+        try:
+            # Decode refresh token with strict refresh token verification
+            payload = self.verify_refresh_token(refresh_token, enforce_refresh_type=True)
+            
+            # Get subject and roles
+            subject = payload.sub
+            
+            # Get roles from payload
+            roles = []
+            if hasattr(payload, "roles") and payload.roles:
+                roles = payload.roles
+            
+            # Create additional claims for the new token
+            additional_claims = {"roles": roles}
+            
+            # Preserve any custom claims that should be carried over
+            for field in ["custom_key", "session_id"]:
+                if hasattr(payload, field) and getattr(payload, field) is not None:
+                    additional_claims[field] = getattr(payload, field)
+            
+            # Create new access token
+            return self.create_access_token(
+                subject=subject,
+                additional_claims=additional_claims
+            )
+        except Exception as e:
+            # Log and re-raise the exception with clear message
+            logger.error(f"Error refreshing access token: {str(e)}")
+            if isinstance(e, InvalidTokenException):
+                raise
+            raise InvalidTokenException(f"Failed to refresh token: {str(e)}")
     
     async def revoke_token(self, token: str) -> bool:
         """Revoke a token by adding it to the blacklist.
