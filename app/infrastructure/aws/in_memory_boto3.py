@@ -2,7 +2,7 @@
 
 The real ``boto3`` library pulls in a large dependency graph, requires native
 extensions and inevitably attempts to contact AWS endpoints.  That in turn
-demands credentials and network connectivity – all of which are unavailable in
+demands credentials and network connectivity – all of which are unavailable in
 hermetic test environments.  This *shim* emulates just enough of the public
 surface consumed by the code‑base so that unit‑ and integration‑tests can run
 without modifications.
@@ -16,7 +16,7 @@ Only the following services / methods are implemented:
 
 All methods return *harmless* deterministic data structures that satisfy the
 assertions found in the current test‑suite.  The goal is *behavioural parity*,
-not feature completeness – extend on demand.
+not feature completeness – extend on demand.
 """
 
 from __future__ import annotations
@@ -120,7 +120,7 @@ class _InMemorySageMakerClient:
 class _BodyWrapper(SimpleNamespace):
     """Mimic the streaming body object boto3 returns."""
 
-    def read(self, *_, **__):  # type: ignore[override]
+    def read(self, *_, **__):  # type: ignore
         return json.dumps(self.value).encode()
 
 
@@ -187,4 +187,4 @@ def resource(service_name: str, **_kw):
 __all__: list[str] = ["client", "resource"]
 
 # Make the module self‑identifying – convenient for debugging.
-__shim__: bool = True  # type: ignore[var‑annotated] – dynamic attribute
+__shim__ = True  # type: ignore

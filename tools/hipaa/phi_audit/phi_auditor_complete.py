@@ -4,10 +4,19 @@ Complete HIPAA PHI Auditor implementation.
 This script creates a proper PHIAuditor class with the required functionality.
 """
 
+import json
+import logging
 import os
 import re
 import shutil
 import sys
+from typing import Any
+
+# Import package to resolve module path issues
+from tools.hipaa.phi_audit import __package__  # noqa: F401
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 
 class PHIAuditResult:
@@ -20,6 +29,8 @@ class PHIAuditResult:
         self.is_allowed = False
         self.phi_detected = []
         self.evidence = ""
+        self.error = None
+        self.findings = {}
 
 
 class PHIAuditor:
@@ -349,91 +360,68 @@ class PHIAuditor:
 class PHIDetector:
     """PHI Detection class for identifying protected health information."""
 
-    # Regular expression patterns for PHI
-    SSN_PATTERN = r"\b\d{3}-\d{2}-\d{4}\b"  # Matches standard SSN format
-
-    # Enhanced PHI patterns for better detection
-    PHI_PATTERNS = [
-        # SSN pattern - explicit format XXX-XX-XXXX
-        r"\b\d{3}-\d{2}-\d{4}\b",
-        # SSN without dashes
-        r"\b\d{9}\b",
-        # Email addresses
-        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
-        # Phone numbers
-        r"\b\(\d{3}\)\s*\d{3}-\d{4}\b",
-        r"\b\d{3}-\d{3}-\d{4}\b",
-        # Credit card numbers
-        r"\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11})\b",
-        # Names (common pattern in code)
-        r"\b(?:Mr\.|Mrs\.|Ms\.|Dr\.)\s[A-Z][a-z]+ [A-Z][a-z]+\b",
-        # Patient identifiers
-        r"\bPATIENT[_-]?ID[_-]?\d+\b",
-        r"\bPT[_-]?ID[_-]?\d+\b",
-        # Medical record numbers
-        r"\bMRN[_-]?\d+\b",
-        r"\bMEDICAL[_-]?RECORD[_-]?\d+\b",
-    ]
-
     def __init__(self):
-        """Initialize the PHI detector with detection patterns."""
-        pass
+        """Initialize the PHI detector with PHI patterns."""
+        self.patterns = [
+            # SSN pattern - explicit format XXX-XX-XXXX
+            r"\b\d{3}-\d{2}-\d{4}\b",
+            # SSN without dashes
+            r"\b\d{9}\b",
+            # Email addresses
+            r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+            # Phone numbers
+            r"\b\(\d{3}\)\s*\d{3}-\d{4}\b",
+            r"\b\d{3}-\d{3}-\d{4}\b",
+            # Credit card numbers
+            r"\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11})\b",
+            # Names (common pattern in code)
+            r"\b(?:Mr\.|Mrs\.|Ms\.|Dr\.)\s[A-Z][a-z]+ [A-Z][a-z]+\b",
+            # Patient identifiers
+            r"\bPATIENT[_-]?ID[_-]?\d+\b",
+            r"\bPT[_-]?ID[_-]?\d+\b",
+            # Medical record numbers
+            r"\bMRN[_-]?\d+\b",
+            r"\bMEDICAL[_-]?RECORD[_-]?\d+\b",
+        ]
 
-    def detect_phi(self, content: str) -> list:
+    def detect_phi(self, content: str) -> list[dict[str, Any]]:
         """
-        Detect PHI patterns in the content.
+        Detect potential PHI in content.
 
         Args:
-            content: The text content to check for PHI
+            content: Text content to scan for PHI
 
         Returns:
-            List of PHI matches found
+            List of PHI matches with pattern and type
         """
-        import re
-
         matches = []
-
-        # Check for SSNs using pattern
-        ssn_matches = re.finditer(self.SSN_PATTERN, content)
-        for match in ssn_matches:
-            matches.append(
-                {"type": "SSN", "value": match.group(0), "position": match.start()}
-            )
-
-        for pattern in self.PHI_PATTERNS:
-            pattern_matches = re.finditer(pattern, content)
-            for match in pattern_matches:
-                phi_value = match.group(0)
-                phi_type = self._determine_phi_type(pattern)
-                position = match.start()
-
-                # Skip duplicates
-                duplicate = False
-                for existing_match in matches:
-                    if existing_match["value"] == phi_value:
-                        duplicate = True
-                        break
-
-                if not duplicate:
-                    matches.append(
-                        {"type": phi_type, "value": phi_value, "position": position}
-                    )
+        for pattern in self.patterns:
+            findings = re.finditer(pattern, content)
+            for match in findings:
+                pattern_str = match.group(0)
+                phi_type = self._determine_phi_type(pattern_str)
+                matches.append({"pattern": pattern_str, "type": phi_type})
 
         return matches
 
     def _determine_phi_type(self, pattern: str) -> str:
         """Determine the type of PHI based on the pattern."""
-        if "\d{3}-\d{2}-\d{4}" in pattern:
+        if re.match(r"\d{3}-\d{2}-\d{4}", pattern):
             return "SSN"
-        elif "\d{9}" in pattern:
+        elif re.match(r"\d{9}$", pattern):
             return "SSN (no dashes)"
         elif "@" in pattern:
             return "Email"
-        elif "\d{3}-\d{3}-\d{4}" in pattern or "\(\d{3}\)" in pattern:
+        elif re.match(r"\d{3}-\d{3}-\d{4}", pattern) or re.match(r"\(\d{3}\)", pattern):
             return "Phone"
-        elif "4[0-9]{12}" in pattern or "5[1-5][0-9]{14}" in pattern:
+        elif re.match(r"4[0-9]{12}", pattern) or re.match(r"5[1-5][0-9]{14}", pattern):
             return "Credit Card"
-        elif "Mr\.|Mrs\.|Ms\.|Dr\." in pattern:
+        elif (
+            "Mr." in pattern
+            or "Mrs." in pattern
+            or "Ms." in pattern
+            or "Dr." in pattern
+        ):
             return "Name"
         elif "PATIENT" in pattern or "PT" in pattern:
             return "Patient ID"
@@ -462,8 +450,6 @@ class PHIAuditReport:
         Returns:
             JSON string
         """
-        import json
-
         report = {
             "summary": {
                 "issues_found": self.auditor._count_total_issues(),

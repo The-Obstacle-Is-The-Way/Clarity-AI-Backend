@@ -11,6 +11,11 @@ import re
 import sys
 from typing import Any
 
+# Add proper module import to identify this file consistently
+# This ensures mypy recognizes the proper module path
+# Used to resolve: "Source file found twice under different module names"
+from scripts.test.security import __package__  # noqa: F401
+
 # Configure logger
 logger = logging.getLogger(__name__)
 
