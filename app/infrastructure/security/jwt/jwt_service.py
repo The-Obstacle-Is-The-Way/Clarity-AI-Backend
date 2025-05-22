@@ -526,7 +526,14 @@ class JWTService(IJwtService):
         try:
             # Decode the token first to validate it
             payload = self.decode_token(token)
-            user_id = payload.get("sub")
+            
+            # Extract user_id from payload
+            user_id = None
+            if isinstance(payload, dict):
+                user_id = payload.get("sub")
+            elif hasattr(payload, "sub"):
+                user_id = payload.sub
+                
             if not user_id:
                 logger.warning("Token doesn't contain 'sub' claim with user ID")
                 raise InvalidTokenError("Invalid token: missing user ID")
@@ -556,7 +563,7 @@ class JWTService(IJwtService):
             
     def verify_refresh_token(
         self, token: str, enforce_refresh_type: bool = True
-    ) -> Dict[str, Any]:
+    ) -> TokenPayload:
         """Verify that a token is a valid refresh token."""
         # Decode the token
         try:
@@ -565,18 +572,43 @@ class JWTService(IJwtService):
             payload = self.decode_token(token, options=options)
 
             # Check that it's a refresh token
-            if enforce_refresh_type and not payload.get("refresh", False) and payload.get("type") != "refresh":
-                raise InvalidTokenError("Not a refresh token")
+            if enforce_refresh_type:
+                # If it's a TokenPayload object
+                if isinstance(payload, TokenPayload):
+                    # Check for refresh attribute or type attribute
+                    if hasattr(payload, "refresh") and payload.refresh:
+                        return payload
+                    
+                    if hasattr(payload, "type"):
+                        # Handle both string and enum cases
+                        if payload.type == TokenType.REFRESH or payload.type == "refresh" or payload.type == "REFRESH":
+                            return payload
+                    
+                    raise InvalidTokenError("Not a refresh token")
+                # If it's a dictionary
+                elif isinstance(payload, dict):
+                    if not payload.get("refresh", False) and payload.get("type") != "refresh":
+                        raise InvalidTokenError("Not a refresh token")
+                else:
+                    # Unknown payload type
+                    raise InvalidTokenError("Invalid token payload type")
                 
             # Check token family for reuse
-            if "family_id" in payload and payload["family_id"] in self._token_families:
+            if isinstance(payload, dict) and "family_id" in payload and payload["family_id"] in self._token_families:
                 latest_jti = self._token_families[payload["family_id"]]
                 if payload.get("jti") != latest_jti:
                     # This is a reused token from this family
                     raise InvalidTokenError("Refresh token reuse detected")
+            elif hasattr(payload, "family_id") and payload.family_id in self._token_families:
+                latest_jti = self._token_families[payload.family_id]
+                if not hasattr(payload, "jti") or payload.jti != latest_jti:
+                    # This is a reused token from this family
+                    raise InvalidTokenError("Refresh token reuse detected")
 
-            # Convert to TokenPayload object for attribute access instead of dict
-            return TokenPayload(**payload)
+            # Ensure we return a TokenPayload object
+            if isinstance(payload, dict):
+                return TokenPayload(**payload)
+            return payload
 
         except TokenExpiredError:
             # Specifically handle expired refresh tokens
