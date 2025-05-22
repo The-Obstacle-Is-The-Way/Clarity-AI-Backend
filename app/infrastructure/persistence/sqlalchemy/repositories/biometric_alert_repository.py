@@ -10,7 +10,7 @@ from uuid import uuid4
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from app.core.utils.logging import get_logger
@@ -84,11 +84,11 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
 
             # Commit the transaction
             try:
-                await self.session.commit()
-                await self.session.refresh(alert_model)
+                self.session.commit()
+                self.session.refresh(alert_model)
             except Exception as commit_err:
                 self.logger.error(f"Error committing alert: {commit_err}")
-                await self.session.rollback()
+                self.session.rollback()
                 raise RepositoryError(
                     f"Error committing alert changes: {commit_err}"
                 ) from commit_err
@@ -109,7 +109,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             raise
         except Exception as e:
             self.logger.error(f"Unexpected error saving biometric alert: {e}")
-            await self.session.rollback()
+            self.session.rollback()
             raise RepositoryError(f"Error saving biometric alert: {e!s}") from e
 
     async def get_by_id(self, alert_id: UUID | str) -> BiometricAlert | None:
@@ -346,15 +346,15 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
                 alert_model.acknowledged_at = None
 
             # Save changes
-            await self.session.commit()
-            await self.session.refresh(alert_model)
+            self.session.commit()
+            self.session.refresh(alert_model)
 
             # Return the updated entity
             return self._map_to_entity(alert_model)
         except EntityNotFoundError:
             raise
         except Exception as e:
-            await self.session.rollback()
+            self.session.rollback()
             raise RepositoryError(f"Error updating biometric alert status: {e!s}") from e
 
     async def count_unacknowledged_by_patient(
@@ -376,8 +376,10 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         try:
             # Use modern SQLAlchemy 2.0 pattern with execute and select
             query = select(func.count(BiometricAlertModel.alert_id)).where(
-                BiometricAlertModel.patient_id == str(patient_id),
-                BiometricAlertModel.acknowledged == False,
+                and_(
+                    BiometricAlertModel.patient_id == str(patient_id),
+                    BiometricAlertModel.acknowledged == False
+                )
             )
 
             if min_priority:
@@ -413,11 +415,11 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             if not alert_model:
                 return False
 
-            await self.session.delete(alert_model)
-            await self.session.commit()
+            self.session.delete(alert_model)
+            self.session.commit()
             return True
         except Exception as e:
-            await self.session.rollback()
+            self.session.rollback()
             raise RepositoryError(f"Error deleting biometric alert: {e!s}") from e
 
     async def count_by_patient(
@@ -550,9 +552,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
                 patient_id=patient_id,
                 rule_id=model.rule_id,
                 rule_name=model.rule_name,
-                priority=AlertPriority(model.priority)
-                if model.priority
-                else AlertPriority.INFORMATIONAL,
+                priority=AlertPriority(model.priority) if model.priority else AlertPriority.INFORMATIONAL,
                 data_point=data_point_mock,
                 message=model.message,
                 context=model.context,
@@ -583,9 +583,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
                 patient_id=str(entity.patient_id) if entity.patient_id else None,
                 rule_id=entity.rule_id,
                 rule_name=entity.rule_name or "",  # Ensure non-null string
-                priority=entity.priority.value
-                if hasattr(entity.priority, "value")
-                else str(entity.priority),
+                priority=entity.priority.value if entity.priority and hasattr(entity.priority, "value") else str(entity.priority) if entity.priority else "INFORMATIONAL",
                 message=entity.message or "",  # Ensure non-null string
                 context=entity.context or {},  # Ensure non-null dict
                 created_at=entity.created_at
@@ -615,9 +613,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             model.patient_id = str(entity.patient_id) if entity.patient_id else None
             model.rule_id = entity.rule_id
             model.rule_name = entity.rule_name or ""  # Ensure non-null string
-            model.priority = (
-                entity.priority.value if hasattr(entity.priority, "value") else str(entity.priority)
-            )
+            model.priority = entity.priority.value if entity.priority and hasattr(entity.priority, "value") else str(entity.priority) if entity.priority else "INFORMATIONAL"
             model.message = entity.message or ""  # Ensure non-null string
             model.context = entity.context or {}  # Ensure non-null dict
 
