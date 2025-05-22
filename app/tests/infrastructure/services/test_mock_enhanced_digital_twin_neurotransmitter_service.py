@@ -26,7 +26,7 @@ from app.domain.utils.datetime_utils import UTC
 from app.infrastructure.services.mock_enhanced_digital_twin_core_service import (
     MockEnhancedDigitalTwinCoreService,
 )
-from app.infrastructure.services.mock_mentalllama_service import MockMentalLLaMAService
+from app.infrastructure.ml.mentallama.mocks.mock_mentalllama_service import MockMentalLLaMAService
 from app.infrastructure.services.mock_pat_service import MockPATService
 from app.infrastructure.services.mock_xgboost_service import MockXGBoostService
 

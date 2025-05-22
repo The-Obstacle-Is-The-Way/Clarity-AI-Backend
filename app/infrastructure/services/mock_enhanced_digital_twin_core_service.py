@@ -520,9 +520,8 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 "description": f"Mock insight for {insight_type}",
                 "significance": random.choice([
                     ClinicalSignificance.HIGH.value,
-                    ClinicalSignificance.MODERATE.value,
-                    ClinicalSignificance.MILD.value,
-                    ClinicalSignificance.MINIMAL.value,
+                    ClinicalSignificance.MEDIUM.value,
+                    ClinicalSignificance.LOW.value,
                 ]),
                 "confidence": random.uniform(0.7, 0.95),
                 "supporting_evidence": ["clinical_data", "biomarkers"]
