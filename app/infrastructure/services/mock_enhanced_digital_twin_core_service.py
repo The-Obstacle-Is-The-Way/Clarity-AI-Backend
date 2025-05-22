@@ -519,9 +519,10 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 "type": insight_type.value if hasattr(insight_type, 'value') else str(insight_type),
                 "description": f"Mock insight for {insight_type}",
                 "significance": random.choice([
-                    "high",
-                    "medium",
-                    "low"
+                    ClinicalSignificance.HIGH.value,
+                    ClinicalSignificance.MODERATE.value,
+                    ClinicalSignificance.MILD.value,
+                    ClinicalSignificance.MINIMAL.value,
                 ]),
                 "confidence": random.uniform(0.7, 0.95),
                 "supporting_evidence": ["clinical_data", "biomarkers"]
