@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.interfaces.repositories.biometric_rule_repository import (
     IBiometricRuleRepository,
 )
-from app.domain.entities.biometric_alert_rule import BiometricAlertRule
+from app.domain.entities.biometric_rule import BiometricRule
 from app.domain.exceptions.repository import (
     DatabaseConnectionException,
     EntityNotFoundException,
@@ -45,8 +45,8 @@ class SQLAlchemyBiometricRuleRepository(IBiometricRuleRepository):
         """
         self.session = session
 
-    async def add(self, rule: BiometricAlertRule) -> BiometricAlertRule:
-        """Add a new BiometricAlertRule entity to the database."""
+    async def create(self, rule: BiometricRule) -> BiometricRule:
+        """Create a new BiometricRule entity in the database."""
         rule_model = map_rule_entity_to_model(rule)
         try:
             self.session.add(rule_model)
@@ -55,15 +55,15 @@ class SQLAlchemyBiometricRuleRepository(IBiometricRuleRepository):
             return map_rule_model_to_entity(rule_model)
         except IntegrityError as e:
             await self.session.rollback()
-            logger.error(f"Database error adding biometric rule {rule.id}: {e}")
-            raise DatabaseConnectionException(f"Database error adding rule: {e!s}") from e
+            logger.error(f"Database error creating biometric rule {rule.id}: {e}")
+            raise DatabaseConnectionException(f"Database error creating rule: {e!s}") from e
         except Exception as e:
             await self.session.rollback()
-            logger.error(f"Unexpected error adding biometric rule {rule.id}: {e}")
-            raise RepositoryError(f"Unexpected error adding rule: {e!s}") from e
+            logger.error(f"Unexpected error creating biometric rule {rule.id}: {e}")
+            raise RepositoryError(f"Unexpected error creating rule: {e!s}") from e
 
-    async def get_by_id(self, rule_id: UUID) -> BiometricAlertRule | None:
-        """Retrieve a BiometricAlertRule entity by its ID."""
+    async def get_by_id(self, rule_id: UUID) -> BiometricRule | None:
+        """Retrieve a BiometricRule entity by its ID."""
         try:
             stmt = select(BiometricRuleModel).where(BiometricRuleModel.id == rule_id)
             result = await self.session.execute(stmt)
@@ -80,87 +80,17 @@ class SQLAlchemyBiometricRuleRepository(IBiometricRuleRepository):
             logger.error(f"Unexpected error retrieving rule {rule_id}: {e}")
             raise RepositoryError(f"Unexpected error retrieving rule {rule_id}: {e!s}") from e
 
-    async def get_all(self) -> list[BiometricAlertRule]:
-        """Retrieve all BiometricAlertRule entities."""
+    async def get_by_patient_id(
+        self, patient_id: UUID, limit: int = 100, skip: int = 0
+    ) -> list[BiometricRule]:
+        """Retrieve biometric rules for a specific patient."""
         try:
-            stmt = select(BiometricRuleModel)
-            result = await self.session.execute(stmt)
-            rule_models = result.scalars().all()
-            return [map_rule_model_to_entity(model) for model in rule_models]
-        except SQLAlchemyError as e:
-            logger.error(f"Database error retrieving all rules: {e}")
-            raise DatabaseConnectionException(f"Database error retrieving all rules: {e!s}") from e
-        except Exception as e:
-            logger.error(f"Unexpected error retrieving all rules: {e}")
-            raise RepositoryError(f"Unexpected error retrieving all rules: {e!s}") from e
-
-    async def update(self, rule: BiometricAlertRule) -> BiometricAlertRule:
-        """Update an existing BiometricAlertRule entity in the database."""
-        if not rule.id:
-            logger.error("Attempted to update a rule without an ID.")
-            raise ValueError("Cannot update a rule without an ID.")
-        try:
-            existing_rule = await self.get_by_id(rule.id)
-            if not existing_rule:
-                raise EntityNotFoundException(f"Biometric rule with ID {rule.id} not found")
-            rule_model = map_rule_entity_to_model(rule)
             stmt = (
-                update(BiometricRuleModel)
-                .where(BiometricRuleModel.id == rule.id)
-                .values(
-                    **{
-                        key: getattr(rule_model, key)
-                        for key in rule_model.__dict__
-                        if not key.startswith("_")
-                    }
-                )
-                .execution_options(synchronize_session="fetch")
+                select(BiometricRuleModel)
+                .where(BiometricRuleModel.patient_id == patient_id)
+                .offset(skip)
+                .limit(limit)
             )
-            await self.session.execute(stmt)
-            await self.session.commit()
-            return rule
-        except SQLAlchemyError as e:
-            await self.session.rollback()
-            logger.error(f"Database error updating rule {rule.id}: {e}")
-            raise DatabaseConnectionException(f"Database error updating rule: {e!s}") from e
-        except Exception as e:
-            await self.session.rollback()
-            logger.error(f"Unexpected error updating rule {rule.id}: {e}")
-            raise RepositoryError(f"Unexpected error updating rule: {e!s}") from e
-
-    async def delete(self, rule_id: UUID) -> bool:
-        """Delete a BiometricAlertRule entity by its ID."""
-        try:
-            existing_rule = await self.get_by_id(rule_id)
-            if not existing_rule:
-                logger.warning(f"Attempted to delete non-existent rule with ID: {rule_id}")
-                return False
-            stmt = delete(BiometricRuleModel).where(BiometricRuleModel.id == rule_id)
-            result = await self.session.execute(stmt)
-            await self.session.commit()
-            deleted_count = result.rowcount
-            if deleted_count == 0:
-                logger.warning(
-                    f"Rule with ID {rule_id} was not found for deletion, though existed moments ago."
-                )
-                return False
-            logger.info(f"Successfully deleted rule with ID: {rule_id}")
-            return True
-        except SQLAlchemyError as e:
-            await self.session.rollback()
-            logger.error(f"Database error deleting rule {rule_id}: {e}")
-            raise DatabaseConnectionException(
-                f"Database error deleting rule {rule_id}: {e!s}"
-            ) from e
-        except Exception as e:
-            await self.session.rollback()
-            logger.error(f"Unexpected error deleting rule {rule_id}: {e}")
-            raise RepositoryError(f"Unexpected error deleting rule {rule_id}: {e!s}") from e
-
-    async def get_by_patient_id(self, patient_id: UUID) -> list[BiometricAlertRule]:
-        """Retrieve all BiometricAlertRules for a specific patient."""
-        try:
-            stmt = select(BiometricRuleModel).where(BiometricRuleModel.patient_id == patient_id)
             result = await self.session.execute(stmt)
             rule_models = result.scalars().all()
             return [map_rule_model_to_entity(model) for model in rule_models]
@@ -175,8 +105,102 @@ class SQLAlchemyBiometricRuleRepository(IBiometricRuleRepository):
                 f"Unexpected error retrieving rules for patient {patient_id}: {e!s}"
             ) from e
 
-    async def get_by_provider_id(self, provider_id: UUID) -> list[BiometricAlertRule]:
-        """Retrieve all BiometricAlertRules created by a specific provider."""
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[BiometricRule]:
+        """List all biometric rules with pagination."""
+        try:
+            stmt = select(BiometricRuleModel).offset(skip).limit(limit)
+            result = await self.session.execute(stmt)
+            rule_models = result.scalars().all()
+            return [map_rule_model_to_entity(model) for model in rule_models]
+        except SQLAlchemyError as e:
+            logger.error(f"Database error retrieving all rules: {e}")
+            raise DatabaseConnectionException(f"Database error retrieving all rules: {e!s}") from e
+        except Exception as e:
+            logger.error(f"Unexpected error retrieving all rules: {e}")
+            raise RepositoryError(f"Unexpected error retrieving all rules: {e!s}") from e
+
+    async def update(self, rule: BiometricRule) -> BiometricRule:
+        """Update an existing BiometricRule entity in the database."""
+        if not rule.id:
+            logger.error("Attempted to update a rule without an ID.")
+            raise ValueError("Cannot update a rule without an ID.")
+        try:
+            # Use ORM-style update for better type safety
+            rule_model = await self.session.get(BiometricRuleModel, rule.id)
+            if not rule_model:
+                raise EntityNotFoundException(f"Biometric rule with ID {rule.id} not found")
+            
+            # Type assertion to help mypy understand rule_model is not None after the check
+            assert rule_model is not None
+            updated_model = map_rule_entity_to_model(rule)
+            rule_model.name = updated_model.name
+            rule_model.description = updated_model.description
+            rule_model.patient_id = updated_model.patient_id
+            rule_model.provider_id = updated_model.provider_id
+            rule_model.is_active = updated_model.is_active
+            rule_model.alert_priority = updated_model.alert_priority
+            rule_model.logical_operator = updated_model.logical_operator
+            rule_model.conditions = updated_model.conditions
+            rule_model.updated_at = updated_model.updated_at
+            
+            await self.session.commit()
+            return rule
+        except SQLAlchemyError as e:
+            await self.session.rollback()
+            logger.error(f"Database error updating rule {rule.id}: {e}")
+            raise DatabaseConnectionException(f"Database error updating rule: {e!s}") from e
+        except Exception as e:
+            await self.session.rollback()
+            logger.error(f"Unexpected error updating rule {rule.id}: {e}")
+            raise RepositoryError(f"Unexpected error updating rule: {e!s}") from e
+
+    async def delete(self, rule_id: UUID) -> bool:
+        """Delete a biometric rule record by its ID. Returns True if deletion was successful."""
+        try:
+            rule_model = await self.session.get(BiometricRuleModel, rule_id)
+            if not rule_model:
+                logger.warning(f"Attempted to delete non-existent rule with ID: {rule_id}")
+                return False
+            
+            # Type assertion to help mypy understand rule_model is not None after the check
+            assert rule_model is not None
+            await self.session.delete(rule_model)
+            await self.session.commit()
+            logger.info(f"Successfully deleted rule with ID: {rule_id}")
+            return True
+        except SQLAlchemyError as e:
+            await self.session.rollback()
+            logger.error(f"Database error deleting rule {rule_id}: {e}")
+            raise DatabaseConnectionException(
+                f"Database error deleting rule {rule_id}: {e!s}"
+            ) from e
+        except Exception as e:
+            await self.session.rollback()
+            logger.error(f"Unexpected error deleting rule {rule_id}: {e}")
+            raise RepositoryError(f"Unexpected error deleting rule {rule_id}: {e!s}") from e
+
+    async def get_active_rules(self, patient_id: UUID | None = None) -> list[BiometricRule]:
+        """Retrieve active (enabled) rules, optionally filtered by patient."""
+        try:
+            stmt = select(BiometricRuleModel).where(BiometricRuleModel.is_active == True)
+            if patient_id is not None:
+                stmt = stmt.where(BiometricRuleModel.patient_id == patient_id)
+            
+            result = await self.session.execute(stmt)
+            rule_models = result.scalars().all()
+            return [map_rule_model_to_entity(model) for model in rule_models]
+        except SQLAlchemyError as e:
+            logger.error(f"Database error retrieving active rules: {e}")
+            raise DatabaseConnectionException(
+                f"Database error retrieving active rules: {e!s}"
+            ) from e
+        except Exception as e:
+            logger.error(f"Unexpected error retrieving active rules: {e}")
+            raise RepositoryError(f"Unexpected error retrieving active rules: {e!s}") from e
+
+    # Additional helper methods for backward compatibility and extended functionality
+    async def get_by_provider_id(self, provider_id: UUID) -> list[BiometricRule]:
+        """Retrieve all BiometricRules created by a specific provider."""
         try:
             stmt = select(BiometricRuleModel).where(BiometricRuleModel.provider_id == provider_id)
             result = await self.session.execute(stmt)
@@ -193,56 +217,30 @@ class SQLAlchemyBiometricRuleRepository(IBiometricRuleRepository):
                 f"Unexpected error retrieving rules for provider {provider_id}: {e!s}"
             ) from e
 
-    async def get_all_active(self) -> list[BiometricAlertRule]:
-        """Retrieve all active BiometricAlertRules."""
-        try:
-            stmt = select(BiometricRuleModel).where(BiometricRuleModel.is_active)
-            result = await self.session.execute(stmt)
-            rule_models = result.scalars().all()
-            return [map_rule_model_to_entity(model) for model in rule_models]
-        except SQLAlchemyError as e:
-            logger.error(f"Database error retrieving all active rules: {e}")
-            raise DatabaseConnectionException(
-                f"Database error retrieving all active rules: {e!s}"
-            ) from e
-        except Exception as e:
-            logger.error(f"Unexpected error retrieving all active rules: {e}")
-            raise RepositoryError(f"Unexpected error retrieving all active rules: {e!s}") from e
-
-    async def get_active_rules_for_patient(self, patient_id: UUID) -> list[BiometricAlertRule]:
-        """Retrieve active rules for a specific patient."""
-        try:
-            stmt = select(BiometricRuleModel).where(
-                BiometricRuleModel.patient_id == patient_id,
-                BiometricRuleModel.is_active,
-            )
-            result = await self.session.execute(stmt)
-            rule_models = result.scalars().all()
-            return [map_rule_model_to_entity(model) for model in rule_models]
-        except SQLAlchemyError as e:
-            logger.error(f"Database error retrieving active rules for patient {patient_id}: {e}")
-            raise DatabaseConnectionException(
-                f"Database error retrieving active rules for patient {patient_id}: {e!s}"
-            ) from e
-        except Exception as e:
-            logger.error(f"Unexpected error retrieving active rules for patient {patient_id}: {e}")
-            raise RepositoryError(
-                f"Unexpected error retrieving active rules for patient {patient_id}: {e!s}"
-            ) from e
-
-    async def save(self, rule: BiometricAlertRule) -> BiometricAlertRule:
-        """Save a BiometricAlertRule entity (create or update)."""
+    async def save(self, rule: BiometricRule) -> BiometricRule:
+        """Save a BiometricRule entity (create or update)."""
         try:
             if rule.id:
                 logger.debug(f"Calling update for rule ID: {rule.id}")
                 return await self.update(rule)
             else:
-                logger.debug("Calling add for new rule.")
-                return await self.add(rule)
+                logger.debug("Calling create for new rule.")
+                return await self.create(rule)
         except EntityNotFoundException:
-            logger.warning(f"Rule with ID {rule.id} not found for update, attempting to add.")
-            rule.id = None
-            return await self.add(rule)
+            logger.warning(f"Rule with ID {rule.id} not found for update, attempting to create.")
+            # Create a new rule without the ID for creation
+            new_rule = BiometricRule(
+                name=rule.name,
+                description=rule.description,
+                patient_id=rule.patient_id,
+                provider_id=rule.provider_id,
+                is_active=rule.is_active,
+                priority=rule.priority,
+                conditions=rule.conditions,
+                logical_operator=rule.logical_operator,
+                data_type=rule.data_type
+            )
+            return await self.create(new_rule)
         except (DatabaseConnectionException, RepositoryError) as e:
             raise e
         except Exception as e:
@@ -252,9 +250,10 @@ class SQLAlchemyBiometricRuleRepository(IBiometricRuleRepository):
     async def count_active_rules(self, patient_id: UUID) -> int:
         """Count the number of active rules for a patient."""
         try:
-            stmt = select(func.count(BiometricRuleModel.id)).where(
-                BiometricRuleModel.patient_id == patient_id,
-                BiometricRuleModel.is_active,
+            stmt = (
+                select(func.count(BiometricRuleModel.id))
+                .where(BiometricRuleModel.patient_id == patient_id)
+                .where(BiometricRuleModel.is_active == True)
             )
             result = await self.session.execute(stmt)
             count = result.scalar_one_or_none() or 0
@@ -273,18 +272,15 @@ class SQLAlchemyBiometricRuleRepository(IBiometricRuleRepository):
     async def update_active_status(self, rule_id: UUID, is_active: bool) -> bool:
         """Update the active status of a rule. Returns True if updated, False otherwise."""
         try:
-            stmt = (
-                update(BiometricRuleModel)
-                .where(BiometricRuleModel.id == rule_id)
-                .values(is_active=is_active)
-                .execution_options(synchronize_session="fetch")
-            )
-            result = await self.session.execute(stmt)
-            await self.session.commit()
-            updated_count = result.rowcount
-            if updated_count == 0:
+            rule_model = await self.session.get(BiometricRuleModel, rule_id)
+            if not rule_model:
                 logger.warning(f"Rule with ID {rule_id} not found for status update.")
                 return False
+            
+            # Type assertion to help mypy understand rule_model is not None after the check
+            assert rule_model is not None
+            rule_model.is_active = is_active
+            await self.session.commit()
             logger.info(f"Successfully updated active status for rule {rule_id} to {is_active}")
             return True
         except SQLAlchemyError as e:
