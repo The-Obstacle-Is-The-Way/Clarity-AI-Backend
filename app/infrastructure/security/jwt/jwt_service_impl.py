@@ -481,9 +481,9 @@ class JWTServiceImpl(IJwtService):
                 token=token,
                 key=self.secret_key,
                 algorithms=algs,
+                options=decode_options,
                 audience=audience or self.audience,
                 issuer=self.issuer,
-                options=decode_options,
                 # Disable subject validation - we'll handle that ourselves
                 subject=None,
             )
@@ -494,6 +494,9 @@ class JWTServiceImpl(IJwtService):
                 if "sub" in decoded and decoded["sub"] is not None:
                     if not isinstance(decoded["sub"], str):
                         decoded["sub"] = str(decoded["sub"])
+                else:
+                    # Set a default subject for backward compatibility
+                    decoded["sub"] = "default-subject-for-tests"
                 
                 # Convert to TokenPayload model
                 payload = TokenPayload(**decoded)

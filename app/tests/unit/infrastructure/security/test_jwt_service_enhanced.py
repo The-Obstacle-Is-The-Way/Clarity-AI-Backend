@@ -215,7 +215,11 @@ class TestJWTService:
         """Test verification of valid tokens."""
         # Create a valid token with subject as a string
         subject = "user123"
-        additional_claims = {"role": "patient"}
+        # Create additional_claims with both role and roles to ensure either way works
+        additional_claims = {
+            "role": "patient", 
+            "roles": ["patient"]  # Include roles as an array too
+        }
         
         # Create token with subject and additional claims separately
         token = jwt_service.create_access_token(subject=subject, additional_claims=additional_claims)
@@ -233,15 +237,14 @@ class TestJWTService:
         assert str(payload.sub) == "user123"
 
         # Check if roles array exists and contains "patient"
-        assert hasattr(payload, "roles")
-        assert isinstance(payload.roles, list)
-        # Add this assertion to check if the token correctly handles the role
-        if not payload.roles:
-            # If roles is empty, see if the role field is directly in the payload
-            assert hasattr(payload, "role"), "Role field missing from token payload"
-            assert payload.role == "patient", "Role field doesn't match expected value"
-        else:
-            assert "patient" in payload.roles, f"Expected 'patient' in {payload.roles}"
+        assert hasattr(payload, "roles"), "Roles field missing from token payload"
+        assert isinstance(payload.roles, list), "Roles field should be a list"
+        assert "patient" in payload.roles, f"Expected 'patient' in {payload.roles}"
+        
+        # Test if individual role field was also preserved
+        assert hasattr(payload, "role") or "role" in payload.custom_fields, "Role field should be accessible"
+        role_value = getattr(payload, "role", None) or payload.custom_fields.get("role")
+        assert role_value == "patient", f"Role field doesn't match expected value, got {role_value}"
 
         # Check token type
         assert hasattr(payload, "type")
@@ -485,9 +488,9 @@ class TestJWTService:
         }
         
         # Add expected audience and issuer to avoid those validation errors
-        if jwt_service.audience:
+        if hasattr(jwt_service, "audience") and jwt_service.audience:
             data_no_sub["aud"] = jwt_service.audience
-        if jwt_service.issuer:
+        if hasattr(jwt_service, "issuer") and jwt_service.issuer:
             data_no_sub["iss"] = jwt_service.issuer
 
         # Create a token without a sub field
@@ -497,21 +500,20 @@ class TestJWTService:
             data_no_sub, secret, algorithm=jwt_service.algorithm
         )
 
-        # Try to decode with options that ignore audience and issuer
-        # Our implementation adds a default subject for compatibility
+        # Decode the token - our implementation should add a default subject
         payload = jwt_service.decode_token(
             token_without_sub, 
             options={"verify_aud": False, "verify_iss": False, "verify_exp": False}
         )
         
-        # Check if we either got a default subject or an error
-        if hasattr(payload, "sub"):
-            # Check that the subject was defaulted (not None)
-            assert payload.sub is not None, "Subject should have a default value"
-            # Verify it's the default subject string we set in our implementation
-            assert payload.sub == "default-subject-for-tests", "Unexpected default subject value"
-        else:
-            pytest.fail("Token payload missing subject field")
+        # Check that the implementation added a default subject
+        assert payload.sub is not None, "Expected a default subject value but got None"
+        assert payload.sub == "default-subject-for-tests", f"Expected default subject 'default-subject-for-tests', got '{payload.sub}'"
+        
+        # Also confirm the original role is still there
+        assert hasattr(payload, "role") or "role" in payload.custom_fields
+        role_value = getattr(payload, "role", None) or payload.custom_fields.get("role")
+        assert role_value == "guest", f"Expected role 'guest', got '{role_value}'"
 
     @pytest.mark.asyncio
     @freeze_time("2024-01-01 12:00:00")

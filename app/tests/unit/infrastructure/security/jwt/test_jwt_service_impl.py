@@ -213,10 +213,16 @@ class TestJWTServiceImpl:
             subject=user_claims["sub"]
         )
         
-        # Tamper with the token by changing the last character
-        tampered_token = token[:-1] + ('A' if token[-1] != 'A' else 'B')
+        # Tamper with the token more significantly to ensure it fails signature verification
+        parts = token.split('.')
+        if len(parts) == 3:  # Make sure we have the correct JWT format (header.payload.signature)
+            # Modify the signature part completely
+            tampered_token = f"{parts[0]}.{parts[1]}.invalid_signature"
+        else:
+            # Fallback if the token doesn't have the expected format
+            tampered_token = token[:-5] + "XXXXX"
         
-        # Verification should raise InvalidTokenException (the actual implementation uses this class)
+        # Verification should raise InvalidTokenException
         with pytest.raises(InvalidTokenException):
             jwt_service_impl.decode_token(tampered_token)
             
