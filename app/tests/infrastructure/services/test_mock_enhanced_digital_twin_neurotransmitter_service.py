@@ -26,12 +26,25 @@ from app.domain.utils.datetime_utils import UTC
 from app.infrastructure.services.mock_enhanced_digital_twin_core_service import (
     MockEnhancedDigitalTwinCoreService,
 )
+from app.infrastructure.services.mock_mentalllama_service import MockMentalLLaMAService
+from app.infrastructure.services.mock_pat_service import MockPATService
+from app.infrastructure.services.mock_xgboost_service import MockXGBoostService
 
 
 @pytest.fixture
 def mock_service():
-    """Create an instance of the mock service for testing."""
-    return MockEnhancedDigitalTwinCoreService()
+    """Create an instance of the mock service for testing with proper dependency injection."""
+    # Create mock service dependencies following SOLID principles
+    mock_mental_llama = MockMentalLLaMAService()
+    mock_xgboost = MockXGBoostService()
+    mock_pat = MockPATService()
+    
+    # Inject dependencies into the main service
+    return MockEnhancedDigitalTwinCoreService(
+        mental_llama_service=mock_mental_llama,
+        xgboost_service=mock_xgboost,
+        pat_service=mock_pat,
+    )
 
 
 @pytest_asyncio.fixture
