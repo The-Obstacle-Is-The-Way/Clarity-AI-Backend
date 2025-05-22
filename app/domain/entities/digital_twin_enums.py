@@ -140,10 +140,10 @@ class TemporalResolution(Enum):
     YEARLY = "yearly"
 
 
-# Additional enums referenced in digital_twin/__init__.py
+# Renamed enums to avoid namespace collisions with domain entities
 
 
-class ClinicalInsight(Enum):
+class ClinicalInsightType(Enum):
     """Clinical insights derived from digital twin analysis."""
 
     TREATMENT_RESPONSE = "treatment_response"
@@ -162,8 +162,8 @@ class ClinicalInsight(Enum):
     BIOMARKER_CORRELATION = "biomarker_correlation"
 
 
-class DigitalTwinState(Enum):
-    """Overall state of the digital twin model."""
+class DigitalTwinStatus(Enum):
+    """Overall status of the digital twin model."""
 
     INITIALIZING = "initializing"
     CALIBRATING = "calibrating"
@@ -177,7 +177,7 @@ class DigitalTwinState(Enum):
     INACTIVE = "inactive"
 
 
-class NeuralConnection(Enum):
+class NeuralConnectionType(Enum):
     """Types of neural connections in the digital twin model."""
 
     PRIMARY = "primary"
@@ -190,7 +190,7 @@ class NeuralConnection(Enum):
     MODULATORY = "modulatory"
 
 
-class TemporalPattern(Enum):
+class TemporalPatternType(Enum):
     """Temporal patterns in neurotransmitter activity."""
 
     SUSTAINED = "sustained"
@@ -204,8 +204,8 @@ class TemporalPattern(Enum):
     REACTIVE = "reactive"
 
 
-class BrainRegionState(Enum):
-    """State of activity in brain regions."""
+class BrainRegionStatus(Enum):
+    """Status of activity in brain regions."""
 
     HYPOACTIVE = "hypoactive"
     BELOW_BASELINE = "below_baseline"
