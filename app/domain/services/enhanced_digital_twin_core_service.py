@@ -8,7 +8,12 @@ from datetime import datetime
 from uuid import UUID
 
 from app.domain.entities.digital_twin import DigitalTwinState
-from app.domain.entities.digital_twin_enums import BrainRegion, Neurotransmitter
+from app.domain.entities.digital_twin_enums import (
+    BrainRegion,
+    ClinicalInsightType,
+    ClinicalSignificance,
+    Neurotransmitter,
+)
 from app.domain.entities.knowledge_graph import (
     BayesianBeliefNetwork,
     TemporalKnowledgeGraph,
@@ -35,7 +40,7 @@ class EnhancedDigitalTwinCoreService(ABC):
         initial_data: dict | None = None,
         enable_knowledge_graph: bool = True,
         enable_belief_network: bool = True,
-    ) -> tuple[DigitalTwinState, TemporalKnowledgeGraph | None, BayesianBeliefNetwork | None]:
+    ) -> dict:
         """
         Initialize a new Digital Twin state with knowledge graph and belief network.
 
@@ -384,6 +389,7 @@ class EnhancedDigitalTwinCoreService(ABC):
         initial_changes: dict[Neurotransmitter, float],
         simulation_steps: int = 3,
         min_effect_threshold: float = 0.1,
+        time_resolution_hours: int = 24,
     ) -> dict:
         """
         Simulate cascade effects of neurotransmitter changes across brain regions.
@@ -525,5 +531,120 @@ class EnhancedDigitalTwinCoreService(ABC):
 
         Returns:
             UUID of the published event
+        """
+        pass
+
+    @abstractmethod
+    async def add_receptor_profile(
+        self, patient_id: UUID, profile: ReceptorProfile
+    ) -> NeurotransmitterMapping:
+        """
+        Add a single receptor profile to the patient's neurotransmitter mapping.
+
+        Args:
+            patient_id: UUID of the patient
+            profile: ReceptorProfile instance to add
+
+        Returns:
+            Updated NeurotransmitterMapping
+        """
+        pass
+
+    @abstractmethod
+    async def get_neurotransmitter_mapping(
+        self, patient_id: UUID
+    ) -> NeurotransmitterMapping:
+        """
+        Get the current neurotransmitter mapping for a patient.
+
+        Args:
+            patient_id: UUID of the patient
+
+        Returns:
+            Current NeurotransmitterMapping for the patient
+        """
+        pass
+
+    @abstractmethod
+    async def analyze_neurotransmitter_interactions(
+        self, patient_id: UUID, brain_region: BrainRegion
+    ) -> dict:
+        """
+        Analyze interactions between neurotransmitters in a specific brain region.
+
+        Args:
+            patient_id: UUID of the patient
+            brain_region: Brain region to analyze
+
+        Returns:
+            Dictionary with interaction analysis results
+        """
+        pass
+
+    @abstractmethod
+    async def predict_medication_effects(
+        self, patient_id: UUID, medication: dict, prediction_timeframe_days: int
+    ) -> dict:
+        """
+        Predict medication effects on neurotransmitters over time.
+
+        Args:
+            patient_id: UUID of the patient
+            medication: Medication data dictionary
+            prediction_timeframe_days: Timeframe for prediction in days
+
+        Returns:
+            Dictionary with medication effect predictions
+        """
+        pass
+
+    @abstractmethod
+    async def analyze_temporal_response(
+        self, patient_id: UUID, treatment: dict, brain_region: BrainRegion, neurotransmitter: Neurotransmitter
+    ) -> dict:
+        """
+        Analyze temporal response patterns for treatment effects.
+
+        Args:
+            patient_id: UUID of the patient
+            treatment: Treatment data dictionary
+            brain_region: Brain region to analyze
+            neurotransmitter: Neurotransmitter to analyze
+
+        Returns:
+            Dictionary with temporal response analysis
+        """
+        pass
+
+    @abstractmethod
+    async def generate_clinical_insights(
+        self, patient_id: UUID, insight_types: list[ClinicalInsightType]
+    ) -> list[dict]:
+        """
+        Generate clinical insights from neurotransmitter data.
+
+        Args:
+            patient_id: UUID of the patient
+            insight_types: Types of insights to generate
+
+        Returns:
+            List of clinical insight dictionaries
+        """
+        pass
+
+    @abstractmethod
+    async def analyze_regional_effects(
+        self, patient_id: UUID, neurotransmitter: Neurotransmitter, effect_magnitude: float
+    ) -> dict:
+        """
+        Analyze neurotransmitter effects by brain region.
+
+        Args:
+            patient_id: UUID of the patient
+            neurotransmitter: Neurotransmitter to analyze
+            effect_magnitude: Magnitude of the effect
+
+        Returns:
+            Dictionary with regional effects analysis
         """
         pass

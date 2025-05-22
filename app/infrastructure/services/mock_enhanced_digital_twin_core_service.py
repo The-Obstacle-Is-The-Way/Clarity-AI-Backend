@@ -67,7 +67,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         initial_data: dict | None = None,
         enable_knowledge_graph: bool = True,
         enable_belief_network: bool = True,
-    ) -> tuple[DigitalTwinState, TemporalKnowledgeGraph | None, BayesianBeliefNetwork | None]:
+    ) -> dict:
         """Initialize a new Digital Twin state with knowledge graph and belief network."""
         logger.info(f"Initializing Digital Twin for patient {patient_id}")
         
@@ -87,7 +87,13 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             belief_network = self._create_mock_belief_network(patient_id)
             self._mock_belief_networks[patient_id] = belief_network
         
-        return state, knowledge_graph, belief_network
+        return {
+            "patient_id": patient_id,
+            "status": "initialized",
+            "knowledge_graph": knowledge_graph,
+            "belief_network": belief_network,
+            "digital_twin_state": state
+        }
 
     async def digital_twin_exists(self, patient_id: UUID) -> bool:
         """Check if a Digital Twin exists for the patient."""
@@ -353,13 +359,13 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                     {
                         "id": "prefrontal_cortex",
                         "name": "Prefrontal Cortex",
-                        "activation": random.uniform(0.4, 0.8),
+                        "activation": random.uniform(0.6, 0.9),
                         "coordinates": {"x": 0, "y": 0, "z": 0}
                     },
                     {
                         "id": "amygdala",
                         "name": "Amygdala",
-                        "activation": random.uniform(0.3, 0.7),
+                        "activation": random.uniform(0.6, 0.8),
                         "coordinates": {"x": 1, "y": 1, "z": 1}
                     }
                 ],
@@ -389,23 +395,6 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         self._mock_neurotransmitter_mappings[patient_id] = mapping
         return mapping
 
-    async def add_receptor_profile(
-        self,
-        patient_id: UUID,
-        profile: ReceptorProfile,
-    ) -> None:
-        """Add a receptor profile to the patient's mapping."""
-        logger.info(f"Adding receptor profile for patient {patient_id}")
-        # Mock implementation
-
-    async def get_neurotransmitter_mapping(
-        self,
-        patient_id: UUID,
-    ) -> NeurotransmitterMapping:
-        """Get the neurotransmitter mapping for a patient."""
-        if patient_id in self._mock_neurotransmitter_mappings:
-            return self._mock_neurotransmitter_mappings[patient_id]
-        return self._create_mock_neurotransmitter_mapping(patient_id)
 
     async def analyze_neurotransmitter_interactions(
         self,
@@ -500,9 +489,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 "type": insight_type.value if hasattr(insight_type, 'value') else str(insight_type),
                 "description": f"Mock insight for {insight_type}",
                 "significance": random.choice([
-                    ClinicalSignificance.HIGH.value,
-                    ClinicalSignificance.MEDIUM.value,
-                    ClinicalSignificance.LOW.value,
+                    "high",
+                    "medium",
+                    "low"
                 ]),
                 "confidence": random.uniform(0.7, 0.95),
                 "supporting_evidence": ["clinical_data", "biomarkers"]
@@ -546,18 +535,29 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         initial_changes: dict[Neurotransmitter, float],
         simulation_steps: int = 3,
         min_effect_threshold: float = 0.1,
+        time_resolution_hours: int = 24,
     ) -> dict:
         """Simulate neurotransmitter cascade effects."""
         logger.info(f"Simulating neurotransmitter cascade for patient {patient_id}")
         
         timeline = []
         for step in range(simulation_steps):
+            # Start with initial changes
+            levels = {
+                nt.value: 0.4 + level + random.uniform(-0.05, 0.05)  # Start from baseline 0.4 + increase
+                for nt, level in initial_changes.items()
+            }
+            
+            # Add cascade effects - simulate secondary neurotransmitter changes
+            # If serotonin is increased, it affects dopamine (as shown in cascade_pathways)
+            if Neurotransmitter.SEROTONIN in initial_changes:
+                # Dopamine is affected by serotonin changes over time
+                dopamine_effect = initial_changes[Neurotransmitter.SEROTONIN] * 0.3 * (step + 1) / simulation_steps
+                levels[Neurotransmitter.DOPAMINE.value] = 0.5 + dopamine_effect + random.uniform(-0.05, 0.05)
+            
             timeline.append({
-                "step": step,
-                "neurotransmitter_levels": {
-                    nt.value: level + random.uniform(-0.1, 0.1)
-                    for nt, level in initial_changes.items()
-                }
+                "time_hours": step * time_resolution_hours,
+                "neurotransmitter_levels": levels
             })
         
         return {
@@ -574,113 +574,46 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             "confidence": random.uniform(0.7, 0.9)
         }
 
-    async def analyze_neurotransmitter_interactions(
-        self,
-        patient_id: UUID,
-        brain_region: BrainRegion,
-    ) -> dict:
-        """Analyze interactions between neurotransmitters."""
-        logger.info(f"Analyzing neurotransmitter interactions for patient {patient_id}")
-        
-        return {
-            "primary_interactions": [
-                {
-                    "source": "serotonin",
-                    "target": "dopamine",
-                    "effect_type": "modulatory",
-                    "effect_magnitude": "medium"
-                }
-            ],
-            "secondary_interactions": [],
-            "confidence": random.uniform(0.7, 0.9)
-        }
 
-    async def predict_medication_effects(
-        self,
-        patient_id: UUID,
-        medication: dict,
-        prediction_timeframe_days: int,
-    ) -> dict:
-        """Predict medication effects on neurotransmitters."""
-        logger.info(f"Predicting medication effects for patient {patient_id}")
+    async def add_receptor_profile(
+        self, patient_id: UUID, profile: ReceptorProfile
+    ) -> NeurotransmitterMapping:
+        """Add a receptor profile to the patient's neurotransmitter mapping."""
+        logger.info(f"Adding receptor profile for patient {patient_id}")
         
-        timeline = []
-        for day in range(prediction_timeframe_days):
-            timeline.append({
-                "day": day,
-                "neurotransmitter_levels": {
-                    "serotonin": 0.4 + (day * 0.01),
-                    "dopamine": 0.5 + (day * 0.005),
-                },
-                "expected_symptom_changes": {
-                    "mood": random.uniform(0.3, 0.8),
-                    "anxiety": random.uniform(0.2, 0.6),
-                }
-            })
+        # Get existing mapping or create new one
+        mapping = self._mock_neurotransmitter_mappings.get(patient_id)
+        if not mapping:
+            mapping = await self.initialize_neurotransmitter_mapping(patient_id)
         
-        return {
-            "primary_effects": {
-                "serotonin": 0.3,
-                "dopamine": 0.1,
-            },
-            "secondary_effects": {},
-            "expected_timeline": timeline,
-            "confidence": random.uniform(0.7, 0.9)
-        }
+        # Remove any existing profile with the same characteristics
+        mapping.receptor_profiles = [
+            p for p in mapping.receptor_profiles
+            if not (
+                p.brain_region == profile.brain_region
+                and p.neurotransmitter == profile.neurotransmitter
+                and p.receptor_subtype == profile.receptor_subtype
+            )
+        ]
+        
+        # Add the new profile
+        mapping.receptor_profiles.append(profile)
+        mapping.updated_at = datetime.now()
+        
+        self._mock_neurotransmitter_mappings[patient_id] = mapping
+        return mapping
 
-    async def analyze_temporal_response(
-        self,
-        patient_id: UUID,
-        treatment: dict,
-        brain_region: BrainRegion,
-        neurotransmitter: Neurotransmitter,
-    ) -> dict:
-        """Analyze temporal response patterns."""
-        logger.info(f"Analyzing temporal response for patient {patient_id}")
+    async def get_neurotransmitter_mapping(
+        self, patient_id: UUID
+    ) -> NeurotransmitterMapping:
+        """Get the current neurotransmitter mapping for a patient."""
+        logger.info(f"Getting neurotransmitter mapping for patient {patient_id}")
         
-        response_curve = []
-        for day in range(30):
-            response_curve.append({
-                "day": day,
-                "response_level": random.uniform(0.3, 0.9)
-            })
+        mapping = self._mock_neurotransmitter_mappings.get(patient_id)
+        if not mapping:
+            mapping = await self.initialize_neurotransmitter_mapping(patient_id)
         
-        return {
-            "response_curve": response_curve,
-            "peak_response_day": random.randint(7, 21),
-            "stabilization_day": random.randint(21, 35),
-            "confidence": random.uniform(0.7, 0.9)
-        }
-
-    async def analyze_regional_effects(
-        self,
-        patient_id: UUID,
-        neurotransmitter: Neurotransmitter,
-        effect_magnitude: float,
-    ) -> dict:
-        """Analyze regional effects of neurotransmitter changes."""
-        logger.info(f"Analyzing regional effects for patient {patient_id}")
-        
-        return {
-            "affected_brain_regions": [
-                {
-                    "brain_region": "prefrontal_cortex",
-                    "neurotransmitter": neurotransmitter.value,
-                    "effect": effect_magnitude,
-                    "confidence": random.uniform(0.7, 0.9),
-                    "clinical_significance": "moderate"
-                }
-            ],
-            "expected_clinical_effects": [
-                {
-                    "symptom": "mood",
-                    "change_direction": "improvement",
-                    "magnitude": random.uniform(0.3, 0.7),
-                    "confidence": random.uniform(0.7, 0.9)
-                }
-            ],
-            "confidence": random.uniform(0.7, 0.9)
-        }
+        return mapping
 
     # Stub implementations for remaining abstract methods
     async def process_multimodal_data(self, *args, **kwargs) -> tuple:
@@ -789,36 +722,57 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
 
     def _create_mock_neurotransmitter_mapping(self, patient_id: UUID) -> NeurotransmitterMapping:
         """Create a mock neurotransmitter mapping."""
-        return {
-            "patient_id": patient_id,
-            "receptor_profiles": [
-                {
-                    "brain_region": BrainRegion.PREFRONTAL_CORTEX,
-                    "neurotransmitter": Neurotransmitter.SEROTONIN,
-                    "receptor_type": "excitatory",
-                    "density": 0.7,
-                    "sensitivity": 0.8
-                },
-                {
-                    "brain_region": BrainRegion.AMYGDALA,
-                    "neurotransmitter": Neurotransmitter.GABA,
-                    "receptor_type": "inhibitory",
-                    "density": 0.6,
-                    "sensitivity": 0.9
-                },
-                {
-                    "brain_region": BrainRegion.HIPPOCAMPUS,
-                    "neurotransmitter": Neurotransmitter.GLUTAMATE,
-                    "receptor_type": "excitatory",
-                    "density": 0.8,
-                    "sensitivity": 0.7
-                },
-                {
-                    "brain_region": BrainRegion.PITUITARY,
-                    "neurotransmitter": Neurotransmitter.DOPAMINE,
-                    "receptor_type": "modulatory",
-                    "density": 0.5,
-                    "sensitivity": 0.6
-                }
-            ]
-        }
+        from app.domain.entities.neurotransmitter_mapping import (
+            NeurotransmitterMapping,
+            ReceptorProfile,
+            ReceptorType,
+            ReceptorSubtype,
+        )
+        from app.domain.entities.digital_twin_enums import ClinicalSignificance
+        
+        mapping = NeurotransmitterMapping(patient_id=patient_id)
+        
+        # Add mock receptor profiles
+        profiles = [
+            ReceptorProfile(
+                brain_region=BrainRegion.PREFRONTAL_CORTEX,
+                neurotransmitter=Neurotransmitter.SEROTONIN,
+                receptor_type=ReceptorType.EXCITATORY,
+                receptor_subtype=ReceptorSubtype.SEROTONIN_5HT2A,
+                density=0.7,
+                sensitivity=0.8,
+                clinical_relevance=ClinicalSignificance.MODERATE
+            ),
+            ReceptorProfile(
+                brain_region=BrainRegion.AMYGDALA,
+                neurotransmitter=Neurotransmitter.GABA,
+                receptor_type=ReceptorType.INHIBITORY,
+                receptor_subtype=ReceptorSubtype.GABA_A,
+                density=0.6,
+                sensitivity=0.9,
+                clinical_relevance=ClinicalSignificance.SIGNIFICANT
+            ),
+            ReceptorProfile(
+                brain_region=BrainRegion.HIPPOCAMPUS,
+                neurotransmitter=Neurotransmitter.GLUTAMATE,
+                receptor_type=ReceptorType.EXCITATORY,
+                receptor_subtype=ReceptorSubtype.GLUTAMATE_NMDA,
+                density=0.8,
+                sensitivity=0.7,
+                clinical_relevance=ClinicalSignificance.MODERATE
+            ),
+            ReceptorProfile(
+                brain_region=BrainRegion.PITUITARY,
+                neurotransmitter=Neurotransmitter.DOPAMINE,
+                receptor_type=ReceptorType.EXCITATORY,
+                receptor_subtype=ReceptorSubtype.DOPAMINE_D2,
+                density=0.5,
+                sensitivity=0.6,
+                clinical_relevance=ClinicalSignificance.MILD
+            )
+        ]
+        
+        for profile in profiles:
+            mapping.add_receptor_profile(profile)
+        
+        return mapping
