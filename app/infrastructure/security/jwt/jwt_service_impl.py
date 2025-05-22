@@ -461,122 +461,71 @@ class JWTServiceImpl(IJwtService):
             
         Raises:
             InvalidTokenException: If token is invalid
-            TokenExpiredException: If token has expired
         """
         if not token:
-            raise InvalidTokenException("Token is empty or None")
+            raise InvalidTokenException("No token provided")
+            
+        # Set default options
+        decode_options = options or {}
         
-        # Remove 'Bearer ' prefix if present
-        if token.startswith("Bearer "):
-            token = token[7:]
-        
-        # Convert bytes to string if needed
-        if isinstance(token, bytes):
-            try:
-                token = token.decode("utf-8")
-            except UnicodeDecodeError:
-                raise InvalidTokenException("Invalid token format")
-        
-        # Default decode options
-        decode_opts = {
-            "verify_signature": verify_signature,
-            "verify_aud": self.audience is not None,
-            "verify_iss": self.issuer is not None,
-            "verify_sub": False  # Disable subject validation to avoid "Subject must be a string" error
-        }
-        
-        # Override with provided options
-        if options:
-            decode_opts.update(options)
-        
+        # Allow disabling signature verification (for testing)
+        if not verify_signature:
+            decode_options["verify_signature"] = False
+            
+        # Default algorithms if not provided
+        algs = algorithms or [self.algorithm]
+            
         try:
-            # Decode token
+            # Use jose.jwt to decode
             decoded = jwt_decode(
-                token,
+                token=token,
                 key=self.secret_key,
-                algorithms=algorithms or [self.algorithm],
+                algorithms=algs,
                 audience=audience or self.audience,
                 issuer=self.issuer,
-                options=decode_opts
+                options=decode_options,
+                # Disable subject validation - we'll handle that ourselves
+                subject=None,
             )
             
-            # Validate expiration manually if option is disabled
-            if not decode_opts.get("verify_exp", True) and "exp" in decoded:
-                exp_timestamp = decoded["exp"]
-                now = datetime.now(timezone.utc).timestamp()
-                if exp_timestamp < now:
-                    logger.warning("JWT token has expired")
-                    # Don't raise exception as verification is disabled
-            
-            # Convert to standardized payload object
-            try:
-                # For token payloads with no sub claim
-                if "sub" not in decoded and "subject" in decoded:
-                    decoded["sub"] = str(decoded["subject"])
-                
-                # Ensure the subject is a string if present
+            # Convert to Pydantic model (with optional sub)
+            if decoded and isinstance(decoded, dict):
+                # Handle 'sub' being a string or other object - ensure it's a string
                 if "sub" in decoded and decoded["sub"] is not None:
-                    decoded["sub"] = str(decoded["sub"])
-                elif "sub" not in decoded:
-                    # Add a default subject for tests if missing
-                    decoded["sub"] = "default-subject-for-tests"
+                    if not isinstance(decoded["sub"], str):
+                        decoded["sub"] = str(decoded["sub"])
                 
-                # Extract custom fields (non-standard JWT claims)
-                standard_claims = {"sub", "exp", "iat", "nbf", "iss", "aud", "jti", "type", "roles"}
-                custom_fields = {k: v for k, v in decoded.items() if k not in standard_claims}
+                # Convert to TokenPayload model
+                payload = TokenPayload(**decoded)
                 
-                # Create TokenPayload with standard claims and custom fields
-                payload_dict = {k: v for k, v in decoded.items() if k in standard_claims}
-                payload_dict["custom_fields"] = custom_fields
+                # Sanitize PHI from payload
+                sanitized_payload = self._sanitize_phi_in_payload(payload)
                 
-                # Add custom fields as top-level attributes for backward compatibility
-                payload = TokenPayload(**payload_dict)
-                for key, value in custom_fields.items():
-                    setattr(payload, key, value)
-                
-                return payload
-                
-            except Exception as e:
-                logger.error(f"Error creating token payload: {e}")
-                raise InvalidTokenException(f"Invalid token format: {e}")
-                
-        except ExpiredSignatureError:
-            logger.warning("JWT token has expired")
-            raise TokenExpiredException("Token has expired")
-            
-        except JWTClaimsError as e:
-            logger.warning(f"JWT validation error: {e}.")
-            
-            # Handle specific claim errors for better diagnostics
-            error_msg = str(e).lower()
-            if "subject" in error_msg:
-                # Try to decode again without subject validation
-                try:
-                    opts = dict(decode_opts)
-                    opts["verify_sub"] = False
-                    return self.decode_token(token, verify_signature, opts, audience, algorithms)
-                except Exception:
-                    raise InvalidTokenException("Invalid subject claim")
-            elif "audience" in error_msg:
-                raise InvalidTokenException("Invalid audience claim")
-            elif "issuer" in error_msg:
-                raise InvalidTokenException("Invalid issuer claim")
+                return sanitized_payload
             else:
-                raise InvalidTokenException(f"Invalid token claims: {e}")
+                raise InvalidTokenException("Invalid token format")
                 
         except JWTError as e:
-            logger.warning(f"JWT validation error: {e}.")
+            error_str = str(e)
+            logger.warning(f"JWT validation error: {error_str}.")
             
-            # Handle common error patterns
-            error_msg = str(e).lower()
-            if "signature" in error_msg:
-                raise InvalidTokenException("Invalid token signature")
-            elif "header" in error_msg:
-                raise InvalidTokenException("Invalid token header")
-            elif "not enough segments" in error_msg:
-                raise InvalidTokenException("Invalid token format: not enough segments")
+            # Convert JWTError to our domain exceptions
+            # Preserve original error information in the exception message
+            if isinstance(e, ExpiredSignatureError):
+                logger.warning("JWT token has expired")
+                raise TokenExpiredException("Token has expired")
+            elif "Signature verification failed" in error_str:
+                raise InvalidTokenException(f"Invalid token signature: {error_str}")
+            elif "Invalid header string" in error_str:
+                raise InvalidTokenException(f"Invalid token header: {error_str}")
+            elif "Not enough segments" in error_str:
+                raise InvalidTokenException("Invalid token: Not enough segments")
             else:
-                raise InvalidTokenException(f"Invalid token: {e}")
+                raise InvalidTokenException(f"Invalid token: {error_str}")
+                
+        except Exception as e:
+            logger.error(f"Unexpected error decoding token: {str(e)}")
+            raise InvalidTokenException(f"Failed to decode token: {str(e)}")
     
     @property
     def refresh_token_expire_days(self) -> int:
@@ -650,7 +599,7 @@ class JWTServiceImpl(IJwtService):
                     token_id = str(payload.jti)
                     is_blacklisted = self.token_blacklist_repository.is_token_blacklisted(token_id)
                     if is_blacklisted:
-                        self._log_security_event("Token blacklist check failed", token_id=token_id)
+                        logger.warning("Token blacklist check failed")
                         raise InvalidTokenException("Token has been revoked")
             
             # Clean any PHI from the payload
@@ -659,13 +608,13 @@ class JWTServiceImpl(IJwtService):
             return payload
             
         except ExpiredSignatureError:
-            self._log_security_event("Token verification failed - expired token")
+            logger.warning("Token verification failed - expired token")
             raise ExpiredTokenException("Token has expired")
         except (JWTError, InvalidTokenException) as e:
-            self._log_security_event(f"Token verification failed: {str(e)}")
+            logger.warning(f"Token verification failed: {str(e)}")
             raise InvalidTokenException(f"Invalid token: {str(e)}")
         except Exception as e:
-            self._log_security_event(f"Unexpected error during token verification: {str(e)}")
+            logger.error(f"Unexpected error during token verification: {str(e)}")
             raise InvalidTokenException(f"Token verification failed: {str(e)}")
     
     def verify_refresh_token(self, refresh_token: str, enforce_refresh_type: bool = True) -> TokenPayload:
@@ -900,3 +849,35 @@ class JWTServiceImpl(IJwtService):
         except Exception as e:
             logger.error(f"Failed to blacklist session: {str(e)}")
             return False
+    
+    def _sanitize_phi_in_payload(self, payload: TokenPayload) -> TokenPayload:
+        """Sanitize PHI from payload for HIPAA compliance.
+        
+        This ensures no PHI fields are included in the token string representations,
+        which is essential for HIPAA compliance.
+        
+        Args:
+            payload: The token payload to sanitize
+            
+        Returns:
+            TokenPayload: Sanitized payload
+        """
+        # Define PHI fields that should never appear in tokens
+        phi_fields = [
+            "name", "email", "dob", "ssn", "address", "phone_number", 
+            "birth_date", "social_security", "medical_record_number"
+        ]
+        
+        # Remove PHI fields from custom_fields
+        if hasattr(payload, "custom_fields") and payload.custom_fields:
+            for field in phi_fields:
+                if field in payload.custom_fields:
+                    payload.custom_fields.pop(field, None)
+        
+        # Also check for direct attributes (for backward compatibility)
+        for field in phi_fields:
+            if hasattr(payload, field):
+                # Set to None to keep the attribute but remove the value
+                setattr(payload, field, None)
+                
+        return payload

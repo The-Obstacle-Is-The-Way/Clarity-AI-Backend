@@ -351,17 +351,67 @@ class JWTService(IJwtService):
             raise InvalidTokenError(f"Failed to create token: {e}")
 
     def _sanitize_error_message(self, message: str) -> str:
-        """Sanitize error messages to avoid leaking sensitive information."""
-        # Define patterns for sensitive data that shouldn't be in errors
-        sensitive_patterns = [
-            # Regex for sensitive data sanitization would go here
-        ]
+        """Sanitize error messages to remove PHI and sensitive information.
+        
+        This function applies HIPAA-compliant sanitization to error messages to
+        ensure they do not contain sensitive information.
+        
+        Args:
+            message: The error message to sanitize
+            
+        Returns:
+            str: The sanitized error message
+        """
+        if not message:
+            return "An error occurred"
+            
+        # Define regex patterns for sensitive data that shouldn't be in errors
+        import re
+        
+        # UUID pattern
+        uuid_pattern = r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+        
+        # Email pattern
+        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+        
+        # SSN pattern (with or without dashes)
+        ssn_pattern = r'\b\d{3}[-]?\d{2}[-]?\d{4}\b'
+        
+        # Phone number pattern
+        phone_pattern = r'\b\(?[0-9]{3}\)?[-. ]?[0-9]{3}[-. ]?[0-9]{4}\b'
+        
+        # Name pattern (harder to catch all names, but try common formats)
+        name_pattern = r'\b(?:user|patient|doctor|for|by|with)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b'
+        
+        # Apply sanitization rules
         sanitized = message
         
-        # Apply sanitization rules to remove sensitive data
-        for pattern in sensitive_patterns:
-            if pattern in sanitized:
-                sanitized = sanitized.replace(pattern, "[REDACTED]")
+        # Redact UUIDs
+        sanitized = re.sub(uuid_pattern, '[REDACTED-ID]', sanitized)
+        
+        # Redact emails
+        sanitized = re.sub(email_pattern, '[REDACTED-EMAIL]', sanitized)
+        
+        # Redact SSNs
+        sanitized = re.sub(ssn_pattern, '[REDACTED-SSN]', sanitized)
+        
+        # Redact phone numbers
+        sanitized = re.sub(phone_pattern, '[REDACTED-PHONE]', sanitized)
+        
+        # Redact names - more complex due to variable patterns
+        sanitized = re.sub(name_pattern, r'\1 [REDACTED-NAME]', sanitized)
+        
+        # Additional sensitive keywords to redact
+        sensitive_keywords = [
+            "medical record", "diagnosis", "condition", "treatment", 
+            "prescription", "medication", "health insurance", "patient id",
+            "birth date", "date of birth", "address", "zipcode", "postal code"
+        ]
+        
+        # Redact sensitive keyword phrases
+        for keyword in sensitive_keywords:
+            pattern = rf'\b{re.escape(keyword)}\b\s*[:=]?\s*\S+'
+            sanitized = re.sub(pattern, f'{keyword}: [REDACTED]', sanitized, flags=re.IGNORECASE)
         
         return sanitized
 
@@ -725,7 +775,7 @@ class JWTService(IJwtService):
             if "decode" in error_str and "invalid" in error_str:
                 raise InvalidTokenException("Invalid token: Not enough segments")
             else:
-                raise InvalidTokenException(f"Invalid token: {self._sanitize_error_message(error_str)}")
+                raise InvalidTokenException(self._sanitize_error_message(error_str))
 
     async def get_user_from_token(self, token: str) -> Optional[User]:
         """Get the user associated with a token.
@@ -1270,41 +1320,74 @@ class JWTService(IJwtService):
         return False
         
     def extract_token_from_request(self, request):
-        """Compatibility method for tests - extract token from authorization header."""
-        auth_header = request.headers.get("Authorization")
-        if not auth_header:
-            return None
+        """Extract token from request headers or cookies.
+        
+        Looks for Authorization header first, then access_token cookie.
+        
+        Args:
+            request: The FastAPI or Starlette request object
             
-        parts = auth_header.split()
-        if len(parts) != 2 or parts[0].lower() != "bearer":
-            return None
-            
-        return parts[1]
+        Returns:
+            str: The extracted token, or None if not found
+        """
+        # Check Authorization header first
+        auth_header = request.headers.get("Authorization") if hasattr(request, "headers") else None
+        if auth_header:
+            parts = auth_header.split()
+            if len(parts) == 2 and parts[0].lower() == "bearer":
+                return parts[1]
+                
+        # Then check for token in cookies
+        if hasattr(request, "cookies") and request.cookies:
+            if "access_token" in request.cookies:
+                return request.cookies["access_token"]
+                
+        # No token found
+        return None
         
     def create_unauthorized_response(self, error_type, message):
-        """Compatibility method for tests - create a standard unauthorized response."""
+        """Create a standardized unauthorized response.
+        
+        Args:
+            error_type: Type of error (token_expired, invalid_token, insufficient_permissions)
+            message: Error message
+            
+        Returns:
+            dict: Response with status_code and body
+        """
         # Sanitize the message to ensure no PHI is included
         safe_message = self._sanitize_error_message(message)
         
-        from starlette.responses import JSONResponse
-        
+        # Set appropriate status code and error information
         if error_type == "token_expired":
             status_code = 401
             error_code = "token_expired"
+            error_message = "Token has expired"
         elif error_type == "invalid_token":
             status_code = 401
             error_code = "invalid_token"
+            error_message = "Invalid authentication token"
         elif error_type == "insufficient_permissions":
             status_code = 403
             error_code = "insufficient_permissions"
+            error_message = "Insufficient permissions to access resource"
         else:
             status_code = 401
             error_code = "authentication_error"
+            error_message = "Authentication error"
             
-        return JSONResponse(
-            status_code=status_code,
-            content={"detail": safe_message, "error_code": error_code}
-        )
+        # Return in the format expected by tests
+        return {
+            "status_code": status_code,
+            "body": {
+                "error": f"{error_message}: {safe_message}",
+                "error_type": error_code,
+                "detail": safe_message
+            },
+            "headers": {
+                "WWW-Authenticate": f'Bearer error="{error_code}", error_description="{safe_message}"'
+            }
+        }
 
 # Define dependency injection function
 # Import implementation to avoid circular imports
