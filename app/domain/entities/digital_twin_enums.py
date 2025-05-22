@@ -215,3 +215,22 @@ class BrainRegionStatus(Enum):
     DYSREGULATED = "dysregulated"
     SYNCHRONIZED = "synchronized"
     DESYNCHRONIZED = "desynchronized"
+
+
+class TemporalPattern(Enum):
+    """Temporal patterns for biometric and physiological data analysis."""
+
+    CIRCADIAN = "circadian"
+    ULTRADIAN = "ultradian"
+    INFRADIAN = "infradian"
+    SEASONAL = "seasonal"
+    WEEKLY = "weekly"
+    DAILY = "daily"
+    HOURLY = "hourly"
+    IRREGULAR = "irregular"
+    PERIODIC = "periodic"
+    APERIODIC = "aperiodic"
+    TRENDING_UP = "trending_up"
+    TRENDING_DOWN = "trending_down"
+    STABLE = "stable"
+    VOLATILE = "volatile"
