@@ -11,7 +11,7 @@ from typing import Any
 class PATServiceError(Exception):
     """Base class for all PAT service exceptions."""
 
-    def __init__(self, message: str, **kwargs: dict[str, Any]) -> None:
+    def __init__(self, message: str, **kwargs: Any) -> None:
         """
         Initialize a new PAT service exception.
 
@@ -40,7 +40,7 @@ class PATServiceError(Exception):
 class ValidationError(PATServiceError):
     """Exception raised when validation of input data fails."""
 
-    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs: dict[str, Any]) -> None:
+    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs: Any) -> None:
         """
         Initialize a validation error.
 
@@ -61,7 +61,7 @@ class InitializationError(PATServiceError):
         message: str,
         component: str | None = None,
         cause: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """
         Initialize an initialization error.
@@ -83,7 +83,7 @@ class AnalysisError(PATServiceError):
         message: str,
         analysis_type: str | None = None,
         cause: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """
         Initialize an analysis error.
@@ -105,7 +105,7 @@ class DataPrivacyError(PATServiceError):
         message: str,
         field: str | None = None,
         phi_type: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """
         Initialize a data privacy error.
@@ -127,7 +127,7 @@ class ResourceNotFoundError(PATServiceError):
         message: str,
         resource_type: str | None = None,
         resource_id: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """
         Initialize a resource not found error.
@@ -149,7 +149,7 @@ class AnalysisNotFoundError(ResourceNotFoundError):
         message: str,
         analysis_id: str | None = None,
         patient_id: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """
         Initialize an analysis not found error.
@@ -177,7 +177,7 @@ class ServiceConnectionError(PATServiceError):
         message: str,
         service_name: str | None = None,
         cause: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """
         Initialize a service connection error.
@@ -194,7 +194,7 @@ class ServiceConnectionError(PATServiceError):
 class ConfigurationError(PATServiceError):
     """Exception raised when there is a configuration error."""
 
-    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs: dict[str, Any]) -> None:
+    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs: Any) -> None:
         """
         Initialize a configuration error.
 
@@ -214,7 +214,7 @@ class InvalidConfigurationError(ConfigurationError):
     are present but invalid or incompatible with the operation being performed.
     """
 
-    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs: dict[str, Any]) -> None:
+    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs: Any) -> None:
         """
         Initialize an invalid configuration error.
 
@@ -235,7 +235,7 @@ class IntegrationError(PATServiceError):
         message: str,
         system_name: str | None = None,
         cause: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """
         Initialize an integration error.
@@ -258,7 +258,7 @@ class AuthorizationError(PATServiceError):
         user_id: str | None = None,
         resource_id: str | None = None,
         action: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """
         Initialize an authorization error.
@@ -282,7 +282,7 @@ class EmbeddingError(PATServiceError):
         model_id: str | None = None,
         data_type: str | None = None,
         cause: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """
         Initialize an embedding error.
@@ -307,7 +307,7 @@ class StorageError(PATServiceError):
         operation: str | None = None,
         resource_id: str | None = None,
         cause: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """
         Initialize a storage error.

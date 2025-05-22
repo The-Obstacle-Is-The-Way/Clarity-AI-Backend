@@ -21,9 +21,9 @@ class InvalidAppointmentStateError(AppointmentError):
     def __init__(
         self,
         message: str = "Invalid appointment state for the requested operation",
-        current_state: str = None,
-        required_state: str = None,
-        appointment_id: str = None,
+        current_state: str | None = None,
+        required_state: str | None = None,
+        appointment_id: str | None = None,
         *args,
         **kwargs,
     ):
@@ -50,7 +50,7 @@ class AppointmentConflictError(AppointmentError):
     def __init__(
         self,
         message: str = "Appointment scheduling conflict",
-        conflicting_appointment_id: str = None,
+        conflicting_appointment_id: str | None = None,
         *args,
         **kwargs,
     ):
@@ -66,7 +66,7 @@ class AppointmentNotFoundError(AppointmentError):
     def __init__(
         self,
         message: str = "Appointment not found",
-        appointment_id: str = None,
+        appointment_id: str | None = None,
         *args,
         **kwargs,
     ):
@@ -82,8 +82,8 @@ class AppointmentCancellationError(AppointmentError):
     def __init__(
         self,
         message: str = "Cannot cancel appointment",
-        appointment_id: str = None,
-        reason: str = None,
+        appointment_id: str | None = None,
+        reason: str | None = None,
         *args,
         **kwargs,
     ):
@@ -102,8 +102,8 @@ class AppointmentReschedulingError(AppointmentError):
     def __init__(
         self,
         message: str = "Cannot reschedule appointment",
-        appointment_id: str = None,
-        reason: str = None,
+        appointment_id: str | None = None,
+        reason: str | None = None,
         *args,
         **kwargs,
     ):
