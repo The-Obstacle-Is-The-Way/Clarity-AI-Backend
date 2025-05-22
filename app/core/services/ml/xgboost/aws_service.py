@@ -443,6 +443,9 @@ class AWSXGBoostService(XGBoostInterface):
         **kwargs,
     ) -> dict[str, Any]:
         """
+        Predict clinical outcomes based on treatment plan.
+
+        Args:
             patient_id: Patient identifier
             outcome_timeframe: Timeframe for outcome prediction
             clinical_data: Clinical data for prediction
@@ -535,13 +538,16 @@ class AWSXGBoostService(XGBoostInterface):
             if sagemaker is None:
                 raise ServiceConnectionError("Failed to get SageMaker service")
 
-            response = await sagemaker.list_endpoints()
+            response = sagemaker.list_endpoints()
 
             # Filter for XGBoost endpoints
             available_models = []
             prefix = self._endpoint_prefix or ""
 
-            for endpoint in response.get("Endpoints", []):
+            # Handle both dict response (with "Endpoints" key) and direct list response
+            endpoints = response.get("Endpoints", []) if isinstance(response, dict) else response
+
+            for endpoint in endpoints:
                 endpoint_name = endpoint.get("EndpointName", "")
                 if prefix and endpoint_name.startswith(prefix):
                     model_type = self._get_model_type_from_endpoint(endpoint_name)
@@ -562,15 +568,15 @@ class AWSXGBoostService(XGBoostInterface):
             return []
 
     async def get_feature_importance(
-        self, patient_id: str, model_type: str, prediction_id: str
+        self, model_type: str | ModelType, prediction_id: str, patient_id: str | None = None
     ) -> dict[str, Any]:
         """
         Get feature importance for a prediction.
 
         Args:
-            patient_id: Patient identifier
             model_type: Type of model
             prediction_id: Prediction identifier
+            patient_id: Optional patient identifier for authorization
 
         Returns:
             Feature importance data
@@ -582,17 +588,23 @@ class AWSXGBoostService(XGBoostInterface):
         await self._ensure_initialized()
 
         # Validate inputs
-        if not all([patient_id, model_type, prediction_id]):
-            raise ValidationError("Patient ID, model type, and prediction ID are all required")
+        if not all([model_type, prediction_id]):
+            raise ValidationError("Model type and prediction ID are required")
+
+        # Convert model_type to string if it's an enum
+        model_type_str = model_type.value if isinstance(model_type, ModelType) else str(model_type)
 
         # Get prediction from DynamoDB
         dynamodb = self._aws_factory.get_dynamodb_service()
         if dynamodb is None:
             raise ServiceConnectionError("Failed to get DynamoDB service")
 
-        response = await dynamodb.get_item(
+        if not self._dynamodb_table_name:
+            raise ConfigurationError("DynamoDB table name not configured")
+
+        response = dynamodb.get_item(
             table_name=self._dynamodb_table_name,
-            key={"prediction_id": prediction_id, "patient_id": patient_id},
+            key={"prediction_id": prediction_id, "patient_id": patient_id or "unknown"},
         )
 
         if "Item" not in response:
@@ -602,7 +614,7 @@ class AWSXGBoostService(XGBoostInterface):
 
         # Try to get feature importance from explanation endpoint
         try:
-            endpoint_name = f"{self._get_endpoint_for_model_type(model_type)}-explain"
+            endpoint_name = f"{self._get_endpoint_for_model_type(model_type_str)}-explain"
             input_data = prediction.get("input_data", {})
             payload = {"prediction_id": prediction_id, "input_data": input_data}
 
@@ -644,7 +656,7 @@ class AWSXGBoostService(XGBoostInterface):
             if sagemaker is None:
                 raise ServiceConnectionError("Failed to get SageMaker service")
 
-            response = await sagemaker.describe_endpoint(endpoint_name=endpoint_name)
+            response = sagemaker.describe_endpoint(endpoint_name=endpoint_name)
 
             # Format model information
             model_info = {
@@ -683,7 +695,7 @@ class AWSXGBoostService(XGBoostInterface):
         await self._ensure_initialized()
 
         try:
-            health_status = {
+            health_status: dict[str, Any] = {
                 "status": "HEALTHY",
                 "components": {
                     "sagemaker": "HEALTHY",
@@ -699,7 +711,10 @@ class AWSXGBoostService(XGBoostInterface):
                 if s3 is None:
                     raise ServiceConnectionError("Failed to get S3 service")
                 
-                bucket_exists = await s3.check_bucket_exists(self._bucket_name)
+                if not self._bucket_name:
+                    raise ConfigurationError("S3 bucket name not configured")
+                
+                bucket_exists = s3.check_bucket_exists(self._bucket_name)
                 health_status["components"]["s3"] = "HEALTHY" if bucket_exists else "UNHEALTHY"
                 if not bucket_exists:
                     health_status["status"] = "DEGRADED"
@@ -714,7 +729,10 @@ class AWSXGBoostService(XGBoostInterface):
                 if dynamodb is None:
                     raise ServiceConnectionError("Failed to get DynamoDB service")
                 
-                await dynamodb.scan_table(self._dynamodb_table_name)
+                if not self._dynamodb_table_name:
+                    raise ConfigurationError("DynamoDB table name not configured")
+                
+                dynamodb.scan_table(self._dynamodb_table_name)
                 health_status["components"]["dynamodb"] = "HEALTHY"
             except Exception as e:
                 health_status["components"]["dynamodb"] = "UNHEALTHY"
@@ -727,8 +745,9 @@ class AWSXGBoostService(XGBoostInterface):
                 if sagemaker is None:
                     raise ServiceConnectionError("Failed to get SageMaker service")
                 
-                endpoints_response = await sagemaker.list_endpoints()
-                endpoints = endpoints_response.get("Endpoints", [])
+                endpoints_response = sagemaker.list_endpoints()
+                # Handle both dict response (with "Endpoints" key) and direct list response
+                endpoints = endpoints_response.get("Endpoints", []) if isinstance(endpoints_response, dict) else endpoints_response
 
                 prefix = self._endpoint_prefix or ""
                 endpoints_list = []
@@ -815,7 +834,7 @@ class AWSXGBoostService(XGBoostInterface):
         """Initialize AWS service clients."""
         try:
             self._sagemaker = self._aws_factory.get_sagemaker_service()
-            self._sagemaker_runtime = self._aws_factory.get_sagemaker_runtime()
+            self._sagemaker_runtime = self._aws_factory.get_sagemaker_runtime_service()
             self._s3 = self._aws_factory.get_s3_service()
             self._dynamodb = self._aws_factory.get_dynamodb_service()
         except Exception as e:
@@ -832,7 +851,10 @@ class AWSXGBoostService(XGBoostInterface):
         if self._s3 is None:
             raise ServiceConnectionError("S3 service not initialized")
         
-        if not await self._s3.check_bucket_exists(self._bucket_name):
+        if not self._bucket_name:
+            raise ConfigurationError("S3 bucket name not configured")
+        
+        if not self._s3.check_bucket_exists(self._bucket_name):
             raise ServiceConnectionError(
                 f"S3 bucket {self._bucket_name} does not exist or is not accessible",
                 service="S3",
@@ -842,8 +864,9 @@ class AWSXGBoostService(XGBoostInterface):
         if self._sagemaker is None:
             raise ServiceConnectionError("SageMaker service not initialized")
         
-        endpoints = await self._sagemaker.list_endpoints()
-        self._logger.info(f"Found {len(endpoints.get('Endpoints', []))} SageMaker endpoints")
+        endpoints = self._sagemaker.list_endpoints()
+        endpoint_count = len(endpoints) if isinstance(endpoints, list) else 0
+        self._logger.info(f"Found {endpoint_count} SageMaker endpoints")
 
     async def _ensure_initialized(self) -> None:
         """Ensure the service is initialized before using it."""
@@ -1026,18 +1049,23 @@ class AWSXGBoostService(XGBoostInterface):
                 raise ServiceConnectionError("SageMaker runtime client not initialized")
 
             self._logger.debug(f"Invoking endpoint {endpoint_name} with payload: {payload}")
-            response = await self._sagemaker_runtime.invoke_endpoint(
-                EndpointName=endpoint_name,
-                ContentType="application/json",
-                Body=payload_bytes,
+            response = self._sagemaker_runtime.invoke_endpoint(
+                endpoint_name=endpoint_name,
+                content_type="application/json",
+                body=payload_bytes,
             )
 
             if response is None or "Body" not in response:
                 raise PredictionError(f"Invalid response from SageMaker: {response}")
 
-            response_body = await response["Body"].read()
-            self._logger.debug(f"Received response: {response_body}")
-            return json.loads(response_body.decode("utf-8"))
+            response_body = response["Body"]
+            if hasattr(response_body, 'read'):
+                body_content = response_body.read()
+            else:
+                body_content = response_body
+            
+            self._logger.debug(f"Received response: {body_content}")
+            return json.loads(body_content.decode("utf-8") if isinstance(body_content, bytes) else body_content)
 
         except Exception as e:
             if "Connection refused" in str(e) or "timeout" in str(e).lower():
@@ -1075,11 +1103,11 @@ class AWSXGBoostService(XGBoostInterface):
                 if risk_score >= 0.7:
                     risk_level = RiskLevel.HIGH
                 elif risk_score >= 0.3:
-                    risk_level = RiskLevel.MEDIUM
+                    risk_level = RiskLevel.MODERATE
                 else:
                     risk_level = RiskLevel.LOW
             else:
-                risk_level = RiskLevel.UNKNOWN
+                risk_level = RiskLevel.LOW
 
         return {
             "prediction_id": prediction_id,
@@ -1149,6 +1177,10 @@ class AWSXGBoostService(XGBoostInterface):
             self._logger.warning("DynamoDB service not available, skipping prediction storage")
             return
 
+        if not self._dynamodb_table_name:
+            self._logger.warning("DynamoDB table name not configured, skipping prediction storage")
+            return
+
         item = {
             "prediction_id": prediction_id,
             "patient_id": patient_id,
@@ -1160,7 +1192,7 @@ class AWSXGBoostService(XGBoostInterface):
         }
 
         try:
-            await self._dynamodb.put_item(self._dynamodb_table_name, item)
+            self._dynamodb.put_item(self._dynamodb_table_name, item)
             self._logger.info(f"Stored prediction {prediction_id} for patient {patient_id}")
         except Exception as e:
             self._logger.error(f"Failed to store prediction: {e}")
@@ -1178,6 +1210,10 @@ class AWSXGBoostService(XGBoostInterface):
             self._logger.warning("DynamoDB service not available, skipping audit log")
             return
 
+        if not self._audit_table_name:
+            self._logger.warning("Audit table name not configured, skipping audit log")
+            return
+
         audit_item = {
             "audit_id": str(uuid.uuid4()),
             "timestamp": now_utc().isoformat(),
@@ -1189,7 +1225,7 @@ class AWSXGBoostService(XGBoostInterface):
         }
 
         try:
-            await self._dynamodb.put_item(self._audit_table_name, audit_item)
+            self._dynamodb.put_item(self._audit_table_name, audit_item)
         except Exception as e:
             # Audit logging should not prevent operation from succeeding
             self._logger.error(f"Failed to write audit log: {e}")
@@ -1200,7 +1236,7 @@ class AWSXGBoostService(XGBoostInterface):
         if event_type in self._observers:
             for observer in self._observers[event_type]:
                 try:
-                    await observer.on_event(event_type, data)
+                    await observer.update(event_type, data)
                 except Exception as e:
                     self._logger.error(
                         f"Error notifying observer {observer} for event {event_type}: {e}"
@@ -1210,7 +1246,7 @@ class AWSXGBoostService(XGBoostInterface):
         if "*" in self._observers:
             for observer in self._observers["*"]:
                 try:
-                    await observer.on_event(event_type, data)
+                    await observer.update(event_type, data)
                 except Exception as e:
                     self._logger.error(
                         f"Error notifying wildcard observer {observer} for event {event_type}: {e}"
