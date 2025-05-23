@@ -437,15 +437,16 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # This ensures contact_info is properly populated even when domain Patient
         # uses individual fields rather than a contact_info object
         patient_email = getattr(patient, "email", None)
-        # Handle both phone and phone_number field names for compatibility
-        patient_phone = getattr(patient, "phone", None) or getattr(patient, "phone_number", None)
+        # Handle phone_number field from Pydantic Patient and contact_info.phone as fallback
+        patient_phone = None
+        if hasattr(patient, "phone_number"):
+            patient_phone = getattr(patient, "phone_number", None)
+        elif hasattr(patient, "phone"):
+            patient_phone = getattr(patient, "phone", None)
         
-        # Debug: Check patient object state
-        print(f"[DEBUG from_domain] Patient object type: {type(patient)}")
-        print(f"[DEBUG from_domain] Patient.__dict__: {patient.__dict__}")
-        print(f"[DEBUG from_domain] hasattr(patient, 'phone'): {hasattr(patient, 'phone')}")
-        print(f"[DEBUG from_domain] getattr(patient, 'phone', 'NOT_FOUND'): {getattr(patient, 'phone', 'NOT_FOUND')}")
-        print(f"[DEBUG from_domain] patient_phone final value: {patient_phone}")
+        # If still None, try to get from contact_info
+        if patient_phone is None and hasattr(patient, "contact_info") and patient.contact_info:
+            patient_phone = getattr(patient.contact_info, "phone", None)
         
         contact_info_dict = {
             "email": patient_email,
