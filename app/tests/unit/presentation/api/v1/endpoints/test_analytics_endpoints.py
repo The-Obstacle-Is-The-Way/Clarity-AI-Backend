@@ -71,68 +71,23 @@ from app.presentation.api.v1.endpoints.analytics_endpoints import (
 )
 
 
-# Mock SQLAlchemy base and models to prevent mapper errors in tests
+# Clean mock fixture following DIP - only mock what's necessary for analytics endpoints
 @pytest.fixture(autouse=True)
-def mock_sqlalchemy_base(monkeypatch):
-    """Prevent SQLAlchemy mapper initialization errors in tests."""
-    # Create comprehensive mock SQLAlchemy objects
-    mock_base = MagicMock()
-    mock_registry = MagicMock()
-
-    # Properly set up the registry with a dictionary for _class_registry
-    mock_registry._class_registry = {}
-
-    # Set up metadata and other attributes
-    mock_metadata = MagicMock()
-    mock_mapper = MagicMock()
+def mock_infrastructure_dependencies(monkeypatch):
+    """Mock infrastructure dependencies for analytics endpoints without SQLAlchemy coupling."""
+    # Patch SQLAlchemy configuration to prevent mapper initialization during test imports
+    monkeypatch.setattr("sqlalchemy.orm.configure_mappers", MagicMock())
+    
+    # Mock database connections to prevent actual database usage
     mock_session = MagicMock()
     mock_engine = MagicMock()
-
-    # Create a fake Base class that doesn't trigger actual SQLAlchemy initialization
-    class FakeBase:
-        __abstract__ = True
-        metadata = mock_metadata
-        registry = mock_registry
-
-    # Properly set up critical attributes for the mock registry
-    mock_registry.metadata = mock_metadata
-
-    # Patch SQLAlchemy's configure_mappers function to prevent mapping errors
-    monkeypatch.setattr("sqlalchemy.orm.configure_mappers", MagicMock())
-
-    # Patch SQLAlchemy's registry attributes at the module level
-    monkeypatch.setattr("app.infrastructure.persistence.sqlalchemy.registry._class_registry", {})
-    monkeypatch.setattr(
-        "app.infrastructure.persistence.sqlalchemy.registry.metadata", mock_metadata
-    )
-    monkeypatch.setattr("app.infrastructure.persistence.sqlalchemy.models.base.Base", FakeBase)
-
-    # Patch the entire registry module
-    monkeypatch.setattr("app.infrastructure.persistence.sqlalchemy.registry", mock_registry)
-
-    # Patch mixins to avoid initialization errors
-    monkeypatch.setattr("app.infrastructure.database.base_class.TimestampMixin", MagicMock())
-    monkeypatch.setattr("app.infrastructure.database.base_class.AuditMixin", MagicMock())
-
-    # Prevent model registration, which can trigger mapper validation
-    monkeypatch.setattr(
-        "app.infrastructure.persistence.sqlalchemy.registry.register_model",
-        lambda model_class: model_class,
-    )
-
-    # Also patch the Session factory to prevent attempts to use the real database
+    
     monkeypatch.setattr("sqlalchemy.orm.sessionmaker", lambda **kwargs: lambda: mock_session)
     monkeypatch.setattr("sqlalchemy.ext.asyncio.AsyncSession", MagicMock())
-
-    # Mock engine creation to prevent connection attempts
     monkeypatch.setattr("sqlalchemy.create_engine", lambda *args, **kwargs: mock_engine)
-    monkeypatch.setattr(
-        "sqlalchemy.ext.asyncio.create_async_engine",
-        lambda *args, **kwargs: mock_engine,
-    )
-
-    # Return the mock Base class for additional patching if needed
-    return FakeBase
+    monkeypatch.setattr("sqlalchemy.ext.asyncio.create_async_engine", lambda *args, **kwargs: mock_engine)
+    
+    return mock_session
 
 
 # --- Test Fixtures ---
