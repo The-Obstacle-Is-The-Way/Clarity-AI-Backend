@@ -52,7 +52,8 @@ class DatabaseSettings(BaseSettings):
     )
 
     @field_validator("PORT")
-    def validate_port(self, v: int) -> int:
+    @classmethod
+    def validate_port(cls, v: int) -> int:
         """
         Validate that port is within allowed range.
 
@@ -70,7 +71,8 @@ class DatabaseSettings(BaseSettings):
         return v
 
     @field_validator("POOL_SIZE", "POOL_MAX_OVERFLOW", "POOL_TIMEOUT", "POOL_RECYCLE")
-    def validate_positive_int(self, v: int) -> int:
+    @classmethod
+    def validate_positive_int(cls, v: int) -> int:
         """
         Validate that a value is a positive integer.
 
