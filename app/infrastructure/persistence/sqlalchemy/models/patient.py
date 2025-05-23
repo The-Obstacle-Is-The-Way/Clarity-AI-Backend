@@ -719,8 +719,10 @@ class Patient(Base, TimestampMixin, AuditMixin):
             }
             if any(v is not None for v in address_components.values()):
                 try:
-                    address_domain_obj = Address(
-                        **{k: v if v is not None else "" for k, v in address_components.items()}
+                    # Use factory method for backward compatibility with 'line1' field
+                    # This follows the Factory Pattern and handles field name mapping properly
+                    address_domain_obj = Address.create_from_dict(
+                        {k: v if v is not None else "" for k, v in address_components.items()}
                     )
                 except Exception as e:
                     logger.error(
@@ -794,40 +796,31 @@ class Patient(Base, TimestampMixin, AuditMixin):
         if updated_at_val and updated_at_val.tzinfo is None:
             updated_at_val = updated_at_val.replace(tzinfo=timezone.utc)
 
+        # Build patient_args with ONLY fields accepted by Domain Patient constructor
+        # This enforces Clean Architecture boundaries (Infrastructure → Domain)
+        # SOLID Principle: Interface Segregation - Domain should not depend on infrastructure details
         patient_args = {
             "id": self.id,
-            "external_id": self.external_id,
-            "user_id": self.user_id,
             "created_at": created_at_val,
             "updated_at": updated_at_val,
-            "is_active": self.is_active,
+            "active": self.is_active,  # Map 'is_active' → 'active' for domain compatibility
             "first_name": _decode_if_bytes(self._first_name),
             "last_name": _decode_if_bytes(self._last_name),
-            "middle_name": _decode_if_bytes(self._middle_name),
             "gender": gender,
             "date_of_birth": date_of_birth,
-            "social_security_number_lve": _decode_if_bytes(self._ssn),
-            "phone_number_lve": _decode_if_bytes(self._phone_number),
             "email": _decode_if_bytes(self._email),
-            "medical_record_number_lve": _decode_if_bytes(self._mrn),
-            "insurance_provider": _decode_if_bytes(self._insurance_provider),
-            "insurance_policy_number": _decode_if_bytes(self._insurance_policy_number),
-            "insurance_group_number": _decode_if_bytes(self._insurance_group_number),
-            "contact_info": contact_info_domain_obj,
+            "phone": _decode_if_bytes(self._phone_number),  # Map 'phone_number_lve' → 'phone'
             "address": address_domain_obj,
             "emergency_contact": emergency_contact_domain_obj,
-            "preferences": _ensure_parsed_json(preferences_dict),
             "medical_history": _ensure_parsed_json(self._medical_history),
             "medications": _ensure_parsed_json(self._medications),
             "allergies": _ensure_parsed_json(self._allergies),
-            "custom_fields": _ensure_parsed_json(self._custom_fields),
-            "extra_data": _ensure_parsed_json(self._extra_data),
-            "notes": _decode_if_bytes(self._notes),
-            "audit_id": self.audit_id,
-            "created_by": self.created_by,
-            "updated_by": self.updated_by,
         }
 
+        # Filter out None values
+        # EXCLUDE infrastructure-specific fields: external_id, user_id, preferences,
+        # custom_fields, extra_data, notes, audit_id, created_by, updated_by
+        # EXCLUDE LVE fields: social_security_number_lve, medical_record_number_lve, insurance fields
         patient_args = {k: v for k, v in patient_args.items() if v is not None}
 
         try:
