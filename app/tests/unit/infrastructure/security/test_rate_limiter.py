@@ -198,18 +198,20 @@ class TestRedisRateLimiter:
     # Remove test_init_without_redis as constructor only takes redis_client
     # Remove tests for internal methods (_add_request, _clean_old_requests, etc.)
 
-    def test_check_rate_limit(self, redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock):
+    @pytest.mark.asyncio
+    async def test_check_rate_limit(self, redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock):
         """Test check_rate_limit with Redis (under limit)."""
         config = RateLimitConfig(requests=5, window_seconds=60)
         key = "test-key-redis-check"
         mock_redis.exists.return_value = 0
         mock_redis.zcard.return_value = 3  # Check zcard is called
-        assert redis_rate_limiter.check_rate_limit(key, config) is True
+        assert await redis_rate_limiter.check_rate_limit(key, config) is True
         mock_redis.zadd.assert_called_once()  # Verify zadd is called
         mock_redis.zremrangebyscore.assert_called_once()  # Verify cleanup is called
         mock_redis.expire.assert_called_once()  # Verify expire is called
 
-    def test_check_rate_limit_over_limit(
+    @pytest.mark.asyncio
+    async def test_check_rate_limit_over_limit(
         self, redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock
     ):
         """Test check_rate_limit with Redis when over the limit."""
@@ -217,15 +219,16 @@ class TestRedisRateLimiter:
         key = "test-key-redis-over"
         mock_redis.exists.return_value = 0
         mock_redis.zcard.return_value = 6  # Check zcard is called
-        assert redis_rate_limiter.check_rate_limit(key, config) is False
+        assert await redis_rate_limiter.check_rate_limit(key, config) is False
         mock_redis.setex.assert_called_once()  # Verify setex is called for blocking
         mock_redis.zremrangebyscore.assert_called_once()  # Verify cleanup is called
         mock_redis.zadd.assert_not_called()  # zadd should NOT be called if over limit
 
-    def test_reset_limits(self, redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock):
+    @pytest.mark.asyncio
+    async def test_reset_limits(self, redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock):
         """Test resetting limits for a key in Redis."""
         key = "test-key-redis-reset"
-        redis_rate_limiter.reset_limits(key)
+        await redis_rate_limiter.reset_limits(key)
         # Implementation uses _get_counter_key and _get_blocked_key helpers
         counter_key = redis_rate_limiter._get_counter_key(key)
         blocked_key = redis_rate_limiter._get_blocked_key(key)
@@ -491,7 +494,8 @@ async def test_check_rate_limit_redis_with_user_id(
     assert zadd_args[0] == combined_key
 
 
-def test_rate_limit_config_override_redis(
+@pytest.mark.asyncio
+async def test_rate_limit_config_override_redis(
     redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock
 ):
     """Test overriding default config by passing RateLimitConfig directly."""
@@ -504,7 +508,7 @@ def test_rate_limit_config_override_redis(
     mock_redis.zcard.return_value = 40
 
     # Check limit using the override config passed directly
-    allowed = redis_rate_limiter.check_rate_limit(identifier, config=override_config)
+    allowed = await redis_rate_limiter.check_rate_limit(identifier, config=override_config)
 
     assert allowed is True
     # Verify Redis calls used the override config's window
