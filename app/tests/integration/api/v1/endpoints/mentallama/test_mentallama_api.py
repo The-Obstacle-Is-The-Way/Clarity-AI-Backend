@@ -25,7 +25,6 @@ from app.core.interfaces.services.audit_logger_interface import (
     IAuditLogger,
 )
 from app.core.interfaces.services.authentication_service import IAuthenticationService
-from app.core.interfaces.services.jwt_service import IJwtService
 from app.core.models.token_models import TokenPayload
 from app.core.services.ml.interface import MentaLLaMAInterface
 from app.domain.entities.user import User
@@ -37,7 +36,6 @@ from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.presentation.api.dependencies.auth import (
     get_current_active_user,
     get_current_user,
-    get_jwt_service,
 )
 from app.presentation.api.v1.dependencies.digital_twin import get_mentallama_service
 
