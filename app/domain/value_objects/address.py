@@ -19,15 +19,19 @@ class Address:
     zip_code: str
     country: str = "US"
 
-    def __init__(self, street: str = None, city: str = None, state: str = None, 
-                 zip_code: str = None, country: str = "US", line1: str = None, **kwargs):
+    def __init__(self, street: str | None = None, city: str | None = None, state: str | None = None, 
+                 zip_code: str | None = None, country: str = "US", line1: str | None = None, **kwargs):
         """Initialize Address with backward compatibility for 'line1' parameter."""
         # Handle legacy 'line1' parameter
         if line1 is not None and street is None:
             street = line1
-        elif line1 is not None and street is not None:
-            # If both are provided, prefer street (newer parameter)
-            pass
+        
+        # Convert None values to empty strings to satisfy type requirements
+        # Validation will happen in __post_init__
+        street = street or ""
+        city = city or ""
+        state = state or ""
+        zip_code = zip_code or ""
         
         # Use object.__setattr__ because dataclass is frozen
         object.__setattr__(self, 'street', street)
@@ -41,17 +45,7 @@ class Address:
 
     def __post_init__(self) -> None:
         """Validate address components with proper null safety."""
-        # Check for None values first (fail-fast principle)
-        if self.street is None:
-            raise ValueError("Street address cannot be None")
-        if self.city is None:
-            raise ValueError("City cannot be None")
-        if self.state is None:
-            raise ValueError("State cannot be None")
-        if self.zip_code is None:
-            raise ValueError("ZIP code cannot be None")
-        
-        # Then validate non-empty after stripping whitespace
+        # Check for empty values (including None converted to empty strings)
         if not self.street.strip():
             raise ValueError("Street address cannot be empty")
         if not self.city.strip():
