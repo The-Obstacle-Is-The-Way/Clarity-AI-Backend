@@ -297,7 +297,7 @@ class Patient:
         # Format the date as ISO string for serialization
         dob = (
             self.date_of_birth.isoformat()
-            if hasattr(self.date_of_birth, "isoformat")
+            if self.date_of_birth and hasattr(self.date_of_birth, "isoformat")
             else self.date_of_birth
         )
 

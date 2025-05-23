@@ -27,5 +27,5 @@ for mod_name in MOCK_MODULES:
 
 # Special handling for yaml
 yaml_mock = sys.modules["yaml"]
-yaml_mock.safe_load = lambda stream: {"mock": "config"}
-yaml_mock.dump = lambda data, stream=None, **kwargs: str(data)
+yaml_mock.safe_load = lambda stream: {"mock": "config"}  # type: ignore[attr-defined]
+yaml_mock.dump = lambda data, stream=None, **kwargs: str(data)  # type: ignore[attr-defined]

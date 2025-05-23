@@ -6,6 +6,8 @@ for machine learning service tests, following clean architecture principles.
 """
 
 import sys
+from types import ModuleType
+from typing import Any
 
 
 def pytest_collect_file(parent, path) -> None:
@@ -40,7 +42,12 @@ def setup_yaml_mocking() -> None:
             _is_mocked = True
 
         if "yaml" in sys.modules and not hasattr(sys.modules["yaml"], "_is_mocked"):
-            sys.modules["yaml"] = MockYamlModule
+            # Create a module instance with the mock attributes
+            mock_module = ModuleType("yaml")
+            mock_module.safe_load = mock_safe_load  # type: ignore[attr-defined]
+            mock_module.dump = mock_dump  # type: ignore[attr-defined]  
+            mock_module._is_mocked = True  # type: ignore[attr-defined]
+            sys.modules["yaml"] = mock_module
     except ImportError:
         pass  # Skip if mock_yaml module not found
 
