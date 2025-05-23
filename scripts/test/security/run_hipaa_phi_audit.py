@@ -9,7 +9,7 @@ import logging
 import os
 import re
 import sys
-from typing import Any
+from typing import Any, Dict, List
 
 # Add proper module import to identify this file consistently
 # This ensures mypy recognizes the proper module path
@@ -28,10 +28,10 @@ class PHIAuditResult:
         self.is_test_file = False
         self.is_allowed_phi_test = False
         self.is_allowed = False
-        self.phi_detected = []
+        self.phi_detected: List[Dict[str, Any]] = []
         self.evidence = ""
-        self.error = None
-        self.findings = {}
+        self.error: str | None = None
+        self.findings: Dict[str, Any] = {}
 
 
 class PHIDetector:
@@ -159,16 +159,16 @@ class PHIAuditor:
             app_dir: Directory to audit
         """
         self.app_dir = app_dir
-        self.findings = {
+        self.findings: Dict[str, List[Dict[str, Any]]] = {
             "code_phi": [],
             "api_security": [],
             "configuration_issues": [],
             "logging_issues": [],
         }
-        self.files_examined = []
+        self.files_examined: List[str] = []
         self.phi_detector = PHIDetector()
         self.report = PHIAuditReport(self)
-        self.generated_files = []  # Track files we generate
+        self.generated_files: List[str] = []  # Track files we generate
 
     def _count_total_issues(self) -> int:
         """
@@ -406,7 +406,7 @@ class PHIAuditor:
 
         return result
 
-    def scan_directory(self, directory: str) -> list[PHIAuditResult]:
+    def scan_directory(self, directory: str) -> List[PHIAuditResult]:
         """
         Scan a directory for PHI.
 
@@ -416,7 +416,7 @@ class PHIAuditor:
         Returns:
             List of audit results
         """
-        results = []
+        results: List[PHIAuditResult] = []
 
         for root, _, files in os.walk(directory):
             for file in files:
