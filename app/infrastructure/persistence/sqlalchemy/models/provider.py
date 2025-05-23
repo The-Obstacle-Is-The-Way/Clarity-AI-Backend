@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import Column, DateTime, JSON, String, Text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 from app.infrastructure.persistence.sqlalchemy.models.base import (
     AuditMixin,
@@ -54,6 +55,9 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
     max_patients = Column(String(10), nullable=True)  # Maximum patients
     current_patient_count = Column(String(10), nullable=False, default="0")
     model_metadata = Column(JSON, nullable=False, default=dict)  # Additional metadata
+
+    # Relationships
+    appointments = relationship("AppointmentModel", back_populates="provider", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         """Return string representation of the provider."""
