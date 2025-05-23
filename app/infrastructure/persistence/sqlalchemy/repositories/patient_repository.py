@@ -367,7 +367,7 @@ class PatientRepository:
         if hasattr(patient_entity, "model_dump"):
             # Pydantic v2 approach
             try:
-                domain_dict = patient_entity.model_dump(exclude_unset=False, exclude_none=True)
+                domain_dict = patient_entity.model_dump(exclude_none=True)
             except (TypeError, AttributeError):
                 try:
                     domain_dict = patient_entity.model_dump()
@@ -701,11 +701,6 @@ class PatientRepository:
                 ) from e
 
         return await self._with_session(_get_by_email_operation)
-
-
-class PatientRepositoryFactory:
-    # TODO: Implement factory logic if needed, or remove if unused.
-    pass  # Add pass to make the class definition valid
 
 
 # Export alias to maintain backward compatibility with names used in UnitOfWorkFactory

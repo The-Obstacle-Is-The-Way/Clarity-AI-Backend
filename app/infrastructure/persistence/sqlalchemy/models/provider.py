@@ -53,7 +53,7 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
     availability = Column(JSON, nullable=False, default=dict)  # Availability schedule
     max_patients = Column(String(10), nullable=True)  # Maximum patients
     current_patient_count = Column(String(10), nullable=False, default="0")
-    metadata = Column(JSON, nullable=False, default=dict)  # Additional metadata
+    model_metadata = Column(JSON, nullable=False, default=dict)  # Additional metadata
 
     def __repr__(self) -> str:
         """Return string representation of the provider."""
@@ -89,7 +89,7 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
             availability=provider.availability or {},
             max_patients=str(provider.max_patients) if provider.max_patients is not None else None,
             current_patient_count=str(provider.current_patient_count),
-            metadata=provider.metadata or {},
+            model_metadata=provider.metadata or {},
             created_at=provider.created_at,
             updated_at=provider.updated_at,
         )
@@ -152,7 +152,7 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
             availability=self.availability or {},
             max_patients=max_patients,
             current_patient_count=current_patient_count,
-            metadata=self.metadata or {},
+            metadata=self.model_metadata or {},
             created_at=self.created_at,
             updated_at=self.updated_at,
         )

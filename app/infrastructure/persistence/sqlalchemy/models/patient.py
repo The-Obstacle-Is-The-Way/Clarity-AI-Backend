@@ -27,9 +27,9 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
 # from app.infrastructure.security.encryption.encryption_service import EncryptionService # Old import removed
-# Use the core domain model, which has phone_number attribute
-from app.core.domain.entities.patient import Patient as DomainPatient
-from app.core.domain.enums import Gender  # Corrected Gender import
+# Use the canonical domain model from the correct path
+from app.domain.entities.patient import Patient as DomainPatient
+from app.domain.entities.digital_twin_enums import Gender  # Corrected Gender import
 
 # from app.infrastructure.security.encryption import EncryptedString, EncryptedText, EncryptedDate, EncryptedJSON # REMOVED - Caused ImportError
 from app.domain.exceptions.persistence_exceptions import PersistenceError

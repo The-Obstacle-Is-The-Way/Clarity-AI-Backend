@@ -98,11 +98,16 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
         # Convert to domain entity
         time_points = [TimePoint(time_value=dp.timestamp, data=dp.values) for dp in data_points]
 
+        # Convert time_points to timestamps and values for TemporalSequence constructor
+        timestamps = [tp.time_value for tp in time_points]
+        values = [[tp.data.get(fname, 0.0) for fname in sequence_model.feature_names] for tp in time_points]
+        
         return TemporalSequence(
             sequence_id=sequence_model.sequence_id,
             patient_id=sequence_model.patient_id,
-            feature_names=sequence_model.feature_names,  # Use property accessor
-            time_points=time_points,
+            feature_names=sequence_model.feature_names,
+            timestamps=timestamps,
+            values=values,
             metadata=sequence_model.sequence_metadata,
         )
 
@@ -136,11 +141,16 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
             # Convert to domain entity
             time_points = [TimePoint(time_value=dp.timestamp, data=dp.values) for dp in data_points]
 
+            # Convert time_points to timestamps and values for TemporalSequence constructor
+            timestamps = [tp.time_value for tp in time_points]
+            values = [[tp.data.get(fname, 0.0) for fname in seq_model.feature_names] for tp in time_points]
+            
             sequence = TemporalSequence(
                 sequence_id=seq_model.sequence_id,
                 patient_id=seq_model.patient_id,
-                feature_names=seq_model.feature_names,  # Use property accessor
-                time_points=time_points,
+                feature_names=seq_model.feature_names,
+                timestamps=timestamps,
+                values=values,
                 metadata=seq_model.sequence_metadata,
             )
             sequences.append(sequence)
@@ -159,14 +169,14 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
         """
         # Delete data points first (foreign key constraint)
         await self.session.execute(
-            sa.delete(TemporalDataPointModel).where(
+            sa.delete(TemporalDataPointModel.__table__).where(
                 TemporalDataPointModel.sequence_id == sequence_id
             )
         )
 
         # Delete sequence
         result = await self.session.execute(
-            sa.delete(TemporalSequenceModel).where(TemporalSequenceModel.sequence_id == sequence_id)
+            sa.delete(TemporalSequenceModel.__table__).where(TemporalSequenceModel.sequence_id == sequence_id)
         )
 
         return result.rowcount > 0
@@ -217,10 +227,15 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
         # Convert to domain entity
         time_points = [TimePoint(time_value=dp.timestamp, data=dp.values) for dp in data_points]
 
+        # Convert time_points to timestamps and values for TemporalSequence constructor
+        timestamps = [tp.time_value for tp in time_points]
+        values = [[tp.data.get(fname, 0.0) for fname in latest_model.feature_names] for tp in time_points]
+        
         return TemporalSequence(
             sequence_id=latest_model.sequence_id,
             patient_id=latest_model.patient_id,
-            feature_names=latest_model.feature_names,  # Use property accessor
-            time_points=time_points,
+            feature_names=latest_model.feature_names,
+            timestamps=timestamps,
+            values=values,
             metadata=latest_model.sequence_metadata,
         )

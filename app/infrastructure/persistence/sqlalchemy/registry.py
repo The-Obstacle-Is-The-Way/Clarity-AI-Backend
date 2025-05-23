@@ -1,9 +1,9 @@
 """
 SQLAlchemy Model Registry
 
-This module provides a central registry for all SQLAlchemy models to ensure
-proper metadata and mapper configuration. It addresses the UnmappedColumnError
-issues by creating a single source of truth for model registration.
+This module provides the CANONICAL registry for all SQLAlchemy models following
+SQLAlchemy 2.0 patterns. It ensures proper metadata and mapper configuration
+and addresses UnmappedColumnError issues by creating a single source of truth.
 
 This follows clean architecture principles by centralizing infrastructure concerns
 and ensuring proper dependency management.
@@ -13,7 +13,7 @@ import logging
 from typing import Any
 
 from sqlalchemy import MetaData
-from sqlalchemy.orm import registry as sa_registry
+from sqlalchemy.orm import registry
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 # Create a single metadata instance that all models will share
 metadata = MetaData()
 
-# Create a single mapper registry that will be used for all models
-registry = sa_registry(metadata=metadata)
+# Create the canonical SQLAlchemy 2.0 registry
+mapper_registry = registry(metadata=metadata)
 
 # Keep track of all registered models for validation and debugging
 _registered_models: set[type[Any]] = set()
