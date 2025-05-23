@@ -433,11 +433,13 @@ class JWTServiceImpl(IJwtService):
                 "first_name", "last_name", "date_of_birth"
             ]
             for key, value in additional_claims.items():
-                # Skip PHI fields for HIPAA compliance
-                if key not in phi_fields:
+                # Skip PHI fields for HIPAA compliance and prevent overwriting existing claims
+                if key not in claims and key not in phi_fields:
                     claims[key] = value
+                elif key in claims:
+                    logger.debug(f"Skipping existing claim '{key}' to preserve JWT standard fields")
                 else:
-                    logger.warning(f"Excluding PHI field '{key}' from token for HIPAA compliance")
+                    logger.warning(f"Excluding PHI field '{key}' from refresh token for HIPAA compliance")
 
         # Create token
         token = jwt_encode(claims, self._secret_key, algorithm=self._algorithm)
