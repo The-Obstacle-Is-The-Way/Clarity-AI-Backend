@@ -28,6 +28,10 @@ mapper_registry = registry(metadata=metadata)
 _registered_models: set[type[Any]] = set()
 _registered_tables: set[str] = set()
 
+# Add backward compatibility for SQLAlchemy 1.x style _class_registry
+# This is accessed by some tests that expect the old registry interface
+_class_registry: dict[str, type[Any]] = {}
+
 
 def register_model(model_class: type[Any]) -> type[Any]:
     """

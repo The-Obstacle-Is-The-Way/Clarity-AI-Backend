@@ -191,14 +191,6 @@ class User(Base, TimestampMixin, AuditMixin):
     )
 
     # --- Relationships ---
-    # Simplified relationship definition
-    provider = relationship(
-        "ProviderModel",
-        back_populates="user",
-        uselist=False,
-        cascade="all, delete-orphan",
-    )
-
     patients = relationship("Patient", back_populates="user", cascade="all, delete-orphan")
 
     # Relationship to AnalyticsEventModel
