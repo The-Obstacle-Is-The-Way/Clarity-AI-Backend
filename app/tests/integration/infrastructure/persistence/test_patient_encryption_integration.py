@@ -267,7 +267,7 @@ class TestPatientEncryptionIntegration:
                 line1="123 Encrypt Lane",
                 city="SecureVille",
                 state="SS",
-                postal_code="00000",
+                zip_code="00000",
                 country="US",
             ),
             "emergency_contact": EmergencyContact(
