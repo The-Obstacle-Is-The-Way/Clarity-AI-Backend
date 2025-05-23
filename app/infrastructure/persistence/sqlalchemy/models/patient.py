@@ -787,7 +787,8 @@ class Patient(Base, TimestampMixin, AuditMixin):
             "ssn": ssn,  # Required for social_security_number_lve property
             "address": address_domain_obj,
             "emergency_contact": emergency_contact_domain_obj,
-            "contact_info": contact_info_domain_obj,
+            # NOTE: contact_info is NOT passed to domain Patient constructor
+            # Domain Patient expects email/phone as individual fields (above)
             "medical_history": _ensure_parsed_json(self._medical_history),
             "medications": _ensure_parsed_json(self._medications),
             "allergies": _ensure_parsed_json(self._allergies),
