@@ -287,7 +287,7 @@ class TestPatientRepository:
                 last_name=mock_patient_model._last_name,
                 email=mock_patient_model._email,
                 date_of_birth=date.fromisoformat(mock_patient_model._date_of_birth),
-                address=Address(
+                address=Address.create(
                     line1=mock_patient_model._address_line1 or "",
                     city=mock_patient_model._city or "",
                     state=mock_patient_model._state or "",
@@ -476,7 +476,7 @@ class TestPatientRepository:
                         last_name=current_model_data_dict["_last_name"],
                         email=current_model_data_dict["_email"],
                         date_of_birth=date.fromisoformat(current_model_data_dict["_date_of_birth"]),
-                        address=Address(
+                        address=Address.create(
                             line1=current_model_data_dict["_address_line1"] or "",
                             city=current_model_data_dict["_city"] or "",
                             state=current_model_data_dict["_state"] or "",
@@ -556,7 +556,7 @@ class TestPatientRepository:
                 last_name=mock_patient_model._last_name,
                 email=mock_patient_model._email,
                 date_of_birth=date.fromisoformat(mock_patient_model._date_of_birth),
-                address=Address(
+                address=Address.create(
                     line1="456 Email Ave",
                     city="Mailville",
                     state="TX",
