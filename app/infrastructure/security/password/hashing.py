@@ -12,7 +12,7 @@ from passlib.context import CryptContext
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
+def verify_password(plain_password: str | None, hashed_password: str | None) -> bool:
     """
     Verify a plaintext password against a hashed password using passlib context.
 
