@@ -7,8 +7,7 @@ user session management and token invalidation.
 """
 
 import hashlib
-from datetime import datetime, timedelta
-import pytz
+from datetime import datetime, timedelta, timezone
 from app.core.interfaces.repositories.token_blacklist_repository_interface import (
     ITokenBlacklistRepository,
 )
@@ -70,7 +69,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         hashed_jti = self._hash_token(token_jti)
         
         # Calculate TTL in seconds from now until expiration
-        current_time = datetime.now(pytz.utc)
+        current_time = datetime.now(timezone.utc)
         if expires_at <= current_time:
             # Token is already expired, no need to blacklist
             return
@@ -151,7 +150,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
 
             # Set expiration date to 1 year in the future to ensure tokens stay blacklisted
             # even beyond their natural expiration
-            expires_at = datetime.now(pytz.utc) + timedelta(days=365)
+            expires_at = datetime.now(timezone.utc) + timedelta(days=365)
 
             # Blacklist each JTI
             for jti_info in session_jti_list:
@@ -217,11 +216,12 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         """
         try:
             # Get all keys matching the JTI pattern
-            jti_keys = await self.redis_service.keys(f"{self._jti_prefix}*")
+            redis_client = await self.redis_service._get_redis()
+            jti_keys = await redis_client.keys(f"{self._jti_prefix}*")
 
             result = []
             for key in jti_keys:
-                # Extract the JTI from the key
+                # Extract JTI from key
                 jti = key.replace(self._jti_prefix, "")
 
                 # Get the expiration timestamp
@@ -229,14 +229,18 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
                 if jti_data and isinstance(jti_data, dict) and "expires_at" in jti_data:
                     try:
                         expires_at = datetime.fromisoformat(jti_data["expires_at"])
-                        result.append({"token_jti": jti, "expires_at": expires_at})
+                        result.append({
+                            "jti": jti,
+                            "expires_at": expires_at
+                        })
                     except (ValueError, TypeError):
-                        logger.warning(f"Invalid expiration format for JTI {jti}")
+                        logger.warning(f"Invalid expires_at format for JTI {jti}")
+                        continue
 
             return result
         except Exception as e:
-            logger.error(f"Error retrieving blacklisted tokens: {e!s}")
-            raise RepositoryException(f"Failed to retrieve blacklisted tokens: {e!s}") from e
+            logger.error(f"Failed to list blacklisted tokens: {e!s}")
+            raise RepositoryException(f"Failed to list blacklisted tokens: {e!s}") from e
 
     async def remove_expired(self) -> int:
         """
@@ -274,7 +278,8 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
 
             # Also try to remove any token entry if it exists
             # Note: This is a best-effort approach since we may not have the original token
-            token_keys = await self.redis_service.keys(f"{self._token_prefix}*")
+            redis_client = await self.redis_service._get_redis()
+            token_keys = await redis_client.keys(f"{self._token_prefix}*")
 
             for key in token_keys:
                 # Check if this token entry corresponds to our JTI
