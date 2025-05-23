@@ -78,17 +78,36 @@ class TokenPayload(BaseModel):
     }
 
     def __init__(self, **data):
-        """Initialize with special handling for subject/sub."""
-        # Handle sub/subject conversion
+        """Initialize with special handling for subject/sub and PHI filtering."""
+        # Define PHI fields that should never be in tokens
+        phi_fields = [
+            "name", "email", "dob", "ssn", "address", "phone_number",
+            "birth_date", "social_security", "medical_record_number",
+            "first_name", "last_name", "date_of_birth"
+        ]
+        
+        # Remove PHI fields from incoming data immediately
+        for field in phi_fields:
+            data.pop(field, None)
+        
+        # Handle sub/subject conversion - ensure they are simple strings
         if "sub" in data and data["sub"] is not None:
+            sub_value = data["sub"]
+            # If sub is a dict, extract the actual ID
+            if isinstance(sub_value, dict) and "sub" in sub_value:
+                sub_value = sub_value["sub"]
             # Ensure sub is a string
-            data["sub"] = str(data["sub"])
+            data["sub"] = str(sub_value)
             # Copy to subject for compatibility
             if "subject" not in data:
                 data["subject"] = data["sub"]
         elif "subject" in data and data["subject"] is not None:
+            subject_value = data["subject"]
+            # If subject is a dict, extract the actual ID
+            if isinstance(subject_value, dict) and "sub" in subject_value:
+                subject_value = subject_value["sub"]
             # Ensure subject is a string
-            data["subject"] = str(data["subject"])
+            data["subject"] = str(subject_value)
             # Copy to sub for compatibility
             if "sub" not in data:
                 data["sub"] = data["subject"]
