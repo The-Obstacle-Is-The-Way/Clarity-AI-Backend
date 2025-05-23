@@ -10,18 +10,22 @@ from typing import Annotated
 from fastapi import Depends, Request
 
 from app.core.config.settings import get_settings
+from app.core.interfaces.security.jwt_service_interface import IJWTService
 from app.infrastructure.security.jwt import get_jwt_service
+from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
 from app.presentation.api.dependencies.audit_logger import get_audit_logger
 from app.presentation.api.dependencies.token_blacklist import get_token_blacklist_repository
 from app.presentation.api.dependencies.user_repository import get_user_repository
 
 
-def get_jwt_service_from_request(request: Request):
+def get_jwt_service_from_request(request: Request) -> IJWTService:
     """
     Provides a fully configured JWT service with all required dependencies.
 
     This function collects all necessary dependencies for the JWT service,
     including settings, repositories, and logging components.
+    
+    For testing, it checks if there's a JWT service override in the app state.
 
     Args:
         request: FastAPI request object
@@ -29,6 +33,11 @@ def get_jwt_service_from_request(request: Request):
     Returns:
         An implementation of the IJwtService interface
     """
+    # Check for test override first
+    if hasattr(request.app.state, 'jwt_service') and request.app.state.jwt_service:
+        return request.app.state.jwt_service
+    
+    # Normal production path
     settings = get_settings()
     user_repository = get_user_repository()
     token_blacklist_repository = get_token_blacklist_repository()
@@ -45,6 +54,4 @@ def get_jwt_service_from_request(request: Request):
 # Type annotation for dependency injection
 # Use concrete implementation for FastAPI compatibility while preserving
 # clean architecture inside the application
-from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
-
 JwtServiceDep = Annotated[JWTServiceImpl, Depends(get_jwt_service_from_request)]
