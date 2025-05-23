@@ -206,10 +206,11 @@ class TestJWTServiceImpl:
         self, jwt_service_impl: JWTServiceImpl, user_claims: dict[str, Any]
     ):
         """Test verification of an expired token."""
-        # Create a token that's already expired
-        jwt_service_impl.access_token_expire_minutes = -15  # Negative value to ensure expiration
-
-        token = jwt_service_impl.create_access_token(subject=user_claims["sub"])
+        # Create a token that's already expired using expires_delta_minutes
+        token = jwt_service_impl.create_access_token(
+            subject=user_claims["sub"], 
+            expires_delta_minutes=-15  # Negative value to ensure expiration
+        )
 
         # Verification should raise TokenExpiredError
         with pytest.raises(TokenExpiredError):
