@@ -176,7 +176,7 @@ class CorrelatedEvent(TemporalEvent[T]):
     def add_correlated_event(
         self,
         event_id: UUID,
-        correlation_type: CorrelationType = None,
+        correlation_type: CorrelationType | None = None,
         correlation_strength: float = 0.5,
     ) -> None:
         """

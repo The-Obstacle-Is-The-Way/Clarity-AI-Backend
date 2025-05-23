@@ -38,7 +38,8 @@ class MentaLLaMAResult:
         Returns:
             List of clinical insights
         """
-        return self.analysis.get("insights", [])
+        insights = self.analysis.get("insights", [])
+        return list(insights) if isinstance(insights, list) else []
 
     def get_suggested_actions(self) -> list[str]:
         """
@@ -47,7 +48,8 @@ class MentaLLaMAResult:
         Returns:
             List of suggested actions
         """
-        return self.analysis.get("suggested_actions", [])
+        actions = self.analysis.get("suggested_actions", [])
+        return list(actions) if isinstance(actions, list) else []
 
     def get_risk_factors(self) -> dict[str, float]:
         """
@@ -56,7 +58,10 @@ class MentaLLaMAResult:
         Returns:
             Dictionary of risk factors and scores
         """
-        return self.analysis.get("risk_factors", {})
+        risk_factors = self.analysis.get("risk_factors", {})
+        if isinstance(risk_factors, dict):
+            return {str(k): float(v) for k, v in risk_factors.items()}
+        return {}
 
     def to_dict(self) -> dict[str, Any]:
         """

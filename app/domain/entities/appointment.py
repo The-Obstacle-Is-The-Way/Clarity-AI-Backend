@@ -278,7 +278,7 @@ class Appointment(BaseEntity):
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> Appointment:
+    def from_dict(cls, data: dict) -> "Appointment":
         """Create an Appointment instance from a dictionary."""
         # Convert string UUIDs back to UUID objects
         for key in ["id", "patient_id", "provider_id", "cancelled_by_user_id"]:

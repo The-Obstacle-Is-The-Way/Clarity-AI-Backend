@@ -5,7 +5,7 @@ This module provides a mock implementation of the Patient repository interface
 for testing purposes, maintaining clean architecture principles.
 """
 
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 from app.core.interfaces.repositories.patient_repository_interface import (
@@ -91,7 +91,8 @@ class MockPatientRepository(IPatientRepository):
             Patient data if found, None otherwise
         """
         patient_id_str = str(patient_id)
-        return self._patients.get(patient_id_str)
+        result = self._patients.get(patient_id_str)
+        return cast(dict[str, Any], result) if result is not None else None
 
     async def update_patient(
         self, patient_id: str | UUID, patient_data: dict[str, Any]

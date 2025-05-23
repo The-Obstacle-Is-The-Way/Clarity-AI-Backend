@@ -42,6 +42,29 @@ class Provider:
     including personal information, credentials, and availability.
     """
 
+    # Type annotations for instance attributes
+    id: UUID
+    first_name: str | None
+    last_name: str | None
+    provider_type: ProviderType | None
+    specialties: list[str]
+    license_number: str | None
+    npi_number: str | None
+    email: str | None
+    phone: str | None
+    address: dict[str, Any]
+    bio: str | None
+    education: list[dict[str, Any]]
+    certifications: list[dict[str, Any]]
+    languages: list[str]
+    status: ProviderStatus
+    availability: dict[str, list[dict[str, Any]]]
+    max_patients: int | None
+    current_patient_count: int
+    created_at: datetime
+    updated_at: datetime
+    metadata: dict[str, Any]
+
     def __init__(
         self,
         id: UUID | str | None = None,
@@ -92,7 +115,7 @@ class Provider:
             updated_at: Time the provider was last updated
             metadata: Additional metadata
         """
-        self.id = id if id else uuid4()
+        self.id = UUID(id) if isinstance(id, str) else (id if id else uuid4())
         self.first_name = first_name
         self.last_name = last_name
 

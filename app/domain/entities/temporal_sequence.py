@@ -314,7 +314,7 @@ class TemporalSequence(Generic[T]):
         # Check for exact match
         for i, ts in enumerate(self._timestamps):
             if ts == timestamp:
-                return self._values[i][feature_index]
+                return float(self._values[i][feature_index])
 
         # Return None if no data or interpolation is NONE
         if not self._timestamps or interpolation == InterpolationMethod.NONE:
@@ -334,8 +334,8 @@ class TemporalSequence(Generic[T]):
         # Get timestamps and values
         before_ts = self._timestamps[before_idx]
         after_ts = self._timestamps[after_idx]
-        before_value = self._values[before_idx][feature_index]
-        after_value = self._values[after_idx][feature_index]
+        before_value = float(self._values[before_idx][feature_index])
+        after_value = float(self._values[after_idx][feature_index])
 
         # Interpolate based on method
         if interpolation == InterpolationMethod.NEAREST:
@@ -428,7 +428,7 @@ class TemporalSequence(Generic[T]):
             change = (values[i] - values[i - 1]) / values[i - 1]
             changes.append(change)
 
-        volatility = 0
+        volatility: float = 0.0
         if changes:
             mean = sum(changes) / len(changes)
             variance = sum((x - mean) ** 2 for x in changes) / len(changes)
@@ -491,7 +491,7 @@ class TimePoint:
         self.data = data
 
 
-class TemporalSequence(_GenericTemporalSequence):
+class ExtendedTemporalSequence(_GenericTemporalSequence):
     """TemporalSequence supporting both generic and simplified usages."""
 
     def __init__(self, *args, **kwargs):
@@ -499,9 +499,9 @@ class TemporalSequence(_GenericTemporalSequence):
         if {"name", "description", "time_unit"}.issubset(
             kwargs.keys()
         ) and "timestamps" not in kwargs:
-            self.name = kwargs.get("name")
-            self.description = kwargs.get("description")
-            self.time_unit = kwargs.get("time_unit")
+            self.name = kwargs.get("name", "")
+            self.description = kwargs.get("description", "")
+            self.time_unit = kwargs.get("time_unit", "")
             self.time_points: list[TimePoint] = []
             self.metadata = {}
             self.sequence_metadata = self.metadata
