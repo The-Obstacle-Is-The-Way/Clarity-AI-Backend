@@ -128,20 +128,29 @@ class TokenPayload(BaseModel):
             return default
 
     def __str__(self):
-        """String representation for debugging and assertions."""
+        """HIPAA-compliant string representation - excludes all PHI fields."""
+        # Only return non-PHI identifier for HIPAA compliance
         if hasattr(self, "sub") and self.sub is not None:
-            return str(self.sub)
+            return f"TokenPayload(sub='{self.sub}')"
         if hasattr(self, "subject") and self.subject is not None:
-            return str(self.subject)
-        return super().__str__()
+            return f"TokenPayload(subject='{self.subject}')"
+        return "TokenPayload(anonymous)"
 
     def __repr__(self):
-        """Representation needed for test assertions."""
+        """HIPAA-compliant representation - excludes all PHI fields."""
+        # Create safe representation without PHI
+        safe_fields = []
         if hasattr(self, "sub") and self.sub is not None:
-            return str(self.sub)
-        if hasattr(self, "subject") and self.subject is not None:
-            return str(self.subject)
-        return super().__repr__()
+            safe_fields.append(f"sub='{self.sub}'")
+        if hasattr(self, "type") and self.type is not None:
+            safe_fields.append(f"type='{self.type}'")
+        if hasattr(self, "exp") and self.exp is not None:
+            safe_fields.append(f"exp={self.exp}")
+        if hasattr(self, "roles") and self.roles:
+            safe_fields.append(f"roles={len(self.roles)} roles")
+        
+        fields_str = ", ".join(safe_fields) if safe_fields else "anonymous"
+        return f"TokenPayload({fields_str})"
 
     def __eq__(self, other):
         """Equality comparison for test assertions."""
@@ -328,9 +337,13 @@ class JWTServiceImpl(IJwtService):
         if subject is None and "sub" in additional_claims:
             subject = additional_claims.pop("sub")
 
-        # Convert UUID or other types to string
+        # Ensure subject is always a string for JWT compliance
         if subject is not None:
             subject = str(subject)
+        elif additional_claims and "sub" in additional_claims:
+            # Handle case where subject is in additional_claims
+            subject = str(additional_claims["sub"])
+            additional_claims.pop("sub")  # Remove to avoid duplication
 
         # Get current time
         now = datetime.now(timezone.utc)
@@ -450,9 +463,13 @@ class JWTServiceImpl(IJwtService):
         if subject is None and additional_claims and "sub" in additional_claims:
             subject = additional_claims.pop("sub")
 
-        # Convert UUID to string if needed
-        if isinstance(subject, UUID):
+        # Ensure subject is always a string for JWT compliance  
+        if subject is not None:
             subject = str(subject)
+        elif additional_claims and "sub" in additional_claims:
+            # Handle case where subject is in additional_claims
+            subject = str(additional_claims["sub"])
+            additional_claims.pop("sub")  # Remove to avoid duplication
 
         # Get roles from additional_claims
         roles = []
@@ -668,13 +685,24 @@ class JWTServiceImpl(IJwtService):
             payload = self.decode_token(
                 token, options={"verify_exp": False, "verify_iss": False, "verify_aud": False}
             )
-            subject = payload.sub
+            
+            # Handle both TokenPayload object and dict for robustness
+            if isinstance(payload, TokenPayload):
+                subject = payload.sub
+            elif isinstance(payload, dict):
+                subject = payload.get("sub")
+            else:
+                subject = str(payload) if payload else None
+                
+            if not subject:
+                logger.warning("No subject found in token payload")
+                return None
 
             # Get user from repository
             return await self.user_repository.get_by_id(subject)
         except Exception as e:
             logger.error(f"Error retrieving user from token: {e!s}")
-            raise InvalidTokenError(str(e))
+            raise InvalidTokenException(str(e))
 
     def verify_token(self, token: str) -> TokenPayload:
         """Verify a token and return its payload.
