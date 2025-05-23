@@ -304,21 +304,21 @@ class JWTServiceImpl(IJwtService):
 
     def create_access_token(
         self,
+        data: dict[str, Any] | str | None = None,
         subject: str | None = None,
         additional_claims: dict[str, Any] | None = None,
         expires_delta: timedelta | None = None,
         expires_delta_minutes: int | None = None,
-        data: dict[str, Any] | Any | None = None,
         jti: str | None = None,
     ) -> str:
         """Create an access token for a user.
 
         Args:
-            subject: User identifier
+            data: User data dict (for backward compatibility) or subject ID
+            subject: User identifier (when data is not used)
             additional_claims: Additional claims to include
             expires_delta: Custom expiration time
             expires_delta_minutes: Custom expiration in minutes
-            data: Alternative way to provide token data
             jti: Optional JWT ID
 
         Returns:
@@ -329,9 +329,15 @@ class JWTServiceImpl(IJwtService):
         # Handle data parameter for backward compatibility (with PHI filtering)
         if data is not None:
             if isinstance(data, dict):
-                # Use subject from data if not provided directly (ensure it's just the ID)
+                # Extract subject from data (ensure it's just the ID)
                 if subject is None and "sub" in data:
                     subject = str(data.get("sub"))  # Ensure subject is just the ID string
+                elif subject is None:
+                    # Fallback: if no 'sub' key, look for common ID patterns
+                    for key in ["id", "user_id", "subject"]:
+                        if key in data:
+                            subject = str(data[key])
+                            break
 
                 # Define PHI fields to exclude
                 phi_fields = [
@@ -342,7 +348,7 @@ class JWTServiceImpl(IJwtService):
 
                 # Copy only non-PHI data fields to additional_claims
                 for key, value in data.items():
-                    if key != "sub" and key not in additional_claims and key not in phi_fields:
+                    if key not in ["sub", "id", "user_id", "subject"] and key not in additional_claims and key not in phi_fields:
                         additional_claims[key] = value
                     elif key in phi_fields:
                         logger.warning(f"Excluding PHI field '{key}' from token data for HIPAA compliance")
