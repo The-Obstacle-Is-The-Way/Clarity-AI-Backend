@@ -5,16 +5,11 @@ Defines the contract for data access operations related to Biometric Twin entiti
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-# Import BiometricTwinState entity - use Any as fallback if import fails
-try:
+if TYPE_CHECKING:
     from app.domain.entities.biometric_twin import BiometricTwinState
-except ImportError:
-    from typing import Any
-
-    BiometricTwinState = Any
 
 
 class IBiometricTwinRepository(ABC):

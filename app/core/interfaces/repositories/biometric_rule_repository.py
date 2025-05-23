@@ -4,15 +4,11 @@ Defines the contract for data access operations related to Biometric Rule entiti
 """
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 from uuid import UUID
 
-# Import BiometricRule entity - use Any as fallback if import fails
-try:
+if TYPE_CHECKING:
     from app.domain.entities.biometric_rule import BiometricRule
-except ImportError:
-    from typing import Any
-
-    BiometricRule = Any
 
 
 class IBiometricRuleRepository(ABC):

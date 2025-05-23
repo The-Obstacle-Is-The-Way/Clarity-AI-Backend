@@ -7,16 +7,11 @@ and defines the port for repository implementations.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-# Import DigitalTwin entity - use Any as fallback if import fails
-try:
+if TYPE_CHECKING:
     from app.domain.entities.digital_twin import DigitalTwin
-except ImportError:
-    from typing import Any
-
-    DigitalTwin = Any
 
 
 class IDigitalTwinRepository(ABC):
