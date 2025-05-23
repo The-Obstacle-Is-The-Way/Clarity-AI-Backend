@@ -69,39 +69,33 @@ class TestRedisTokenBlacklistRepository:
         self,
         token_blacklist_repo,
         mock_redis_service,
-        mock_token,
         mock_jti,
         future_expiry,
     ):
         """Test adding a token to the blacklist."""
-        # Arrange
-        reason = "test_logout"
-
         # Act
-        await token_blacklist_repo.add_to_blacklist(mock_token, mock_jti, future_expiry, reason)
+        await token_blacklist_repo.add_to_blacklist(mock_jti, future_expiry)
 
         # Assert
-        # Should call set twice - once for token hash, once for JTI
-        assert mock_redis_service.set.call_count == 2
+        # Should call set once for the JTI
+        assert mock_redis_service.set.call_count == 1
 
-        # The calls should include the token hash and JTI
+        # The call should include the JTI prefix and blacklisted value
         calls = mock_redis_service.set.call_args_list
-        assert "blacklist:token:" in str(calls[0])
-        assert "blacklist:jti:" in str(calls[1])
-        assert mock_jti in str(calls[1])
+        assert "blacklist:jti:" in str(calls[0])
+        assert "blacklisted" in str(calls[0])
 
     @pytest.mark.asyncio
     async def test_add_expired_token_to_blacklist(
         self,
         token_blacklist_repo,
         mock_redis_service,
-        mock_token,
         mock_jti,
         past_expiry,
     ):
         """Test that expired tokens aren't added to the blacklist."""
         # Act
-        await token_blacklist_repo.add_to_blacklist(mock_token, mock_jti, past_expiry)
+        await token_blacklist_repo.add_to_blacklist(mock_jti, past_expiry)
 
         # Assert - Redis set should not be called since token is already expired
         mock_redis_service.set.assert_not_called()
