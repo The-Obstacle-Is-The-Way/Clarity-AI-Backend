@@ -40,16 +40,24 @@ class Address:
         self.__post_init__()
 
     def __post_init__(self) -> None:
-        """Validate address components."""
+        """Validate address components with proper null safety."""
+        # Check for None values first (fail-fast principle)
+        if self.street is None:
+            raise ValueError("Street address cannot be None")
+        if self.city is None:
+            raise ValueError("City cannot be None")
+        if self.state is None:
+            raise ValueError("State cannot be None")
+        if self.zip_code is None:
+            raise ValueError("ZIP code cannot be None")
+        
+        # Then validate non-empty after stripping whitespace
         if not self.street.strip():
             raise ValueError("Street address cannot be empty")
-
         if not self.city.strip():
             raise ValueError("City cannot be empty")
-
         if not self.state.strip():
             raise ValueError("State cannot be empty")
-
         if not self.zip_code.strip():
             raise ValueError("ZIP code cannot be empty")
 
