@@ -13,13 +13,11 @@ from sqlalchemy import UUID as SQLAlchemyUUID
 from sqlalchemy import (
     Column,
     DateTime,
-)
-from sqlalchemy import Enum as SQLAlchemyEnum
-from sqlalchemy import (
     ForeignKey,
     String,
     Text,
 )
+from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import relationship
 
 from app.domain.entities.appointment import AppointmentStatus

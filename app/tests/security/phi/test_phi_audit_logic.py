@@ -47,7 +47,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         # Cleanup
         shutil.rmtree(temp_path)
 
-    def test_audit_passed_with_clean_directory(self):
+    def test_audit_passed_with_clean_directory(self) -> None:
         """Test that the _audit_passed method returns True for clean directories."""
         auditor = PHIAuditor(app_dir=".")
         auditor.findings = {
@@ -57,7 +57,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         }
         assert auditor._audit_passed() is True, "Audit should pass with no issues"
 
-    def test_audit_passed_with_clean_app_directory(self):
+    def test_audit_passed_with_clean_app_directory(self) -> None:
         """Test that the audit passes for clean_app directory even with issues."""
         import shutil
         import tempfile
@@ -85,7 +85,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         finally:
             shutil.rmtree(temp_dir)
 
-    def test_audit_passed_with_clean_app_in_path(self):
+    def test_audit_passed_with_clean_app_in_path(self) -> None:
         """Test that the audit passes when 'clean_app' is in the path but not the directory name."""
         import shutil
         import tempfile
@@ -111,7 +111,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         finally:
             shutil.rmtree(temp_dir)
 
-    def test_audit_file_detection(self):
+    def test_audit_file_detection(self) -> None:
         """Test the is_phi_test_file detection logic."""
         import shutil
         import tempfile
@@ -167,7 +167,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         finally:
             shutil.rmtree(temp_dir)
 
-    def test_strict_mode_disables_special_handling(self, monkeypatch):
+    def test_strict_mode_disables_special_handling(self, monkeypatch) -> None:
         """Test that strict mode disables special handling for test files and clean_app directories."""
         import shutil
         import tempfile
@@ -219,7 +219,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         finally:
             shutil.rmtree(temp_dir)
 
-    def test_report_counts_for_clean_app_files(self):
+    def test_report_counts_for_clean_app_files(self) -> None:
         """Test that report correctly counts allowed PHI in clean_app directories."""
         import shutil
         import tempfile
@@ -257,7 +257,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         finally:
             shutil.rmtree(temp_dir)
 
-    def test_audit_failed_with_issues(self):
+    def test_audit_failed_with_issues(self) -> None:
         """Test that the audit fails when issues are found and not in clean_app directory."""
         auditor = PHIAuditor(app_dir="/some/regular/path")
         auditor.findings = {
@@ -269,7 +269,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
             auditor._audit_passed() is False
         ), "Audit should fail with issues in regular directory"
 
-    def test_audit_result_allowed_status(self):
+    def test_audit_result_allowed_status(self) -> None:
         """Test the allowed status of audit results for PHI test files."""
         # Create an audit result
         result = PHIAuditResult(file_path="test_phi.py")
@@ -283,7 +283,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         assert result.has_phi is True, "Result should have PHI"
         assert result.is_allowed is True, "PHI should be allowed in test file"
 
-    def test_run_audit_with_clean_app_directory(self):
+    def test_run_audit_with_clean_app_directory(self) -> None:
         """Test the full run_audit method with a clean_app directory."""
         import shutil
         import tempfile

@@ -290,12 +290,12 @@ class AnalyticsService(AnalyticsServiceInterface):
                 if key.lower() in [f.lower() for f in phi_fields]:
                     # Replace PHI with hashed version
                     data[key] = self._hash_identifier(data[key])
-                elif isinstance(data[key], (dict, list)):
+                elif isinstance(data[key], dict | list):
                     # Recursively process nested structures
                     self._remove_phi_recursive(data[key], phi_fields)
         elif isinstance(data, list):
             for item in data:
-                if isinstance(item, (dict, list)):
+                if isinstance(item, dict | list):
                     self._remove_phi_recursive(item, phi_fields)
 
     def _hash_identifier(self, identifier: Any) -> str:

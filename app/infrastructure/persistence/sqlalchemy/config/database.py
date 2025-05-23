@@ -135,17 +135,17 @@ class Database:
         finally:
             await session.close()
 
-    async def create_all(self):
+    async def create_all(self) -> None:
         """Create all tables defined in the models."""
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
-    async def drop_tables(self):
+    async def drop_tables(self) -> None:
         """Drop all tables defined in the models."""
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
 
-    async def dispose(self):
+    async def dispose(self) -> None:
         """Dispose the engine and all connections."""
         await self.engine.dispose()
 
@@ -188,7 +188,7 @@ class DatabaseFactory:
     _settings_provider = None
 
     @classmethod
-    def initialize(cls, settings_provider=None):
+    def initialize(cls, settings_provider=None) -> None:
         """
         Initialize the factory with a settings provider function.
 
@@ -215,7 +215,7 @@ class DatabaseFactory:
         return cls._instance
 
     @classmethod
-    def reset(cls):
+    def reset(cls) -> None:
         """Reset the singleton instance for testing purposes."""
         cls._instance = None
         cls._settings_provider = None

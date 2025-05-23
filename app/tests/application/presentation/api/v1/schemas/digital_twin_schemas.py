@@ -181,14 +181,14 @@ class ClinicalTextAnalysisRequest(BaseModel):
     detect_phi: bool = Field(True, description="Whether to detect and remove PHI")
 
     @field_validator("text")
-    def text_not_empty(cls, v):
+    def text_not_empty(self, v):
         """Validate that text is not empty."""
         if not v or not v.strip():
             raise ValueError("Text cannot be empty")
         return v
 
     @field_validator("analysis_type")
-    def validate_analysis_type(cls, v):
+    def validate_analysis_type(self, v):
         """Validate analysis type."""
         valid_types = [
             "diagnostic_impression",
@@ -210,14 +210,14 @@ class PersonalizedInsightRequest(BaseModel):
     include_historical: bool = Field(True, description="Whether to include historical data")
 
     @field_validator("query")
-    def query_not_empty(cls, v):
+    def query_not_empty(self, v):
         """Validate that query is not empty."""
         if not v or not v.strip():
             raise ValueError("Query cannot be empty")
         return v
 
     @field_validator("insight_type")
-    def validate_insight_type(cls, v):
+    def validate_insight_type(self, v):
         """Validate insight type."""
         valid_types = ["clinical", "behavioral", "therapeutic", "medication"]
         if v not in valid_types:
@@ -233,14 +233,14 @@ class ClinicalRecommendationRequest(BaseModel):
     include_historical: bool = Field(True, description="Whether to include historical data")
 
     @field_validator("query")
-    def query_not_empty(cls, v):
+    def query_not_empty(self, v):
         """Validate that query is not empty."""
         if not v or not v.strip():
             raise ValueError("Query cannot be empty")
         return v
 
     @field_validator("recommendation_type")
-    def validate_recommendation_type(cls, v):
+    def validate_recommendation_type(self, v):
         """Validate recommendation type."""
         valid_types = ["treatment", "medication", "therapy", "lifestyle"]
         if v not in valid_types:
@@ -256,14 +256,14 @@ class TreatmentPredictionRequest(BaseModel):
     time_horizon: str = Field("short_term", description="Time horizon for prediction")
 
     @field_validator("treatment")
-    def treatment_not_empty(cls, v):
+    def treatment_not_empty(self, v):
         """Validate that treatment is not empty."""
         if not v or not v.strip():
             raise ValueError("Treatment cannot be empty")
         return v
 
     @field_validator("time_horizon")
-    def validate_time_horizon(cls, v):
+    def validate_time_horizon(self, v):
         """Validate time horizon."""
         valid_horizons = ["short_term", "medium_term", "long_term"]
         if v not in valid_horizons:
@@ -280,7 +280,7 @@ class RecordTreatmentOutcomeRequest(BaseModel):
     notes: str | None = Field(None, description="Additional notes")
 
     @field_validator("treatment", "outcome", "effectiveness")
-    def not_empty(cls, v, info):
+    def not_empty(self, v, info):
         """Validate that field is not empty."""
         if not v or not v.strip():
             raise ValueError(f"{info.field_name} cannot be empty")

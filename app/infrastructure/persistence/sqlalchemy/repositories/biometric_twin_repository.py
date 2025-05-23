@@ -134,7 +134,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
             True if the entity was successfully deleted, False otherwise
         """
         # Delete associated data points first
-        data_points_deleted = (
+        (
             self.session.query(BiometricDataPointModel)
             .filter(BiometricDataPointModel.twin_id == twin_id)
             .delete()
@@ -319,12 +319,12 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
             entity: The BiometricTwin entity containing timeseries data to save
         """
         # Get existing data point IDs to avoid duplicates
-        existing_data_points = set(
+        existing_data_points = {
             str(dp_id)
             for dp_id, in self.session.query(BiometricDataPointModel.data_id)
             .filter(BiometricDataPointModel.twin_id == entity.id)
             .all()
-        )
+        }
 
         # Process each timeseries
         for biometric_type, timeseries in entity.timeseries_data.items():
@@ -386,7 +386,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         """
         import json
 
-        if isinstance(value, (int, float)):
+        if isinstance(value, int | float):
             return str(value), "number"
         elif isinstance(value, str):
             return value, "string"

@@ -4,6 +4,7 @@ Simple, standalone test for error masking without middleware complexity.
 
 import logging
 from contextlib import asynccontextmanager
+from typing import NoReturn
 
 import pytest
 from fastapi import FastAPI, Request, status
@@ -26,7 +27,7 @@ def create_test_app():
     app = FastAPI(lifespan=lifespan, debug=False)
 
     @app.get("/test/error")
-    async def test_error():
+    async def test_error() -> NoReturn:
         """Endpoint that raises a RuntimeError."""
         raise RuntimeError("This is sensitive information that should be masked")
 
@@ -53,7 +54,7 @@ def create_test_app():
 
 
 @pytest.mark.asyncio
-async def test_error_masking_simple():
+async def test_error_masking_simple() -> None:
     """Verify error masking works in a simple, isolated test."""
     app = create_test_app()
 

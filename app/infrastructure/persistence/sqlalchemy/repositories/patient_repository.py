@@ -327,7 +327,7 @@ class PatientRepository:
     async def update(
         self,
         patient_entity: PatientEntity,
-        patient_id: uuid.UUID = None,
+        patient_id: uuid.UUID | None = None,
         context: dict | None = None,
     ) -> PatientEntity | None:
         """Updates an existing patient record from a PatientEntity.
@@ -344,7 +344,7 @@ class PatientRepository:
         # This is a defensive approach to support both calling conventions:
         # - update(entity, id) - standard
         # - update(id, entity) - also supported for backward compatibility
-        if isinstance(patient_entity, (str, UUID)) and isinstance(patient_id, PatientEntity):
+        if isinstance(patient_entity, str | UUID) and isinstance(patient_id, PatientEntity):
             # Parameters are passed in reverse order
             patient_id, patient_entity = patient_entity, patient_id
             self.logger.debug("Detected reversed parameter order in update method")

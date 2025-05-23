@@ -20,16 +20,16 @@ except ImportError:
         def __init__(self, *args, **kwargs):
             pass
 
-        def name(self):
+        def name(self) -> str:
             return "Test Name"
 
-        def email(self):
+        def email(self) -> str:
             return "test@example.com"
 
         def date_of_birth(self):
             return date(1990, 1, 1)
 
-        def phone_number(self):
+        def phone_number(self) -> str:
             return "555-555-5555"
 
 
@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 # Add imports for managing lifespan explicitly
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import NoReturn
 
 from app.application.services.patient_service import PatientService
 from app.core.config.settings import Settings as AppSettings  # Use alias
@@ -77,7 +78,7 @@ async def lifespan_wrapper(app: FastAPI) -> AsyncGenerator[None, None]:
     """Runs the app's lifespan startup and shutdown."""
     # Use the actual lifespan context manager if defined, otherwise fallback
     if app.router.lifespan_context:
-        async with app.router.lifespan_context(app) as maybe_state:
+        async with app.router.lifespan_context(app):
             # If the lifespan yields state, it needs handling (FastAPI >= 0.107)
             # For older versions or lifespans not yielding state, this is simpler.
             # Assuming the current lifespan doesn't yield state for now.
@@ -135,7 +136,7 @@ async def client(
                 role_value = role.value if hasattr(role, "value") else str(role)
                 roles.append(role_value)
 
-            token_data = {
+            {
                 "sub": str(authenticated_user.id),
                 "roles": roles,
                 "username": authenticated_user.username,
@@ -260,7 +261,7 @@ async def test_read_patient_not_found(
     patient_id = str(uuid.uuid4())  # Use a valid UUID format
 
     # Mock the dependency to raise NotFound
-    async def mock_dependency_not_found():
+    async def mock_dependency_not_found() -> NoReturn:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Patient with id {patient_id} not found",
@@ -294,7 +295,7 @@ async def test_create_patient_success(
 
     # Define stubs and overrides
     async def stub_create_patient(
-        patient_data: PatientCreateRequest, created_by_id: uuid.UUID = None
+        patient_data: PatientCreateRequest, created_by_id: uuid.UUID | None = None
     ) -> PatientCreateResponse:
         # Simulate service creating the patient
         user_id = (
@@ -313,7 +314,7 @@ async def test_create_patient_success(
 
     class StubPatientService:
         async def create_patient(
-            self, patient_data: PatientCreateRequest, created_by_id: uuid.UUID = None
+            self, patient_data: PatientCreateRequest, created_by_id: uuid.UUID | None = None
         ) -> PatientCreateResponse:
             return await stub_create_patient(patient_data, created_by_id)
 
@@ -465,7 +466,7 @@ async def test_read_patient_unauthorized(client: tuple[FastAPI, AsyncClient]) ->
 
     # Mock the patient repository to return a 401 error for unauthorized access
     # instead of trying to access the database
-    async def mock_get_patient_id():
+    async def mock_get_patient_id() -> NoReturn:
         # Simulate unauthorized access error
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 

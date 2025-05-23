@@ -313,7 +313,7 @@ class SymptomForecastingEnsemble(BaseModel):
 
                 # Determine risk level based on forecast and uncertainty
                 risk_levels = []
-                for i, (forecast, lower, upper) in enumerate(
+                for _i, (forecast, lower, upper) in enumerate(
                     zip(ensemble_forecast, lower_bound, upper_bound, strict=False)
                 ):
                     # High risk if forecast is high or uncertainty is high
@@ -402,7 +402,7 @@ class SymptomForecastingEnsemble(BaseModel):
 
             # Also evaluate individual models
             metrics["models"] = {}
-            for model_name, model in self.models.items():
+            for model_name, _model in self.models.items():
                 model_predictions = predictions["models"][model_name]
 
                 model_all_true = []

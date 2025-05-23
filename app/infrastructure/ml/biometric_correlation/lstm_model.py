@@ -24,10 +24,10 @@ except ImportError:
             def predict(self, *args, **kwargs):
                 return np.random.rand(1, 5)
 
-            def add(self, *args, **kwargs):
+            def add(self, *args, **kwargs) -> None:
                 pass
 
-            def compile(self, *args, **kwargs):
+            def compile(self, *args, **kwargs) -> None:
                 pass
 
         return MockModel()
@@ -54,10 +54,10 @@ except ImportError:
         def __init__(self):
             self.layers = []
 
-        def add(self, layer):
+        def add(self, layer) -> None:
             self.layers.append(layer)
 
-        def compile(self, loss=None, optimizer=None, metrics=None):
+        def compile(self, loss=None, optimizer=None, metrics=None) -> None:
             self.loss = loss
             self.optimizer = optimizer
             self.metrics = metrics

@@ -170,7 +170,7 @@ def audit_phi_access(
                 if hasattr(args[0], "id"):
                     resource_id = args[0].id
                 # Otherwise assume the first arg itself is the ID (most common case)
-                elif not isinstance(args[0], (dict, list, tuple, set)):
+                elif not isinstance(args[0], dict | list | tuple | set):
                     resource_id = args[0]
 
             if not user_id:
@@ -292,7 +292,7 @@ def audit_async_phi_access(
                 if hasattr(args[0], "id"):
                     resource_id = args[0].id
                 # Otherwise assume the first arg itself is the ID (most common case)
-                elif not isinstance(args[0], (dict, list, tuple, set)):
+                elif not isinstance(args[0], dict | list | tuple | set):
                     resource_id = args[0]
 
             if not user_id:

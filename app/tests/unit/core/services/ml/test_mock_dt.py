@@ -45,7 +45,7 @@ class TestMockDigitalTwinService:
         """Create a sample patient ID for testing."""
         return f"test-patient-{uuid.uuid4()}"
 
-    def test_initialization(self):
+    def test_initialization(self) -> None:
         """Test initialization with valid and invalid configurations."""
         # Test default initialization
         service = MockDigitalTwinService()
@@ -67,7 +67,7 @@ class TestMockDigitalTwinService:
         with pytest.raises(InvalidConfigurationError):
             service.initialize("not-a-dict")
 
-    def test_create_session(self, mock_service, sample_patient_id):
+    def test_create_session(self, mock_service, sample_patient_id) -> None:
         """Test creating a new Digital Twin session."""
         # Test with minimal parameters
         result = mock_service.create_session(sample_patient_id)
@@ -89,7 +89,7 @@ class TestMockDigitalTwinService:
         with pytest.raises(ServiceUnavailableError):
             uninitialized_service.create_session(sample_patient_id)
 
-    def test_get_session(self, mock_service, sample_patient_id):
+    def test_get_session(self, mock_service, sample_patient_id) -> None:
         """Test retrieving a Digital Twin session."""
         # Create a session first
         create_result = mock_service.create_session(sample_patient_id)
@@ -115,7 +115,7 @@ class TestMockDigitalTwinService:
         with pytest.raises(ServiceUnavailableError):
             uninitialized_service.get_session(session_id)
 
-    def test_send_message(self, mock_service, sample_patient_id):
+    def test_send_message(self, mock_service, sample_patient_id) -> None:
         """Test sending messages to a Digital Twin session."""
         # Create a session first
         create_result = mock_service.create_session(sample_patient_id)
@@ -157,7 +157,7 @@ class TestMockDigitalTwinService:
         with pytest.raises(ServiceUnavailableError):
             uninitialized_service.send_message(session_id, "Test message")
 
-    def test_message_response_types(self, mock_service, sample_patient_id):
+    def test_message_response_types(self, mock_service, sample_patient_id) -> None:
         """Test different types of message responses."""
         # Create a session
         create_result = mock_service.create_session(sample_patient_id)
@@ -202,7 +202,7 @@ class TestMockDigitalTwinService:
             result = mock_service.send_message(session_id, f"My {therapy_term}")
             assert "therapy" in result["response"].lower()
 
-    def test_end_session(self, mock_service, sample_patient_id):
+    def test_end_session(self, mock_service, sample_patient_id) -> None:
         """Test ending a Digital Twin session."""
         # Create a session first
         create_result = mock_service.create_session(sample_patient_id)
@@ -229,7 +229,7 @@ class TestMockDigitalTwinService:
         with pytest.raises(ServiceUnavailableError):
             uninitialized_service.end_session(session_id)
 
-    def test_get_insights(self, mock_service, sample_patient_id):
+    def test_get_insights(self, mock_service, sample_patient_id) -> None:
         """Test getting Digital Twin insights."""
         # Test with default parameters
         result = mock_service.get_insights(sample_patient_id)
@@ -268,7 +268,7 @@ class TestMockDigitalTwinService:
         with pytest.raises(ServiceUnavailableError):
             uninitialized_service.get_insights(sample_patient_id)
 
-    def test_mood_insights(self, mock_service, sample_patient_id):
+    def test_mood_insights(self, mock_service, sample_patient_id) -> None:
         """Test mood insights specifically."""
         result = mock_service.get_insights(sample_patient_id, insight_type="mood")
         assert result["insights"]["type"] == "mood"
@@ -281,7 +281,7 @@ class TestMockDigitalTwinService:
         assert "observations" in mood_data
         assert len(mood_data["daily_values"]) > 0
 
-    def test_activity_insights(self, mock_service, sample_patient_id):
+    def test_activity_insights(self, mock_service, sample_patient_id) -> None:
         """Test activity insights specifically."""
         result = mock_service.get_insights(sample_patient_id, insight_type="activity")
         assert result["insights"]["type"] == "activity"
@@ -294,7 +294,7 @@ class TestMockDigitalTwinService:
         assert "observations" in activity_data
         assert len(activity_data["daily_values"]) > 0
 
-    def test_sleep_insights(self, mock_service, sample_patient_id):
+    def test_sleep_insights(self, mock_service, sample_patient_id) -> None:
         """Test sleep insights specifically."""
         result = mock_service.get_insights(sample_patient_id, insight_type="sleep")
         assert result["insights"]["type"] == "sleep"
@@ -308,7 +308,7 @@ class TestMockDigitalTwinService:
         assert "observations" in sleep_data
         assert len(sleep_data["daily_values"]) > 0
 
-    def test_medication_insights(self, mock_service, sample_patient_id):
+    def test_medication_insights(self, mock_service, sample_patient_id) -> None:
         """Test medication insights specifically."""
         result = mock_service.get_insights(sample_patient_id, insight_type="medication")
         assert result["insights"]["type"] == "medication"
@@ -322,7 +322,7 @@ class TestMockDigitalTwinService:
         assert "observations" in med_data
         assert len(med_data["daily_values"]) > 0
 
-    def test_treatment_insights(self, mock_service, sample_patient_id):
+    def test_treatment_insights(self, mock_service, sample_patient_id) -> None:
         """Test treatment insights specifically."""
         result = mock_service.get_insights(sample_patient_id, insight_type="treatment")
         assert result["insights"]["type"] == "treatment"

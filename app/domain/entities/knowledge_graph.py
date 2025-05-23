@@ -199,12 +199,12 @@ class TemporalKnowledgeGraph:
         subgraph = TemporalKnowledgeGraph(patient_id=self.patient_id)
 
         # Add nodes within the time range
-        for node_id, node in self.nodes.items():
+        for _node_id, node in self.nodes.items():
             if start_time <= node.created_at <= end_time:
                 subgraph.add_node(node)
 
         # Add edges within the time range
-        for edge_id, edge in self.edges.items():
+        for _edge_id, edge in self.edges.items():
             if start_time <= edge.created_at <= end_time:
                 # Only add the edge if both connected nodes exist in the subgraph
                 if edge.source_id in subgraph.nodes and edge.target_id in subgraph.nodes:
@@ -286,7 +286,7 @@ class TemporalKnowledgeGraph:
         current_chain: list[KnowledgeGraphEdge],
         chains: list[list[KnowledgeGraphEdge]],
         adjacency: dict[UUID, list[KnowledgeGraphEdge]],
-    ):
+    ) -> None:
         """Depth-first search to find chains of edges."""
         current_chain.append(current_edge)
 
@@ -441,7 +441,7 @@ class BayesianBeliefNetwork:
         visited = set()
         temp = set()
 
-        def visit(node):
+        def visit(node) -> None:
             if node in temp:
                 raise ValueError("Cycle detected in Bayesian network")
             if node in visited:

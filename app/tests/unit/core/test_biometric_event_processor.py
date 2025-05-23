@@ -108,7 +108,7 @@ class TestAlertRule:
     """
 
     @pytest.mark.standalone()
-    def test_init_valid(self, sample_clinician_id):
+    def test_init_valid(self, sample_clinician_id) -> None:
         """
         Test initializing an AlertRule with valid parameters.
         """
@@ -131,7 +131,7 @@ class TestAlertRule:
         assert rule.created_by == sample_clinician_id
 
     @pytest.mark.standalone()
-    def test_init_invalid_condition(self, sample_clinician_id):
+    def test_init_invalid_condition(self, sample_clinician_id) -> None:
         """
         Test initializing an AlertRule with an invalid condition.
         """
@@ -154,7 +154,7 @@ class TestAlertRule:
             )
 
     @pytest.mark.standalone()
-    def test_evaluate_true(self, sample_data_point, sample_rule):
+    def test_evaluate_true(self, sample_data_point, sample_rule) -> None:
         """
         Test evaluating a rule that should return True.
         """
@@ -163,7 +163,7 @@ class TestAlertRule:
         assert result is True
 
     @pytest.mark.standalone()
-    def test_evaluate_false(self, sample_data_point, sample_rule):
+    def test_evaluate_false(self, sample_data_point, sample_rule) -> None:
         """
         Test evaluating a rule that should return False.
         """
@@ -173,7 +173,7 @@ class TestAlertRule:
         assert result is False
 
     @pytest.mark.standalone()
-    def test_evaluate_different_data_type(self, sample_data_point, sample_rule):
+    def test_evaluate_different_data_type(self, sample_data_point, sample_rule) -> None:
         """
         Test evaluating a rule with a different data type.
         """
@@ -189,7 +189,7 @@ class TestBiometricEventProcessor:
     """
 
     @pytest.mark.standalone()
-    def test_register_rule(self, processor, sample_rule):
+    def test_register_rule(self, processor, sample_rule) -> None:
         """
         Test registering a rule with the processor.
         """
@@ -198,7 +198,7 @@ class TestBiometricEventProcessor:
         assert processor.rules[sample_rule.rule_id] == sample_rule
 
     @pytest.mark.standalone()
-    def test_register_observer(self, processor):
+    def test_register_observer(self, processor) -> None:
         """
         Test registering an observer with the processor.
         """
@@ -210,7 +210,7 @@ class TestBiometricEventProcessor:
         assert observer in processor.observers[AlertPriority.INFORMATIONAL]
 
     @pytest.mark.standalone()
-    def test_process_data_point_no_alert(self, processor, sample_data_point, sample_rule):
+    def test_process_data_point_no_alert(self, processor, sample_data_point, sample_rule) -> None:
         """
         Test processing a data point that doesn't trigger an alert.
         """
@@ -231,7 +231,7 @@ class TestBiometricEventProcessor:
     @pytest.mark.standalone()
     def test_process_data_point_with_alert(
         self, processor, sample_data_point, sample_rule, mock_observer
-    ):
+    ) -> None:
         """
         Test processing a data point that triggers an alert.
         """
@@ -258,7 +258,7 @@ class TestAlertObservers:
     """
 
     @pytest.mark.standalone()
-    def test_in_app_observer(self, sample_data_point, sample_rule):
+    def test_in_app_observer(self, sample_data_point, sample_rule) -> None:
         """
         Test the InAppAlertObserver.
         """
@@ -280,7 +280,7 @@ class TestAlertObservers:
         mock_notification_service.send_notification.assert_called_once()
 
     @pytest.mark.standalone()
-    def test_email_observer(self, sample_data_point, sample_rule):
+    def test_email_observer(self, sample_data_point, sample_rule) -> None:
         """
         Test the EmailAlertObserver.
         """
@@ -324,7 +324,7 @@ class TestAlertObservers:
         assert mock_email_service.send_email.call_count == 2
 
     @pytest.mark.standalone()
-    def test_sms_observer(self, sample_data_point, sample_rule):
+    def test_sms_observer(self, sample_data_point, sample_rule) -> None:
         """
         Test the SMSAlertObserver.
         """
@@ -355,7 +355,7 @@ class TestClinicalRuleEngine:
     """
 
     @pytest.mark.standalone()
-    def test_register_rule_template(self):
+    def test_register_rule_template(self) -> None:
         """
         Test registering a rule template.
         """
@@ -378,7 +378,7 @@ class TestClinicalRuleEngine:
         assert engine.rule_templates[template_id] == template
 
     @pytest.mark.standalone()
-    def test_create_rule_from_template(self, sample_clinician_id):
+    def test_create_rule_from_template(self, sample_clinician_id) -> None:
         """
         Test creating a rule from a template.
         """
@@ -418,7 +418,7 @@ class TestClinicalRuleEngine:
         assert rule.created_by == sample_clinician_id
 
     @pytest.mark.standalone()
-    def test_create_rule_from_nonexistent_template(self, sample_clinician_id):
+    def test_create_rule_from_nonexistent_template(self, sample_clinician_id) -> None:
         """
         Test creating a rule from a nonexistent template.
         """

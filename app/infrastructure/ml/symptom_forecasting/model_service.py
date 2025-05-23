@@ -237,7 +237,7 @@ class SymptomForecastingService:
                 raise Exception("Insufficient baseline data for treatment impact evaluation")
 
             # Reshape for model input
-            baseline_input = baseline_preprocessed.reshape(1, *baseline_preprocessed.shape)
+            baseline_preprocessed.reshape(1, *baseline_preprocessed.shape)
 
             # Generate baseline forecast
             baseline_forecast = await self.forecast_symptoms(
@@ -250,7 +250,7 @@ class SymptomForecastingService:
             for treatment in treatment_options:
                 # Apply treatment effect to baseline data
                 # This is a simplified approach - in practice, we would use a more sophisticated method
-                treatment_data = baseline_data.copy()
+                baseline_data.copy()
 
                 # Modify the time series based on treatment effect
                 treatment_effect = treatment.get("expected_effect", {})

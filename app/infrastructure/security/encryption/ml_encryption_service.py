@@ -356,7 +356,7 @@ class MLEncryptionService(BaseEncryptionService):
                     # For nested dictionaries, encrypt all values
                     result[key] = {
                         k: self.encrypt_string(v)
-                        if isinstance(v, (str, int, float))
+                        if isinstance(v, str | int | float)
                         else self.encrypt_string(json.dumps(v))
                         for k, v in value.items()
                     }
@@ -473,7 +473,7 @@ class MLEncryptionService(BaseEncryptionService):
                             elif key == "embeddings":
                                 # Convert to numpy array if it's a list of numbers
                                 if isinstance(parsed, list) and all(
-                                    isinstance(x, (int, float)) for x in parsed
+                                    isinstance(x, int | float) for x in parsed
                                 ):
                                     result[key] = np.array(parsed)
                                 else:
@@ -766,7 +766,7 @@ class MLEncryptionService(BaseEncryptionService):
                 embeddings_list = embeddings
 
             # Validate the embeddings are valid data types for serialization
-            if not isinstance(embeddings_list, (list, tuple)):
+            if not isinstance(embeddings_list, list | tuple):
                 raise ValueError(
                     f"Cannot serialize embeddings of type {type(embeddings_list).__name__}"
                 )
@@ -954,7 +954,7 @@ class MLEncryptionService(BaseEncryptionService):
             tensor_list = tensor.tolist() if isinstance(tensor, np.ndarray) else tensor
 
             # Validate the tensor is a valid data type for serialization
-            if not isinstance(tensor_list, (list, tuple, dict)):
+            if not isinstance(tensor_list, list | tuple | dict):
                 raise ValueError(f"Cannot serialize tensor of type {type(tensor_list).__name__}")
 
             # Encrypt the serialized tensor

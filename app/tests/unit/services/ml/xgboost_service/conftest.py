@@ -35,7 +35,7 @@ from app.tests.unit.services.ml.xgboost_service.mocks import (
 
 
 @pytest.fixture
-def sample_patient_id():
+def sample_patient_id() -> str:
     """Sample patient ID for testing."""
     return "patient-456"
 

@@ -65,7 +65,7 @@ class TestJWTService:
     user_roles = ["patient"]
 
     @pytest.mark.asyncio
-    async def test_create_access_token_structure(self, jwt_service: JWTServiceImpl):
+    async def test_create_access_token_structure(self, jwt_service: JWTServiceImpl) -> None:
         """Test structure and basic claims of a created access token."""
         user_data = {"sub": self.user_subject, "roles": self.user_roles}
         token = jwt_service.create_access_token(data=user_data)
@@ -78,7 +78,7 @@ class TestJWTService:
         assert payload.roles == self.user_roles
         assert isinstance(payload.exp, int)
         assert isinstance(payload.iat, int)
-        assert isinstance(payload.jti, (str, uuid.UUID))  # JTI can be UUID or str
+        assert isinstance(payload.jti, str | uuid.UUID)  # JTI can be UUID or str
 
         # Check if issuer/audience match settings
         assert payload.iss == jwt_service.issuer
@@ -93,7 +93,7 @@ class TestJWTService:
             ), f"Unexpected PHI field '{field}' found in token payload: {payload_dict}"
 
     @pytest.mark.asyncio
-    async def test_create_access_token_expiration(self, jwt_service: JWTServiceImpl):
+    async def test_create_access_token_expiration(self, jwt_service: JWTServiceImpl) -> None:
         """Test that access tokens have correct expiration times based on settings."""
         user_data = {"sub": self.user_subject, "roles": self.user_roles}
         token = jwt_service.create_access_token(data=user_data)
@@ -110,7 +110,7 @@ class TestJWTService:
         ), f"Token lifetime ({actual_lifetime_seconds}s) differs significantly from expected ({expected_lifetime_seconds}s)"
 
     @pytest.mark.asyncio
-    async def test_decode_token_valid(self, jwt_service: JWTServiceImpl):
+    async def test_decode_token_valid(self, jwt_service: JWTServiceImpl) -> None:
         """Test that valid tokens are properly decoded and validated."""
         user_data = {"sub": self.user_subject, "roles": self.user_roles}
         token = jwt_service.create_access_token(data=user_data)
@@ -123,7 +123,7 @@ class TestJWTService:
         assert payload.type == TokenType.ACCESS
 
     @pytest.mark.asyncio
-    async def test_decode_token_expired(self, jwt_service: JWTServiceImpl):
+    async def test_decode_token_expired(self, jwt_service: JWTServiceImpl) -> None:
         """Test that expired tokens raise TokenExpiredException during decoding."""
         user_data = {"sub": self.user_subject, "roles": self.user_roles}
         # Create token that expired 1 minute ago
@@ -135,7 +135,7 @@ class TestJWTService:
             jwt_service.decode_token(expired_token)
 
     @pytest.mark.asyncio
-    async def test_decode_token_invalid_signature(self, jwt_service: JWTServiceImpl):
+    async def test_decode_token_invalid_signature(self, jwt_service: JWTServiceImpl) -> None:
         """Test that tokens with invalid signatures raise InvalidTokenException."""
         user_data = {"sub": self.user_subject, "roles": self.user_roles}
         token = jwt_service.create_access_token(data=user_data)
@@ -152,7 +152,7 @@ class TestJWTService:
         assert "Signature verification failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_decode_token_invalid_format(self, jwt_service: JWTServiceImpl):
+    async def test_decode_token_invalid_format(self, jwt_service: JWTServiceImpl) -> None:
         """Test that tokens with invalid format raise InvalidTokenException."""
         # Create a truly unparseable token - binary data will cause UTF-8 decode issues
         invalid_token = bytes([0x9E, 0x8F]) + b"invalid"

@@ -7,6 +7,7 @@ appropriate responses.
 """
 
 from datetime import datetime
+from typing import NoReturn
 from unittest.mock import MagicMock
 
 import pytest
@@ -45,7 +46,7 @@ class MockXGBoostService:
         self.simulate_digital_twin = MagicMock()
         self.get_model_info = MagicMock()
 
-    def setup_success_responses(self):
+    def setup_success_responses(self) -> None:
         """Set up mock responses for successful API calls."""
         # Risk prediction response
         self.predict_risk.return_value = {
@@ -175,11 +176,11 @@ class MockXGBoostService:
             "last_updated": datetime.now().isoformat(),
         }
 
-    def setup_error_responses(self):
+    def setup_error_responses(self) -> None:
         """Set up mock responses for error cases."""
 
         # Configuration and ModelNotFound errors based on risk_type
-        def risk_side_effect(patient_id, risk_type, clinical_data, time_frame_days):
+        def risk_side_effect(patient_id, risk_type, clinical_data, time_frame_days) -> NoReturn:
             if risk_type == "nonexistent":
                 raise ModelNotFoundError(f"Model type '{risk_type}' not found")
             # Default to configuration error for other risk types
@@ -252,7 +253,7 @@ import pytest
 class TestXGBoostEndpoints:
     """Test suite for XGBoost API endpoints."""
 
-    def test_risk_prediction(self, client, mock_dependencies):
+    def test_risk_prediction(self, client, mock_dependencies) -> None:
         """Test risk prediction endpoint."""
         # Prepare request data
         request_data = {
@@ -280,7 +281,7 @@ class TestXGBoostEndpoints:
         assert "timestamp" in data
         assert "model_version" in data
 
-    def test_treatment_response_prediction(self, client, mock_dependencies):
+    def test_treatment_response_prediction(self, client, mock_dependencies) -> None:
         """Test treatment response prediction endpoint."""
         # Prepare request data
         request_data = {
@@ -315,7 +316,7 @@ class TestXGBoostEndpoints:
         assert "timestamp" in data
         assert "model_version" in data
 
-    def test_outcome_prediction(self, client, mock_dependencies):
+    def test_outcome_prediction(self, client, mock_dependencies) -> None:
         """Test outcome prediction endpoint."""
         # Prepare request data
         request_data = {
@@ -351,7 +352,7 @@ class TestXGBoostEndpoints:
         assert "timestamp" in data
         assert "model_version" in data
 
-    def test_feature_importance(self, client, mock_dependencies):
+    def test_feature_importance(self, client, mock_dependencies) -> None:
         """Test feature importance endpoint."""
         # Make the request
         response = client.get("/api/v1/ml/xgboost/feature-importance/risk")
@@ -367,7 +368,7 @@ class TestXGBoostEndpoints:
         assert "importance" in data["features"][0]
         assert "timestamp" in data
 
-    def test_digital_twin_simulation(self, client, mock_dependencies):
+    def test_digital_twin_simulation(self, client, mock_dependencies) -> None:
         """Test digital twin simulation endpoint."""
         # Prepare request data
         request_data = {
@@ -406,7 +407,7 @@ class TestXGBoostEndpoints:
         assert "timestamp" in data
         assert "model_version" in data
 
-    def test_model_info(self, client, mock_dependencies):
+    def test_model_info(self, client, mock_dependencies) -> None:
         """Test model info endpoint."""
         # Make the request
         response = client.get("/api/v1/ml/xgboost/model-info/risk")
@@ -424,7 +425,7 @@ class TestXGBoostEndpoints:
         assert "accuracy" in data["performance"]
         assert "last_updated" in data
 
-    def test_configuration_error(self, client, mock_error_dependencies):
+    def test_configuration_error(self, client, mock_error_dependencies) -> None:
         """Test handling of ConfigurationError."""
         # Prepare request data
         request_data = {
@@ -442,7 +443,7 @@ class TestXGBoostEndpoints:
         assert "detail" in data
         assert "configuration" in data["detail"].lower()
 
-    def test_model_not_found_error(self, client, mock_error_dependencies):
+    def test_model_not_found_error(self, client, mock_error_dependencies) -> None:
         """Test handling of ModelNotFoundError."""
         # Prepare request data
         request_data = {
@@ -460,7 +461,7 @@ class TestXGBoostEndpoints:
         assert "detail" in data
         assert any("nonexistent" in str(item) for item in data["detail"])
 
-    def test_prediction_error(self, client, mock_error_dependencies):
+    def test_prediction_error(self, client, mock_error_dependencies) -> None:
         """Test handling of PredictionError."""
         # Prepare request data
         request_data = {
@@ -479,7 +480,7 @@ class TestXGBoostEndpoints:
         assert "detail" in data
         assert any("ssri" in str(item) for item in data["detail"])
 
-    def test_service_connection_error(self, client, mock_error_dependencies):
+    def test_service_connection_error(self, client, mock_error_dependencies) -> None:
         """Test handling of ServiceConnectionError."""
         # Prepare request data
         request_data = {
@@ -498,7 +499,7 @@ class TestXGBoostEndpoints:
         assert "detail" in data
         assert "Failed to connect to prediction service" in data["detail"]
 
-    def test_validation_error(self, client):
+    def test_validation_error(self, client) -> None:
         """Test handling of validation errors with missing required fields."""
         # Prepare request data with missing required fields
         request_data = {

@@ -49,7 +49,7 @@ class ClinicalRuleEngine:
         logical_operator: str = "AND",
         alert_priority: str | AlertPriority | BiometricAlertPriority = "WARNING",
         patient_id: UUID | None = None,
-        provider_id: UUID = None,
+        provider_id: UUID | None = None,
         metadata: dict[str, Any] | None = None,
         data_type: str | None = None,  # Legacy parameter for test compatibility
         is_active: bool = True,  # Allow setting active status during creation
@@ -100,7 +100,7 @@ class ClinicalRuleEngine:
         priority = None
 
         # Handle different alert priority types
-        if isinstance(alert_priority, (AlertPriority, BiometricAlertPriority)):
+        if isinstance(alert_priority, AlertPriority | BiometricAlertPriority):
             # Direct enum value - map between the two enum types if needed
             if isinstance(alert_priority, AlertPriority):
                 # Map from biometric_event_processor.AlertPriority to biometric_rule.AlertPriority

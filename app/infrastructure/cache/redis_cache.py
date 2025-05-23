@@ -41,7 +41,7 @@ except ModuleNotFoundError:  # pragma: no cover – executed only in test env
         async def get(self, key: str):
             return self._store.get(key)
 
-        async def set(self, key: str, value: Any, ex: int | None = None):
+        async def set(self, key: str, value: Any, ex: int | None = None) -> None:
             self._store[key] = value
             if ex is not None:
                 # Implement TTL via naive time check stored alongside value
@@ -50,14 +50,14 @@ except ModuleNotFoundError:  # pragma: no cover – executed only in test env
                 # if desired.
                 self._store[f"__ttl__:{key}"] = asyncio.get_event_loop().time() + ex
 
-        async def exists(self, key: str):
+        async def exists(self, key: str) -> int:
             return 1 if key in self._store else 0
 
         async def incr(self, key: str) -> int:
             self._store[key] = int(self._store.get(key, 0)) + 1
             return int(self._store[key])
 
-        async def expire(self, key: str, ttl: int):
+        async def expire(self, key: str, ttl: int) -> None:
             # Record TTL as for set(ex=...)
             self._store[f"__ttl__:{key}"] = asyncio.get_event_loop().time() + ttl
 
@@ -221,7 +221,7 @@ class RedisCache(CacheService):
             return False
 
         try:
-            result = await self.redis_client.delete(key)
+            await self.redis_client.delete(key)
             return True  # Always return True on success per test expectations
         except Exception as e:
             logger.error(f"Error deleting key {key} from cache: {e}")

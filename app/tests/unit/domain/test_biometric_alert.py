@@ -68,7 +68,7 @@ class TestBiometricAlert:
 
     def test_biometric_alert_creation(
         self, sample_patient_id, sample_alert_id, sample_rule_id, sample_data_points
-    ):
+    ) -> None:
         """Test that a BiometricAlert can be properly created."""
         # Arrange
         now = datetime.now(timezone.utc)
@@ -99,7 +99,7 @@ class TestBiometricAlert:
         assert alert.updated_at == now
         assert alert.status == AlertStatus.NEW
 
-    def test_biometric_alert_acknowledged(self, sample_biometric_alert):
+    def test_biometric_alert_acknowledged(self, sample_biometric_alert) -> None:
         """Test that a BiometricAlert can be acknowledged."""
         # Arrange
         provider_id = str(uuid4())
@@ -113,7 +113,7 @@ class TestBiometricAlert:
         assert sample_biometric_alert.acknowledged_by == provider_id
         assert sample_biometric_alert.acknowledged_at == ack_time
 
-    def test_biometric_alert_resolved(self, sample_biometric_alert):
+    def test_biometric_alert_resolved(self, sample_biometric_alert) -> None:
         """Test that a BiometricAlert can be resolved."""
         # Arrange
         provider_id = str(uuid4())

@@ -36,14 +36,14 @@ def setup_test_event_loop():
 
 
 @pytest.fixture(scope="function")
-def cleanup_test_loop(request):
+def cleanup_test_loop(request) -> None:
     """Clean up the event loop after a test.
 
     This is a finalizer fixture that ensures the event loop is properly
     cleaned up, even if the test fails.
     """
 
-    def fin():
+    def fin() -> None:
         loop = asyncio.get_event_loop()
         cleanup_event_loop(loop)
 

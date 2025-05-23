@@ -37,7 +37,7 @@ def digital_twin(patient_id: UUID) -> DigitalTwin:
 class TestDigitalTwin:
     """Tests for the DigitalTwin entity."""
 
-    def test_init_default_values(self, patient_id: UUID):
+    def test_init_default_values(self, patient_id: UUID) -> None:
         """Test that default values are correctly initialized."""
         twin = DigitalTwin(patient_id=patient_id)
 
@@ -70,7 +70,7 @@ class TestDigitalTwin:
         assert twin.state.current_treatment_effectiveness is None
         assert twin.state.predicted_phq9_trajectory is None
 
-    def test_init_custom_values(self, patient_id: UUID):
+    def test_init_custom_values(self, patient_id: UUID) -> None:
         """Test initialization with custom configuration and state."""
         custom_id = uuid4()
         created_time = datetime.now(timezone.utc) - timedelta(days=1)
@@ -103,9 +103,8 @@ class TestDigitalTwin:
         assert twin.last_updated == created_time
         assert twin.version == 5
 
-    def test_update_state(self, digital_twin: DigitalTwin):
+    def test_update_state(self, digital_twin: DigitalTwin) -> None:
         """Test updating the digital twin state."""
-        original_state = digital_twin.state
         original_updated_at = digital_twin.last_updated
         original_version = digital_twin.version
         time.sleep(0.01)  # Ensure time difference
@@ -133,9 +132,8 @@ class TestDigitalTwin:
         assert digital_twin.last_updated > original_updated_at  # Entity updated time
         assert digital_twin.version == original_version + 1  # Version incremented
 
-    def test_update_state_partial(self, digital_twin: DigitalTwin):
+    def test_update_state_partial(self, digital_twin: DigitalTwin) -> None:
         """Test partially updating the digital twin state."""
-        original_risk = digital_twin.state.overall_risk_level  # Should be None initially
         original_updated_at = digital_twin.last_updated
         original_version = digital_twin.version
         time.sleep(0.01)
@@ -150,7 +148,7 @@ class TestDigitalTwin:
         assert digital_twin.last_updated > original_updated_at
         assert digital_twin.version == original_version + 1
 
-    def test_update_state_invalid_key(self, digital_twin: DigitalTwin):
+    def test_update_state_invalid_key(self, digital_twin: DigitalTwin) -> None:
         """Test updating state with an invalid key does not change state."""
         original_state_dict = digital_twin.state.__dict__.copy()
         original_updated_at = digital_twin.last_updated
@@ -171,7 +169,7 @@ class TestDigitalTwin:
         assert digital_twin.last_updated > original_updated_at
         assert digital_twin.version == original_version + 1
 
-    def test_update_configuration(self, digital_twin: DigitalTwin):
+    def test_update_configuration(self, digital_twin: DigitalTwin) -> None:
         """Test updating the digital twin configuration."""
         original_config = digital_twin.configuration
         original_updated_at = digital_twin.last_updated
@@ -199,7 +197,7 @@ class TestDigitalTwin:
         assert digital_twin.last_updated > original_updated_at
         assert digital_twin.version == original_version + 1
 
-    def test_update_configuration_partial(self, digital_twin: DigitalTwin):
+    def test_update_configuration_partial(self, digital_twin: DigitalTwin) -> None:
         """Test partially updating the digital twin configuration."""
         original_granularity = digital_twin.configuration.simulation_granularity_hours
         original_updated_at = digital_twin.last_updated
@@ -218,7 +216,7 @@ class TestDigitalTwin:
         assert digital_twin.last_updated > original_updated_at
         assert digital_twin.version == original_version + 1
 
-    def test_update_configuration_invalid_key(self, digital_twin: DigitalTwin):
+    def test_update_configuration_invalid_key(self, digital_twin: DigitalTwin) -> None:
         """Test updating configuration with an invalid key."""
         original_config_dict = digital_twin.configuration.__dict__.copy()
         original_updated_at = digital_twin.last_updated
@@ -242,7 +240,7 @@ class TestDigitalTwin:
         assert digital_twin.last_updated > original_updated_at
         assert digital_twin.version == original_version + 1
 
-    def test_touch_method(self, digital_twin: DigitalTwin):
+    def test_touch_method(self, digital_twin: DigitalTwin) -> None:
         """Test the touch method updates timestamp and version."""
         original_updated_at = digital_twin.last_updated
         original_version = digital_twin.version

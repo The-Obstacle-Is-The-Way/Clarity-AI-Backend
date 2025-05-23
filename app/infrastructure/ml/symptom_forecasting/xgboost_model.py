@@ -29,15 +29,15 @@ class MockTPESampler:
 
 
 class MockTrial:
-    def suggest_float(self, *args, **kwargs):
+    def suggest_float(self, *args, **kwargs) -> float:
         return 0.1
 
-    def suggest_int(self, *args, **kwargs):
+    def suggest_int(self, *args, **kwargs) -> int:
         return 3
 
 
 class MockStudy:
-    def optimize(self, *args, **kwargs):
+    def optimize(self, *args, **kwargs) -> None:
         pass
 
 

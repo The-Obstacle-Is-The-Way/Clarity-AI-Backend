@@ -130,7 +130,7 @@ class _InMemorySageMakerRuntimeClient:
     def invoke_endpoint(self, *, EndpointName, ContentType, Body, **_kw):
         # Derive a predictable but *fake* response so that downstream parsing
         # logic is covered by the tests.
-        parsed_in: dict[str, Any] = json.loads(Body)
+        json.loads(Body)
 
         response_payload = {
             "risk_score": 0.42,

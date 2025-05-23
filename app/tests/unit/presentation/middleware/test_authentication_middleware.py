@@ -284,7 +284,7 @@ class TestAuthenticationMiddleware:
         auth_middleware_fixture,
         authenticated_request_fixture,
         mock_get_user_by_id_side_effect_fixture,
-    ):  # Use new fixture
+    ) -> None:  # Use new fixture
         """Test successful authentication with a valid token."""
 
         # Create a special side effect for this test to ensure active user
@@ -357,7 +357,7 @@ class TestAuthenticationMiddleware:
         # So we can't reliably check the call arguments here
 
     @pytest.mark.asyncio
-    async def test_missing_token(self, auth_middleware_fixture, unauthenticated_request_fixture):
+    async def test_missing_token(self, auth_middleware_fixture, unauthenticated_request_fixture) -> None:
         # Ensure app.state attributes are set for this request fixture too
         # For consistency, even if not strictly needed for this specific early exit path:
         mock_session_factory_on_state = MagicMock()
@@ -397,7 +397,7 @@ class TestAuthenticationMiddleware:
         expected_message_part,
         mock_jwt_service_fixture,
         mock_get_user_by_id_side_effect_fixture,
-    ):  # Added side_effect fixture
+    ) -> None:  # Added side_effect fixture
         # This test primarily checks JWT decoding errors, which happen before user repo is called.
         # So, mock_get_by_id might not be called if token decoding fails first.
         # However, to be safe and consistent, we can set its side effect.
@@ -438,7 +438,7 @@ class TestAuthenticationMiddleware:
         authenticated_request_fixture,
         mock_jwt_service_fixture,
         mock_get_user_by_id_side_effect_fixture,
-    ):  # Added side_effect fixture
+    ) -> None:  # Added side_effect fixture
         # Public path access skips most auth logic, so user repo shouldn't be called.
         mock_get_by_id.side_effect = (
             mock_get_user_by_id_side_effect_fixture  # Set it anyway for consistency
@@ -482,7 +482,7 @@ class TestAuthenticationMiddleware:
     @pytest.mark.asyncio
     async def test_inactive_user(
         self, auth_middleware_fixture, base_scope, mock_jwt_service_fixture
-    ):
+    ) -> None:
         """Test that users with inactive status are blocked correctly."""
         # Get the mock repository instance
         mock_user_repo_instance = auth_middleware_fixture.user_repository.return_value
@@ -544,7 +544,7 @@ class TestAuthenticationMiddleware:
     @pytest.mark.asyncio
     async def test_user_not_found(
         self, auth_middleware_fixture, base_scope, mock_jwt_service_fixture
-    ):
+    ) -> None:
         """Test the handling of a user ID that doesn't exist in the database."""
         # Get the mock repository instance
         mock_user_repo_instance = auth_middleware_fixture.user_repository.return_value
@@ -596,7 +596,7 @@ class TestAuthenticationMiddleware:
     @pytest.mark.asyncio
     async def test_unexpected_repository_error(
         self, auth_middleware_fixture, base_scope, mock_jwt_service_fixture
-    ):
+    ) -> None:
         """Test how middleware handles unexpected errors from the user repository."""
         # Get the mock repository instance
         mock_user_repo_instance = auth_middleware_fixture.user_repository.return_value
@@ -653,7 +653,7 @@ class TestAuthenticationMiddleware:
     @pytest.mark.asyncio
     async def test_authentication_scopes_propagation(
         self, auth_middleware_fixture, base_scope, mock_jwt_service_fixture
-    ):
+    ) -> None:
         """Test that scopes from JWT are correctly propagated to request.scope["auth"]."""
         # Get the mock repository instance
         mock_user_repo_instance = auth_middleware_fixture.user_repository.return_value

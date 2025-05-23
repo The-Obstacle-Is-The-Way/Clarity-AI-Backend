@@ -15,12 +15,12 @@ from app.domain.entities.patient import ContactInfo, Patient
 class TestPatientContactInfo(unittest.TestCase):
     """Pure implementation tests for Patient entity's contact_info behavior."""
 
-    def test_descriptor_class_access(self):
+    def test_descriptor_class_access(self) -> None:
         """Test class-level access returns the ContactInfo class."""
         # Class-level access returns the ContactInfo class
         self.assertEqual(Patient.contact_info, ContactInfo)
 
-    def test_dict_initialization(self):
+    def test_dict_initialization(self) -> None:
         """Test initialization with contact info provided directly."""
         # Create a patient passing email and phone directly
         patient = Patient(
@@ -36,7 +36,7 @@ class TestPatientContactInfo(unittest.TestCase):
         self.assertEqual(patient.email, "test@example.com")
         self.assertEqual(patient.phone, "555-123-4567")
 
-    def test_object_initialization(self):
+    def test_object_initialization(self) -> None:
         """Test initialization with contact info provided directly (simulating object)."""
         # Although ContactInfo object itself isn't accepted by __init__,
         # we test passing the equivalent direct fields
@@ -55,7 +55,7 @@ class TestPatientContactInfo(unittest.TestCase):
         self.assertEqual(patient.email, "object@example.com")
         self.assertEqual(patient.phone, "555-987-6543")
 
-    def test_field_updates(self):
+    def test_field_updates(self) -> None:
         """Test that email/phone fields can be updated directly."""
         patient = Patient(
             id=uuid4(),
@@ -78,7 +78,7 @@ class TestPatientContactInfo(unittest.TestCase):
         self.assertEqual(patient.email, "updated@example.com")
         self.assertEqual(patient.phone, "555-111-1111")
 
-    def test_empty_fields(self):
+    def test_empty_fields(self) -> None:
         """Test behavior with empty contact fields."""
         patient = Patient(
             id=uuid4(),

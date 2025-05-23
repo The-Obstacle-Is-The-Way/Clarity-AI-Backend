@@ -21,7 +21,7 @@ class MockTPESampler:
 class MockTrial:
     """Mock implementation of optuna's Trial object."""
 
-    def suggest_float(self, name, low, high, *args, **kwargs):
+    def suggest_float(self, name, low, high, *args, **kwargs) -> float:
         return 0.1
 
     def suggest_int(self, name, low, high, *args, **kwargs):
@@ -34,7 +34,7 @@ class MockStudy:
     def __init__(self):
         pass
 
-    def optimize(self, objective, n_trials=None, *args, **kwargs):
+    def optimize(self, objective, n_trials=None, *args, **kwargs) -> None:
         return None
 
 

@@ -69,7 +69,7 @@ def valid_provider(valid_provider_data):
 class TestProvider:
     """Tests for the Provider class."""
 
-    def test_create_provider(self, valid_provider_data):
+    def test_create_provider(self, valid_provider_data) -> None:
         provider = Provider(**valid_provider_data)
         assert provider.id == uuid.UUID(valid_provider_data["id"])
         assert provider.first_name == valid_provider_data["first_name"]
@@ -90,7 +90,7 @@ class TestProvider:
         assert provider.max_patients == valid_provider_data["max_patients"]
         assert provider.current_patient_count == valid_provider_data["current_patient_count"]
 
-    def test_create_provider_with_string_enums(self, valid_provider_data):
+    def test_create_provider_with_string_enums(self, valid_provider_data) -> None:
         data = valid_provider_data.copy()
         data["provider_type"] = ProviderType.PSYCHIATRIST.value
         data["status"] = ProviderStatus.ACTIVE.value
@@ -98,14 +98,14 @@ class TestProvider:
         assert provider.provider_type == ProviderType.PSYCHIATRIST
         assert provider.status == ProviderStatus.ACTIVE
 
-    def test_create_provider_with_auto_id(self, valid_provider_data):
+    def test_create_provider_with_auto_id(self, valid_provider_data) -> None:
         data = valid_provider_data.copy()
         data.pop("id", None)
         provider = Provider(**data)
         assert provider.id is not None
         assert isinstance(provider.id, uuid.UUID)
 
-    def test_validate_required_fields(self):
+    def test_validate_required_fields(self) -> None:
         # Missing first_name
         with pytest.raises(ValidationError):
             Provider(
@@ -139,7 +139,7 @@ class TestProvider:
                 license_number="MD12345",
             )
 
-    def test_validate_psychiatrist_license(self):
+    def test_validate_psychiatrist_license(self) -> None:
         # Missing license for psychiatrist
         with pytest.raises(ValidationError):
             Provider(
@@ -149,13 +149,13 @@ class TestProvider:
                 email="dr.smith@example.com",
             )
 
-    def test_validate_email_format(self, valid_provider_data):
+    def test_validate_email_format(self, valid_provider_data) -> None:
         data = valid_provider_data.copy()
         data["email"] = "invalid-email"
         with pytest.raises(ValidationError):
             Provider(**data)
 
-    def test_validate_phone_format(self, valid_provider_data):
+    def test_validate_phone_format(self, valid_provider_data) -> None:
         data = valid_provider_data.copy()
         data["email"] = None  # Remove email to force phone validation
         data["phone"] = "invalid@phone"

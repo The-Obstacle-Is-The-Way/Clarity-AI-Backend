@@ -45,7 +45,7 @@ async def get_appointment_repo() -> IAppointmentRepository:
     mock_repo = AsyncMock(spec=IAppointmentRepository)
 
     # Configure mock methods as needed for testing
-    async def mock_get(appt_id):
+    async def mock_get(appt_id) -> None:
         return None
 
     async def mock_list(**kwargs):
@@ -184,14 +184,6 @@ async def list_appointments(
     # Clinician can list their own or their patients' appointments
     # Admin/Scheduler can list any
 
-    query_filters = {
-        "patient_id": patient_id,
-        "provider_id": provider_id,
-        "start_date": start_date,
-        "end_date": end_date,
-        "status": status,
-        # Pass limit/offset if repository handles pagination
-    }
 
     # Simplistic fetch - replace with specific repo calls based on params
     if patient_id:
@@ -322,7 +314,7 @@ async def cancel_appointment(
     appointment_id: UUID,
     current_user: User = Depends(get_current_user),
     repo: IAppointmentRepository = Depends(get_appointment_repo),
-):
+) -> None:
     """
     Cancels an appointment (sets status to cancelled).
     Requires appropriate permissions. Consider if a hard delete is ever needed.

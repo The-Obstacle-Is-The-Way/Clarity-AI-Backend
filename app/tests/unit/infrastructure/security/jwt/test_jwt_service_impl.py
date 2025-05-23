@@ -117,7 +117,7 @@ def user_claims() -> dict[str, Any]:
 class TestJWTServiceImpl:
     """Test suite for the JWT service implementation."""
 
-    def test_initialization(self, jwt_service_impl: JWTServiceImpl):
+    def test_initialization(self, jwt_service_impl: JWTServiceImpl) -> None:
         """Test JWT service initialization with settings."""
         assert jwt_service_impl.secret_key == TEST_SECRET_KEY
         assert jwt_service_impl.algorithm == TEST_ALGORITHM
@@ -130,7 +130,7 @@ class TestJWTServiceImpl:
 
     def test_create_access_token(
         self, jwt_service_impl: JWTServiceImpl, user_claims: dict[str, Any]
-    ):
+    ) -> None:
         """Test creating an access token with user claims."""
         token = jwt_service_impl.create_access_token(
             subject=user_claims["sub"], additional_claims={"roles": user_claims["roles"]}
@@ -161,7 +161,7 @@ class TestJWTServiceImpl:
 
     def test_create_refresh_token(
         self, jwt_service_impl: JWTServiceImpl, user_claims: dict[str, Any]
-    ):
+    ) -> None:
         """Test creating a refresh token with user claims."""
         token = jwt_service_impl.create_refresh_token(subject=user_claims["sub"])
 
@@ -189,7 +189,7 @@ class TestJWTServiceImpl:
 
     def test_decode_token_valid(
         self, jwt_service_impl: JWTServiceImpl, user_claims: dict[str, Any]
-    ):
+    ) -> None:
         """Test verification of a valid token."""
         token = jwt_service_impl.create_access_token(
             subject=user_claims["sub"], additional_claims={"roles": user_claims["roles"]}
@@ -204,7 +204,7 @@ class TestJWTServiceImpl:
 
     def test_decode_token_expired(
         self, jwt_service_impl: JWTServiceImpl, user_claims: dict[str, Any]
-    ):
+    ) -> None:
         """Test verification of an expired token."""
         # Create a token that's already expired using expires_delta_minutes
         token = jwt_service_impl.create_access_token(
@@ -218,7 +218,7 @@ class TestJWTServiceImpl:
 
     def test_decode_token_invalid_signature(
         self, jwt_service_impl: JWTServiceImpl, user_claims: dict[str, Any]
-    ):
+    ) -> None:
         """Test verification of a token with invalid signature."""
         token = jwt_service_impl.create_access_token(subject=user_claims["sub"])
 
@@ -240,7 +240,7 @@ class TestJWTServiceImpl:
         jwt_service_impl: JWTServiceImpl,
         user_claims: dict[str, Any],
         mock_token_blacklist_repository: ITokenBlacklistRepository,
-    ):
+    ) -> None:
         """Test token blacklisting."""
         token = jwt_service_impl.create_access_token(subject=user_claims["sub"])
 
@@ -280,7 +280,7 @@ class TestJWTServiceImpl:
         jwt_service_impl: JWTServiceImpl,
         user_claims: dict[str, Any],
         mock_audit_logger: IAuditLogger,
-    ):
+    ) -> None:
         """Test audit logging during token operations."""
         # Configure the mock_audit_logger to properly track calls
         mock_audit_logger.log_security_event = MagicMock()

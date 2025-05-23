@@ -86,7 +86,7 @@ class TestPHISanitization:
     """Test suite for PHI sanitization integration."""
 
     @pytest.mark.asyncio
-    async def test_phi_detection(self, test_patient):
+    async def test_phi_detection(self, test_patient) -> None:
         """Test that PHI detector correctly identifies PHI."""
         # Create a PHI sanitizer instance
         sanitizer = PHISanitizer()  # Using the consolidated sanitizer
@@ -118,7 +118,7 @@ class TestPHISanitization:
         ), "PHI should be detected and sanitized in test dictionary"
 
     @pytest.mark.asyncio
-    async def test_phi_sanitization_in_logs(self, test_patient, log_capture):
+    async def test_phi_sanitization_in_logs(self, test_patient, log_capture) -> None:
         """Test that PHI is properly sanitized in logs."""
         # Create a sanitized logger
         logger = get_sanitized_logger("test.phi")
@@ -150,13 +150,13 @@ class TestPHISanitization:
         ), "Log should maintain some reference to email format"
 
     @pytest.mark.asyncio
-    async def test_phi_sanitization_in_exception_handling(self, test_patient, log_capture):
+    async def test_phi_sanitization_in_exception_handling(self, test_patient, log_capture) -> None:
         """Test that PHI is sanitized even in exception handling."""
         # Create a sanitized logger
         logger = get_sanitized_logger("test.phi.exception")
 
         # Create a function that raises an exception with PHI
-        def function_with_phi_exception():
+        def function_with_phi_exception() -> None:
             try:
                 # Simulate an operation that fails
                 error_message = (
@@ -196,7 +196,7 @@ class TestPHISanitization:
         assert "process" in log_content, "Log should maintain some non-PHI terms"
 
     @pytest.mark.asyncio
-    async def test_phi_protection_across_modules(self, test_patient, log_capture):
+    async def test_phi_protection_across_modules(self, test_patient, log_capture) -> None:
         """Test PHI protection across module boundaries."""
         # This test simulates a full pipeline that processes patient data
 

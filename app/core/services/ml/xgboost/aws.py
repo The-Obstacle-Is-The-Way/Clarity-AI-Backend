@@ -138,7 +138,7 @@ class AWSXGBoostService(XGBoostInterface, Observable):
 
         except Exception as e:
             self._notify_observers(EventType.CONFIGURATION_ERROR, {"error": str(e)})
-            if isinstance(e, (ConfigurationError, ServiceConfigurationError)):
+            if isinstance(e, ConfigurationError | ServiceConfigurationError):
                 raise
             raise ConfigurationError(f"Failed to initialize AWS XGBoost service: {e!s}") from e
 
@@ -204,7 +204,7 @@ class AWSXGBoostService(XGBoostInterface, Observable):
                 {"patient_id": patient_id, "model_type": model_type, "error": str(e)},
             )
 
-            if isinstance(e, (ValidationError, ModelNotFoundError, PredictionError)):
+            if isinstance(e, ValidationError | ModelNotFoundError | PredictionError):
                 raise
             raise PredictionError(
                 f"Prediction failed for patient {patient_id}: {e!s}", model_type=model_type

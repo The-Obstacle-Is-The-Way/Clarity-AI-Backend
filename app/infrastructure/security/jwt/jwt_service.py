@@ -1349,7 +1349,7 @@ class JWTService(IJwtService):
 
     # Add compatibility methods for tests
 
-    def check_resource_access(self, token_payload, resource_type, action, resource_id=None):
+    def check_resource_access(self, token_payload, resource_type, action, resource_id=None) -> bool:
         """Compatibility method for tests - check if the user has access to a resource."""
         # Get user roles from token
         roles = token_payload.get("roles", [])

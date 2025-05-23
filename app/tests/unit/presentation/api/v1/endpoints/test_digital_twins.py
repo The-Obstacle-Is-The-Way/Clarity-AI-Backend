@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 # Third-Party Imports
 import functools
 import signal
+from typing import NoReturn
 
 import pytest
 from fastapi import FastAPI, status
@@ -27,8 +28,6 @@ from app.core.config.settings import Settings as AppSettings  # Use alias
 # Assuming base exceptions are in core.exceptions.base_exceptions
 from app.core.exceptions.base_exceptions import (
     ModelExecutionError,  # Changed from ModelInferenceError
-)
-from app.core.exceptions.base_exceptions import (
     ResourceNotFoundError,
 )
 from app.domain.entities.user import User  # Added User import
@@ -271,7 +270,7 @@ def sample_clinical_text_analysis_response():
 
 
 # Create a timeout decorator to prevent hanging
-def timeout_handler(signum, frame):
+def timeout_handler(signum, frame) -> NoReturn:
     raise TimeoutError("Test execution timed out")
 
 
@@ -308,7 +307,7 @@ class TestDigitalTwinsEndpoints:
         mock_digital_twin_service,
         sample_patient_id,
         sample_status_response,
-    ):
+    ) -> None:
         """Test GET /digital-twins/digital-twin/{patient_id}/status"""
         # Clone the sample response to avoid modifying the fixture
         status_response = sample_status_response.copy()
@@ -336,7 +335,7 @@ class TestDigitalTwinsEndpoints:
     @pytest.mark.asyncio
     async def test_get_twin_status_not_found(
         self, client, mock_digital_twin_service, sample_patient_id
-    ):
+    ) -> None:
         """Test GET /digital-twins/digital-twin/{patient_id}/status with not found error."""
         # Setup the mock to raise ResourceNotFoundError
         mock_digital_twin_service.get_digital_twin_status.side_effect = ResourceNotFoundError(
@@ -362,7 +361,7 @@ class TestDigitalTwinsEndpoints:
         mock_digital_twin_service,
         sample_patient_id,
         sample_personalized_insight_response,
-    ):
+    ) -> None:
         """Test GET /digital-twins/digital-twin/{patient_id}/insights with successful response."""
         # Clone the sample response to avoid modifying the fixture
         insight_response = sample_personalized_insight_response.copy()
@@ -394,7 +393,7 @@ class TestDigitalTwinsEndpoints:
         client: AsyncClient,
         mock_digital_twin_service: AsyncMock,
         sample_patient_id: UUID,
-    ):
+    ) -> None:
         """Test error handling for comprehensive insights generation."""
         # Configure the mock to raise our custom exception
         mock_digital_twin_service.generate_comprehensive_patient_insights.side_effect = (
@@ -409,7 +408,6 @@ class TestDigitalTwinsEndpoints:
 
         from app.factory import create_application
 
-        settings = client.base_url
         app_test = create_application(include_test_routers=False, skip_auth_middleware=True)
 
         # Add the same dependency overrides
@@ -453,7 +451,7 @@ class TestDigitalTwinsEndpoints:
         mock_digital_twin_service,
         sample_patient_id,
         sample_clinical_text_analysis_response,
-    ):
+    ) -> None:
         """Test POST /digital-twins/digital-twin/{patient_id}/analyze-text with successful analysis."""
         # Setup the mock return value
         mock_digital_twin_service.analyze_clinical_text_mentallama.return_value = (
@@ -482,7 +480,7 @@ class TestDigitalTwinsEndpoints:
         )
 
     @pytest.mark.asyncio
-    async def test_analyze_clinical_text_validation_error(self, client, sample_patient_id):
+    async def test_analyze_clinical_text_validation_error(self, client, sample_patient_id) -> None:
         """Test POST /digital-twins/digital-twin/{patient_id}/analyze-text with validation error."""
         # Prepare invalid request body (missing required text field)
         request_data = {"analysis_type": "summary"}  # Missing required "text" field
@@ -502,7 +500,7 @@ class TestDigitalTwinsEndpoints:
         client: AsyncClient,
         mock_digital_twin_service: AsyncMock,
         sample_patient_id: UUID,
-    ):
+    ) -> None:
         """Test error handling when MentaLLaMA service fails for clinical text analysis."""
         # Test data
         valid_payload_for_service_call = {
@@ -523,7 +521,6 @@ class TestDigitalTwinsEndpoints:
 
         from app.factory import create_application
 
-        settings = client.base_url
         app_test = create_application(include_test_routers=False, skip_auth_middleware=True)
 
         # Add the same dependency overrides

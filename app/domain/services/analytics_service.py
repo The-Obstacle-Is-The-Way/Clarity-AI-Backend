@@ -87,7 +87,7 @@ class AnalyticsService:
             end_date = datetime.now(UTC)
 
         # Get clinical notes in date range
-        notes = await self._note_repo.list_by_patient_date_range(
+        await self._note_repo.list_by_patient_date_range(
             patient_id=patient_id, start_date=start_date, end_date=end_date
         )
 

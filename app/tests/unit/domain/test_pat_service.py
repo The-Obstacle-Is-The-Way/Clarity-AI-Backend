@@ -29,13 +29,13 @@ def pat_service():
 class TestMockPATService:
     """Tests for the MockPATService implementation."""
 
-    def test_init(self):
+    def test_init(self) -> None:
         """Test initializing the mock PAT service."""
         service = MockPATService(seed=42)
         assert service is not None
         assert service.rng is not None
 
-    def test_get_assessment_questions(self, pat_service, sample_patient_id):
+    def test_get_assessment_questions(self, pat_service, sample_patient_id) -> None:
         """Test getting assessment questions for various types."""
         # PHQ-9 questions
         phq9_questions = pat_service.get_assessment_questions(
@@ -58,7 +58,7 @@ class TestMockPATService:
         )
         assert len(unknown_questions) == 0
 
-    def test_submit_phq9_assessment(self, pat_service, sample_patient_id):
+    def test_submit_phq9_assessment(self, pat_service, sample_patient_id) -> None:
         """Test submitting a PHQ-9 assessment."""
         # Create responses (0-3 scale for each question)
         responses = {"phq1": 2, "phq2": 1, "phq3": 3, "phq4": 0, "phq5": 2}
@@ -84,7 +84,7 @@ class TestMockPATService:
         ]
         assert result.responses == responses
 
-    def test_submit_gad7_assessment(self, pat_service, sample_patient_id):
+    def test_submit_gad7_assessment(self, pat_service, sample_patient_id) -> None:
         """Test submitting a GAD-7 assessment."""
         # Create responses (0-3 scale for each question)
         responses = {"gad1": 1, "gad2": 2, "gad3": 0, "gad4": 3}
@@ -104,7 +104,7 @@ class TestMockPATService:
         assert result.severity in ["Minimal", "Mild", "Moderate", "Severe"]
         assert result.responses == responses
 
-    def test_submit_mood_assessment(self, pat_service, sample_patient_id):
+    def test_submit_mood_assessment(self, pat_service, sample_patient_id) -> None:
         """Test submitting a mood assessment."""
         # Create responses (1-10 scale for each question)
         responses = {"mood1": 7, "mood2": 5}
@@ -124,7 +124,7 @@ class TestMockPATService:
         assert result.severity in ["Good", "Moderate", "Poor"]
         assert result.responses == responses
 
-    def test_get_assessment_history(self, pat_service, sample_patient_id):
+    def test_get_assessment_history(self, pat_service, sample_patient_id) -> None:
         """Test getting assessment history for a patient."""
         # Submit multiple assessments
         pat_service.submit_assessment(
@@ -156,7 +156,7 @@ class TestMockPATService:
         )
         assert len(empty_history) == 0
 
-    def test_generate_random_assessments(self, pat_service, sample_patient_id):
+    def test_generate_random_assessments(self, pat_service, sample_patient_id) -> None:
         """Test generating random assessment data."""
         # Generate 5 random PHQ-9 assessments
         results = pat_service.generate_random_assessments(
@@ -176,7 +176,7 @@ class TestMockPATService:
             day_diff = abs((results[i].timestamp - results[i - 1].timestamp).days)
             assert day_diff == 7
 
-    def test_get_trend_analysis(self, pat_service, sample_patient_id):
+    def test_get_trend_analysis(self, pat_service, sample_patient_id) -> None:
         """Test getting trend analysis for a patient."""
         # Generate some assessment data
         pat_service.generate_random_assessments(

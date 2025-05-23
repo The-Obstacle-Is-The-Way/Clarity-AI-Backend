@@ -3,6 +3,7 @@ Test error masking using FastAPI's TestClient.
 """
 
 import logging
+from typing import NoReturn
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
@@ -17,7 +18,7 @@ def create_testclient_app():
     app = FastAPI(debug=False)
 
     @app.get("/error")
-    def error_endpoint():
+    def error_endpoint() -> NoReturn:
         """Endpoint that raises a RuntimeError."""
         raise RuntimeError("This is sensitive information that should be masked")
 
@@ -43,7 +44,7 @@ def create_testclient_app():
     return app
 
 
-def test_error_masking_with_testclient():
+def test_error_masking_with_testclient() -> None:
     """Verify error masking works properly using TestClient."""
     app = create_testclient_app()
     client = TestClient(app)

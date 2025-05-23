@@ -378,7 +378,7 @@ def global_mock_jwt_service() -> MagicMock:
     mock = MagicMock(spec=IJwtService)
 
     # Mock token creation function
-    async def create_access_token_side_effect(data=None, expires_delta=None):
+    async def create_access_token_side_effect(data=None, expires_delta=None) -> str:
         return "test.jwt.token"
 
     mock.create_access_token = AsyncMock(side_effect=create_access_token_side_effect)

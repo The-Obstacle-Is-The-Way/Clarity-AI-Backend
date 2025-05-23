@@ -188,7 +188,6 @@ class PharmacogenomicsModel:
             genetic_array = np.array(genetic_data, dtype=np.float32).reshape(1, -1)
 
             # Extract patient features
-            patient_data = {}
 
             # Numerical features
             numerical_features = ["age", "weight", "height"]

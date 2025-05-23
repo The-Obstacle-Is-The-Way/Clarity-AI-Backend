@@ -300,7 +300,7 @@ def outcome_prediction_request_data():
 
 @pytest.mark.timeout(10)  # Add timeout for hanging test
 @pytest.mark.asyncio
-async def test_predict_risk(xgboost_test_client):
+async def test_predict_risk(xgboost_test_client) -> None:
     """Test risk prediction endpoint with valid data."""
     app, client = xgboost_test_client
 

@@ -208,7 +208,7 @@ class ClinicalNote:
             tags=self.tags.copy(),
             metadata=self.metadata.copy(),
             version=self.version + 1,
-            previous_versions=self.previous_versions + [self.id],
+            previous_versions=[*self.previous_versions, self.id],
         )
 
         return new_note

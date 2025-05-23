@@ -6,7 +6,7 @@ from app.application.use_cases.patient.delete_patient import DeletePatientUseCas
 
 
 @pytest.mark.asyncio
-async def test_execute_calls_delete_and_returns_true():
+async def test_execute_calls_delete_and_returns_true() -> None:
     # Arrange
     mock_service = AsyncMock()
     mock_service.delete.return_value = True

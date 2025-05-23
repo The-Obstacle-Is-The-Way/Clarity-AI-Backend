@@ -17,7 +17,7 @@ from app.infrastructure.persistence.sqlalchemy.models.user import UserRole
 class TestUserModelValidation:
     """Test suite for user model validation and proper mapping between layers."""
 
-    def test_model_imports(self):
+    def test_model_imports(self) -> None:
         """Verify all required models can be imported successfully."""
         # If we get here, imports were successful
         assert DomainUser
@@ -25,7 +25,7 @@ class TestUserModelValidation:
         assert LegacyUserModel
         assert UserMapper
 
-    def test_domain_to_persistence_mapping(self):
+    def test_domain_to_persistence_mapping(self) -> None:
         """Test domain user can be properly mapped to persistence model."""
         # Create a domain user with the correct attribute names
         domain_user_attrs = {
@@ -61,7 +61,7 @@ class TestUserModelValidation:
         else:
             assert persistence_model.password_hash == domain_user.hashed_password
 
-    def test_persistence_to_domain_mapping(self):
+    def test_persistence_to_domain_mapping(self) -> None:
         """Test persistence model can be properly mapped back to domain entity."""
         # Create a persistence model
         user_id = str(uuid.uuid4())
@@ -92,7 +92,7 @@ class TestUserModelValidation:
         else:
             assert domain_user.hashed_password == persistence_model.password_hash
 
-    def test_legacy_model_aliasing(self):
+    def test_legacy_model_aliasing(self) -> None:
         """Verify legacy model is properly aliased to canonical model."""
         # Test creating an instance of UserModel
         import uuid

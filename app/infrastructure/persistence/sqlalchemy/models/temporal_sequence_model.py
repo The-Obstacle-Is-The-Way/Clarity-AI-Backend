@@ -52,7 +52,7 @@ class TemporalSequenceModel(Base):
         return self.feature_names_json
 
     @feature_names.setter
-    def feature_names(self, value):
+    def feature_names(self, value) -> None:
         """Set feature names from a list."""
         self.feature_names_json = value
 

@@ -145,7 +145,7 @@ class SageMakerEndpoint:
                 return input_data
             elif isinstance(input_data, str):
                 return input_data.encode("utf-8")
-            elif isinstance(input_data, (dict, list)):
+            elif isinstance(input_data, dict | list):
                 return json.dumps(input_data).encode("utf-8")
             else:
                 raise SerializationError(

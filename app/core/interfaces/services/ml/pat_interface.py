@@ -76,7 +76,7 @@ class PATInterface(ABC):
 
     @abstractmethod
     async def create_digital_twin(
-        self, patient: Patient, include_features: list[str] = None
+        self, patient: Patient, include_features: list[str] | None = None
     ) -> DigitalTwin:
         """
         Create a digital twin model for a patient.

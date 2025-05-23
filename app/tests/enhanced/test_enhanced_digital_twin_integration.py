@@ -100,7 +100,7 @@ def initial_data() -> dict:
 
 
 @pytest.mark.asyncio
-async def test_digital_twin_initialization(enhanced_services, patient_id, initial_data):
+async def test_digital_twin_initialization(enhanced_services, patient_id, initial_data) -> None:
     """Test initialization of the Enhanced Digital Twin."""
     digital_twin_service, _, _, _ = enhanced_services
 
@@ -123,7 +123,7 @@ async def test_digital_twin_initialization(enhanced_services, patient_id, initia
 
 
 @pytest.mark.asyncio
-async def test_knowledge_graph_operations(enhanced_services, patient_id, initial_data):
+async def test_knowledge_graph_operations(enhanced_services, patient_id, initial_data) -> None:
     """Test operations on the knowledge graph component."""
     digital_twin_service, _, _, _ = enhanced_services
 
@@ -172,7 +172,7 @@ async def test_knowledge_graph_operations(enhanced_services, patient_id, initial
 
 
 @pytest.mark.asyncio
-async def test_belief_network_operations(enhanced_services, patient_id, initial_data):
+async def test_belief_network_operations(enhanced_services, patient_id, initial_data) -> None:
     """Test operations on the Bayesian belief network component."""
     digital_twin_service, _, _, _ = enhanced_services
 
@@ -203,7 +203,7 @@ async def test_belief_network_operations(enhanced_services, patient_id, initial_
 
 
 @pytest.mark.asyncio
-async def test_neurotransmitter_simulation(enhanced_services, patient_id, initial_data):
+async def test_neurotransmitter_simulation(enhanced_services, patient_id, initial_data) -> None:
     """Test neurotransmitter simulation capabilities."""
     digital_twin_service, _, xgboost_service, _ = enhanced_services
 
@@ -249,7 +249,7 @@ async def test_neurotransmitter_simulation(enhanced_services, patient_id, initia
 
 
 @pytest.mark.asyncio
-async def test_temporal_sequence_analysis(enhanced_services, patient_id, initial_data):
+async def test_temporal_sequence_analysis(enhanced_services, patient_id, initial_data) -> None:
     """Test temporal sequence analysis capabilities."""
     digital_twin_service, _, _, _ = enhanced_services
 
@@ -298,7 +298,7 @@ async def test_temporal_sequence_analysis(enhanced_services, patient_id, initial
 
 
 @pytest.mark.asyncio
-async def test_clinical_insight_generation(enhanced_services, patient_id, initial_data):
+async def test_clinical_insight_generation(enhanced_services, patient_id, initial_data) -> None:
     """Test generation of clinical insights from the Digital Twin."""
     digital_twin_service, mental_llama_service, _, _ = enhanced_services
 
@@ -353,7 +353,7 @@ async def test_clinical_insight_generation(enhanced_services, patient_id, initia
 
 
 @pytest.mark.asyncio
-async def test_treatment_response_prediction(enhanced_services, patient_id, initial_data):
+async def test_treatment_response_prediction(enhanced_services, patient_id, initial_data) -> None:
     """Test prediction of treatment response using the Digital Twin."""
     digital_twin_service, _, xgboost_service, _ = enhanced_services
 
@@ -397,7 +397,7 @@ async def test_treatment_response_prediction(enhanced_services, patient_id, init
 
 
 @pytest.mark.asyncio
-async def test_digital_twin_event_processing(enhanced_services, patient_id, initial_data):
+async def test_digital_twin_event_processing(enhanced_services, patient_id, initial_data) -> None:
     """Test event processing in the Digital Twin."""
     digital_twin_service, _, _, _ = enhanced_services
 
@@ -444,7 +444,7 @@ async def test_digital_twin_event_processing(enhanced_services, patient_id, init
 
 
 @pytest.mark.asyncio
-async def test_clinical_summary_generation(enhanced_services, patient_id, initial_data):
+async def test_clinical_summary_generation(enhanced_services, patient_id, initial_data) -> None:
     """Test generation of a comprehensive clinical summary."""
     digital_twin_service, _, _, _ = enhanced_services
 
@@ -476,7 +476,7 @@ async def test_clinical_summary_generation(enhanced_services, patient_id, initia
 
 
 @pytest.mark.asyncio
-async def test_visualization_data_generation(enhanced_services, patient_id, initial_data):
+async def test_visualization_data_generation(enhanced_services, patient_id, initial_data) -> None:
     """Test generation of visualization data."""
     digital_twin_service, _, _, _ = enhanced_services
 

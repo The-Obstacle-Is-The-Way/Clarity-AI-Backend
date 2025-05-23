@@ -102,7 +102,7 @@ def large_temp_model_file():
 class TestMLEncryptionService:
     """Test suite for ML encryption service."""
 
-    def test_encrypt_decrypt_embedding(self, ml_encryption_service, test_embedding):
+    def test_encrypt_decrypt_embedding(self, ml_encryption_service, test_embedding) -> None:
         """Test encryption and decryption of embedding vectors."""
         # Encrypt the embedding
         encrypted_embedding = ml_encryption_service.encrypt_embedding(test_embedding)
@@ -126,7 +126,7 @@ class TestMLEncryptionService:
         decrypted_embedding_float64 = decrypted_embedding.astype(np.float64)
         assert np.allclose(decrypted_embedding_float64, test_embedding_float64)
 
-    def test_encrypt_decrypt_tensors(self, ml_encryption_service, test_tensors):
+    def test_encrypt_decrypt_tensors(self, ml_encryption_service, test_tensors) -> None:
         """Test encryption and decryption of tensor dictionaries."""
         # Encrypt tensors
         encrypted_tensors = ml_encryption_service.encrypt_tensors(test_tensors)
@@ -163,7 +163,7 @@ class TestMLEncryptionService:
                 decrypted_float64 = decrypted_tensor.astype(np.float64)
                 assert np.allclose(decrypted_float64, original_float64)
 
-    def test_encrypt_decrypt_ml_data(self, ml_encryption_service, test_ml_data):
+    def test_encrypt_decrypt_ml_data(self, ml_encryption_service, test_ml_data) -> None:
         """Test encryption and decryption of ML data with mixed types."""
         # Encrypt ML data
         encrypted_data = ml_encryption_service.encrypt_ml_data(test_ml_data)
@@ -221,7 +221,7 @@ class TestMLEncryptionService:
         metadata_decrypted = np.array(embeddings["metadata"]).astype(np.float64)
         assert np.allclose(metadata_decrypted, metadata_orig)
 
-    def test_encrypt_decrypt_model_file(self, ml_encryption_service, temp_model_file):
+    def test_encrypt_decrypt_model_file(self, ml_encryption_service, temp_model_file) -> None:
         """Test encryption and decryption of model files."""
         # Read the original file content for comparison
         with open(temp_model_file, "rb") as f:
@@ -250,7 +250,7 @@ class TestMLEncryptionService:
             decrypted_content = f.read()
         assert decrypted_content == original_content
 
-    def test_large_model_chunking(self, ml_encryption_service, large_temp_model_file):
+    def test_large_model_chunking(self, ml_encryption_service, large_temp_model_file) -> None:
         """Test encryption and decryption of large model files."""
         # Read the original file size for comparison
         original_size = os.path.getsize(large_temp_model_file)
@@ -275,7 +275,7 @@ class TestMLEncryptionService:
         # The decrypted file should match the original size
         assert decrypted_size == original_size
 
-    def test_handle_invalid_embedding(self, ml_encryption_service):
+    def test_handle_invalid_embedding(self, ml_encryption_service) -> None:
         """Test handling of invalid embeddings and tensors."""
         # None should be handled gracefully
         assert ml_encryption_service.encrypt_embedding(None) is None
@@ -289,7 +289,7 @@ class TestMLEncryptionService:
         with pytest.raises(ValueError):
             ml_encryption_service.decrypt_embedding("not encrypted data")
 
-    def test_key_rotation_for_embeddings(self):
+    def test_key_rotation_for_embeddings(self) -> None:
         """Test key rotation by using mock to avoid actual cryptography."""
         # Mock the encryption/decryption to avoid actual cryptography issues
         from unittest.mock import patch
@@ -333,7 +333,7 @@ class TestMLEncryptionService:
                 assert np.array_equal(decrypted2, test_embedding)
                 mock_decrypt.assert_called_once_with(encrypted2)
 
-    def test_get_ml_encryption_service(self):
+    def test_get_ml_encryption_service(self) -> None:
         """Test the factory function for getting ML encryption service."""
         # Use direct key in factory function
         service = get_ml_encryption_service(direct_key="test_direct_key", use_legacy_prefix=True)
@@ -361,7 +361,7 @@ class TestMLEncryptionService:
 class TestMLSecurityCompliance:
     """Test suite for HIPAA security compliance of ML encryption."""
 
-    def test_phi_field_protection(self, ml_encryption_service):
+    def test_phi_field_protection(self, ml_encryption_service) -> None:
         """Test automatic detection and protection of PHI fields."""
         # Create data with PHI fields
         phi_data = {
@@ -400,7 +400,7 @@ class TestMLSecurityCompliance:
         assert decrypted_data["patient_data"]["name"] == phi_data["patient_data"]["name"]
         assert decrypted_data["patient_data"]["ssn"] == phi_data["patient_data"]["ssn"]
 
-    def test_error_message_phi_protection(self, ml_encryption_service):
+    def test_error_message_phi_protection(self, ml_encryption_service) -> None:
         """Test error messages don't leak PHI."""
         # Create large embedding that might fail encryption
         large_embedding = np.random.random((10000, 10000)).astype(np.float32)
@@ -414,7 +414,7 @@ class TestMLSecurityCompliance:
 
         try:
             # Try operations that might fail
-            encrypted = ml_encryption_service.encrypt_tensor(large_embedding)
+            ml_encryption_service.encrypt_tensor(large_embedding)
             ml_encryption_service.encrypt_phi_safe_data(sensitive_data)
         except Exception as e:
             # Error message should not contain PHI
@@ -424,7 +424,7 @@ class TestMLSecurityCompliance:
             assert "Sensitive patient information" not in error_message
 
 
-def test_version_compatibility():
+def test_version_compatibility() -> None:
     """Test compatibility between different versions of encryption prefixes."""
     # Test that the service correctly handles different version prefixes
     # by checking it can recognize and process both formats

@@ -235,7 +235,7 @@ class Patient:
                 self._encryption_service = None
         return self._encryption_service
 
-    def _process_contact_info(self, contact_info):
+    def _process_contact_info(self, contact_info) -> None:
         """Process the contact_info parameter."""
         if contact_info is ContactInfo:
             # This is the class itself, not an instance
@@ -254,7 +254,7 @@ class Patient:
             if self.phone is None:
                 self.phone = contact_info.phone
 
-    def _harmonize_names(self):
+    def _harmonize_names(self) -> None:
         """Harmonize first_name, last_name, and name fields."""
         if self.name and not (self.first_name or self.last_name):
             parts = self.name.split()
@@ -266,14 +266,14 @@ class Patient:
         if not self.name and (self.first_name or self.last_name):
             self.name = " ".join(p for p in (self.first_name, self.last_name) if p)
 
-    def _initialize_timestamps(self):
+    def _initialize_timestamps(self) -> None:
         """Initialize created_at and updated_at timestamps if not provided."""
         if self.created_at is None:
             self.created_at = datetime.now()
         if self.updated_at is None:
             self.updated_at = datetime.now()
 
-    def _parse_date_fields(self):
+    def _parse_date_fields(self) -> None:
         """Parse date fields from strings if necessary."""
         self.date_of_birth = self._ensure_datetime(self.date_of_birth)
         self.created_at = self._ensure_datetime(self.created_at)
@@ -281,7 +281,7 @@ class Patient:
 
     def _ensure_datetime(self, value):
         """Convert string dates to datetime objects."""
-        if value is None or isinstance(value, (datetime, date)):
+        if value is None or isinstance(value, datetime | date):
             return value
         if isinstance(value, str):
             try:
@@ -336,7 +336,7 @@ class Patient:
         self.treatment_notes.append(entry)
         self.updated_at = datetime.now()
 
-    def model_copy(self, *, update: dict = None, deep: bool = False, **kwargs) -> Patient:
+    def model_copy(self, *, update: dict | None = None, deep: bool = False, **kwargs) -> Patient:
         """Compatibility method similar to Pydantic v1's copy() but for dataclasses."""
         from copy import copy, deepcopy
 

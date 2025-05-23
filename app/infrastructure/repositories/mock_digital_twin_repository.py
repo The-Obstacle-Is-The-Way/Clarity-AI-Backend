@@ -35,7 +35,7 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
         Returns:
             The saved state
         """
-        state_id = str(state.id)
+        str(state.id)
         patient_id = str(state.patient_id)
 
         # Create a list for this patient if it doesn't exist

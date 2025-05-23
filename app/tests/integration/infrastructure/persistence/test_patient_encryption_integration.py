@@ -105,7 +105,6 @@ async def integration_db_session():  # Removed encryption_service_fixture depend
     # async_session_factory = db_instance.session_factory # Not using factory directly
 
     patient_audit_log_id_for_yield: uuid.UUID | None = None
-    user_for_patient_audit_id: uuid.UUID | None = None  # Keep for logging clarity if needed
 
     async with engine.connect() as conn:  # Single connection for DDL and test session
         logger.info("[Integration Fixture] Performing DDL operations on shared connection.")
@@ -189,7 +188,6 @@ async def integration_db_session():  # Removed encryption_service_fixture depend
                 )
 
                 patient_audit_log_id_for_yield = patient_action_audit_log.id
-                user_for_patient_audit_id = patient_action_audit_log.user_id
 
             # The 'async with async_session.begin()' block ensures all the above is committed here if no exceptions.
             logger.info(
@@ -218,7 +216,7 @@ async def integration_db_session():  # Removed encryption_service_fixture depend
 class TestPatientEncryptionIntegration:
     """Integration test suite for Patient model encryption with database."""
 
-    def setup_method(self, method):
+    def setup_method(self, method) -> None:
         """Initialize the encryption service before each test method."""
         global encryption_service_instance
         from app.infrastructure.security.encryption.base_encryption_service import (
@@ -278,7 +276,7 @@ class TestPatientEncryptionIntegration:
     @pytest.mark.asyncio
     async def test_phi_encrypted_in_database(
         self, integration_db_session: tuple[AsyncSession, uuid.UUID]
-    ):  # Removed encryption_service_fixture
+    ) -> None:  # Removed encryption_service_fixture
         """Verify that PHI stored in the database is actually encrypted."""
         session, patient_audit_log_id = integration_db_session
         # encryption_service = encryption_service_fixture # No longer using separate fixture instance
@@ -362,7 +360,7 @@ class TestPatientEncryptionIntegration:
     @pytest.mark.asyncio
     async def test_phi_decrypted_in_repository(
         self, integration_db_session: tuple[AsyncSession, uuid.UUID]
-    ):
+    ) -> None:
         """Verify that PHI is decrypted when retrieved via the repository."""
         session, patient_audit_log_id = integration_db_session
         # encryption_service = encryption_service_fixture # No longer using separate fixture instance
@@ -444,7 +442,7 @@ class TestPatientEncryptionIntegration:
     @pytest.mark.asyncio
     async def test_encryption_error_handling(
         self,
-    ):  # Removed integration_db_session, encryption_service_fixture
+    ) -> None:  # Removed integration_db_session, encryption_service_fixture
         """Test error handling for encryption/decryption failures (e.g., tampered data)."""
         # Use the global encryption_service_instance, ensure it's configured for tests
         global encryption_service_instance

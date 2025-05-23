@@ -85,7 +85,7 @@ class TestJWTService:
 
     # --- Initialization Tests (implicitly tested by fixture) ---
     @pytest.mark.asyncio
-    async def test_init_with_valid_settings(self, jwt_service: JWTServiceImpl, test_settings):
+    async def test_init_with_valid_settings(self, jwt_service: JWTServiceImpl, test_settings) -> None:
         """Test initialization uses the injected mock settings."""
         # The jwt_service fixture should inject mock_settings.
         # We verify that the service instance is indeed using the mock settings object.
@@ -97,7 +97,7 @@ class TestJWTService:
     @pytest.mark.asyncio
     async def test_create_access_token_success(
         self, jwt_service: JWTServiceImpl, sample_user_data: dict
-    ):
+    ) -> None:
         """Test successful creation of a basic access token."""
         # Store the user_id for later use
         user_id = sample_user_data["sub"]
@@ -112,7 +112,7 @@ class TestJWTService:
     @pytest.mark.asyncio
     async def test_create_access_token_with_claims(
         self, jwt_service: JWTServiceImpl, sample_user_data: dict
-    ):
+    ) -> None:
         """Test creating an access token with roles, permissions, and session ID."""
         custom_claims = {"custom_key": "custom_value", "numeric": 123}
         full_data = {**sample_user_data, **custom_claims}
@@ -126,7 +126,7 @@ class TestJWTService:
     @pytest.mark.asyncio
     async def test_create_refresh_token_success(
         self, jwt_service: JWTServiceImpl, sample_user_data: dict
-    ):
+    ) -> None:
         """Test successful creation of a refresh token."""
         # Refresh tokens typically only need subject and maybe jti/session
         refresh_data = {
@@ -145,7 +145,7 @@ class TestJWTService:
     @pytest.mark.asyncio
     async def test_decode_valid_access_token(
         self, jwt_service: JWTServiceImpl, sample_user_data: dict
-    ):
+    ) -> None:
         """Test decoding a valid access token returns correct payload."""
         # Store the user_id for later use
         user_id = sample_user_data["sub"]
@@ -167,7 +167,7 @@ class TestJWTService:
     @pytest.mark.asyncio
     async def test_decode_valid_refresh_token(
         self, jwt_service: JWTServiceImpl, sample_user_data: dict
-    ):
+    ) -> None:
         """Test decoding a valid refresh token returns correct payload."""
         refresh_data = {"sub": sample_user_data["sub"]}
         token = jwt_service.create_refresh_token(data=refresh_data)
@@ -176,7 +176,7 @@ class TestJWTService:
         assert payload.type == TokenType.REFRESH
 
     @pytest.mark.asyncio
-    async def test_decode_expired_token(self, jwt_service: JWTServiceImpl, sample_user_data: dict):
+    async def test_decode_expired_token(self, jwt_service: JWTServiceImpl, sample_user_data: dict) -> None:
         """Test decoding an expired token raises TokenExpiredException."""
         token = jwt_service.create_access_token(data=sample_user_data, expires_delta_minutes=-1)
         await asyncio.sleep(0.1)
@@ -186,7 +186,7 @@ class TestJWTService:
     @pytest.mark.asyncio
     async def test_decode_invalid_signature_token(
         self, jwt_service: JWTServiceImpl, sample_user_data: dict
-    ):
+    ) -> None:
         """Test decoding a token with an invalid signature raises InvalidTokenException."""
         token = jwt_service.create_access_token(data=sample_user_data)
         tampered_token = token[:-5] + "wrong"
@@ -194,7 +194,7 @@ class TestJWTService:
             jwt_service.decode_token(tampered_token)
 
     @pytest.mark.asyncio
-    async def test_decode_malformed_token(self, jwt_service: JWTServiceImpl):
+    async def test_decode_malformed_token(self, jwt_service: JWTServiceImpl) -> None:
         """Test decoding a malformed token."""
         # Create an invalid token
         malformed = b"\x8a\xb3\xcc\xdd"
@@ -213,7 +213,7 @@ class TestJWTService:
     @pytest.mark.asyncio
     async def test_decode_token_missing_required_claims(
         self, jwt_service: JWTServiceImpl, test_settings: MagicMock
-    ):
+    ) -> None:
         """Test decoding a token missing required claims raises InvalidTokenException.
         This ensures our validation logic (e.g., within TokenPayload) is effective.
         """
@@ -251,7 +251,7 @@ class TestJWTService:
     @pytest.mark.asyncio
     async def test_decode_token_wrong_type(
         self, jwt_service: JWTServiceImpl, sample_user_data: dict
-    ):
+    ) -> None:
         """Test decoding works regardless of scope, but scope is preserved."""
         # Create an access token
         access_token = jwt_service.create_access_token(data=sample_user_data)
@@ -269,7 +269,7 @@ class TestJWTService:
 
     # --- Timestamp Verification ---
     @pytest.mark.asyncio
-    async def test_token_timestamps_are_correct(self, jwt_service: JWTServiceImpl):
+    async def test_token_timestamps_are_correct(self, jwt_service: JWTServiceImpl) -> None:
         """Verify 'iat' and 'exp' timestamps are set correctly and within tolerance."""
         user_data = {"sub": str(uuid4()), "roles": ["user"]}
 
@@ -297,18 +297,17 @@ class TestJWTService:
     @pytest.mark.asyncio
     async def test_create_token_with_session_id(
         self, jwt_service: JWTServiceImpl, sample_user_data: dict
-    ):
+    ) -> None:
         """Test creation of a token with session_id."""
         token = jwt_service.create_access_token(data=sample_user_data)
         payload = jwt_service.decode_token(token)
         assert payload.session_id == sample_user_data["session_id"]
 
     @pytest.mark.asyncio
-    async def test_create_token_with_custom_jti(self, jwt_service: JWTServiceImpl):
+    async def test_create_token_with_custom_jti(self, jwt_service: JWTServiceImpl) -> None:
         """Test creating a token with a custom JTI."""
         # Arrange
         user_id = "38061827-33d4-40b1-8d9a-3ebcde4ca89c"
-        data = {"sub": user_id, "email": "test@example.com"}
         custom_jti = "c0bbe575-16ae-465a-b4f0-2edf749adfa1"
 
         # Act - directly pass the JTI to the create_token function
@@ -321,7 +320,7 @@ class TestJWTService:
 
     # --- Advanced Token Features ---
     @pytest.mark.asyncio
-    async def test_token_creation_with_uuid_object(self, jwt_service: JWTServiceImpl):
+    async def test_token_creation_with_uuid_object(self, jwt_service: JWTServiceImpl) -> None:
         """Test token creation with UUID objects."""
         # Generate a UUID object (not string)
         user_id = uuid4()

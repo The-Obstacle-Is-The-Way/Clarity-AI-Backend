@@ -119,7 +119,7 @@ class TestAppointmentService:
     # No direct Appointment instantiation needed in tests if using fixtures/service methods
     # Ensure tests use the service methods and rely on the valid_appointment fixture
 
-    def test_get_appointment(self, appointment_service, appointment_repository, valid_appointment):
+    def test_get_appointment(self, appointment_service, appointment_repository, valid_appointment) -> None:
         """Test getting an appointment."""
         appointment_repository.get_by_id.return_value = valid_appointment
         appointment = appointment_service.get_appointment(valid_appointment.id)
@@ -131,7 +131,7 @@ class TestAppointmentService:
     # Example modification for conflict test (imports Appointment locally)
     def test_create_appointment_conflict(
         self, appointment_service, appointment_repository, future_datetime
-    ):
+    ) -> None:
         """Test creating an appointment with a conflict."""
         # Import Appointment here where it is instantiated for the mock return value
         from app.domain.entities.appointment import Appointment
@@ -162,7 +162,7 @@ class TestAppointmentService:
 
     def test_create_appointment_daily_limit(
         self, appointment_service, appointment_repository, future_datetime
-    ):
+    ) -> None:
         """Test creating an appointment when the daily limit is reached."""
         # Import Appointment here where it is instantiated for the mock return value
         from app.domain.entities.appointment import Appointment

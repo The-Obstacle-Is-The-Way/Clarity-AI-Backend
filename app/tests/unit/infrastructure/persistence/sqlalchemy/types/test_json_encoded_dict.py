@@ -14,7 +14,7 @@ from app.infrastructure.persistence.sqlalchemy.types import JSONEncodedDict
 class TestJSONEncodedDict:
     """Tests for the JSONEncodedDict SQLAlchemy TypeDecorator."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up a fresh metadata and engine for each test."""
         self.metadata = MetaData()
         self.mapper_registry = registry()
@@ -27,7 +27,7 @@ class TestJSONEncodedDict:
             Column("data", JSONEncodedDict, nullable=True),
         )
 
-    def test_json_sqlite_dialect(self):
+    def test_json_sqlite_dialect(self) -> None:
         """Test JSONEncodedDict with SQLite dialect."""
         # Create a SQLite in-memory database
         engine = create_engine("sqlite:///:memory:")

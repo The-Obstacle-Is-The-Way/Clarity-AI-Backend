@@ -29,7 +29,7 @@ from app.tests.security.utils.test_mocks import MockEncryptionService  # Correct
 class TestFieldEncryption(unittest.TestCase):
     """Test suite for FieldEncryptor."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test environment."""
         # Instantiate BaseEncryptionService (using Mock for testing)
         self.encryption_service = MockEncryptionService()
@@ -69,7 +69,7 @@ class TestFieldEncryption(unittest.TestCase):
             },
         }
 
-    def test_encrypt_decrypt_value(self):
+    def test_encrypt_decrypt_value(self) -> None:
         """Test encryption and decryption of a single value."""
         # Test with a regular string
         original = "This is sensitive PHI data"
@@ -86,7 +86,7 @@ class TestFieldEncryption(unittest.TestCase):
         self.assertEqual("", self.encryption_service.encrypt(""))
         self.assertEqual(None, self.encryption_service.encrypt(None))
 
-    def test_encrypt_decrypt_dict(self):
+    def test_encrypt_decrypt_dict(self) -> None:
         """Test encryption and decryption of PHI fields in a dictionary."""
         # Make a copy of the original data
         original_data = json.loads(json.dumps(self.test_data))
@@ -129,7 +129,7 @@ class TestFieldEncryption(unittest.TestCase):
         self.assertEqual(original_data["gender"], decrypted_data["gender"])
         self.assertEqual(original_data["diagnosis"], decrypted_data["diagnosis"])
 
-    def test_nested_field_encryption(self):
+    def test_nested_field_encryption(self) -> None:
         """Test encryption of nested fields."""
         # Make a copy of the original data
         original_data = json.loads(json.dumps(self.test_data))
@@ -152,7 +152,7 @@ class TestFieldEncryption(unittest.TestCase):
             decrypted_data["demographics"]["address"]["street"],
         )
 
-    def test_multiple_operations(self):
+    def test_multiple_operations(self) -> None:
         """Test multiple encryption/decryption operations."""
         data = json.loads(json.dumps(self.test_data))
         original_data = json.loads(json.dumps(self.test_data))
@@ -176,7 +176,7 @@ class TestFieldEncryption(unittest.TestCase):
         self.assertEqual(original_data["gender"], data["gender"])
         self.assertEqual(original_data["diagnosis"], data["diagnosis"])
 
-    def test_error_handling(self):
+    def test_error_handling(self) -> None:
         """Test error handling during encryption/decryption."""
         # Test handling of invalid encrypted data
         invalid_encrypted = "ENC_INVALID"  # Missing proper format
@@ -189,7 +189,7 @@ class TestFieldEncryption(unittest.TestCase):
             # If an exception is raised, that's also acceptable
             pass
 
-    def test_hipaa_compliance(self):
+    def test_hipaa_compliance(self) -> None:
         """Verify compliance with HIPAA requirements."""
         # Generate some test data
         test_data = {

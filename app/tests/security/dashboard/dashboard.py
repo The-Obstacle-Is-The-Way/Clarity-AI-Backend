@@ -15,7 +15,7 @@ from typing import Any
 
 
 class MockDatabase:
-    def clear_data(self):
+    def clear_data(self) -> None:
         pass
 
 
@@ -67,7 +67,7 @@ class MockResponse:
 
 
 class DashboardSecurityTest(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures before each test method."""
         self.app = create_app()
         self.client = self.app.test_client()
@@ -102,7 +102,7 @@ class DashboardSecurityTest(unittest.TestCase):
         self.authz_service = MockAuthorizationService()
         self.app.config["AUTHZ_SERVICE"] = self.authz_service
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         """Clean up after each test method."""
         # Clean up test data if necessary
         self.db.clear_data()
@@ -111,7 +111,7 @@ class DashboardSecurityTest(unittest.TestCase):
         """Helper method to login a user."""
         response = self.client.post(
             "/login",
-            data=dict(username=username, password=password),
+            data={"username": username, "password": password},
             follow_redirects=True,
         )
         return response
@@ -120,27 +120,27 @@ class DashboardSecurityTest(unittest.TestCase):
         """Helper method to logout the current user."""
         return self.client.get("/logout", follow_redirects=True)
 
-    def assertAccessDenied(self, response):
+    def assertAccessDenied(self, response) -> None:
         """Assert that the response indicates access denied."""
         self.assertEqual(response.status_code, 403)
         self.assertIn(b"Access Denied", response.data)
 
-    def assertUnauthorized(self, response):
+    def assertUnauthorized(self, response) -> None:
         """Assert that the response indicates unauthorized access."""
         self.assertEqual(response.status_code, 401)
         self.assertIn(b"Unauthorized", response.data)
 
-    def assertSuccessfulLogin(self, response, username):
+    def assertSuccessfulLogin(self, response, username) -> None:
         """Assert that login was successful."""
         self.assertEqual(response.status_code, 200)
         self.assertIn(f"Welcome {username}".encode(), response.data)
 
-    def assertSuccessfulLogout(self, response):
+    def assertSuccessfulLogout(self, response) -> None:
         """Assert that logout was successful."""
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"You have been logged out", response.data)
 
-    def test_admin_dashboard_access(self):
+    def test_admin_dashboard_access(self) -> None:
         """Test admin dashboard access for different roles."""
         # Test admin access (should succeed)
         self.login(self.admin_user.username, self.admin_user.password)
@@ -178,7 +178,7 @@ def generate_dashboard(results: dict[str, Any], output_path: str) -> None:
     passed_tests = results["summary"]["passed"]
     failed_tests = results["summary"]["failed"]
     error_tests = results["summary"]["errors"]
-    skipped_tests = results["summary"]["skipped"]
+    results["summary"]["skipped"]
 
     # Calculate success rate
     if total_tests > 0:
@@ -225,7 +225,7 @@ def generate_dashboard(results: dict[str, Any], output_path: str) -> None:
 
         for file_result in category.get("files", []):
             file_name = file_result.get("file", "Unknown")
-            file_path = file_result.get("path", "Unknown")
+            file_result.get("path", "Unknown")
             file_summary = file_result.get("summary", {})
 
             file_total = file_summary.get("total", 0)

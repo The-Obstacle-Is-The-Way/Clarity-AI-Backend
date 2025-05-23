@@ -105,7 +105,7 @@ class TestBiometricLSTMModel:
 
     # Test initialization separately if needed, or rely on the fixture
     # Removed async as initialize is likely synchronous
-    def test_initialize_loads_model(self):  # Added self
+    def test_initialize_loads_model(self) -> None:  # Added self
         """Test that initialize loads the model correctly when file exists."""
         # Setup
         with patch("os.path.exists", return_value=True), patch(
@@ -125,7 +125,7 @@ class TestBiometricLSTMModel:
             mock_load.assert_called_once_with("test_model_path")
 
     # Removed async as initialize is likely synchronous
-    def test_initialize_creates_new_model_if_missing(self):  # Added self
+    def test_initialize_creates_new_model_if_missing(self) -> None:  # Added self
         """Test that initialize creates a new model if the file is missing."""
         # This test directly overrides the BiometricCorrelationModel initialize method
         # to ensure direct control over the execution flow and testing
@@ -139,12 +139,12 @@ class TestBiometricLSTMModel:
             def __init__(self):
                 self.layers = []
 
-            def add(self, layer):
+            def add(self, layer) -> None:
                 nonlocal add_called
                 add_called = True
                 return None
 
-            def compile(self, loss=None, optimizer=None, metrics=None):
+            def compile(self, loss=None, optimizer=None, metrics=None) -> None:
                 nonlocal compile_called
                 compile_called = True
                 return None
@@ -168,7 +168,7 @@ class TestBiometricLSTMModel:
             assert compile_called, "compile() was not called"
 
     @pytest.mark.asyncio  # Keep async for async methods
-    async def test_analyze_correlations_returns_structure(self, model):  # Added self
+    async def test_analyze_correlations_returns_structure(self, model) -> None:  # Added self
         """Test that analyze_correlations returns the expected structure (mocked)."""
         # Mock the internal prediction logic if necessary, or rely on fixture mock
         model.model.predict = MagicMock(return_value=np.random.rand(1, 5))  # Example output shape
@@ -191,7 +191,7 @@ class TestBiometricLSTMModel:
         assert len(result["correlations"]) >= 0  # Check if list exists, content depends on mock
 
     @pytest.mark.asyncio
-    async def test_analyze_correlations_handles_empty_data(self, model):  # Added self
+    async def test_analyze_correlations_handles_empty_data(self, model) -> None:  # Added self
         """Test that analyze_correlations handles empty/invalid input data gracefully."""
         # Execute with empty data (adjust based on actual method signature)
         # Assuming analyze_correlations is async
@@ -204,7 +204,7 @@ class TestBiometricLSTMModel:
         # Check for default/NaN/None metrics as appropriate
 
     @pytest.mark.asyncio
-    async def test_identify_key_biometric_indicators(self, model):  # Added self
+    async def test_identify_key_biometric_indicators(self, model) -> None:  # Added self
         """Test identify_key_biometric_indicators returns expected structure (mocked)."""
         # Setup dummy data
         # Assuming identify_key_biometric_indicators takes processed data

@@ -155,7 +155,7 @@ class AWSXGBoostService(XGBoostInterface):
 
         except Exception as e:
             self._logger.error(f"Failed to initialize AWS XGBoost service: {e!s}")
-            if isinstance(e, (ConfigurationError, ServiceConfigurationError)):
+            if isinstance(e, ConfigurationError | ServiceConfigurationError):
                 raise
             raise ConfigurationError(f"Failed to initialize AWS XGBoost service: {e!s}") from e
 
@@ -1042,8 +1042,8 @@ class AWSXGBoostService(XGBoostInterface):
         if "assessment_scores" in clinical_data:
             scores = clinical_data["assessment_scores"]
             if isinstance(scores, dict):
-                for score_name, value in scores.items():
-                    if isinstance(value, (int, float)):
+                for _score_name, value in scores.items():
+                    if isinstance(value, int | float):
                         features.append(float(value))
 
         # If no features were extracted, use a default feature vector

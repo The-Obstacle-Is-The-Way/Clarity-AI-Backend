@@ -18,12 +18,10 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
-)
-from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import (
     ForeignKey,
     String,
 )
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
 from app.domain.entities.digital_twin_enums import Gender  # Corrected Gender import
@@ -318,7 +316,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
             model._gender = None
 
         dob_value = getattr(patient, "date_of_birth", None)
-        if isinstance(dob_value, (date, datetime)):
+        if isinstance(dob_value, date | datetime):
             model._date_of_birth = dob_value.isoformat()
         elif isinstance(dob_value, str):
             try:
@@ -518,8 +516,8 @@ class Patient(Base, TimestampMixin, AuditMixin):
             return value
 
         # Access fields directly. TypeDecorators will handle decryption and deserialization.
-        first_name = _decode_if_bytes(self._first_name)
-        last_name = _decode_if_bytes(self._last_name)
+        _decode_if_bytes(self._first_name)
+        _decode_if_bytes(self._last_name)
         if self._date_of_birth:  # _date_of_birth is now the decrypted string from EncryptedString
             decrypted_dob_str = self._date_of_birth
             if decrypted_dob_str:
@@ -554,8 +552,8 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 date_of_birth = None
         else:
             date_of_birth = None
-        email = _decode_if_bytes(self._email)
-        phone = _decode_if_bytes(self._phone_number)
+        _decode_if_bytes(self._email)
+        _decode_if_bytes(self._phone_number)
         ssn = _decode_if_bytes(self._ssn)
         medical_record_number = _decode_if_bytes(self._mrn)
 
@@ -570,17 +568,17 @@ class Patient(Base, TimestampMixin, AuditMixin):
         else:
             gender = None
 
-        insurance_provider = _decode_if_bytes(self._insurance_provider)
+        _decode_if_bytes(self._insurance_provider)
 
         logger.debug(f"[to_domain] Accessed simple PII for {self.id}")
 
         # Access address components directly
-        address_line1 = _decode_if_bytes(self._address_line1)
-        address_line2 = _decode_if_bytes(self._address_line2)
-        city = _decode_if_bytes(self._city)
-        state = _decode_if_bytes(self._state)
-        zip_code = _decode_if_bytes(self._zip_code)
-        country = _decode_if_bytes(self._country)
+        _decode_if_bytes(self._address_line1)
+        _decode_if_bytes(self._address_line2)
+        _decode_if_bytes(self._city)
+        _decode_if_bytes(self._state)
+        _decode_if_bytes(self._zip_code)
+        _decode_if_bytes(self._country)
         logger.debug(f"[to_domain] Accessed address components for {self.id}")
 
         # Access complex fields directly. EncryptedJSON handles decryption & deserialization.
@@ -589,7 +587,6 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # NOTE: ContactInfo handling removed - domain Patient uses ContactInfo descriptor
         # The descriptor creates ContactInfo instances from email/phone fields automatically
         # This ensures consistency with the domain Patient's architecture and avoids mixing domain models
-        contact_info_domain_obj = None  # Domain Patient doesn't accept contact_info parameter
 
         # Prepare Address domain object
         address_raw = self._address_details  # Should be dict or None after EncryptedJSON
@@ -659,15 +656,13 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 f"emergency_contact_details for patient {self.id} is not a dict or string: {type(emergency_contact_raw)}"
             )
 
-        preferences_dict = self._preferences  # Assumed to be dict or None
 
         # Parse list-like fields from their string representation after decryption
-        medical_history_list_str = _decode_if_bytes(self._medical_history)
-        medications_list_str = _decode_if_bytes(self._medications)
-        allergies_list_str = _decode_if_bytes(self._allergies)
+        _decode_if_bytes(self._medical_history)
+        _decode_if_bytes(self._medications)
+        _decode_if_bytes(self._allergies)
 
         # Process extra data from EncryptedJSON
-        extra_data_dict = self._extra_data  # This should be a dict after EncryptedJSON processing
 
         def _parse_json_string(json_str: str | bytes | None, field_name: str) -> Any:
             if json_str is None:

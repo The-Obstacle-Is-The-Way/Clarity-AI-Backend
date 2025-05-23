@@ -111,7 +111,7 @@ class PHIPattern:
         if not self.matches(text):
             return text
 
-        redactor = redactor_factory.create_redactor(self.strategy)
+        redactor_factory.create_redactor(self.strategy)
 
         if self._regex_pattern:
             return self._regex_pattern.sub(f"[REDACTED {self.name}]", text)
@@ -128,7 +128,7 @@ class PatternRepository:
         self._patterns: list[PHIPattern] = []
         self._initialize_default_patterns()
 
-    def _initialize_default_patterns(self):
+    def _initialize_default_patterns(self) -> None:
         """Initialize default patterns for PHI detection."""
         # SSN patterns
         self.add_pattern(PHIPattern(name="SSN", regex=r"\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b"))
@@ -231,7 +231,7 @@ class PatternRepository:
             )
         )
 
-    def add_pattern(self, pattern: PHIPattern):
+    def add_pattern(self, pattern: PHIPattern) -> None:
         """Add a pattern to the repository."""
         self._patterns.append(pattern)
 
@@ -732,7 +732,7 @@ class PHISanitizer:
             return False
 
         # Check against all PHI patterns
-        for pattern, replacement in self._compiled_patterns.items():
+        for pattern, _replacement in self._compiled_patterns.items():
             if pattern.search(text):
                 # Make sure this pattern actually matches PHI and not just a similar structure
                 # For example, if we're detecting "Error code: 12345", we shouldn't flag it as PHI
@@ -852,7 +852,7 @@ class PHISafeLogger(logging.Logger):
                 for pattern, replacement in self.sanitizer._compiled_patterns.items():
                     result = pattern.sub(replacement, result)
                 sanitized_args.append(result)
-            elif isinstance(arg, (dict, list)):
+            elif isinstance(arg, dict | list):
                 try:
                     sanitized_args.append(self.sanitizer.sanitize_json(arg))
                 except Exception:
@@ -888,7 +888,7 @@ class PHISafeLogger(logging.Logger):
                 for pattern, replacement in self.sanitizer._compiled_patterns.items():
                     result = pattern.sub(replacement, result)
                 sanitized_kwargs[key] = result
-            elif isinstance(value, (dict, list)):
+            elif isinstance(value, dict | list):
                 try:
                     sanitized_kwargs[key] = self.sanitizer.sanitize_json(value)
                 except Exception:
@@ -911,7 +911,7 @@ class PHISafeLogger(logging.Logger):
 
         return sanitized_kwargs
 
-    def _log(self, level, msg, args, exc_info=None, extra=None, stack_info=False, **kwargs):
+    def _log(self, level, msg, args, exc_info=None, extra=None, stack_info=False, **kwargs) -> None:
         """Sanitize log messages before passing to the parent logger."""
         # Sanitize the message directly with PHI patterns
         sanitized_msg = msg

@@ -199,7 +199,7 @@ class AlertRule:
 
         # Get the value to compare
         value = data_point.value
-        if not isinstance(value, (int, float)):
+        if not isinstance(value, int | float):
             # For complex values like blood pressure, we need special handling
             if isinstance(value, dict) and self.data_type == BiometricType.BLOOD_PRESSURE:
                 # For blood pressure, use systolic by default
@@ -683,7 +683,7 @@ class BiometricEventProcessor:
             and data_point.metadata.get("brain_region") == "pituitary"
         ):
             # Adjust sensitivity for pituitary-related metrics
-            if isinstance(data_point.value, (int, float)):
+            if isinstance(data_point.value, int | float):
                 # Store original value in metadata for reference
                 data_point.metadata["original_value"] = data_point.value
                 # Apply pituitary threshold modifier
@@ -727,11 +727,11 @@ class BiometricEventProcessor:
 class TestBiometricEventProcessor(unittest.TestCase):
     """Test the biometric event processor with hypothalamus-pituitary axis support."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up a processor for each test."""
         self.processor = BiometricEventProcessor()
 
-    def test_add_rule(self):
+    def test_add_rule(self) -> None:
         """Test adding a rule to the processor."""
         # Create a rule
         rule = AlertRule(
@@ -748,7 +748,7 @@ class TestBiometricEventProcessor(unittest.TestCase):
         self.assertIn(rule.id, self.processor.rules)
         self.assertEqual(self.processor.rules[rule.id], rule)
 
-    def test_remove_rule(self):
+    def test_remove_rule(self) -> None:
         """Test removing a rule from the processor."""
         # Create and add a rule
         rule = AlertRule(
@@ -770,7 +770,7 @@ class TestBiometricEventProcessor(unittest.TestCase):
         result = self.processor.remove_rule("non_existent_rule")
         self.assertFalse(result)
 
-    def test_register_observer(self):
+    def test_register_observer(self) -> None:
         """Test registering an observer."""
         # Create an observer
         observer = EmailAlertObserver(recipients=["doctor@example.com"])
@@ -781,7 +781,7 @@ class TestBiometricEventProcessor(unittest.TestCase):
         # Check that observer was registered
         self.assertIn(observer, self.processor.observers)
 
-    def test_unregister_observer(self):
+    def test_unregister_observer(self) -> None:
         """Test unregistering an observer."""
         # Create and register observers
         observer = EmailAlertObserver(recipients=["doctor@example.com"])
@@ -798,7 +798,7 @@ class TestBiometricEventProcessor(unittest.TestCase):
         self.assertNotIn(observer, self.processor.observers)
         self.assertIn(observer2, self.processor.observers)
 
-    def test_process_data_point_no_patient_id(self):
+    def test_process_data_point_no_patient_id(self) -> None:
         """Test processing a data point with no patient ID."""
         # Create a data point with no patient ID
         data_point = BiometricDataPoint(
@@ -811,7 +811,7 @@ class TestBiometricEventProcessor(unittest.TestCase):
         # Check that no alerts were generated
         self.assertEqual(len(alerts), 0)
 
-    def test_process_data_point_no_matching_rules(self):
+    def test_process_data_point_no_matching_rules(self) -> None:
         """Test processing a data point with no matching rules."""
         # Add a rule for blood pressure
         rule = AlertRule(
@@ -833,7 +833,7 @@ class TestBiometricEventProcessor(unittest.TestCase):
         # Check that no alerts were generated
         self.assertEqual(len(alerts), 0)
 
-    def test_process_data_point_matching_rule(self):
+    def test_process_data_point_matching_rule(self) -> None:
         """Test processing a data point that matches a rule."""
         # Add a rule
         rule = AlertRule(
@@ -859,7 +859,7 @@ class TestBiometricEventProcessor(unittest.TestCase):
         self.assertEqual(alerts[0].patient_id, "patient1")
         self.assertEqual(alerts[0].severity, AlertSeverity.HIGH)
 
-    def test_process_data_point_patient_specific_rule(self):
+    def test_process_data_point_patient_specific_rule(self) -> None:
         """Test processing a data point with a patient-specific rule."""
         # Add a patient-specific rule
         rule = AlertRule(
@@ -888,7 +888,7 @@ class TestBiometricEventProcessor(unittest.TestCase):
         self.assertEqual(len(alerts1), 1)
         self.assertEqual(len(alerts2), 0)
 
-    def test_process_data_point_inactive_rule(self):
+    def test_process_data_point_inactive_rule(self) -> None:
         """Test processing a data point with an inactive rule."""
         # Add an inactive rule
         rule = AlertRule(
@@ -911,7 +911,7 @@ class TestBiometricEventProcessor(unittest.TestCase):
         # Check that no alerts were generated
         self.assertEqual(len(alerts), 0)
 
-    def test_process_data_point_updates_context(self):
+    def test_process_data_point_updates_context(self) -> None:
         """Test that processing a data point updates the patient context."""
         # Create a data point
         data_point = BiometricDataPoint(
@@ -938,7 +938,7 @@ class TestBiometricEventProcessor(unittest.TestCase):
         self.assertEqual(len(context.trends[BiometricType.HEART_RATE]), 2)
         self.assertEqual(context.trends[BiometricType.HEART_RATE], [80, 90])
 
-    def test_pituitary_region_support(self):
+    def test_pituitary_region_support(self) -> None:
         """Test specific support for pituitary region with adjusted sensitivity."""
         # Add a rule for detecting hypothalamus-pituitary axis anomalies
         rule = AlertRule(
@@ -984,7 +984,7 @@ class TestBiometricEventProcessor(unittest.TestCase):
 class TestAlertRule(unittest.TestCase):
     """Test the alert rule class with mathematical precision."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up for alert rule tests."""
         # Create a standard rule for testing
         self.rule = AlertRule(
@@ -995,7 +995,7 @@ class TestAlertRule(unittest.TestCase):
             severity=AlertSeverity.HIGH,
         )
 
-    def test_create_alert_rule(self):
+    def test_create_alert_rule(self) -> None:
         """Test creating an alert rule."""
         # Check basic properties
         self.assertEqual(self.rule.name, "High Heart Rate")
@@ -1008,7 +1008,7 @@ class TestAlertRule(unittest.TestCase):
         self.assertIsNotNone(self.rule.id)  # UUID was generated
         self.assertIsInstance(self.rule.last_triggered, dict)
 
-    def test_evaluate_rule_match(self):
+    def test_evaluate_rule_match(self) -> None:
         """Test evaluating a rule with a matching data point."""
         # Create a data point that matches the rule
         data_point = BiometricDataPoint(
@@ -1024,7 +1024,7 @@ class TestAlertRule(unittest.TestCase):
         # Check that last_triggered was updated
         self.assertIn("patient1", self.rule.last_triggered)
 
-    def test_evaluate_rule_no_match(self):
+    def test_evaluate_rule_no_match(self) -> None:
         """Test evaluating a rule with a non-matching data point."""
         # Create a data point that doesn't match the rule
         data_point = BiometricDataPoint(
@@ -1040,7 +1040,7 @@ class TestAlertRule(unittest.TestCase):
         # Check that last_triggered was not updated
         self.assertNotIn("patient1", self.rule.last_triggered)
 
-    def test_evaluate_data_type_mismatch(self):
+    def test_evaluate_data_type_mismatch(self) -> None:
         """Test evaluating a rule with a data point of a different type."""
         # Create a data point with a different data type
         data_point = BiometricDataPoint(
@@ -1053,7 +1053,7 @@ class TestAlertRule(unittest.TestCase):
         # Check that rule didn't match
         self.assertFalse(result)
 
-    def test_evaluate_rule_with_patient_specific(self):
+    def test_evaluate_rule_with_patient_specific(self) -> None:
         """Test evaluating a patient-specific rule."""
         # Create a patient-specific rule
         rule = AlertRule(
@@ -1078,7 +1078,7 @@ class TestAlertRule(unittest.TestCase):
         self.assertTrue(rule.evaluate(matching_data_point))
         self.assertFalse(rule.evaluate(non_matching_data_point))
 
-    def test_evaluate_greater_than(self):
+    def test_evaluate_greater_than(self) -> None:
         """Test evaluating a rule with the greater than operator."""
         # Create a rule with greater than operator
         rule = AlertRule(
@@ -1106,7 +1106,7 @@ class TestAlertRule(unittest.TestCase):
         self.assertFalse(rule.evaluate(at_threshold))
         self.assertFalse(rule.evaluate(below_threshold))
 
-    def test_evaluate_greater_than_or_equal(self):
+    def test_evaluate_greater_than_or_equal(self) -> None:
         """Test evaluating a rule with the greater than or equal operator."""
         # Create data points
         above_threshold = BiometricDataPoint(
@@ -1149,7 +1149,7 @@ class TestAlertRule(unittest.TestCase):
         )
         self.assertFalse(rule3.evaluate(below_threshold))
 
-    def test_evaluate_less_than(self):
+    def test_evaluate_less_than(self) -> None:
         """Test evaluating a rule with the less than operator."""
         # Create a rule with less than operator
         rule = AlertRule(
@@ -1177,7 +1177,7 @@ class TestAlertRule(unittest.TestCase):
         self.assertFalse(rule.evaluate(at_threshold))
         self.assertTrue(rule.evaluate(below_threshold))
 
-    def test_evaluate_less_than_or_equal(self):
+    def test_evaluate_less_than_or_equal(self) -> None:
         """Test evaluating a rule with the less than or equal operator."""
         # Create data points
         above_threshold = BiometricDataPoint(
@@ -1220,7 +1220,7 @@ class TestAlertRule(unittest.TestCase):
         )
         self.assertTrue(rule3.evaluate(below_threshold))
 
-    def test_evaluate_equal(self):
+    def test_evaluate_equal(self) -> None:
         """Test evaluating a rule with the equal operator."""
         # Create a rule with equal operator
         rule = AlertRule(

@@ -8,7 +8,7 @@ for machine learning service tests, following clean architecture principles.
 import sys
 
 
-def pytest_collect_file(parent, path):
+def pytest_collect_file(parent, path) -> None:
     """
     Custom collection hook to prevent pytest from trying to collect
     the xgboost directory as if it were the actual xgboost package.
@@ -27,7 +27,7 @@ for key in list(sys.modules.keys()):
 
 
 # Apply YAML mocking for XGBoost tests if needed
-def setup_yaml_mocking():
+def setup_yaml_mocking() -> None:
     """Set up YAML mocking for XGBoost tests."""
     try:
         # Import the mocks first so they're in scope

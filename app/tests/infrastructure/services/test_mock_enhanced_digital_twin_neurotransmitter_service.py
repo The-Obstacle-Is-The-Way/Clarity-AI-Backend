@@ -68,7 +68,7 @@ async def test_patient_id(mock_service) -> UUID:
 
 
 @pytest.mark.asyncio
-async def test_initialize_neurotransmitter_mapping_patient_not_found(mock_service):
+async def test_initialize_neurotransmitter_mapping_patient_not_found(mock_service) -> None:
     """Test that initialize_neurotransmitter_mapping raises an error for nonexistent patients."""
     non_existent_id = uuid.uuid4()
 
@@ -80,7 +80,7 @@ async def test_initialize_neurotransmitter_mapping_patient_not_found(mock_servic
 
 
 @pytest.mark.asyncio
-async def test_initialize_neurotransmitter_mapping_with_default(mock_service, test_patient_id):
+async def test_initialize_neurotransmitter_mapping_with_default(mock_service, test_patient_id) -> None:
     """Test initializing a neurotransmitter mapping with default values."""
     # Initialize with default mapping
     mapping = await mock_service.initialize_neurotransmitter_mapping(
@@ -98,7 +98,7 @@ async def test_initialize_neurotransmitter_mapping_with_default(mock_service, te
 
 
 @pytest.mark.asyncio
-async def test_initialize_neurotransmitter_mapping_with_custom(mock_service, test_patient_id):
+async def test_initialize_neurotransmitter_mapping_with_custom(mock_service, test_patient_id) -> None:
     """Test initializing a neurotransmitter mapping with a custom mapping."""
     # Create a custom mapping
     custom_mapping = NeurotransmitterMapping()
@@ -133,7 +133,7 @@ async def test_initialize_neurotransmitter_mapping_with_custom(mock_service, tes
 @pytest.mark.asyncio
 async def test_initialize_neurotransmitter_mapping_without_default_or_custom(
     mock_service, test_patient_id
-):
+) -> None:
     """Test initializing an empty neurotransmitter mapping."""
     # Initialize with neither default nor custom (should create an empty mapping)
     mapping = await mock_service.initialize_neurotransmitter_mapping(
@@ -148,7 +148,7 @@ async def test_initialize_neurotransmitter_mapping_without_default_or_custom(
 
 
 @pytest.mark.asyncio
-async def test_update_receptor_profiles_creates_mapping_if_needed(mock_service, test_patient_id):
+async def test_update_receptor_profiles_creates_mapping_if_needed(mock_service, test_patient_id) -> None:
     """Test that update_receptor_profiles creates a mapping if one doesn't exist."""
     # Define a profile
     profile = ReceptorProfile(
@@ -174,7 +174,7 @@ async def test_update_receptor_profiles_creates_mapping_if_needed(mock_service, 
 
 
 @pytest.mark.asyncio
-async def test_update_receptor_profiles_updates_existing_mapping(mock_service, test_patient_id):
+async def test_update_receptor_profiles_updates_existing_mapping(mock_service, test_patient_id) -> None:
     """Test that update_receptor_profiles updates an existing mapping."""
     # Initialize a mapping first
     await mock_service.initialize_neurotransmitter_mapping(
@@ -230,7 +230,7 @@ async def test_update_receptor_profiles_updates_existing_mapping(mock_service, t
 @pytest.mark.asyncio
 async def test_get_neurotransmitter_effects_creates_mapping_if_needed(
     mock_service, test_patient_id
-):
+) -> None:
     """Test that get_neurotransmitter_effects creates a mapping if one doesn't exist."""
     # Call the method without initializing a mapping first
     effects = await mock_service.get_neurotransmitter_effects(
@@ -246,7 +246,7 @@ async def test_get_neurotransmitter_effects_creates_mapping_if_needed(
 
 
 @pytest.mark.asyncio
-async def test_get_neurotransmitter_effects_with_regions(mock_service, test_patient_id):
+async def test_get_neurotransmitter_effects_with_regions(mock_service, test_patient_id) -> None:
     """Test getting neurotransmitter effects with specific brain regions."""
     # Initialize mapping first
     await mock_service.initialize_neurotransmitter_mapping(
@@ -280,7 +280,7 @@ async def test_get_neurotransmitter_effects_with_regions(mock_service, test_pati
 
 
 @pytest.mark.asyncio
-async def test_get_neurotransmitter_effects_without_regions(mock_service, test_patient_id):
+async def test_get_neurotransmitter_effects_without_regions(mock_service, test_patient_id) -> None:
     """Test getting neurotransmitter effects for all brain regions."""
     # Initialize mapping first
     await mock_service.initialize_neurotransmitter_mapping(
@@ -301,7 +301,7 @@ async def test_get_neurotransmitter_effects_without_regions(mock_service, test_p
 @pytest.mark.asyncio
 async def test_get_brain_region_neurotransmitter_sensitivity_creates_mapping_if_needed(
     mock_service, test_patient_id
-):
+) -> None:
     """Test that get_brain_region_neurotransmitter_sensitivity creates a mapping if needed."""
     # Call the method without initializing a mapping first
     sensitivities = await mock_service.get_brain_region_neurotransmitter_sensitivity(
@@ -318,7 +318,7 @@ async def test_get_brain_region_neurotransmitter_sensitivity_creates_mapping_if_
 @pytest.mark.asyncio
 async def test_get_brain_region_neurotransmitter_sensitivity_with_neurotransmitters(
     mock_service, test_patient_id
-):
+) -> None:
     """Test getting brain region sensitivity with specific neurotransmitters."""
     # Initialize mapping first
     await mock_service.initialize_neurotransmitter_mapping(
@@ -344,7 +344,7 @@ async def test_get_brain_region_neurotransmitter_sensitivity_with_neurotransmitt
     assert isinstance(sensitivities, dict)
 
     # For each neurotransmitter with results, check data structure
-    for nt, data in sensitivities.items():
+    for _nt, data in sensitivities.items():
         assert "sensitivity" in data
         assert "receptor_count" in data
         assert "receptor_types" in data
@@ -356,7 +356,7 @@ async def test_get_brain_region_neurotransmitter_sensitivity_with_neurotransmitt
 @pytest.mark.asyncio
 async def test_get_brain_region_neurotransmitter_sensitivity_without_neurotransmitters(
     mock_service, test_patient_id
-):
+) -> None:
     """Test getting brain region sensitivity for all neurotransmitters."""
     # Initialize mapping first
     await mock_service.initialize_neurotransmitter_mapping(
@@ -376,7 +376,7 @@ async def test_get_brain_region_neurotransmitter_sensitivity_without_neurotransm
 @pytest.mark.asyncio
 async def test_simulate_neurotransmitter_cascade_creates_mapping_if_needed(
     mock_service, test_patient_id
-):
+) -> None:
     """Test that simulate_neurotransmitter_cascade creates a mapping if needed."""
     # Define initial changes
     initial_changes = {Neurotransmitter.SEROTONIN: 0.2, Neurotransmitter.DOPAMINE: 0.1}
@@ -394,7 +394,7 @@ async def test_simulate_neurotransmitter_cascade_creates_mapping_if_needed(
 
 
 @pytest.mark.asyncio
-async def test_simulate_neurotransmitter_cascade_with_parameters(mock_service, test_patient_id):
+async def test_simulate_neurotransmitter_cascade_with_parameters(mock_service, test_patient_id) -> None:
     """Test simulating neurotransmitter cascade with various parameters."""
     # Initialize mapping first
     await mock_service.initialize_neurotransmitter_mapping(
@@ -441,7 +441,7 @@ async def test_simulate_neurotransmitter_cascade_with_parameters(mock_service, t
 @pytest.mark.asyncio
 async def test_analyze_treatment_neurotransmitter_effects_creates_mapping_if_needed(
     mock_service, test_patient_id
-):
+) -> None:
     """Test that analyze_treatment_neurotransmitter_effects creates a mapping if needed."""
     # Define test parameters
     treatment_id = uuid.uuid4()
@@ -466,7 +466,7 @@ async def test_analyze_treatment_neurotransmitter_effects_creates_mapping_if_nee
 @pytest.mark.asyncio
 async def test_analyze_treatment_neurotransmitter_effects_with_parameters(
     mock_service, test_patient_id
-):
+) -> None:
     """Test analyzing treatment effects with various parameters."""
     # Initialize mapping first
     await mock_service.initialize_neurotransmitter_mapping(
@@ -509,12 +509,12 @@ async def test_analyze_treatment_neurotransmitter_effects_with_parameters(
 
 
 @pytest.mark.asyncio
-async def test_events_are_published(mock_service, test_patient_id):
+async def test_events_are_published(mock_service, test_patient_id) -> None:
     """Test that events are published when neurotransmitter mapping operations are performed."""
     # Subscribe to events
     events_received = []
 
-    async def event_handler(event_type, event_data, source, patient_id):
+    async def event_handler(event_type, event_data, source, patient_id) -> None:
         events_received.append(
             {
                 "event_type": event_type,

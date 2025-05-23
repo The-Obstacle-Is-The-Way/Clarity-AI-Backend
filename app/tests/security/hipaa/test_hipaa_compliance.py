@@ -19,6 +19,7 @@ import os
 import re
 import uuid
 from datetime import datetime, timedelta
+from typing import NoReturn
 from unittest import mock
 from unittest.mock import MagicMock, patch
 
@@ -92,9 +93,9 @@ except ImportError as e:
         pass
 
     # Implementation of encryption/decryption functions with actual functionality
-    def encrypt_phi(data):
+    def encrypt_phi(data) -> str:
         """Encrypt PHI data with a simple reversible transformation for testing"""
-        if isinstance(data, (dict, list)):
+        if isinstance(data, dict | list):
             return f"ENC:{base64.b64encode(json.dumps(data).encode()).decode()}"
         return f"ENC:{base64.b64encode(str(data).encode()).decode()}"
 
@@ -107,7 +108,7 @@ except ImportError as e:
         except:
             return base64.b64decode(encrypted_data[4:]).decode()
 
-    def encrypt_field(value):
+    def encrypt_field(value) -> str:
         """Encrypt a single field with a simple reversible transformation for testing"""
         return f"ENC:{base64.b64encode(str(value).encode()).decode()}"
 
@@ -137,8 +138,8 @@ except ImportError as e:
                 algorithms=["HS256"],
                 options={"verify_signature": False},
             )
-            if (hasattr(payload, "exp") and isinstance(payload.exp, (int, float))) or (
-                "exp" in payload and isinstance(payload["exp"], (int, float))
+            if (hasattr(payload, "exp") and isinstance(payload.exp, int | float)) or (
+                "exp" in payload and isinstance(payload["exp"], int | float)
             ):
                 exp_time = datetime.fromtimestamp(
                     payload.exp if hasattr(payload, "exp") else payload["exp"], tz=UTC
@@ -266,7 +267,7 @@ def test_phi_data():
 @pytest.fixture
 def test_jwt_token(test_user):
     """Create a valid JWT token for testing."""
-    expires_delta = timedelta(minutes=30)
+    timedelta(minutes=30)
     data = {
         "sub": test_user["username"],
         "id": test_user["id"],
@@ -316,13 +317,13 @@ def mock_rbac():
 class TestPHIEncryption(BaseSecurityTest):
     """Test PHI encryption and decryption functionality."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures before each test method."""
         super().setUp()
         self.rbac_service = MockRBACService()
         self.audit_logger = MockAuditLogger()
 
-    def test_encrypt_decrypt_phi(self, test_phi_data):
+    def test_encrypt_decrypt_phi(self, test_phi_data) -> None:
         """Test that PHI data can be encrypted and decrypted successfully."""
         # Encrypt PHI data
         encrypted_data = encrypt_phi(test_phi_data)
@@ -337,7 +338,7 @@ class TestPHIEncryption(BaseSecurityTest):
         # Verify the decrypted data matches the original
         assert decrypted_data == test_phi_data
 
-    def test_encrypt_field_sensitive_data(self):
+    def test_encrypt_field_sensitive_data(self) -> None:
         """Test that specific fields can be encrypted individually."""
         ssn = "123-45-6789"
         encrypted_ssn = encrypt_field(ssn)
@@ -352,7 +353,7 @@ class TestPHIEncryption(BaseSecurityTest):
         # Verify the decrypted field matches the original
         assert decrypted_ssn == ssn
 
-    def test_encryption_key_requirements(self):
+    def test_encryption_key_requirements(self) -> None:
         """Test that encryption key meets strength requirements."""
         # Generate a new key
         key = generate_phi_key()
@@ -366,13 +367,13 @@ class TestPHIEncryption(BaseSecurityTest):
 class TestAuthentication(BaseSecurityTest):
     """Test authentication mechanisms for HIPAA compliance."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures before each test method."""
         super().setUp()
         self.rbac_service = MockRBACService()
         self.audit_logger = MockAuditLogger()
 
-    def test_create_access_token(self, test_user):
+    def test_create_access_token(self, test_user) -> None:
         """Test that access tokens can be created correctly."""
         data = {"sub": test_user["username"], "id": test_user["id"]}
         token = create_access_token(data=data)
@@ -380,7 +381,7 @@ class TestAuthentication(BaseSecurityTest):
         assert isinstance(token, str)
         assert len(token) > 0
 
-    def test_decode_access_token(self, test_jwt_token, test_user):
+    def test_decode_access_token(self, test_jwt_token, test_user) -> None:
         """Test that access tokens can be decoded correctly."""
         decoded = decode_token(test_jwt_token)
 
@@ -388,7 +389,7 @@ class TestAuthentication(BaseSecurityTest):
         assert decoded["sub"] == test_user["username"]
         assert "exp" in decoded
 
-    def test_expired_token_rejection(self):
+    def test_expired_token_rejection(self) -> None:
         """Test that expired tokens are rejected."""
         # Create an expired token with numeric timestamp (epoch seconds)
         expired_data = {
@@ -402,7 +403,7 @@ class TestAuthentication(BaseSecurityTest):
         with pytest.raises((jwt.JWTError, AuthenticationError)):
             decode_token(expired_token)
 
-    def test_invalid_token_rejection(self):
+    def test_invalid_token_rejection(self) -> None:
         """Test that invalid tokens are rejected."""
         # Create an invalid token
         invalid_token = "invalid.token.format"
@@ -426,7 +427,7 @@ class TestAuthorization(BaseSecurityTest):
         # Using simpler patching for check_permission seems more direct
         return MagicMock()  # Return a simple mock if MockRBACService isn't strictly needed
 
-    def test_rbac_permission_check(self, test_user, mock_rbac_fixture):
+    def test_rbac_permission_check(self, test_user, mock_rbac_fixture) -> None:
         """Verify RBAC permission checks allow authorized actions."""
         user_id = test_user["id"]
         required_permission = "read:own_data"
@@ -450,7 +451,7 @@ class TestAuthorization(BaseSecurityTest):
                 user_id=user_id, permission=required_permission, resource_id=user_id
             )
 
-    def test_rbac_permission_denied(self, test_user, mock_rbac_fixture):
+    def test_rbac_permission_denied(self, test_user, mock_rbac_fixture) -> None:
         """Verify RBAC permission checks deny unauthorized actions."""
         user_id = test_user["id"]
         required_permission = "delete:other_data"
@@ -473,7 +474,7 @@ class TestAuthorization(BaseSecurityTest):
                 resource_id="some_other_resource",
             )
 
-    def test_cross_patient_data_access_prevented(self, test_user, mock_rbac_fixture):
+    def test_cross_patient_data_access_prevented(self, test_user, mock_rbac_fixture) -> None:
         """Verify mechanisms preventing access to other patients' PHI."""
         user_id = test_user["id"]
         other_patient_id = str(uuid.uuid4())
@@ -482,7 +483,7 @@ class TestAuthorization(BaseSecurityTest):
         # Patch check_permission to simulate denial for cross-patient access
         with patch("app.tests.security.hipaa.test_hipaa_compliance.check_permission") as mock_check:
 
-            def raise_auth_error(*args, **kwargs):
+            def raise_auth_error(*args, **kwargs) -> bool:
                 # Simulate the logic: deny if user_id != resource_id for this permission
                 if kwargs.get("permission") == permission and kwargs.get("user_id") != kwargs.get(
                     "resource_id"
@@ -519,13 +520,13 @@ class TestAuthorization(BaseSecurityTest):
 class TestAuditLogging(BaseSecurityTest):
     """Test audit logging for HIPAA compliance."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures before each test method."""
         super().setUp()
         self.rbac_service = MockRBACService()
         # self.audit_logger = MockAuditLogger() # No longer needed if we patch directly
 
-    def test_phi_access_logging(self, mock_audit_logger):
+    def test_phi_access_logging(self, mock_audit_logger) -> None:
         """Test that PHI access is properly logged."""
         # Set up the mock
         mock_log_phi_access_method = mock_audit_logger
@@ -554,13 +555,13 @@ class TestAuditLogging(BaseSecurityTest):
         assert kwargs["resource_type"] == test_resource_type
         assert kwargs["resource_id"] == test_resource_id
 
-    def test_phi_sanitization(self, test_phi_data):
+    def test_phi_sanitization(self, test_phi_data) -> None:
         """Test that PHI is properly sanitized in logs."""
         # Mock sanitize_phi with our implementation
         with mock.patch(
             "app.tests.security.hipaa.test_hipaa_compliance.sanitize_phi",
             side_effect=mock_sanitize_phi,
-        ) as mock_sanitize:
+        ):
             # Sanitize PHI data
             phi_json = json.dumps(test_phi_data)
             sanitized = sanitize_phi(phi_json)
@@ -574,13 +575,13 @@ class TestAuditLogging(BaseSecurityTest):
 class TestSecurityBoundaries(BaseSecurityTest):
     """Test security boundaries for HIPAA compliance."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures before each test method."""
         super().setUp()
         self.rbac_service = MockRBACService()
         self.audit_logger = MockAuditLogger()
 
-    def test_unauthorized_request_rejection(self):
+    def test_unauthorized_request_rejection(self) -> NoReturn:
         """Test that unauthorized requests are rejected."""
         # Simulate an unauthorized request
         with pytest.raises((AuthenticationError, HTTPException)):
@@ -588,7 +589,7 @@ class TestSecurityBoundaries(BaseSecurityTest):
             get_current_user(None)
             raise AuthenticationError("No authentication token provided")
 
-    def test_phi_access_error_handling(self, test_phi_data):
+    def test_phi_access_error_handling(self, test_phi_data) -> None:
         """Test that PHI access errors are properly handled."""
         # Simulate a PHI access error
         try:
@@ -607,13 +608,13 @@ class TestSecurityBoundaries(BaseSecurityTest):
 class TestHIPAACompliance(BaseSecurityTest):
     """Test overall HIPAA compliance requirements."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures before each test method."""
         super().setUp()
         self.rbac_service = MockRBACService()
         self.audit_logger = MockAuditLogger()
 
-    def test_field_level_encryption(self, test_phi_data):
+    def test_field_level_encryption(self, test_phi_data) -> None:
         """Test that field-level encryption is available for PHI."""
         for field in ["ssn", "diagnosis", "medication"]:
             if field in test_phi_data:
@@ -625,7 +626,7 @@ class TestHIPAACompliance(BaseSecurityTest):
                 assert encrypted != value
                 assert decrypted == value
 
-    def test_minimum_necessary_principle(self, test_phi_data):
+    def test_minimum_necessary_principle(self, test_phi_data) -> None:
         """Test that only necessary PHI fields are included in responses."""
         # Create a response with only necessary fields
         necessary_fields = ["patient_id", "first_name", "last_name"]
@@ -636,7 +637,7 @@ class TestHIPAACompliance(BaseSecurityTest):
         assert "diagnosis" not in response_data
         assert "medication" not in response_data
 
-    def test_secure_configuration(self):
+    def test_secure_configuration(self) -> None:
         """Test that security configuration is properly set up."""
         # settings object is already imported or mocked
         pass  # No need to re-assign if using the imported/mocked settings directly
@@ -651,7 +652,7 @@ class TestHIPAACompliance(BaseSecurityTest):
         # assert hasattr(settings, "USE_TLS") # REMOVED: USE_TLS is not defined in Settings
         # assert settings.USE_TLS is True # REMOVED: USE_TLS is not defined in Settings
 
-    def test_password_policy(self):
+    def test_password_policy(self) -> None:
         """Test that password policy meets HIPAA requirements."""
         # This is a placeholder for a real password policy test
         # A real test would check minimum length, complexity, etc.

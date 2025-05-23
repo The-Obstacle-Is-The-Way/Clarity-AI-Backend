@@ -37,7 +37,7 @@ class TestAWSXGBoostCore:
     # --- INITIALIZATION TESTS ---
 
     @pytest.mark.asyncio
-    async def test_initialization_success(self, aws_config):
+    async def test_initialization_success(self, aws_config) -> None:
         """Test successful initialization with valid settings."""
         # Create a factory mock
         factory = MockAWSServiceFactory()
@@ -46,7 +46,7 @@ class TestAWSXGBoostCore:
         service = AWSXGBoostService(aws_service_factory=factory)
 
         # Define a fake implementation to set the properties manually
-        def fake_validate_impl(cfg):
+        def fake_validate_impl(cfg) -> None:
             service._region_name = cfg["region_name"]
             service._endpoint_prefix = cfg["endpoint_prefix"]
             service._bucket_name = cfg["bucket_name"]
@@ -78,7 +78,7 @@ class TestAWSXGBoostCore:
                     assert service._audit_table_name == "test-audit-table"
 
     @pytest.mark.asyncio
-    async def test_initialization_missing_region(self):
+    async def test_initialization_missing_region(self) -> None:
         """Test initialization failure due to missing region."""
         # Create config missing the region_name
         config = {
@@ -106,7 +106,7 @@ class TestAWSXGBoostCore:
                 await service.initialize(config)
 
     @pytest.mark.asyncio
-    async def test_initialization_missing_endpoint_name(self):
+    async def test_initialization_missing_endpoint_name(self) -> None:
         """Test initialization failure when endpoint prefix is missing."""
         # Create config missing endpoint_prefix
         config = {
@@ -137,7 +137,7 @@ class TestAWSXGBoostCore:
     # --- HEALTH CHECK TESTS ---
 
     @pytest.mark.asyncio
-    async def test_healthcheck(self):
+    async def test_healthcheck(self) -> None:
         """Test the healthcheck functionality."""
         # Create a factory mock
         factory = MockAWSServiceFactory()
@@ -161,7 +161,7 @@ class TestAWSXGBoostCore:
         assert "details" in result
 
     @pytest.mark.asyncio
-    async def test_initialization_missing_region(self):
+    async def test_initialization_missing_region(self) -> None:
         """Test initialization failure when AWS region is missing."""
         # Create config missing the region_name
         config = {
@@ -171,7 +171,7 @@ class TestAWSXGBoostCore:
         }
 
         # Override default service validation with our customization
-        def custom_validate(cfg):
+        def custom_validate(cfg) -> bool:
             if "region_name" not in cfg:
                 raise ConfigurationError("Missing required AWS parameter: region_name")
             return True
@@ -189,7 +189,7 @@ class TestAWSXGBoostCore:
                 await service.initialize(config)
 
     @pytest.mark.asyncio
-    async def test_initialization_missing_endpoint_name(self):
+    async def test_initialization_missing_endpoint_name(self) -> None:
         """Test initialization failure when endpoint prefix is missing."""
         # Create config missing endpoint_prefix
         config = {
@@ -199,7 +199,7 @@ class TestAWSXGBoostCore:
         }
 
         # Override default service validation with our customization
-        def custom_validate(cfg):
+        def custom_validate(cfg) -> bool:
             if "endpoint_prefix" not in cfg:
                 raise ConfigurationError("Missing required AWS parameter: endpoint_prefix")
             return True
@@ -218,7 +218,7 @@ class TestAWSXGBoostCore:
                 await service.initialize(config)
 
     @pytest.mark.asyncio
-    async def test_get_available_models(self):
+    async def test_get_available_models(self) -> None:
         """Test getting available models."""
         # Create a factory mock
         factory = MockAWSServiceFactory()

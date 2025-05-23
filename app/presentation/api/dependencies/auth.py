@@ -128,7 +128,7 @@ async def get_current_user(
     settings: Settings = Depends(get_settings),
     jwt_service: JWTServiceImpl = Depends(get_jwt_service_from_request),
     user_repo: SQLAlchemyUserRepository = Depends(get_user_repository_dependency),
-    options: dict = None,
+    options: dict | None = None,
 ) -> DomainUser:
     """
     Dependency to get the current user from a JWT token.
@@ -173,12 +173,12 @@ async def get_current_user(
     token = token_credentials.credentials
 
     # Define standard authentication errors
-    credentials_exception = HTTPException(
+    HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    expired_token_exception = HTTPException(
+    HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Token has expired",
         headers={"WWW-Authenticate": "Bearer"},

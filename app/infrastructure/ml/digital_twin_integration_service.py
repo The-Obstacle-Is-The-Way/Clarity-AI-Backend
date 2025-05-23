@@ -48,7 +48,7 @@ class DigitalTwinIntegrationService:
         self._digital_twins = {}  # Cache for digital twins
         logger.info("Digital Twin Integration Service initialized")
 
-    async def create_digital_twin(self, patient_id: str, init_data: dict = None) -> DigitalTwin:
+    async def create_digital_twin(self, patient_id: str, init_data: dict | None = None) -> DigitalTwin:
         """
         Create a new digital twin for a patient.
 
@@ -302,7 +302,7 @@ class DigitalTwinIntegrationService:
                 del sanitized[field]
 
         # Remove PHI fields in nested dictionaries
-        for key, value in list(sanitized.items()):
+        for _key, value in list(sanitized.items()):
             if isinstance(value, dict):
                 for field in phi_fields:
                     if field in value:

@@ -7,6 +7,7 @@ can be used to override FastAPI dependency injections for testing.
 
 import uuid
 from collections.abc import Callable
+from typing import NoReturn
 
 from fastapi import HTTPException, status
 
@@ -91,7 +92,7 @@ def get_mock_current_active_user(user: User | None = None, raise_error: bool = F
     """
     if user and not user.is_active:
 
-        async def mock_inactive_user():
+        async def mock_inactive_user() -> NoReturn:
             raise HTTPException(status_code=400, detail="Inactive user")
 
         return mock_inactive_user
@@ -114,7 +115,7 @@ def get_mock_current_admin_user(user: User | None = None, raise_error: bool = Fa
 
     if not user_obj.is_superuser and user_obj.role != Role.ADMIN:
 
-        async def mock_non_admin_user():
+        async def mock_non_admin_user() -> NoReturn:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
             )

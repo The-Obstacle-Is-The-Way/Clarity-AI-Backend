@@ -132,7 +132,7 @@ class TestBiometricCorrelationService:
     @pytest.mark.asyncio
     async def test_analyze_correlations_success(
         self, service, mock_lstm_model, sample_biometric_data, sample_patient_id
-    ):
+    ) -> None:
         """Test that analyze_correlations correctly processes biometric data and returns correlations."""
         # Setup
         lookback_days = 30
@@ -176,7 +176,7 @@ class TestBiometricCorrelationService:
             assert "action" in insight
 
     @pytest.mark.asyncio
-    async def test_analyze_correlations_empty_data(self, service, sample_patient_id):  # Added async
+    async def test_analyze_correlations_empty_data(self, service, sample_patient_id) -> None:  # Added async
         """Test that analyze_correlations handles empty biometric data gracefully."""
         # Setup
         empty_data = {}
@@ -195,7 +195,7 @@ class TestBiometricCorrelationService:
     @pytest.mark.asyncio
     async def test_analyze_correlations_insufficient_data(  # Added async
         self, service, sample_patient_id
-    ):
+    ) -> None:
         """Test that analyze_correlations handles insufficient biometric data gracefully."""
         # Setup
         # Corrected dictionary and list structure
@@ -231,7 +231,7 @@ class TestBiometricCorrelationService:
     @pytest.mark.asyncio
     async def test_analyze_correlations_model_error(  # Added async
         self, service, mock_lstm_model, sample_biometric_data, sample_patient_id
-    ):
+    ) -> None:
         """Test that analyze_correlations handles model errors gracefully."""
         # Setup
         # Corrected side_effect assignment
@@ -259,7 +259,7 @@ class TestBiometricCorrelationService:
     @pytest.mark.asyncio
     async def test_preprocess_biometric_data(
         self, service, sample_biometric_data, sample_patient_id
-    ):
+    ) -> None:
         """Test that _preprocess_biometric_data correctly processes biometric data."""
         # Debug data coming in
         print("\n==== SAMPLE BIOMETRIC DATA =====\n")
@@ -313,7 +313,7 @@ class TestBiometricCorrelationService:
                 assert len(data) > 0
                 assert all(ts >= cutoff_date for ts in data["timestamp"])
 
-    def test_validate_biometric_data(self, service):  # Added self
+    def test_validate_biometric_data(self, service) -> None:  # Added self
         """Test that _validate_biometric_data correctly validates input data."""
         # Valid data
         valid_data = {

@@ -301,8 +301,7 @@ class MockDigitalTwinCoreService:
                 "version": current_state.version + 1,
                 "data": {
                     "brain_state": current_state.data.get("brain_state", {}),
-                    "treatment_history": current_state.data.get("treatment_history", [])
-                    + [event_data],
+                    "treatment_history": [*current_state.data.get("treatment_history", []), event_data],
                 },
                 "with_updates": lambda clinical_insights=None, metadata_updates=None: new_state,
             },

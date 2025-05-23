@@ -46,7 +46,7 @@ def mock_cache_service():
     cache = MagicMock()
 
     # Set up increment method to return a count
-    async def increment_mock(key, increment=1):
+    async def increment_mock(key, increment=1) -> int:
         return 5  # Mock counter value after increment
 
     cache.increment = AsyncMock(side_effect=increment_mock)
@@ -102,7 +102,7 @@ class TestBatchProcessAnalyticsUseCase:
     """Test suite for the BatchProcessAnalyticsUseCase."""
 
     @pytest.mark.asyncio
-    async def test_execute_with_empty_batch(self, use_case):
+    async def test_execute_with_empty_batch(self, use_case) -> None:
         """
         Test processing an empty batch returns appropriate result.
         """
@@ -127,7 +127,7 @@ class TestBatchProcessAnalyticsUseCase:
         assert "empty batch" in args[0].lower()
 
     @pytest.mark.asyncio
-    async def test_execute_with_valid_events(self, use_case, mock_event_processor):
+    async def test_execute_with_valid_events(self, use_case, mock_event_processor) -> None:
         """
         Test processing a batch of valid events.
         """
@@ -182,7 +182,7 @@ class TestBatchProcessAnalyticsUseCase:
         assert completed_logged, "Completed batch log message not found"
 
     @pytest.mark.asyncio
-    async def test_partial_failure_handling(self, use_case, mock_event_processor):
+    async def test_partial_failure_handling(self, use_case, mock_event_processor) -> None:
         """
         Test batch processing continues even if some events fail.
         """
@@ -220,7 +220,7 @@ class TestBatchProcessAnalyticsUseCase:
         assert error_count >= 2, "Error log messages not found"
 
     @pytest.mark.asyncio
-    async def test_event_timestamp_handling(self, use_case, mock_event_processor):
+    async def test_event_timestamp_handling(self, use_case, mock_event_processor) -> None:
         """
         Test proper handling of event timestamps.
         """
@@ -264,7 +264,7 @@ class TestBatchProcessAnalyticsUseCase:
         assert isinstance(call_args_list[2][1]["timestamp"], datetime)
 
     @pytest.mark.asyncio
-    async def test_batch_metadata_saved(self, use_case, mock_cache_service):
+    async def test_batch_metadata_saved(self, use_case, mock_cache_service) -> None:
         """
         Test that batch metadata is properly saved.
         """
@@ -290,7 +290,7 @@ class TestBatchProcessAnalyticsUseCase:
         )
 
     @pytest.mark.asyncio
-    async def test_large_batch_chunking(self, use_case, mock_event_processor):
+    async def test_large_batch_chunking(self, use_case, mock_event_processor) -> None:
         """
         Test that large batches are processed in chunks.
         """

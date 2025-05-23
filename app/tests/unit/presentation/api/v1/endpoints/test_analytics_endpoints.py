@@ -229,7 +229,7 @@ class TestAnalyticsEndpoints:
     """Tests for analytics endpoints."""
 
     @pytest.mark.asyncio
-    async def test_analytics_router_health(self, client: AsyncClient):
+    async def test_analytics_router_health(self, client: AsyncClient) -> None:
         response = await client.get("/api/v1/analytics/health-check")
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == {"status": "analytics router is healthy"}
@@ -244,7 +244,7 @@ class TestAnalyticsEndpoints:
         mock_auth_service: AsyncMock,
         auth_headers: dict,
         mocker,  # Inject pytest-mock fixture
-    ):
+    ) -> None:
         """Test the record_analytics_event endpoint."""
         event_data = {
             "event_type": "page_view",
@@ -301,7 +301,7 @@ class TestAnalyticsEndpoints:
         mock_auth_service: AsyncMock,
         auth_headers: dict,
         mocker,  # Inject pytest-mock fixture
-    ):
+    ) -> None:
         """Test the record_analytics_batch endpoint."""
         batch_event_list = [
             {
@@ -371,7 +371,7 @@ class TestAnalyticsEndpoints:
         mock_auth_service: AsyncMock,
         auth_headers: dict,
         mocker: Mock,  # Use correct type hint for mocker if needed
-    ):
+    ) -> None:
         """Test PHI detection and redaction in analytics events."""
         event_data_with_phi = {
             "event_type": "form_submit",

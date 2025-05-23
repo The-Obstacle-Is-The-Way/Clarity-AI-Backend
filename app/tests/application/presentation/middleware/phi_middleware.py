@@ -339,10 +339,10 @@ class PHIMiddleware(BaseHTTPMiddleware):
             return self.phi_service.contains_phi(data)
         elif isinstance(data, dict):
             # Check if any value in the dictionary contains PHI
-            for key, value in data.items():
+            for _key, value in data.items():
                 if self._check_for_phi_in_data(value, path):
                     return True
-        elif isinstance(data, (list, tuple)):
+        elif isinstance(data, list | tuple):
             # Check if any item in the list contains PHI
             for item in data:
                 if self._check_for_phi_in_data(item, path):

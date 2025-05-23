@@ -59,7 +59,7 @@ class BiometricAlert(BaseModel):
         populate_by_name=True,  # Allows using 'alert_id' as input
     )
 
-    def acknowledge(self, user_id: UUID, notes: str | None = None):
+    def acknowledge(self, user_id: UUID, notes: str | None = None) -> None:
         """Mark the alert as acknowledged."""
         if not self.acknowledged:
             self.acknowledged = True
@@ -69,7 +69,7 @@ class BiometricAlert(BaseModel):
             self.status = AlertStatusEnum.ACKNOWLEDGED
             self.updated_at = self.acknowledged_at
 
-    def resolve(self, user_id: UUID, notes: str | None = None):
+    def resolve(self, user_id: UUID, notes: str | None = None) -> None:
         """Mark the alert as resolved."""
         if not self.resolved:
             self.resolved = True

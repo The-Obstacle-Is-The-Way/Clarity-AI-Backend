@@ -123,6 +123,6 @@ class MockAuditLogRepository(IAuditLogRepository):
         # Calculate basic statistics
         return {
             "total_logs": len(filtered_logs),
-            "event_types": len(set(log.event_type for log in filtered_logs)),
-            "users": len(set(log.actor_id for log in filtered_logs if log.actor_id)),
+            "event_types": len({log.event_type for log in filtered_logs}),
+            "users": len({log.actor_id for log in filtered_logs if log.actor_id}),
         }

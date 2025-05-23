@@ -159,7 +159,7 @@ class Settings(BaseSettings):
     )
 
     @field_validator("LOG_LEVEL")
-    def validate_log_level(cls, v: str) -> str:
+    def validate_log_level(self, v: str) -> str:
         """Validate that log level is one of the valid levels."""
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if v.upper() not in valid_levels:

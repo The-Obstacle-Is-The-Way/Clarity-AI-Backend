@@ -6,8 +6,10 @@ This module tests the mock database session used for testing.
 import pytest
 from sqlalchemy import select
 
+
 # Override select to avoid SQLAlchemy coercion for object type
-select = lambda *args, **kwargs: "select"
+def select(*args, **kwargs) -> str:
+    return "select"
 from uuid import uuid4
 
 from app.tests.fixtures.mock_db_fixture import MockAsyncSession
@@ -22,7 +24,7 @@ class TestMockAsyncSession:
         return MockAsyncSession()
 
     @pytest.mark.asyncio
-    async def test_mock_session_basic_operations(self, mock_db):
+    async def test_mock_session_basic_operations(self, mock_db) -> None:
         """Test that basic CRUD operations work with MockAsyncSession."""
         # Setup test entity
         # Use a dynamic object for mock testing that supports attribute assignment
@@ -39,7 +41,7 @@ class TestMockAsyncSession:
         assert not mock_db._pending_objects
 
     @pytest.mark.asyncio
-    async def test_mock_session_execute_select(self, mock_db):
+    async def test_mock_session_execute_select(self, mock_db) -> None:
         """Test that execute works with SELECT statements."""
         # Setup test entity
         test_entity = type("Entity", (), {})()
@@ -60,7 +62,7 @@ class TestMockAsyncSession:
         assert result.scalars().first() == test_entity
 
     @pytest.mark.asyncio
-    async def test_mock_session_rollback(self, mock_db):
+    async def test_mock_session_rollback(self, mock_db) -> None:
         """Test that rollback works correctly."""
         # Setup test entity
         test_entity = type("Entity", (), {})()
@@ -76,7 +78,7 @@ class TestMockAsyncSession:
         assert test_entity not in mock_db._committed_objects
 
     @pytest.mark.asyncio
-    async def test_mock_session_delete(self, mock_db):
+    async def test_mock_session_delete(self, mock_db) -> None:
         """Test that delete works correctly."""
         # Setup test entity
         test_entity = type("Entity", (), {})()
@@ -97,7 +99,7 @@ class TestMockAsyncSession:
         assert not mock_db._deleted_objects
 
     @pytest.mark.asyncio
-    async def test_mock_session_refresh(self, mock_db):
+    async def test_mock_session_refresh(self, mock_db) -> None:
         """Test that refresh works correctly."""
         # Setup test entity
         test_entity = type("Entity", (), {})()
@@ -112,7 +114,7 @@ class TestMockAsyncSession:
         test_entity.name = "New Name"
 
         # Set up refresh behavior
-        def refresh_callback(obj):
+        def refresh_callback(obj) -> None:
             obj.name = "Refreshed Name"
 
         mock_db.set_refresh_callback(refresh_callback)

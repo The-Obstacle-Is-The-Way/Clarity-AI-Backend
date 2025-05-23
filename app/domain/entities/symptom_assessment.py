@@ -44,6 +44,6 @@ class SymptomAssessment(BaseEntity):
             super().__post_init__()
         # Add validation if needed (e.g., score range for known types)
 
-    def touch(self):
+    def touch(self) -> None:
         """Update the last_updated timestamp."""
         self.last_updated = now_utc()  # Should ideally not change post-creation

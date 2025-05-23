@@ -244,7 +244,7 @@ class TestDigitalTwinIntegrationService:
     @pytest.mark.asyncio
     async def test_generate_comprehensive_insights_all_services(
         self, integration_service, sample_patient_id
-    ):
+    ) -> None:
         """Test that generate_comprehensive_insights calls all services and combines results."""
         # Setup
         options = {
@@ -276,7 +276,7 @@ class TestDigitalTwinIntegrationService:
     @pytest.mark.asyncio
     async def test_generate_comprehensive_insights_partial_services(
         self, integration_service, sample_patient_id
-    ):
+    ) -> None:
         """Test that generate_comprehensive_insights only calls requested services."""
         # Setup
         options = {
@@ -308,7 +308,7 @@ class TestDigitalTwinIntegrationService:
     @pytest.mark.asyncio
     async def test_generate_comprehensive_insights_handles_service_errors(
         self, integration_service, sample_patient_id
-    ):
+    ) -> None:
         """Test that generate_comprehensive_insights handles service errors gracefully."""
         # Setup
         integration_service.symptom_forecasting_service.generate_forecast.side_effect = Exception(
@@ -339,7 +339,7 @@ class TestDigitalTwinIntegrationService:
     @pytest.mark.asyncio
     async def test_generate_integrated_recommendations(
         self, integration_service, sample_patient_id
-    ):
+    ) -> None:
         """Test that _generate_integrated_recommendations creates meaningful recommendations."""
         # Setup
         # Corrected insights dictionary structure
@@ -411,7 +411,7 @@ class TestDigitalTwinIntegrationService:
     @pytest.mark.asyncio
     async def test_get_patient_data(
         self, integration_service, sample_patient_id, mock_patient_repository
-    ):
+    ) -> None:
         """Test that _get_patient_data retrieves patient data correctly."""
         # Execute
         patient_data = await integration_service._get_patient_data(sample_patient_id)
@@ -425,7 +425,7 @@ class TestDigitalTwinIntegrationService:
     @pytest.mark.asyncio
     async def test_get_patient_data_handles_missing_patient(
         self, integration_service, sample_patient_id, mock_patient_repository
-    ):
+    ) -> None:
         """Test that _get_patient_data handles missing patient data gracefully."""
         # Setup
         mock_patient_repository.get_by_id.return_value = None

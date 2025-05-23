@@ -45,7 +45,7 @@ async def get_assessment_repo() -> ISymptomAssessmentRepository:
     mock_repo = AsyncMock(spec=ISymptomAssessmentRepository)
 
     # Configure mock methods as needed for testing
-    async def mock_get(ass_id):
+    async def mock_get(ass_id) -> None:
         return None
 
     async def mock_list(**kwargs):
@@ -201,14 +201,6 @@ async def list_symptom_assessments(
     #    if not (user_role in ['admin', 'clinician'] or str(patient_id) == user_id_str):
     #        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to list assessments for this patient.")
 
-    query_filters = {
-        "patient_id": patient_id,
-        "assessment_type": assessment_type,
-        "start_date": start_date,
-        "end_date": end_date,
-        "source": source,
-        # Pass limit/offset if repository handles pagination
-    }
 
     # Mock list_by_patient_id
     async def mock_list_pat(pid, assessment_type, start_date, end_date):

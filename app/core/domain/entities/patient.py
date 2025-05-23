@@ -243,7 +243,7 @@ class Patient(BaseModel):
         # If not None, Gender instance, or string, it's invalid
         raise ValueError(f"Gender must be a string or Gender enum instance, got {type(v)}")
 
-    def update_timestamp(self):
+    def update_timestamp(self) -> None:
         self.updated_at = datetime.now(timezone.utc)
 
     def get_full_name(self) -> str:

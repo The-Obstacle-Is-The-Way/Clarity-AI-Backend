@@ -14,7 +14,7 @@ from app.tests.utils.asyncio_helpers import run_with_timeout
 
 # Modern approach: use the decorator with scope parameter
 @pytest.mark.asyncio(scope="function")
-async def test_async_addition():
+async def test_async_addition() -> None:
     """Test a simple async function using modern approach."""
 
     # Define an async function
@@ -29,11 +29,11 @@ async def test_async_addition():
 
 # Use helpers to manage timeouts
 @pytest.mark.asyncio
-async def test_with_timeout():
+async def test_with_timeout() -> None:
     """Test a function using timeout helper."""
 
     # Define an async function
-    async def delayed_operation():
+    async def delayed_operation() -> str:
         await asyncio.sleep(0.2)
         return "completed"
 
@@ -47,7 +47,7 @@ class TestAsyncOperations:
     """Test class for async operations."""
 
     @pytest.mark.asyncio
-    async def test_async_map(self):
+    async def test_async_map(self) -> None:
         """Test mapping a function over async results."""
 
         # Define an async function
@@ -63,17 +63,17 @@ class TestAsyncOperations:
         assert results == [2, 4, 6, 8, 10]
 
     @pytest.mark.asyncio
-    async def test_concurrent_tasks(self):
+    async def test_concurrent_tasks(self) -> None:
         """Test running multiple tasks concurrently."""
         # Create a list to track execution order
         execution_order = []
 
-        async def task_a():
+        async def task_a() -> str:
             await asyncio.sleep(0.2)
             execution_order.append("A")
             return "result A"
 
-        async def task_b():
+        async def task_b() -> str:
             await asyncio.sleep(0.1)
             execution_order.append("B")
             return "result B"

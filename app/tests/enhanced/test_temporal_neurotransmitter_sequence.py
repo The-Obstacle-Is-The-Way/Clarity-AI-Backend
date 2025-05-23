@@ -20,7 +20,7 @@ from app.domain.entities.digital_twin_enums import (
 )
 
 
-def test_temporal_neurotransmitter_sequence_creation():
+def test_temporal_neurotransmitter_sequence_creation() -> None:
     """Test basic creation of a TemporalNeurotransmitterSequence."""
     patient_id = uuid.uuid4()
     start_time = datetime.datetime.now() - datetime.timedelta(days=30)
@@ -45,7 +45,7 @@ def test_temporal_neurotransmitter_sequence_creation():
     assert len(sequence.timestamps) == expected_days
 
 
-def test_add_data_point_and_retrieval():
+def test_add_data_point_and_retrieval() -> None:
     """Test adding data points to a sequence and retrieving them."""
     patient_id = uuid.uuid4()
     start_time = datetime.datetime.now() - datetime.timedelta(days=10)
@@ -86,7 +86,7 @@ def test_add_data_point_and_retrieval():
     assert abs(serotonin_levels[9][1] - 0.85) < 0.01
 
 
-def test_trend_analysis():
+def test_trend_analysis() -> None:
     """Test trend analysis on sequence data."""
     patient_id = uuid.uuid4()
     start_time = datetime.datetime.now() - datetime.timedelta(days=10)

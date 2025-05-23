@@ -8,7 +8,7 @@ from app.domain.exceptions.patient_exceptions import PatientNotFoundError
 
 
 @pytest.mark.asyncio
-async def test_execute_returns_patient():
+async def test_execute_returns_patient() -> None:
     # Arrange
     mock_service = AsyncMock()
     dummy_patient = Patient(id="123", date_of_birth="1990-01-01", gender="M")
@@ -24,7 +24,7 @@ async def test_execute_returns_patient():
 
 
 @pytest.mark.asyncio
-async def test_execute_propagates_not_found_error():
+async def test_execute_propagates_not_found_error() -> None:
     # Arrange
     mock_service = AsyncMock()
     mock_service.get_by_id.side_effect = PatientNotFoundError("123")

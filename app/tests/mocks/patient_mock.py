@@ -159,7 +159,7 @@ class Patient:
         if self.phone and not self._validate_phone(self.phone):
             raise ValidationException(f"Invalid phone format: {self.phone}")
 
-    def _is_valid_uuid(self, uuid_string):
+    def _is_valid_uuid(self, uuid_string) -> bool | None:
         """Validate UUID format."""
         try:
             UUID(uuid_string)
@@ -180,7 +180,7 @@ class Patient:
             return False
         return True
 
-    def update_personal_info(self, **kwargs):
+    def update_personal_info(self, **kwargs) -> None:
         """Update personal information."""
         for key, value in kwargs.items():
             if hasattr(self, key):
@@ -196,7 +196,7 @@ class Patient:
                 setattr(self, key, value)
         self.updated_at = datetime.now()
 
-    def update_insurance_info(self, insurance_info=None, insurance_status=None):
+    def update_insurance_info(self, insurance_info=None, insurance_status=None) -> None:
         """Update insurance information."""
         if insurance_info is not None:
             self.insurance_info = insurance_info
@@ -206,7 +206,7 @@ class Patient:
             self.insurance_status = insurance_status
         self.updated_at = datetime.now()
 
-    def add_emergency_contact(self, contact):
+    def add_emergency_contact(self, contact) -> None:
         """Add an emergency contact."""
         if "name" not in contact:
             raise ValidationException("Emergency contact must have a name")
@@ -215,21 +215,21 @@ class Patient:
         self.emergency_contacts.append(contact)
         self.updated_at = datetime.now()
 
-    def remove_emergency_contact(self, index):
+    def remove_emergency_contact(self, index) -> None:
         """Remove an emergency contact by index."""
         if index >= len(self.emergency_contacts):
             raise IndexError(f"Index {index} out of range for emergency contacts")
         self.emergency_contacts.pop(index)
         self.updated_at = datetime.now()
 
-    def add_medical_history_item(self, item):
+    def add_medical_history_item(self, item) -> None:
         """Add a medical history item."""
         if "condition" not in item:
             raise ValidationException("Medical history item must have a condition")
         self.medical_history.append(item)
         self.updated_at = datetime.now()
 
-    def add_medication(self, medication):
+    def add_medication(self, medication) -> None:
         """Add a medication."""
         # Handle both string medication names and dictionary medication objects
         if isinstance(medication, str):
@@ -246,38 +246,38 @@ class Patient:
         self.medications.append(medication)
         self.updated_at = datetime.now()
 
-    def remove_medication(self, index):
+    def remove_medication(self, index) -> None:
         """Remove a medication by index."""
         if index >= len(self.medications):
             raise IndexError(f"Index {index} out of range for medications")
         self.medications.pop(index)
         self.updated_at = datetime.now()
 
-    def add_allergy(self, allergy):
+    def add_allergy(self, allergy) -> None:
         """Add an allergy."""
         if allergy and allergy not in self.allergies:
             self.allergies.append(allergy)
         self.updated_at = datetime.now()
 
-    def remove_allergy(self, allergy):
+    def remove_allergy(self, allergy) -> None:
         """Remove an allergy."""
         if allergy in self.allergies:
             self.allergies.remove(allergy)
         self.updated_at = datetime.now()
 
-    def update_status(self, status):
+    def update_status(self, status) -> None:
         """Update patient status."""
         if isinstance(status, str):
             status = PatientStatus(status)
         self.status = status
         self.updated_at = datetime.now()
 
-    def update_notes(self, notes):
+    def update_notes(self, notes) -> None:
         """Update patient notes."""
         self.notes = notes
         self.updated_at = datetime.now()
 
-    def update_appointment_times(self, last_appointment=None, next_appointment=None):
+    def update_appointment_times(self, last_appointment=None, next_appointment=None) -> None:
         """Update appointment times."""
         self.last_appointment = (
             last_appointment if last_appointment is not None else self.last_appointment
@@ -287,7 +287,7 @@ class Patient:
         )
         self.updated_at = datetime.now()
 
-    def set_preferred_provider(self, provider_id):
+    def set_preferred_provider(self, provider_id) -> None:
         """Set preferred provider."""
         self.preferred_provider_id = provider_id
         self.updated_at = datetime.now()
@@ -373,7 +373,7 @@ class MockPatientRepository:
             return self.patients[patient_id]
         return None
 
-    async def delete(self, patient_id):
+    async def delete(self, patient_id) -> bool:
         """Delete a patient."""
         if patient_id in self.patients:
             del self.patients[patient_id]

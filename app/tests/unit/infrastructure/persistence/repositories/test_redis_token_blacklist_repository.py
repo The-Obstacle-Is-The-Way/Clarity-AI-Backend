@@ -38,13 +38,13 @@ def token_blacklist_repo(mock_redis_service: IRedisService) -> RedisTokenBlackli
 
 
 @pytest.fixture
-def mock_token():
+def mock_token() -> str:
     """Sample token for testing."""
     return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXIiLCJleHAiOjE2MDAwMDAwMDB9.signature"
 
 
 @pytest.fixture
-def mock_jti():
+def mock_jti() -> str:
     """Sample JWT ID for testing."""
     return "123e4567-e89b-12d3-a456-426614174000"
 
@@ -71,7 +71,7 @@ class TestRedisTokenBlacklistRepository:
         mock_redis_service,
         mock_jti,
         future_expiry,
-    ):
+    ) -> None:
         """Test adding a token to the blacklist."""
         # Act
         await token_blacklist_repo.add_to_blacklist(mock_jti, future_expiry)
@@ -92,7 +92,7 @@ class TestRedisTokenBlacklistRepository:
         mock_redis_service,
         mock_jti,
         past_expiry,
-    ):
+    ) -> None:
         """Test that expired tokens aren't added to the blacklist."""
         # Act
         await token_blacklist_repo.add_to_blacklist(mock_jti, past_expiry)
@@ -103,7 +103,7 @@ class TestRedisTokenBlacklistRepository:
     @pytest.mark.asyncio
     async def test_is_blacklisted_not_found(
         self, token_blacklist_repo, mock_redis_service, mock_token
-    ):
+    ) -> None:
         """Test checking a token that is not blacklisted."""
         # Arrange
         mock_redis_service.get.return_value = None
@@ -116,7 +116,7 @@ class TestRedisTokenBlacklistRepository:
         mock_redis_service.get.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_is_blacklisted_found(self, token_blacklist_repo, mock_redis_service, mock_token):
+    async def test_is_blacklisted_found(self, token_blacklist_repo, mock_redis_service, mock_token) -> None:
         """Test checking a token that is blacklisted."""
         # Arrange
         mock_redis_service.get.return_value = "mock_jti"
@@ -129,7 +129,7 @@ class TestRedisTokenBlacklistRepository:
         mock_redis_service.get.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_is_jti_blacklisted(self, token_blacklist_repo, mock_redis_service, mock_jti):
+    async def test_is_jti_blacklisted(self, token_blacklist_repo, mock_redis_service, mock_jti) -> None:
         """Test checking if JTI is blacklisted."""
         # Arrange
         mock_redis_service.get.return_value = None
@@ -143,7 +143,7 @@ class TestRedisTokenBlacklistRepository:
         assert mock_jti in str(mock_redis_service.get.call_args)
 
     @pytest.mark.asyncio
-    async def test_blacklist_session(self, token_blacklist_repo, mock_redis_service, mock_jti):
+    async def test_blacklist_session(self, token_blacklist_repo, mock_redis_service, mock_jti) -> None:
         """Test blacklisting a session."""
         # Arrange
         session_id = "test-session-123"
@@ -164,7 +164,7 @@ class TestRedisTokenBlacklistRepository:
         assert mock_jti in str(mock_redis_service.set.call_args_list)
 
     @pytest.mark.asyncio
-    async def test_remove_expired_entries(self, token_blacklist_repo):
+    async def test_remove_expired_entries(self, token_blacklist_repo) -> None:
         """Test removing expired entries (no-op in Redis implementation)."""
         # Act
         result = await token_blacklist_repo.remove_expired_entries()
@@ -173,7 +173,7 @@ class TestRedisTokenBlacklistRepository:
         assert result == 0
 
     @pytest.mark.asyncio
-    async def test_clear_expired_tokens(self, token_blacklist_repo):
+    async def test_clear_expired_tokens(self, token_blacklist_repo) -> None:
         """Test clearing expired tokens (no-op in Redis implementation)."""
         # Act
         result = await token_blacklist_repo.clear_expired_tokens()
@@ -184,7 +184,7 @@ class TestRedisTokenBlacklistRepository:
     @pytest.mark.asyncio
     async def test_redis_exception_handling(
         self, token_blacklist_repo, mock_redis_service, mock_token
-    ):
+    ) -> None:
         """Test exception handling when Redis operations fail."""
         # Arrange
         mock_redis_service.get.side_effect = Exception("Redis connection error")
@@ -195,7 +195,7 @@ class TestRedisTokenBlacklistRepository:
         # Assert - for security, should return True (blacklisted) on errors
         assert result is True
 
-    def test_hash_token(self, token_blacklist_repo, mock_token):
+    def test_hash_token(self, token_blacklist_repo, mock_token) -> None:
         """Test token hashing function."""
         # Act
         result = token_blacklist_repo._hash_token(mock_token)

@@ -34,14 +34,14 @@ from app.infrastructure.services.security import JWTTokenService
 __all__ = [
     # Security services
     "JWTTokenService",
-    # Redis services
-    "RedisService",
-    "create_redis_service",
-    "RedisCacheService",
     # Mock services
     "MockDigitalTwinCoreService",
     "MockEnhancedDigitalTwinCoreService",
     "MockMentalLLaMAService",
     "MockPATService",
     "MockXGBoostService",
+    "RedisCacheService",
+    # Redis services
+    "RedisService",
+    "create_redis_service",
 ]

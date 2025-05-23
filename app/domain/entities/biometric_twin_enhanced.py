@@ -93,7 +93,7 @@ class BiometricDataPoint:
             Normalized numeric value or 0.0 if not convertible
         """
         try:
-            if isinstance(self.value, (int, float)):
+            if isinstance(self.value, int | float):
                 return float(self.value)
 
             if isinstance(self.value, dict):

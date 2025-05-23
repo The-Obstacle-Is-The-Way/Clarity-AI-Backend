@@ -57,7 +57,7 @@ def mock_user_repository(test_user):
         if isinstance(user_id, dict) and "sub" in user_id:
             user_id = user_id["sub"]
         # Handle other possible types
-        if isinstance(user_id, (dict, list)) and str(user_id) == str(test_user.id):
+        if isinstance(user_id, dict | list) and str(user_id) == str(test_user.id):
             return test_user
 
         # Convert to string for comparison (handles UUID objects)
@@ -104,7 +104,7 @@ def jwt_service_with_user_repo(mock_user_repository):
     )
 
 
-def test_create_access_token(jwt_service):
+def test_create_access_token(jwt_service) -> None:
     """Test creating an access token."""
     # Arrange
     user_id = str(uuid.uuid4())
@@ -150,7 +150,7 @@ def test_create_access_token(jwt_service):
     assert "jti" in payload.__dict__, "Payload missing 'jti' property"
 
 
-def test_create_refresh_token(jwt_service):
+def test_create_refresh_token(jwt_service) -> None:
     """Test creating a refresh token."""
     # Arrange
     user_id = str(uuid.uuid4())
@@ -204,7 +204,7 @@ def test_create_refresh_token(jwt_service):
     assert "family_id" in payload.__dict__, "Payload missing 'family_id' property"
 
 
-def test_token_with_phi_fields(jwt_service):
+def test_token_with_phi_fields(jwt_service) -> None:
     """Test that PHI fields are properly excluded from tokens."""
     # Arrange
     user_id = str(uuid.uuid4())
@@ -261,7 +261,7 @@ def test_token_with_phi_fields(jwt_service):
         ), f"PHI field '{field}' found in payload string representation"
 
 
-def test_decode_invalid_token():
+def test_decode_invalid_token() -> None:
     """Test decoding an invalid token format raises the correct exception."""
     # Setup
     from app.domain.exceptions import InvalidTokenException
@@ -286,7 +286,7 @@ def test_decode_invalid_token():
         jwt_service.decode_token("header.payload")  # Missing signature segment
 
 
-def test_verify_refresh_token(jwt_service):
+def test_verify_refresh_token(jwt_service) -> None:
     """Test verifying a refresh token."""
     # Arrange
     user_id = str(uuid.uuid4())
@@ -325,7 +325,7 @@ def test_verify_refresh_token(jwt_service):
     ), f"Expected type=REFRESH, got {token_type}"
 
 
-def test_verify_invalid_refresh_token_type():
+def test_verify_invalid_refresh_token_type() -> None:
     """Test verifying a non-refresh token as refresh token raises the correct exception."""
     # Setup
     import uuid
@@ -351,7 +351,7 @@ def test_verify_invalid_refresh_token_type():
 
 
 @pytest.mark.asyncio
-async def test_get_user_from_token(jwt_service_with_user_repo, test_user):
+async def test_get_user_from_token(jwt_service_with_user_repo, test_user) -> None:
     """Test getting a user from a token."""
     # Instead of patching decode_token, let's directly mock the user repository
     # and create our own token to avoid any subject handling issues
@@ -389,7 +389,7 @@ async def test_get_user_from_token(jwt_service_with_user_repo, test_user):
 
 
 @pytest.mark.asyncio
-async def test_get_user_from_token_invalid_user(jwt_service_with_user_repo):
+async def test_get_user_from_token_invalid_user(jwt_service_with_user_repo) -> None:
     """Test getting a non-existent user from a token."""
     # Arrange
     non_existent_user_id = str(uuid.uuid4())
@@ -409,7 +409,7 @@ async def test_get_user_from_token_invalid_user(jwt_service_with_user_repo):
         jwt_service_with_user_repo.settings = original_settings
 
 
-def test_token_with_custom_expiration(jwt_service):
+def test_token_with_custom_expiration(jwt_service) -> None:
     """Test creating a token with a custom expiration time."""
     # Arrange
     user_id = str(uuid.uuid4())
@@ -428,7 +428,7 @@ def test_token_with_custom_expiration(jwt_service):
 
 
 @pytest.mark.asyncio
-async def test_revoke_token(jwt_service):
+async def test_revoke_token(jwt_service) -> None:
     """Test revoking a token."""
     # Arrange
     user_id = str(uuid.uuid4())

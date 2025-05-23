@@ -31,14 +31,14 @@ class NeurotransmitterTwinModel:
         """Initialize the current neurotransmitter levels from baseline values."""
         self.reset_to_baseline()
 
-    def reset_to_baseline(self):
+    def reset_to_baseline(self) -> None:
         """Reset all neurotransmitters to the baseline values from the digital twin."""
         self.current_serotonin = self.digital_twin.baseline_serotonin
         self.current_dopamine = self.digital_twin.baseline_dopamine
         self.current_gaba = self.digital_twin.baseline_gaba
         self.current_norepinephrine = self.digital_twin.baseline_norepinephrine
 
-    def simulate_medication_effect(self, medication: Medication, days: int = 28):
+    def simulate_medication_effect(self, medication: Medication, days: int = 28) -> None:
         """
         Simulate the effect of a medication on neurotransmitter levels.
 
@@ -87,7 +87,7 @@ class NeurotransmitterTwinModel:
             # Increase GABA
             self.current_gaba *= 1 + 0.05 * days * self.digital_twin.medication_sensitivity
 
-    def simulate_stress(self, stress_level: float, days: int = 1):
+    def simulate_stress(self, stress_level: float, days: int = 1) -> None:
         """
         Simulate the effect of stress on neurotransmitter levels.
 
@@ -125,7 +125,7 @@ class MentalStateModel:
         """Initialize the mental state scores."""
         self.update_scores()
 
-    def update_scores(self):
+    def update_scores(self) -> None:
         """Update depression and anxiety scores based on current neurotransmitter levels."""
         self.depression_score = self._calculate_depression_score()
         self.anxiety_score = self._calculate_anxiety_score()

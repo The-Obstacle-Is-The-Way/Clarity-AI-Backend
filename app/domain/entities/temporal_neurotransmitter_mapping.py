@@ -99,7 +99,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         # Initialize baselines with default values
         self._initialize_baselines()
 
-    def _initialize_baselines(self):
+    def _initialize_baselines(self) -> None:
         """Initialize baseline neurotransmitter levels for all brain regions."""
         for region in BrainRegion:
             self.baseline_levels[region] = {}
@@ -189,9 +189,9 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         data = np.zeros((num_timestamps, num_features))
 
         # Get index of the primary neurotransmitter
-        primary_nt_idx = [
+        primary_nt_idx = next(
             i for i, name in enumerate(feature_names) if name == neurotransmitter.value
-        ][0]
+        )
 
         # Generate values for primary neurotransmitter
         for t in range(num_timestamps):
@@ -273,8 +273,8 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         effect_magnitude: float = 1.0,
         max_depth: int = 3,
         effect_duration: float | None = None,
-        initial_level: float = None,
-        time_steps: int = None,
+        initial_level: float | None = None,
+        time_steps: int | None = None,
     ) -> dict[BrainRegion, dict[Neurotransmitter, float]] | dict[BrainRegion, list[float]]:
         """
         Predict how a change in one brain region cascades to others.
@@ -553,11 +553,11 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
     def analyze_temporal_response(
         self,
         sequence: TemporalSequence = None,
-        patient_id: UUID = None,
+        patient_id: UUID | None = None,
         brain_region: BrainRegion = None,
         neurotransmitter: Neurotransmitter = None,
-        time_series_data: list[tuple[datetime, float]] = None,
-        baseline_period: tuple[datetime, datetime] = None,
+        time_series_data: list[tuple[datetime, float]] | None = None,
+        baseline_period: tuple[datetime, datetime] | None = None,
     ) -> NeurotransmitterEffect:
         """
         Analyze a temporal response to extract patterns and insights.
@@ -597,8 +597,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         results = {"trends": {}, "patterns": {}, "correlations": {}, "statistics": {}}
 
         # Extract data as numpy array for analysis
-        data = np.array(sequence.values)
-        timestamps = sequence.timestamps
+        np.array(sequence.values)
         feature_names = sequence.feature_names
 
         # Calculate basic statistics for each neurotransmitter
@@ -820,7 +819,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         brain_region: BrainRegion,
         neurotransmitter: Neurotransmitter,
         time_series_data: list[tuple[datetime, float]],
-        baseline_period: tuple[datetime, datetime] = None,
+        baseline_period: tuple[datetime, datetime] | None = None,
     ) -> NeurotransmitterEffect:
         """
         Analyze raw time series data for a specific neurotransmitter in a brain region.
@@ -901,8 +900,8 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         brain_region: BrainRegion,
         target_neurotransmitter: Neurotransmitter = None,
         treatment_effect: float = 0.5,
-        timestamps: list[datetime] = None,
-        affected_neurotransmitters: dict[Neurotransmitter, float] = None,
+        timestamps: list[datetime] | None = None,
+        affected_neurotransmitters: dict[Neurotransmitter, float] | None = None,
         medication_name: str = "Generic Medication",
     ) -> dict[Neurotransmitter, TemporalSequence]:
         """
@@ -1136,7 +1135,7 @@ def extend_neurotransmitter_mapping(
     if hasattr(base_mapping, "brain_regions"):
         temporal_mapping.brain_regions = (
             set(base_mapping.brain_regions)
-            if isinstance(base_mapping.brain_regions, (set, list))
+            if isinstance(base_mapping.brain_regions, set | list)
             else set()
         )
 
@@ -1173,7 +1172,7 @@ def extend_neurotransmitter_mapping(
     if hasattr(base_mapping, "brain_regions") and base_mapping.brain_regions is not None:
         # Assuming brain_regions should be a set or list of BrainRegion enums
         # Ensure it's copied correctly, converting to set if necessary
-        if isinstance(base_mapping.brain_regions, (set, list)):
+        if isinstance(base_mapping.brain_regions, set | list):
             temporal_mapping.brain_regions = set(base_mapping.brain_regions)  # Ensure it's a set
         else:
             # Handle unexpected type if necessary, or default to empty set
@@ -1203,12 +1202,12 @@ def extend_neurotransmitter_mapping(
 
 
 # === Monkey patch missing methods for temporal neurotransmitter mapping ===
-def _add_temporal_sequence(self, sequence):
+def _add_temporal_sequence(self, sequence) -> None:
     """Add a temporal sequence by name to the mapping."""
     self.temporal_sequences[sequence.name] = sequence
 
 
-def _add_neurotransmitter_connection(self, source, target, connection_type, strength, delay_hours):
+def _add_neurotransmitter_connection(self, source, target, connection_type, strength, delay_hours) -> None:
     """Record a neurotransmitter connection for cascade simulations."""
     if not hasattr(self, "neurotransmitter_connections"):
         self.neurotransmitter_connections = []

@@ -180,7 +180,7 @@ class DatabaseConnectionValidator:
 
 
 @pytest.mark.asyncio
-async def test_docker_database_connection_basic():
+async def test_docker_database_connection_basic() -> None:
     """Test basic Docker database connectivity with clean error handling."""
     # Get database URL from environment
     db_url = os.environ.get("TEST_DATABASE_URL")
@@ -203,7 +203,7 @@ async def test_docker_database_connection_basic():
 
 
 @pytest.mark.asyncio
-async def test_docker_database_table_operations():
+async def test_docker_database_table_operations() -> None:
     """Test Docker database table operations with proper domain modeling."""
     # Get database URL from environment
     db_url = os.environ.get("TEST_DATABASE_URL")

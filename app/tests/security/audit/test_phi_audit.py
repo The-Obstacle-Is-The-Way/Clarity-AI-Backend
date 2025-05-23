@@ -111,7 +111,7 @@ def process_user_data(data):
 
         return app_dir
 
-    def test_audit_detects_phi_in_code(self, mock_app_directory):
+    def test_audit_detects_phi_in_code(self, mock_app_directory) -> None:
         """Test that the auditor correctly finds PHI in code."""
         auditor = PHIAuditor(app_dir=mock_app_directory)
         auditor.audit_code_for_phi()
@@ -128,7 +128,7 @@ def process_user_data(data):
 
         assert phi_found, "Auditor failed to detect SSN in code"
 
-    def test_audit_detects_unsanitized_logging(self, mock_app_directory):
+    def test_audit_detects_unsanitized_logging(self, mock_app_directory) -> None:
         """Test that the auditor flags unsanitized logging."""
         auditor = PHIAuditor(app_dir=mock_app_directory)
         auditor.audit_logging_sanitization()
@@ -137,7 +137,7 @@ def process_user_data(data):
         # But the auditor should detect where PHI might be logged
         assert "logging_issues" in auditor.findings
 
-    def test_audit_detects_unprotected_api_endpoints(self, mock_app_directory):
+    def test_audit_detects_unprotected_api_endpoints(self, mock_app_directory) -> None:
         """Test that the auditor flags API endpoints without authentication."""
         auditor = PHIAuditor(app_dir=mock_app_directory)
         auditor.audit_api_endpoints()
@@ -154,7 +154,7 @@ def process_user_data(data):
 
         assert endpoint_found, "Auditor failed to detect unauthenticated API endpoint"
 
-    def test_audit_detects_missing_security_config(self, mock_app_directory):
+    def test_audit_detects_missing_security_config(self, mock_app_directory) -> None:
         """Test that the auditor flags missing security settings in config."""
         # Create the config directory if it doesn't exist
         config_dir = os.path.join(mock_app_directory, "core")
@@ -175,7 +175,7 @@ def process_user_data(data):
 
         assert config_found, "Auditor failed to detect missing security settings in config"
 
-    def test_audit_report_generation(self, mock_app_directory, temp_dir):
+    def test_audit_report_generation(self, mock_app_directory, temp_dir) -> None:
         """Test that the auditor generates a proper report."""
         auditor = PHIAuditor(app_dir=mock_app_directory)
         auditor.run_audit()
@@ -199,7 +199,7 @@ def process_user_data(data):
         assert "files_examined" in report_data["summary"]
         assert report_data["summary"]["files_examined"] > 0
 
-    def test_full_audit_execution(self, mock_app_directory):
+    def test_full_audit_execution(self, mock_app_directory) -> None:
         """Test the full audit execution process."""
         auditor = PHIAuditor(app_dir=mock_app_directory)
         result = auditor.run_audit()
@@ -212,7 +212,7 @@ def process_user_data(data):
         assert "api_security" in auditor.findings
         assert "configuration_issues" in auditor.findings
 
-    def test_save_to_json_method(self, mock_app_directory, temp_dir):
+    def test_save_to_json_method(self, mock_app_directory, temp_dir) -> None:
         """Test that the save_to_json method properly generates a JSON file."""
         auditor = PHIAuditor(app_dir=mock_app_directory)
         auditor.run_audit()
@@ -240,7 +240,7 @@ def process_user_data(data):
         assert "files_examined" in report_data["summary"]
         assert report_data["summary"]["files_examined"] > 0
 
-    def test_clean_app_directory_special_case(self, temp_dir):
+    def test_clean_app_directory_special_case(self, temp_dir) -> None:
         """Test that the auditor passes when given a clean_app directory with test PHI."""
         # Create a special clean_app directory structure with test files
         # containing PHI
@@ -272,7 +272,7 @@ class TestPatient:
             result is True
         ), "Audit should pass for clean_app directories regardless of PHI content"
 
-    def test_audit_with_clean_files(self, temp_dir, monkeypatch):
+    def test_audit_with_clean_files(self, temp_dir, monkeypatch) -> None:
         """Test that the audit passes when given clean files (no PHI)."""
         # Create a directory structure with clean files
         clean_dir = os.path.join(temp_dir, "clean_app_no_phi")
@@ -343,7 +343,7 @@ class Sanitizer:
         assert auditor._count_files_examined() > 0
 
     @patch("scripts.test.security.run_hipaa_phi_audit.logger")
-    def test_clean_app_directory_special_case_with_mock(self, mock_logger, temp_dir):
+    def test_clean_app_directory_special_case_with_mock(self, mock_logger, temp_dir) -> None:
         """Test that the auditor passes when given a clean_app directory with test PHI and verifies logging."""
         # Create a special clean_app directory structure with test files
         # containing PHI
@@ -387,7 +387,7 @@ def process_patient_data():
         ), "Logger should have been called"
 
     @patch("scripts.test.security.run_hipaa_phi_audit.logger")
-    def test_ssn_pattern_detection(self, mock_logger, temp_dir):
+    def test_ssn_pattern_detection(self, mock_logger, temp_dir) -> None:
         """Test specific SSN pattern detection capability of the auditor."""
         # Create a directory with a file containing an SSN pattern
         test_dir = os.path.join(temp_dir, "ssn_test")
@@ -438,7 +438,7 @@ def process_patient_data():
             mock_logger.info.called or mock_logger.warning.called
         ), "Neither logger.info nor logger.warning was called"
 
-    def test_performance_with_large_codebase(self, temp_dir):
+    def test_performance_with_large_codebase(self, temp_dir) -> None:
         """Test the performance of the auditor with a large number of files."""
         # Create a large mock codebase
         app_dir = os.path.join(temp_dir, "large_app")

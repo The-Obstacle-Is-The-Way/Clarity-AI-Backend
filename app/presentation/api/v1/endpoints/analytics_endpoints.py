@@ -13,14 +13,14 @@ from app.domain.entities.user import User
 # Use Cases (actual paths might differ)
 # For now, define placeholder classes here to satisfy dependencies
 class ProcessAnalyticsEventUseCase:
-    async def execute(self, task_data: dict):
+    async def execute(self, task_data: dict) -> None:
         print(f"Mock ProcessAnalyticsEventUseCase: Executing with {task_data}")
         # In a real scenario, this would process the event
         pass
 
 
 class BatchProcessAnalyticsUseCase:
-    async def execute(self, task_data: list[dict]):
+    async def execute(self, task_data: list[dict]) -> None:
         print(f"Mock BatchProcessAnalyticsUseCase: Executing with {task_data}")
         # In a real scenario, this would process the batch of events
         pass

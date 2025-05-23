@@ -37,7 +37,7 @@ def valid_patient_data(mock_encryption_service):
 
 
 @pytest.mark.venv_only()
-def test_create_patient(valid_patient_data, mock_encryption_service):
+def test_create_patient(valid_patient_data, mock_encryption_service) -> None:
     """Test patient creation with valid data."""
     # Create patient
     patient = Patient(**valid_patient_data)
@@ -71,7 +71,7 @@ def test_create_patient(valid_patient_data, mock_encryption_service):
     assert not mock_encryption_service.encrypt.called
 
 
-def test_update_patient(valid_patient_data, mock_encryption_service):
+def test_update_patient(valid_patient_data, mock_encryption_service) -> None:
     """Test patient update."""
     # Create initial patient using the modified fixture
     patient = Patient(**valid_patient_data)
@@ -98,7 +98,7 @@ def test_update_patient(valid_patient_data, mock_encryption_service):
     assert not mock_encryption_service.encrypt.called
 
 
-def test_patient_phi_masking(valid_patient_data):
+def test_patient_phi_masking(valid_patient_data) -> None:
     """Test PHI masking in patient data representation.
     NOTE: Domain entity dump should return raw data. Masking is responsibility of other layers.
     """

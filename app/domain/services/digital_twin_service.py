@@ -67,7 +67,7 @@ class DigitalTwinService:
         self._pharmacogenomics_service = pharmacogenomics_service
 
     async def create_digital_twin(
-        self, patient_id: UUID, initial_data: dict[str, Any] = None
+        self, patient_id: UUID, initial_data: dict[str, Any] | None = None
     ) -> DigitalTwin:
         """
         Create a new digital twin for a patient

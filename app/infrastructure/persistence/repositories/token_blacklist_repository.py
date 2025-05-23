@@ -182,12 +182,12 @@ class TokenBlacklistRepository(ITokenRepository):
                 del self._token_blacklist[token]
 
                 # Remove from user tokens mapping if present
-                for user_id, tokens in self._user_tokens.items():
+                for _user_id, tokens in self._user_tokens.items():
                     if token in tokens:
                         tokens.remove(token)
 
                 # Remove from session tokens mapping if present
-                for session_id, tokens in self._session_tokens.items():
+                for _session_id, tokens in self._session_tokens.items():
                     if token in tokens:
                         tokens.remove(token)
 

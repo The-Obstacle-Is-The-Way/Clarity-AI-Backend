@@ -142,7 +142,7 @@ class TemporalNeurotransmitterService:
 
         # Generate neurotransmitter levels for each time point
         baseline_levels = self.nt_mapping.get_baseline_levels(brain_region)
-        for i, time_point in enumerate(time_points):
+        for i, _time_point in enumerate(time_points):
             # Calculate data for this time point
             # Use baseline with small variations to create a realistic time series
             time_value = i * time_step_hours  # hours from start
@@ -226,7 +226,7 @@ class TemporalNeurotransmitterService:
             return None
 
         # Extract time series for this neurotransmitter
-        time_series_data = [
+        [
             (ts, values[feature_idx])
             for ts, values in zip(sequence.timestamps, sequence.values, strict=False)
         ]
@@ -321,7 +321,7 @@ class TemporalNeurotransmitterService:
                 )
 
         # Generate timestamps for simulation
-        end_time = datetime.now(UTC) + timedelta(days=simulation_days)
+        datetime.now(UTC) + timedelta(days=simulation_days)
         start_time = datetime.now(UTC)
         timestamps = [
             start_time + timedelta(hours=i * 6)  # 6-hour steps
@@ -400,7 +400,7 @@ class TemporalNeurotransmitterService:
 
         # Format values for time series visualization
         values = []
-        for i, timestamp in enumerate(sequence.timestamps):
+        for i, _timestamp in enumerate(sequence.timestamps):
             # Get values for this timestamp
             time_point_values = []
             for feature in features:
@@ -468,7 +468,7 @@ class TemporalNeurotransmitterService:
                 if t < len(viz_data.get("vertices_by_time", []))
                 else []
             )
-            colors = (
+            (
                 viz_data.get("colors_by_time", [])[t]
                 if t < len(viz_data.get("colors_by_time", []))
                 else []
@@ -484,7 +484,7 @@ class TemporalNeurotransmitterService:
                         regions_with_activity.add(region)
 
                         # Get activity level from the cascade results
-                        activity_level = cascade_results.get(region, [0.0] * time_steps)[t]
+                        cascade_results.get(region, [0.0] * time_steps)[t]
 
                         # Add node if not already added
                         if not any(n for n in nodes if n.get("id") == region.value):

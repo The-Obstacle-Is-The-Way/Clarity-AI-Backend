@@ -36,7 +36,7 @@ class AuditLog(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @field_validator("timestamp")
-    def ensure_timezone(cls, v: datetime) -> datetime:
+    def ensure_timezone(self, v: datetime) -> datetime:
         """Ensure the timestamp has a timezone."""
         if v.tzinfo is None:
             return v.replace(tzinfo=timezone.utc)

@@ -21,7 +21,7 @@ settings = Settings()
 class TestSettings:
     """Test cases for the Settings class."""
 
-    def test_default_settings(self):
+    def test_default_settings(self) -> None:
         """Test that default settings are loaded correctly."""
         # Check essential configuration values
         assert settings.PROJECT_NAME == "Novamind Digital Twin"
@@ -35,7 +35,7 @@ class TestSettings:
         # HIPAA settings
         assert settings.ENABLE_PHI_AUDITING is True
 
-    def test_environment_override(self, monkeypatch):
+    def test_environment_override(self, monkeypatch) -> None:
         """Test that environment variables override default settings."""
         # Set environment variables
         monkeypatch.setenv("PROJECT_NAME", "Custom Project Name")
@@ -53,7 +53,7 @@ class TestSettings:
         assert settings_local.ACCESS_TOKEN_EXPIRE_MINUTES == 60
         assert settings_local.ENABLE_PHI_AUDITING is False
 
-    def test_database_url_override(self, monkeypatch):
+    def test_database_url_override(self, monkeypatch) -> None:
         """Test database URL override via environment variable."""
         test_db_url = "postgresql+asyncpg://testuser:testpass@testhost/testdb"
         monkeypatch.setenv("DATABASE_URL", test_db_url)
@@ -63,7 +63,7 @@ class TestSettings:
         # Check database URL
         assert settings_local.DATABASE_URL == test_db_url
 
-    def test_database_url_construction(self, monkeypatch):
+    def test_database_url_construction(self, monkeypatch) -> None:
         """Test that database URL is constructed correctly from components."""
         # Setup database environment variables
         test_db_url = "postgresql://test-user:test-password@test-db-server:5432/test-db"
@@ -74,7 +74,7 @@ class TestSettings:
         # Check database URL
         assert settings_local.DATABASE_URL == test_db_url
 
-    def test_testing_environment(self, monkeypatch):
+    def test_testing_environment(self, monkeypatch) -> None:
         """Test settings specific to the testing environment."""
         # Set testing environment variables
         monkeypatch.setenv("TESTING", "1")
@@ -87,7 +87,7 @@ class TestSettings:
         # DEBUG env var should be set by Settings model
         assert "DEBUG" in os.environ
 
-    def test_cors_origins_parsing(self, monkeypatch):
+    def test_cors_origins_parsing(self, monkeypatch) -> None:
         """Test parsing of CORS_ORIGINS from environment variables."""
         # Test comma-separated string format
         monkeypatch.setenv("CORS_ORIGINS", "http://localhost,https://example.com")

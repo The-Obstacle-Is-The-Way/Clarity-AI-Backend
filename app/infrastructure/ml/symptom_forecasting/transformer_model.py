@@ -258,7 +258,7 @@ class MultiHorizonTransformer(nn.Module):
         num_decoder_layers: int = 6,
         d_ff: int = 1024,
         dropout: float = 0.1,
-        quantiles: list[float] = [0.1, 0.5, 0.9],
+        quantiles: list[float] | None = None,
     ):
         """
         Initialize Multi-Horizon Transformer model.
@@ -274,6 +274,8 @@ class MultiHorizonTransformer(nn.Module):
             dropout: Dropout rate
             quantiles: List of quantiles to predict
         """
+        if quantiles is None:
+            quantiles = [0.1, 0.5, 0.9]
         super().__init__()
 
         self.input_dim = input_dim

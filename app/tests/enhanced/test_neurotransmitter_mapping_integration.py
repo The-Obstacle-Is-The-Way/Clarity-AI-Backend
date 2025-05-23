@@ -92,7 +92,7 @@ async def test_neurotransmitter_mapping_initialization(
     enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     initialized_patient,  # Ensure digital twin is initialized for patient
     patient_id: UUID,
-):
+) -> None:
     """Test initialization of the neurotransmitter mapping."""
     (digital_twin_service,) = enhanced_services
 
@@ -127,12 +127,12 @@ async def test_add_custom_receptor_profile(
     enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     initialized_patient,  # Ensure digital twin is initialized for patient
     patient_id: UUID,
-):
+) -> None:
     """Test adding a custom receptor profile to the mapping."""
     (digital_twin_service,) = enhanced_services
 
     # Initialize the mapping
-    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
+    await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
 
     # Create a custom profile
     custom_profile = ReceptorProfile(
@@ -174,12 +174,12 @@ async def test_simulate_neurotransmitter_cascade(
     enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     patient_id: UUID,
     initialized_patient: DigitalTwinState,
-):
+) -> None:
     """Test simulation of neurotransmitter cascade effects."""
     (digital_twin_service,) = enhanced_services
 
     # Initialize mapping first
-    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
+    await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
 
     # Simulate medication effect
     initial_changes = {
@@ -226,12 +226,12 @@ async def test_analyze_neurotransmitter_interactions(
     enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     patient_id: UUID,
     initialized_patient: DigitalTwinState,
-):
+) -> None:
     """Test analysis of interactions between neurotransmitters."""
     (digital_twin_service,) = enhanced_services
 
     # Initialize mapping first
-    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
+    await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
 
     # Analyze interactions
     interactions = await digital_twin_service.analyze_neurotransmitter_interactions(
@@ -265,12 +265,12 @@ async def test_predict_medication_effects(
     enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     patient_id: UUID,
     initialized_patient: DigitalTwinState,
-):
+) -> None:
     """Test prediction of medication effects on neurotransmitters."""
     (digital_twin_service,) = enhanced_services
 
     # Initialize mapping first
-    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
+    await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
 
     # Define medication data
     medication_data = {
@@ -317,12 +317,12 @@ async def test_analyze_treatment_response(
     enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     patient_id: UUID,
     initialized_patient: DigitalTwinState,
-):
+) -> None:
     """Test analysis of treatment response patterns."""
     (digital_twin_service,) = enhanced_services
 
     # Initialize mapping first
-    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
+    await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
 
     # Analyze temporal response
     temporal_analysis = await digital_twin_service.analyze_temporal_response(
@@ -365,12 +365,12 @@ async def test_generate_clinical_insights(
     enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     patient_id: UUID,
     initialized_patient: DigitalTwinState,
-):
+) -> None:
     """Test generation of clinical insights from neurotransmitter data."""
     (digital_twin_service,) = enhanced_services
 
     # Initialize mapping first
-    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
+    await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
 
     # Generate clinical insights
     insights = await digital_twin_service.generate_clinical_insights(
@@ -410,12 +410,12 @@ async def test_analyze_regional_neurotransmitter_effects(
     enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     patient_id: UUID,
     initialized_patient: DigitalTwinState,
-):
+) -> None:
     """Test analysis of neurotransmitter effects by brain region."""
     (digital_twin_service,) = enhanced_services
 
     # Initialize mapping first
-    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
+    await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
 
     # Analyze regional effects
     analysis_results = await digital_twin_service.analyze_regional_effects(
@@ -460,12 +460,12 @@ async def test_integrated_neurotransmitter_mapping_with_visualization(
     enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     patient_id: UUID,
     initialized_patient: DigitalTwinState,
-):
+) -> None:
     """Test integration of neurotransmitter mapping with visualization data generation."""
     (digital_twin_service,) = enhanced_services
 
     # Initialize mapping first
-    mapping = await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
+    await digital_twin_service.initialize_neurotransmitter_mapping(patient_id=patient_id)
 
     # Simulate medication effect
     initial_changes = {

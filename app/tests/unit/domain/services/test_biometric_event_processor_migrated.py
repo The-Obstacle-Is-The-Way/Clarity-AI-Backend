@@ -76,7 +76,7 @@ def mock_observer():
 class TestBiometricEventProcessor:
     """Tests for the BiometricEventProcessor."""
 
-    def test_add_rule(self, sample_rule):
+    def test_add_rule(self, sample_rule) -> None:
         """Test that add_rule adds a rule to the processor."""
         processor = BiometricEventProcessor()
         processor.add_rule(sample_rule)
@@ -84,7 +84,7 @@ class TestBiometricEventProcessor:
         assert sample_rule.rule_id in processor.rules
         assert processor.rules[sample_rule.rule_id] == sample_rule
 
-    def test_remove_rule(self, sample_rule):
+    def test_remove_rule(self, sample_rule) -> None:
         """Test that remove_rule removes a rule from the processor."""
         processor = BiometricEventProcessor()
         processor.add_rule(sample_rule)
@@ -92,7 +92,7 @@ class TestBiometricEventProcessor:
 
         assert sample_rule.rule_id not in processor.rules
 
-    def test_register_observer(self, mock_observer):
+    def test_register_observer(self, mock_observer) -> None:
         """Test that register_observer registers an observer for specific priorities."""
         processor = BiometricEventProcessor()
         processor.register_observer(mock_observer, [AlertPriority.WARNING])
@@ -101,7 +101,7 @@ class TestBiometricEventProcessor:
         assert mock_observer not in processor.observers[AlertPriority.URGENT]
         assert mock_observer not in processor.observers[AlertPriority.INFORMATIONAL]
 
-    def test_unregister_observer(self, mock_observer):
+    def test_unregister_observer(self, mock_observer) -> None:
         """Test that unregister_observer unregisters an observer from all priorities."""
         processor = BiometricEventProcessor()
         processor.register_observer(mock_observer, [AlertPriority.WARNING, AlertPriority.URGENT])
@@ -111,7 +111,7 @@ class TestBiometricEventProcessor:
         assert mock_observer not in processor.observers[AlertPriority.URGENT]
         assert mock_observer not in processor.observers[AlertPriority.INFORMATIONAL]
 
-    def test_process_data_point_no_patient_id(self):
+    def test_process_data_point_no_patient_id(self) -> None:
         """Test that process_data_point raises an error if the data point has no patient ID."""
         processor = BiometricEventProcessor()
         data_point = BiometricDataPoint(
@@ -128,7 +128,7 @@ class TestBiometricEventProcessor:
         with pytest.raises(ValidationError):
             processor.process_data_point(data_point)
 
-    def test_process_data_point_no_matching_rules(self, sample_data_point):
+    def test_process_data_point_no_matching_rules(self, sample_data_point) -> None:
         """Test that process_data_point returns no alerts if no rules match."""
         processor = BiometricEventProcessor()
         rule = AlertRule(
@@ -146,7 +146,7 @@ class TestBiometricEventProcessor:
 
         assert len(alerts) == 0
 
-    def test_process_data_point_matching_rule(self, sample_data_point, sample_rule, mock_observer):
+    def test_process_data_point_matching_rule(self, sample_data_point, sample_rule, mock_observer) -> None:
         """Test that process_data_point returns alerts for matching rules and notifies observers."""
         processor = BiometricEventProcessor()
         processor.add_rule(sample_rule)
@@ -168,7 +168,7 @@ class TestBiometricEventProcessor:
 
     def test_process_data_point_patient_specific_rule(
         self, sample_data_point, sample_rule, sample_clinician_id
-    ):
+    ) -> None:
         """Test that process_data_point only applies patient-specific rules to the right patient."""
         processor = BiometricEventProcessor()
 
@@ -206,7 +206,7 @@ class TestBiometricEventProcessor:
         assert len(alerts) == 1
         assert alerts[0].rule_id == general_rule.rule_id
 
-    def test_process_data_point_inactive_rule(self, sample_data_point, sample_rule):
+    def test_process_data_point_inactive_rule(self, sample_data_point, sample_rule) -> None:
         """Test that process_data_point ignores inactive rules."""
         processor = BiometricEventProcessor()
         sample_rule.is_active = False
@@ -218,7 +218,7 @@ class TestBiometricEventProcessor:
 
     # Migrated from standalone tests - additional test cases
 
-    def test_evaluate_greater_than_or_equal(self, sample_rule, sample_data_point):
+    def test_evaluate_greater_than_or_equal(self, sample_rule, sample_data_point) -> None:
         """Test evaluation of 'greater than or equal to' operator."""
         sample_clinician_id = UUID("00000000-0000-0000-0000-000000000001")
 
@@ -257,7 +257,7 @@ class TestBiometricEventProcessor:
 class TestAlertRule:
     """Tests for the AlertRule class."""
 
-    def test_evaluate_greater_than(self, sample_rule, sample_data_point):
+    def test_evaluate_greater_than(self, sample_rule, sample_data_point) -> None:
         """Test evaluation of 'greater than' operator."""
         # Modify the rule to use the '>' operator
         sample_rule.condition["operator"] = ">"

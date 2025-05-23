@@ -11,8 +11,7 @@ from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, TypeVar
-from unittest.mock import ANY, AsyncMock
-from unittest.mock import MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
 from unittest.mock import MagicMock as Mock
 
 import pytest
@@ -305,7 +304,7 @@ def global_mock_jwt_service() -> MagicMock:
     mock = MagicMock(spec=JWTServiceInterface)
 
     # Mock create_access_token to return a test token
-    async def create_access_token_mock(*args, **kwargs):
+    async def create_access_token_mock(*args, **kwargs) -> str:
         return "test.provider.token"
 
     # Set up the mock
@@ -1279,7 +1278,7 @@ class TestBiometricAlertsEndpoints:
         sample_patient_id: uuid.UUID,
     ) -> None:
         # Create summary response data
-        summary_data = {
+        {
             "patient_id": str(sample_patient_id),
             "start_date": "2023-01-01T00:00:00+00:00",
             "end_date": "2023-02-01T00:00:00+00:00",
@@ -1677,7 +1676,6 @@ async def app_with_mock_template_service(
     )
 
     # Store original
-    original_get_template_service = get_alert_rule_template_service
 
     # Replace with mock
     app.dependency_overrides[get_alert_rule_template_service] = lambda: mock_template_service

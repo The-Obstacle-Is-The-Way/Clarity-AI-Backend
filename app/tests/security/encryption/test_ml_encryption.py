@@ -105,7 +105,7 @@ def patient_record() -> dict[str, Any]:
 class TestEncryptionService:
     """Test suite for the HIPAA-compliant encryption service."""
 
-    def test_encrypt_decrypt_data(self, encryption_service, sensitive_data):
+    def test_encrypt_decrypt_data(self, encryption_service, sensitive_data) -> None:
         """Test basic encryption and decryption of sensitive data."""
         # Arrange
         data_json = json.dumps(sensitive_data)
@@ -119,7 +119,7 @@ class TestEncryptionService:
         assert encrypted != data_json
         assert json.loads(decrypted) == sensitive_data
 
-    def test_encrypt_decrypt_ml_data(self, encryption_service):
+    def test_encrypt_decrypt_ml_data(self, encryption_service) -> None:
         """Test encryption/decryption of ML-specific data types (tensors and embeddings)."""
         # Create a fake ML model embedding
         embedding = [0.123, 0.456, 0.789, -0.123, -0.456, -0.789]
@@ -149,7 +149,7 @@ class TestEncryptionService:
         decrypted_tensor = ml_encryption_service.decrypt_tensor(encrypted_tensor)
         assert np.array_equal(decrypted_tensor, tensor)
 
-    def test_ml_key_rotation(self):
+    def test_ml_key_rotation(self) -> None:
         """Test ML-specific key rotation capabilities."""
         # Use a mock instead of trying to use real key rotation which is complicated
         # due to the way the encryption works with initialization vectors
@@ -197,7 +197,7 @@ class TestEncryptionService:
             assert np.array_equal(result, tensor)
             mock_decrypt.assert_called_with(encrypted_tensor)
 
-    def test_bytes_string_conversion(self):
+    def test_bytes_string_conversion(self) -> None:
         """Test proper handling of bytes/string conversion in encryption/decryption."""
         # Create test data in both string and bytes form
         string_data = "Test patient PHI data"
@@ -236,7 +236,7 @@ class TestEncryptionService:
         decrypted_array = ml_service.decrypt_tensor(encrypted_array)
         assert np.array_equal(decrypted_array, array_data)
 
-    def test_encryption_is_non_deterministic_but_decrypts_correctly(self, encryption_service):
+    def test_encryption_is_non_deterministic_but_decrypts_correctly(self, encryption_service) -> None:
         """Test that encryption is non-deterministic but decrypts correctly."""
         # Arrange
         original_data = "Sensitive patient data"
@@ -273,7 +273,7 @@ class TestEncryptionService:
             decrypted2 == original_for_comparison
         ), "Second decryption failed to recover original data."
 
-    def test_different_keys(self):
+    def test_different_keys(self) -> None:
         """Test that different encryption keys produce different outputs."""
         # Create two services with different keys using direct key injection
         service1 = BaseEncryptionService(direct_key="test_key_for_unit_tests_only_12345678")
@@ -305,7 +305,7 @@ class TestEncryptionService:
         with pytest.raises(ValueError):
             service2.decrypt(encrypted_by_service1)
 
-    def test_detect_tampering(self, encryption_service):
+    def test_detect_tampering(self, encryption_service) -> None:
         """Test that tampering with encrypted data is detected."""
         # Arrange
         original = "This is sensitive PHI data!"
@@ -318,7 +318,7 @@ class TestEncryptionService:
         with pytest.raises(ValueError):
             encryption_service.decrypt(tampered)
 
-    def test_handle_invalid_input(self, encryption_service):
+    def test_handle_invalid_input(self, encryption_service) -> None:
         """Test that invalid input is properly handled with clear error messages."""
         # Invalid string (not a valid encrypted token)
         invalid_string = "This is not an encrypted token"
@@ -341,7 +341,7 @@ class TestEncryptionService:
             "decrypt none value" in error_message
         ), f"Expected 'decrypt none value' in '{error_message}'"
 
-    def test_key_rotation(self, sensitive_data):
+    def test_key_rotation(self, sensitive_data) -> None:
         """Test that key rotation works properly using mocks."""
         # Don't attempt to use real cryptography with actual key rotation
         # Instead, use a mock to verify the concept works
@@ -390,7 +390,7 @@ class TestEncryptionService:
             # Verify it was called twice
             assert mock_decrypt.call_count == 2
 
-    def test_encrypt_decrypt_string(self, encryption_service):
+    def test_encrypt_decrypt_string(self, encryption_service) -> None:
         """Test basic encryption and decryption of strings."""
         # Test string encryption/decryption
         original_string = "This is a test string with PHI!"
@@ -406,7 +406,7 @@ class TestEncryptionService:
         decrypted = encryption_service.decrypt_string(encrypted)
         assert decrypted == original_string
 
-    def test_encrypt_decrypt_dict(self, encryption_service):
+    def test_encrypt_decrypt_dict(self, encryption_service) -> None:
         """Test dictionary encryption and decryption."""
         # Use MLEncryptionService to get legacy mode behavior
         from app.infrastructure.security.encryption.ml_encryption_service import (
@@ -435,7 +435,7 @@ class TestEncryptionService:
         assert decrypted["name"] == "Test Patient"
         assert decrypted["vitals"]["heart_rate"] == 75
 
-    def test_handle_none_values(self, encryption_service):
+    def test_handle_none_values(self, encryption_service) -> None:
         """Test that None values are handled properly."""
         # None should pass through encrypt unchanged
         assert encryption_service.encrypt(None) is None
@@ -452,7 +452,7 @@ class TestEncryptionService:
         assert encrypted_str_type.process_bind_param(None, None) is None
         assert encrypted_str_type.process_result_value(None, None) is None
 
-    def test_type_conversion(self, encryption_service):
+    def test_type_conversion(self, encryption_service) -> None:
         """Test conversion of different types during encryption/decryption."""
         # Test integer
         assert encryption_service.decrypt_string(encryption_service.encrypt_string(123)) == "123"
@@ -497,7 +497,7 @@ class TestEncryptionService:
 class TestFieldEncryption:
     """Test suite for field-level encryption of PHI data."""
 
-    def test_encrypt_decrypt_fields(self, field_encryptor, patient_record):
+    def test_encrypt_decrypt_fields(self, field_encryptor, patient_record) -> None:
         """Test selective field encryption and decryption for PHI data."""
         # Define PHI fields that need encryption according to HIPAA
         phi_fields = [
@@ -576,7 +576,7 @@ class TestFieldEncryption:
 class TestEncryptedTypes:
     """Test the SQLAlchemy encrypted type decorators."""
 
-    def test_encrypted_string(self, encryption_service):
+    def test_encrypted_string(self, encryption_service) -> None:
         """Test the EncryptedString type decorator."""
         encrypted_string = EncryptedString(encryption_service=encryption_service)
 
@@ -601,7 +601,7 @@ class TestEncryptedTypes:
         result_int = encrypted_string.process_result_value(bound_int, None)
         assert result_int == str(int_value)
 
-    def test_encrypted_json(self, encryption_service):
+    def test_encrypted_json(self, encryption_service) -> None:
         """Test the EncryptedJSON type decorator."""
         encrypted_json = EncryptedJSON(encryption_service=encryption_service)
 

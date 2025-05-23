@@ -3,7 +3,7 @@
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, NoReturn
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
@@ -466,7 +466,7 @@ def app_instance(
 
     # Add a test endpoint that raises a 500 error
     @app.get("/api/v1/test/error")
-    async def test_error_endpoint():
+    async def test_error_endpoint() -> NoReturn:
         """Test endpoint that intentionally raises a 500 error."""
         raise Exception("This is an intentional test error")
 
@@ -966,7 +966,7 @@ def global_mock_jwt_service() -> JWTServiceInterface:
         return encoded_jwt
 
     # Decode token implementation
-    async def mock_decode_token(token: str, options: dict = None) -> dict[str, Any]:
+    async def mock_decode_token(token: str, options: dict | None = None) -> dict[str, Any]:
         # Skip expiration verification if specified in options
         skip_exp_verification = options and options.get("verify_exp") is False
 
@@ -1128,7 +1128,7 @@ def jwt_service_patch():
     # Dummy key for test tokens
     test_secret_key = "test_secret_key_for_testing_only"
 
-    def patched_decode_token(self, token: str, options: dict = None) -> dict[str, Any]:
+    def patched_decode_token(self, token: str, options: dict | None = None) -> dict[str, Any]:
         """
         Patched version of decode_token that accepts test tokens without verification.
         For non-test tokens, falls back to the original implementation.

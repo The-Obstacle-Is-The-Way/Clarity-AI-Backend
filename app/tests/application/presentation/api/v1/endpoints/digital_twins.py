@@ -114,7 +114,7 @@ class _AwaitableResponse:  # pragma: no cover – simple compatibility shim
 
 
 def _patch_testclient_async_methods() -> None:  # pragma: no cover
-    def _make_async(method_name: str):
+    def _make_async(method_name: str) -> None:
         original = getattr(_TestClient, method_name)
 
         def _patched(self, *args, **kwargs):
@@ -160,7 +160,7 @@ except ModuleNotFoundError:
 try:
     import threading as _threading
 
-    def _delayed_utc_fix():  # pragma: no cover
+    def _delayed_utc_fix() -> None:  # pragma: no cover
         mod = _sys.modules.get(_test_mod_name)
         if mod is not None and isinstance(getattr(mod, "UTC", None), _dt_timedelta):
             mod.UTC = _dt_timezone.utc

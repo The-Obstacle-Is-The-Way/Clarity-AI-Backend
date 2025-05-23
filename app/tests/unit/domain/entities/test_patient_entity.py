@@ -20,7 +20,7 @@ from app.domain.entities.patient import ContactInfo, Patient
 class TestPatientContactInfo(unittest.TestCase):
     """Direct tests for Patient contact_info quantum architecture."""
 
-    def test_contact_info_descriptor(self):
+    def test_contact_info_descriptor(self) -> None:
         """Test that the ContactInfoDescriptor works with perfect elegance."""
         # Verify class-level access returns the ContactInfo class
         self.assertEqual(Patient.contact_info, ContactInfo)
@@ -83,7 +83,7 @@ class TestPatientContactInfo(unittest.TestCase):
         self.assertEqual(empty_patient.contact_info.email, "empty@example.com")
         self.assertIsNone(empty_patient.contact_info.phone)
 
-    def test_contact_info_with_dict(self):
+    def test_contact_info_with_dict(self) -> None:
         """Test that the Patient can be created with direct email/phone fields."""
         patient = Patient(
             id=uuid.uuid4(),
@@ -103,7 +103,7 @@ class TestPatientContactInfo(unittest.TestCase):
         self.assertEqual(patient.contact_info.email, "test@example.com")
         self.assertEqual(patient.contact_info.phone, "555-123-4567")
 
-    def test_contact_info_with_object(self):
+    def test_contact_info_with_object(self) -> None:
         """Test that the Patient can be created with direct email/phone fields (simulating object)."""
         # Although ContactInfo object itself isn't accepted by __init__,
         # we test passing the equivalent direct fields

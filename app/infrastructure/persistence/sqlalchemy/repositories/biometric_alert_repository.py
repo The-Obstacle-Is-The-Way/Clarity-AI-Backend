@@ -284,7 +284,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         """
         try:
             # Build the query for unacknowledged alerts
-            query = select(BiometricAlertModel).where(BiometricAlertModel.acknowledged == False)
+            query = select(BiometricAlertModel).where(not BiometricAlertModel.acknowledged)
 
             if patient_id:
                 query = query.where(BiometricAlertModel.patient_id == str(patient_id))
@@ -375,7 +375,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             query = select(func.count(BiometricAlertModel.alert_id)).where(
                 and_(
                     BiometricAlertModel.patient_id == str(patient_id),
-                    BiometricAlertModel.acknowledged == False,
+                    not BiometricAlertModel.acknowledged,
                 )
             )
 

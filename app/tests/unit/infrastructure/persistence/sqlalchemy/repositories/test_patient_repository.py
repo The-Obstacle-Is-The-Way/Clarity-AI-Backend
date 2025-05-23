@@ -244,7 +244,7 @@ class TestPatientRepository:
     """Test suite for the SQLAlchemy implementation of PatientRepository."""
 
     @pytest.mark.asyncio
-    async def test_init(self, patient_repository):
+    async def test_init(self, patient_repository) -> None:
         """Test repository initialization."""
         assert patient_repository is not None
         assert hasattr(patient_repository, "db_session_factory")
@@ -262,7 +262,7 @@ class TestPatientRepository:
         mock_db_session: AsyncMock,
         sample_patient_id: str,
         sample_patient_data: dict,
-    ):
+    ) -> None:
         """Test retrieving a patient by ID."""
         patient_uuid = uuid.UUID(sample_patient_id)
         mock_patient_model = MagicMock(spec=PatientModel)  # Use alias PatientModel
@@ -324,9 +324,9 @@ class TestPatientRepository:
         patient_repository: PatientRepository,
         mock_db_session: AsyncMock,
         sample_patient_id: str,
-    ):
+    ) -> None:
         """Test get_by_id when patient is not found."""
-        patient_uuid = uuid.UUID(sample_patient_id)
+        uuid.UUID(sample_patient_id)
         mock_db_session.execute.return_value.scalars.return_value.one_or_none.return_value = None
 
         entity = await patient_repository.get_by_id(sample_patient_id)
@@ -352,7 +352,7 @@ class TestPatientRepository:
         mock_db_session: AsyncMock,
         sample_patient_data: dict,
         mock_encryption_service: MagicMock,
-    ):
+    ) -> None:
         """Test creating a new patient, ensuring data is encrypted and returned correctly."""
         # The primary interaction should be with mock_esi for TypeDecorator behavior.
         mock_patient_module_esi.encrypt = mock_encryption_service.encrypt
@@ -367,7 +367,7 @@ class TestPatientRepository:
         # mock_patient_from_domain is now the AsyncMock for PatientModel.from_domain
         mock_patient_from_domain.return_value = mock_created_model_instance
 
-        async def mock_refresh(target_model):
+        async def mock_refresh(target_model) -> None:
             pass
 
         mock_db_session.refresh = AsyncMock(side_effect=mock_refresh)
@@ -402,7 +402,7 @@ class TestPatientRepository:
         mock_db_session: AsyncMock,
         sample_patient_id: str,
         mock_encryption_service: MagicMock,
-    ):
+    ) -> None:
         """Test updating an existing patient."""
         mock_patient_module_esi.encrypt = mock_encryption_service.encrypt
         mock_patient_module_esi.decrypt = mock_encryption_service.decrypt
@@ -447,7 +447,7 @@ class TestPatientRepository:
         patient_repository: PatientRepository,
         mock_db_session: AsyncMock,
         sample_patient_list_data: list[dict],
-    ):  # Use new fixture
+    ) -> None:  # Use new fixture
         """Test retrieving all patients with limit and offset."""
         # mock_patient_module_esi used by TypeDecorators implicitly
 
@@ -526,7 +526,7 @@ class TestPatientRepository:
         patient_repository: PatientRepository,
         mock_db_session: AsyncMock,
         sample_patient_data: dict,
-    ):
+    ) -> None:
         """Test retrieving a patient by email."""
         # mock_patient_module_esi used by TypeDecorators implicitly
 
@@ -585,7 +585,7 @@ class TestPatientRepository:
         patient_repository: PatientRepository,
         mock_db_session: AsyncMock,
         sample_patient_id: str,
-    ):
+    ) -> None:
         """Test deleting a patient successfully."""
         # Directly mock the _with_session method to return True
         patient_repository._with_session = AsyncMock(return_value=True)
@@ -602,7 +602,7 @@ class TestPatientRepository:
         patient_repository: PatientRepository,
         mock_db_session: AsyncMock,
         sample_patient_id: str,
-    ):
+    ) -> None:
         """Test deleting a patient that does not exist."""
         # Directly mock the _with_session method to return False
         patient_repository._with_session = AsyncMock(return_value=False)

@@ -50,14 +50,14 @@ class LoginRequestDTO(BaseModel):
     password: str
 
     @field_validator("password")
-    def password_must_be_valid(cls, v):
+    def password_must_be_valid(self, v):
         """Validate that the password field is not empty."""
         if not v or len(v) < 1:
             raise ValueError("Password cannot be empty")
         return v
 
     @field_validator("email", "username")
-    def validate_credentials(cls, v, info):
+    def validate_credentials(self, v, info):
         """Validate that either username or email is provided."""
         # This will be called for both username and email fields
         # We'll check the model at the end to make sure one of them is set
@@ -81,7 +81,7 @@ class RefreshTokenRequestDTO(BaseModel):
     refresh_token: str
 
     @field_validator("refresh_token")
-    def refresh_token_must_be_valid(cls, v):
+    def refresh_token_must_be_valid(self, v):
         """Validate that the refresh token field is not empty."""
         if not v or len(v) < 10:  # Arbitrary minimum length for token validation
             raise ValueError("Invalid refresh token format")

@@ -255,7 +255,7 @@ def _has_phi(request_data):
     ]
 
     # Recursively check for PHI in dictionaries and lists
-    def check_value(value, path=""):
+    def check_value(value, path="") -> bool:
         if isinstance(value, dict):
             for k, v in value.items():
                 if check_value(v, f"{path}.{k}" if path else k):

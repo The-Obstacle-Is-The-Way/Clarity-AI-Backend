@@ -17,13 +17,13 @@ class AsyncSession(MagicMock):
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         pass
 
-    async def commit(self):
+    async def commit(self) -> None:
         pass
 
-    async def rollback(self):
+    async def rollback(self) -> None:
         pass
 
-    async def close(self):
+    async def close(self) -> None:
         pass
 
 
@@ -31,10 +31,10 @@ class AsyncSession(MagicMock):
 class DatabaseEngine(MagicMock):
     """Mock DatabaseEngine for testing."""
 
-    async def dispose(self):
+    async def dispose(self) -> None:
         pass
 
-    async def create_all(self):
+    async def create_all(self) -> None:
         pass
 
 

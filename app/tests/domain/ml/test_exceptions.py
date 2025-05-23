@@ -21,7 +21,7 @@ from app.domain.ml.exceptions import (
 class TestMentalLLaMAExceptions:
     """Tests for the MentalLLaMA exception classes."""
 
-    def test_base_exception(self):
+    def test_base_exception(self) -> None:
         """Test MentalLLaMABaseException creation and properties."""
         # Create a basic exception
         message = "Test base exception"
@@ -34,7 +34,7 @@ class TestMentalLLaMAExceptions:
         assert exception.details == details
         assert str(exception) == message
 
-    def test_base_exception_without_details(self):
+    def test_base_exception_without_details(self) -> None:
         """Test MentalLLaMABaseException creation without details."""
         message = "Test base exception without details"
 
@@ -45,7 +45,7 @@ class TestMentalLLaMAExceptions:
         assert exception.details == {}
         assert str(exception) == message
 
-    def test_connection_error(self):
+    def test_connection_error(self) -> None:
         """Test MentalLLaMAConnectionError creation and properties."""
         message = "Failed to connect to MentalLLaMA API"
         endpoint = "/api/v1/inference"
@@ -60,7 +60,7 @@ class TestMentalLLaMAExceptions:
         assert str(exception).startswith(message)
         assert endpoint in str(exception)
 
-    def test_connection_error_without_details(self):
+    def test_connection_error_without_details(self) -> None:
         """Test MentalLLaMAConnectionError creation without details."""
         message = "Failed to connect to MentalLLaMA API"
         endpoint = "/api/v1/inference"
@@ -74,7 +74,7 @@ class TestMentalLLaMAExceptions:
         assert str(exception).startswith(message)
         assert endpoint in str(exception)
 
-    def test_authentication_error(self):
+    def test_authentication_error(self) -> None:
         """Test MentalLLaMAAuthenticationError creation and properties."""
         message = "Invalid API key"
         details = {"error_code": "invalid_api_key"}
@@ -86,7 +86,7 @@ class TestMentalLLaMAExceptions:
         assert exception.details == details
         assert str(exception) == message
 
-    def test_authentication_error_without_details(self):
+    def test_authentication_error_without_details(self) -> None:
         """Test MentalLLaMAAuthenticationError creation without details."""
         message = "Invalid API key"
 
@@ -97,7 +97,7 @@ class TestMentalLLaMAExceptions:
         assert exception.details == {}
         assert str(exception) == message
 
-    def test_inference_error(self):
+    def test_inference_error(self) -> None:
         """Test MentalLLaMAInferenceError creation and properties."""
         message = "Model inference failed"
         model = "gpt-4"
@@ -118,7 +118,7 @@ class TestMentalLLaMAExceptions:
         assert str(exception).startswith(message)
         assert model in str(exception)
 
-    def test_inference_error_without_details(self):
+    def test_inference_error_without_details(self) -> None:
         """Test MentalLLaMAInferenceError creation without details."""
         message = "Model inference failed"
         model = "gpt-4"
@@ -133,7 +133,7 @@ class TestMentalLLaMAExceptions:
         assert str(exception).startswith(message)
         assert model in str(exception)
 
-    def test_validation_error(self):
+    def test_validation_error(self) -> None:
         """Test MentalLLaMAValidationError creation and properties."""
         message = "Invalid request parameters"
         validation_errors = {
@@ -154,7 +154,7 @@ class TestMentalLLaMAExceptions:
             assert field in str(exception)
             assert error in str(exception)
 
-    def test_validation_error_without_details(self):
+    def test_validation_error_without_details(self) -> None:
         """Test MentalLLaMAValidationError creation without details."""
         message = "Invalid request parameters"
         validation_errors = {
@@ -174,7 +174,7 @@ class TestMentalLLaMAExceptions:
             assert field in str(exception)
             assert error in str(exception)
 
-    def test_quota_exceeded_error(self):
+    def test_quota_exceeded_error(self) -> None:
         """Test MentalLLaMAQuotaExceededError creation and properties."""
         message = "API quota exceeded"
         quota_limit = 100
@@ -202,7 +202,7 @@ class TestMentalLLaMAExceptions:
         assert "reset_time" in exception.details
         assert exception.details["reset_time"] == "2025-04-11T00:00:00Z"
 
-    def test_exception_inheritance(self):
+    def test_exception_inheritance(self) -> None:
         """Test that all exceptions inherit from MentalLLaMABaseException."""
         # Create instances of all exception types
         base_exc = MentalLLaMABaseException("Base error")

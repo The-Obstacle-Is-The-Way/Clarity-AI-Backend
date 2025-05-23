@@ -445,7 +445,6 @@ class RedisRateLimiter(AsyncRateLimiter):
             return RateLimitResult(allowed=True)
 
         # Determine combined key for user and identifier
-        combined_key = f"{limit_type.value}:{user_id}:{identifier}"
 
         try:
             if not self._redis:
@@ -504,7 +503,7 @@ class RedisRateLimiter(AsyncRateLimiter):
         pipeline.expire(combined_key, config.period_seconds * 2)
 
         # Execute pipeline - this is the only async call
-        results = await pipeline.execute()
+        await pipeline.execute()
 
         # Extract count from results (mock will return default values)
         count = 1  # Simulate count after adding current request

@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 class DirectSecurityTestRunner:
     """Directly run and collect security test results."""
 
-    def __init__(self, output_path: str = None):
+    def __init__(self, output_path: str | None = None):
         """Initialize test runner with output path.
 
         Args:

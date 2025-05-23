@@ -23,7 +23,7 @@ class TestXGBoostSymptomModel:
         # Mock the xgboost library and os.path.exists to prevent FileNotFoundError
         with patch(
             "app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb"
-        ) as mock_xgb, patch(
+        ), patch(
             "app.infrastructure.ml.symptom_forecasting.xgboost_model.os.path.exists",
             return_value=True,
         ), patch(
@@ -63,7 +63,7 @@ class TestXGBoostSymptomModel:
             return model
 
     @patch("app.infrastructure.ml.symptom_forecasting.xgboost_model.joblib")
-    def test_load_model_success(self, mock_joblib):
+    def test_load_model_success(self, mock_joblib) -> None:
         # Setup
         mock_model = MagicMock()
         mock_model.feature_names_in_ = ["f1", "f2", "f3"]
@@ -90,7 +90,7 @@ class TestXGBoostSymptomModel:
             assert model.target_names == ["t1"]
             assert model.params["n_estimators"] == 100
 
-    def test_load_model_file_not_found(self):
+    def test_load_model_file_not_found(self) -> None:
         # Setup
         with patch(
             "app.infrastructure.ml.symptom_forecasting.xgboost_model.os.path.exists",
@@ -100,7 +100,7 @@ class TestXGBoostSymptomModel:
             with pytest.raises(FileNotFoundError):
                 XGBoostSymptomModel(model_path="test/model/path.json")
 
-    def test_save_model(self, model, tmp_path):
+    def test_save_model(self, model, tmp_path) -> None:
         """Test that the model is saved correctly."""
         with patch(
             "app.infrastructure.ml.symptom_forecasting.xgboost_model.joblib",
@@ -120,7 +120,7 @@ class TestXGBoostSymptomModel:
             assert "timestamp" in args[0]
 
     @pytest.mark.asyncio()
-    async def test_predict(self, model):
+    async def test_predict(self, model) -> None:
         """Test that the model predicts correctly."""
         # Setup
         # Correct np.array definition
@@ -130,7 +130,7 @@ class TestXGBoostSymptomModel:
         # Mock the internal dmatrix and predict function
         with patch(
             "app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb.DMatrix"
-        ) as mock_dmatrix:
+        ):
             # Setup the mock prediction
             # Correct np.array definition
             model.models["depression_score"].predict.return_value = np.array([4.2, 3.8, 4.5])
@@ -146,7 +146,7 @@ class TestXGBoostSymptomModel:
             # The result shape should be (n_samples, horizon, n_targets)
             assert result["values"].shape == (3, 3, 1)
 
-    def test_get_feature_importance(self, model):
+    def test_get_feature_importance(self, model) -> None:
         """Test that feature importance is correctly calculated."""
         # Setup
         mock_model = model.models["depression_score"]
@@ -165,7 +165,7 @@ class TestXGBoostSymptomModel:
         assert result["depression_score"]["medication_adherence"] == 25.7
         mock_model.get_score.assert_called_once_with(importance_type="gain")
 
-    def test_get_model_info(self, model):
+    def test_get_model_info(self, model) -> None:
         """Test that model info is correctly reported."""
         # Execute
         info = model.get_model_info()
@@ -186,7 +186,7 @@ class TestXGBoostSymptomModel:
         ]
         assert info["target_names"] == ["depression_score"]
 
-    def test_train(self, model):
+    def test_train(self, model) -> None:
         """Test that the model trains correctly."""
         # Setup
         # Correct np.array definitions

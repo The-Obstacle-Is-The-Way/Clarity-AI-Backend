@@ -24,25 +24,25 @@ from app.core.services.ml.pat.mock import MockPATService
 from app.core.services.ml.pat.pat_interface import PATInterface
 
 __all__ = [
-    # Interfaces
-    "PATInterface",
+    "AnalysisError",
+    "AnalysisNotFoundError",
+    "AuthorizationError",
     # Implementations
     "BedrockPAT",
+    "ConfigurationError",
+    "DataPrivacyError",
+    "EmbeddingError",
+    "InitializationError",
+    "IntegrationError",
     # Mock implementations for testing
     "MockPATService",
-    # Factory
-    "PATServiceFactory",
+    # Interfaces
+    "PATInterface",
     # Exceptions
     "PATServiceError",
-    "InitializationError",
-    "ValidationError",
-    "AnalysisError",
-    "DataPrivacyError",
+    # Factory
+    "PATServiceFactory",
     "ResourceNotFoundError",
-    "AnalysisNotFoundError",
     "ServiceConnectionError",
-    "ConfigurationError",
-    "IntegrationError",
-    "AuthorizationError",
-    "EmbeddingError",
+    "ValidationError",
 ]

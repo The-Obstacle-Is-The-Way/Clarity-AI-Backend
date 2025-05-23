@@ -14,7 +14,7 @@ from app.infrastructure.repositories.memory_token_blacklist_repository import (
 from app.infrastructure.security.jwt.jwt_service import JWTService, TokenBlacklistedError
 
 
-async def test_jwt_service():
+async def test_jwt_service() -> None:
     """Basic test for JWT service functionality."""
     print("Testing JWT Service...")
 

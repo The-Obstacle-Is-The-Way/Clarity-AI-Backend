@@ -374,13 +374,13 @@ class BiometricCorrelationService:
                 biometric_data = {"time_series": time_series}
 
             # Process data for the model - first preprocess the raw data
-            processed_data = self._preprocess_biometric_data(original_biometric_data, lookback_days)
+            self._preprocess_biometric_data(original_biometric_data, lookback_days)
 
             try:
                 # Then process for the model
                 preprocessed_data = await self.preprocess_biometric_data(patient_id, biometric_data)
                 biometric_array = preprocessed_data["biometric_data"]
-                mental_health_array = preprocessed_data["mental_health_data"]
+                preprocessed_data["mental_health_data"]
 
                 # Check if we have enough data
                 if biometric_array.shape[0] < 2:
@@ -785,7 +785,7 @@ class BiometricCorrelationService:
 
                 # Check if any mental health changes followed these anomalies
                 related_changes = []
-                for time_idx, change_info in changes_by_time.items():
+                for _time_idx, change_info in changes_by_time.items():
                     anomalies = change_info.get("anomalies", [])
                     if any(anomaly.get("feature_index") == feature_idx for anomaly in anomalies):
                         significant_changes = change_info.get("significant_changes", [])

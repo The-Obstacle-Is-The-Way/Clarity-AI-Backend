@@ -38,17 +38,17 @@ class TestDatabase:
         finally:
             await session.close()
 
-    async def create_tables(self):
+    async def create_tables(self) -> None:
         """Create all the defined tables."""
         async with self.engine.begin() as conn:
             await conn.run_sync(TestBase.metadata.create_all)
 
-    async def drop_tables(self):
+    async def drop_tables(self) -> None:
         """Drop all the defined tables."""
         async with self.engine.begin() as conn:
             await conn.run_sync(TestBase.metadata.drop_all)
 
-    async def dispose(self):
+    async def dispose(self) -> None:
         """Dispose of the engine."""
         await self.engine.dispose()
 
@@ -68,7 +68,7 @@ class TestDatabaseOperations:
     """Tests for basic database operations."""
 
     @pytest.mark.asyncio
-    async def test_create_tables(self, test_db):
+    async def test_create_tables(self, test_db) -> None:
         """Test that tables can be created."""
         # Create a new record
         async with test_db.session() as session:
@@ -86,7 +86,7 @@ class TestDatabaseOperations:
             assert retrieved_record.value == "test_value"
 
     @pytest.mark.asyncio
-    async def test_session_operations(self, test_db):
+    async def test_session_operations(self, test_db) -> None:
         """Test session operations (add, commit, query)."""
         # Create a new record
         async with test_db.session() as session:
@@ -103,7 +103,7 @@ class TestDatabaseOperations:
             assert retrieved_record.name == "test_session"
 
     @pytest.mark.asyncio
-    async def test_rollback(self, test_db):
+    async def test_rollback(self, test_db) -> None:
         """Test session rollback."""
         async with test_db.session() as session:
             # Add a record
@@ -121,7 +121,7 @@ class TestDatabaseOperations:
             assert retrieved_record is None
 
     @pytest.mark.asyncio
-    async def test_drop_tables(self, test_db):
+    async def test_drop_tables(self, test_db) -> None:
         """Test dropping tables."""
         # First add a record
         async with test_db.session() as session:
@@ -142,7 +142,7 @@ class TestDatabaseOperations:
             assert len(records) == 0
 
     @pytest.mark.asyncio
-    async def test_execute_query(self, test_db):
+    async def test_execute_query(self, test_db) -> None:
         """Test executing a raw SQL query."""
         # Use the engine directly for raw SQL
         async with test_db.engine.begin() as conn:

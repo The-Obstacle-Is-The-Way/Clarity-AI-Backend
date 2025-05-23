@@ -198,7 +198,7 @@ async def client_app_tuple_func_scoped(
 
 # Add fixtures for JWT testing with in-memory token blacklist
 @pytest.fixture
-def test_jwt_secret_key():
+def test_jwt_secret_key() -> str:
     """Fixture to provide a consistent JWT secret key for tests."""
     return "test_jwt_secret_key_that_is_sufficiently_long_for_testing_purposes_only"
 

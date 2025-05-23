@@ -156,7 +156,7 @@ PHI_FIELDS = [
 ]
 
 
-def test_fixture_generation():
+def test_fixture_generation() -> None:
     """Verify test fixture generation is deterministic."""
     record1 = get_test_patient_record()
     record2 = get_test_patient_record()

@@ -316,11 +316,11 @@ class BiometricAlert:
         return self.message
 
     @description.setter
-    def description(self, value):
+    def description(self, value) -> None:
         """Setter for description (alias for message)"""
         self.message = value
 
-    def acknowledge(self, provider_id: str, acknowledge_time: datetime = None) -> None:
+    def acknowledge(self, provider_id: str, acknowledge_time: datetime | None = None) -> None:
         """Mark alert as acknowledged by provider."""
         self.acknowledged = True
         self.acknowledged_by = provider_id
@@ -330,8 +330,8 @@ class BiometricAlert:
     def resolve(
         self,
         provider_id: str,
-        resolution_time: datetime = None,
-        resolution_note: str = None,
+        resolution_time: datetime | None = None,
+        resolution_note: str | None = None,
     ) -> None:
         """Mark alert as resolved by provider."""
         # Make sure it's acknowledged first
@@ -757,7 +757,7 @@ class ClinicalRuleEngine:
         self.rule_templates: dict[str, dict[str, Any]] = {}
         self.custom_conditions: dict[str, Callable] = {}
 
-    def register_rule_template(self, template: dict[str, Any], template_id: str = None) -> None:
+    def register_rule_template(self, template: dict[str, Any], template_id: str | None = None) -> None:
         """
         Register a rule template.
 
@@ -789,11 +789,11 @@ class ClinicalRuleEngine:
         self,
         template_id: str,
         rule_id: str,
-        name: str = None,
-        description: str = None,
+        name: str | None = None,
+        description: str | None = None,
         priority: AlertPriority = None,
-        parameters: dict[str, Any] = None,
-        created_by: UUID = None,
+        parameters: dict[str, Any] | None = None,
+        created_by: UUID | None = None,
         patient_id: UUID | None = None,
     ) -> AlertRule:
         """

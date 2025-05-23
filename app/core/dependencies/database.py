@@ -76,11 +76,11 @@ def get_engine(settings: Settings | None = None) -> AsyncEngine:
         )  # Log safely
         try:
             # Build engine kwargs
-            engine_kwargs = dict(
-                echo=settings.DATABASE_ECHO,
-                future=True,
-                pool_pre_ping=True,
-            )
+            engine_kwargs = {
+                "echo": settings.DATABASE_ECHO,
+                "future": True,
+                "pool_pre_ping": True,
+            }
             # Only apply pool size/overflow for real database backends
             if not db_url_str.startswith("sqlite+aiosqlite://"):
                 engine_kwargs["pool_size"] = settings.DB_POOL_SIZE

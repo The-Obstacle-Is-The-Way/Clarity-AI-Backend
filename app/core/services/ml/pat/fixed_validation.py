@@ -92,7 +92,7 @@ def _validate_embedding_inputs(
 
     if (
         sampling_rate_hz is None
-        or not isinstance(sampling_rate_hz, (int, float))
+        or not isinstance(sampling_rate_hz, int | float)
         or sampling_rate_hz <= 0
     ):
         raise ValidationError("Sampling rate must be positive")

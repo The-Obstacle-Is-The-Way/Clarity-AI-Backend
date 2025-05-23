@@ -30,7 +30,7 @@ def run_quantum_security_tests():
 class SecurityTestRunner:
     """Quantum-grade test collector and runner for NovaMind security tests."""
 
-    def __init__(self, output_path: str = None):
+    def __init__(self, output_path: str | None = None):
         """Initialize test runner with output path.
 
         Args:
@@ -127,8 +127,7 @@ class SecurityTestRunner:
                 cmd,
                 shell=True,
                 check=False,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
             )
 

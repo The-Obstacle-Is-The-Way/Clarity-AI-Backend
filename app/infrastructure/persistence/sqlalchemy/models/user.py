@@ -140,7 +140,7 @@ class User(Base, TimestampMixin, AuditMixin):
     last_name = Column(String(100), nullable=True, comment="User's last name")
 
     @declared_attr
-    def phone_number(cls):
+    def phone_number(self):
         return Column(
             String(20),
             nullable=True,
@@ -156,7 +156,7 @@ class User(Base, TimestampMixin, AuditMixin):
     )
 
     @declared_attr
-    def email_verified(cls):
+    def email_verified(self):
         return Column(
             Boolean,
             default=False,

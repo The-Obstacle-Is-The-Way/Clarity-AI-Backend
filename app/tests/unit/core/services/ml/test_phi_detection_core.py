@@ -76,7 +76,7 @@ class TestAWSComprehendMedicalPHIDetection:
 
         return service
 
-    def test_initialization(self):
+    def test_initialization(self) -> None:
         """Test service initialization with valid configuration."""
         # Create mock factory and service
         mock_factory = MagicMock()
@@ -97,7 +97,7 @@ class TestAWSComprehendMedicalPHIDetection:
         assert service.is_healthy()
         mock_factory.get_comprehend_medical_service.assert_called_once()
 
-    def test_initialization_boto_error(self):
+    def test_initialization_boto_error(self) -> None:
         """Test service initialization with Boto error."""
         # Create mock factory that raises an error
         mock_factory = MagicMock()
@@ -115,7 +115,7 @@ class TestAWSComprehendMedicalPHIDetection:
 
         assert not service.is_healthy()
 
-    def test_detect_phi_with_phi(self, phi_detection_service, mock_comprehend_response_with_phi):
+    def test_detect_phi_with_phi(self, phi_detection_service, mock_comprehend_response_with_phi) -> None:
         """Test PHI detection with text containing PHI."""
         # Configure the mock service to return the sample response
         phi_detection_service._comprehend_medical_service.detect_phi.return_value = (
@@ -137,7 +137,7 @@ class TestAWSComprehendMedicalPHIDetection:
 
     def test_detect_phi_without_phi(
         self, phi_detection_service, mock_comprehend_response_without_phi
-    ):
+    ) -> None:
         """Test PHI detection with text not containing PHI."""
         # Configure the mock service to return the sample response
         phi_detection_service._comprehend_medical_service.detect_phi.return_value = (
@@ -153,19 +153,19 @@ class TestAWSComprehendMedicalPHIDetection:
         # Verify service was called
         phi_detection_service._comprehend_medical_service.detect_phi.assert_called_once()
 
-    def test_detect_phi_empty_text(self, phi_detection_service):
+    def test_detect_phi_empty_text(self, phi_detection_service) -> None:
         """Test PHI detection with empty text."""
         with pytest.raises(InvalidRequestError):
             phi_detection_service.detect_phi("")
 
-    def test_detect_phi_service_not_initialized(self):
+    def test_detect_phi_service_not_initialized(self) -> None:
         """Test PHI detection with uninitialized service."""
         service = AWSComprehendMedicalPHIDetection()
 
         with pytest.raises(ServiceUnavailableError):
             service.detect_phi("Patient is John Doe")
 
-    def test_detect_phi_aws_error(self, phi_detection_service):
+    def test_detect_phi_aws_error(self, phi_detection_service) -> None:
         """Test PHI detection with AWS Comprehend Medical error."""
         # Configure the mock service to raise an error
         phi_detection_service._comprehend_medical_service.detect_phi.side_effect = ClientError(
@@ -177,7 +177,7 @@ class TestAWSComprehendMedicalPHIDetection:
         with pytest.raises(ServiceUnavailableError):
             phi_detection_service.detect_phi("Patient is John Doe")
 
-    def test_redact_phi_with_phi(self, phi_detection_service, mock_comprehend_response_with_phi):
+    def test_redact_phi_with_phi(self, phi_detection_service, mock_comprehend_response_with_phi) -> None:
         """Test PHI redaction with text containing PHI."""
         # Configure the mock service to return the sample response
         phi_detection_service._comprehend_medical_service.detect_phi.return_value = (
@@ -199,7 +199,7 @@ class TestAWSComprehendMedicalPHIDetection:
 
     def test_redact_phi_without_phi(
         self, phi_detection_service, mock_comprehend_response_without_phi
-    ):
+    ) -> None:
         """Test PHI redaction with text not containing PHI."""
         # Configure the mock service to return the sample response
         phi_detection_service._comprehend_medical_service.detect_phi.return_value = (
@@ -216,19 +216,19 @@ class TestAWSComprehendMedicalPHIDetection:
         # Verify service was called
         phi_detection_service._comprehend_medical_service.detect_phi.assert_called_once()
 
-    def test_redact_phi_empty_text(self, phi_detection_service):
+    def test_redact_phi_empty_text(self, phi_detection_service) -> None:
         """Test PHI redaction with empty text."""
         with pytest.raises(InvalidRequestError):
             phi_detection_service.redact_phi("")
 
-    def test_redact_phi_service_not_initialized(self):
+    def test_redact_phi_service_not_initialized(self) -> None:
         """Test PHI redaction with uninitialized service."""
         service = AWSComprehendMedicalPHIDetection()
 
         with pytest.raises(ServiceUnavailableError):
             service.redact_phi("Patient is John Doe")
 
-    def test_contains_phi(self, phi_detection_service, mock_comprehend_response_with_phi):
+    def test_contains_phi(self, phi_detection_service, mock_comprehend_response_with_phi) -> None:
         """Test contains_phi method with text containing PHI."""
         # Configure the mock service to return the sample response
         phi_detection_service._comprehend_medical_service.detect_phi.return_value = (
@@ -246,7 +246,7 @@ class TestAWSComprehendMedicalPHIDetection:
 
     def test_contains_phi_without_phi(
         self, phi_detection_service, mock_comprehend_response_without_phi
-    ):
+    ) -> None:
         """Test contains_phi method with text not containing PHI."""
         # Configure the mock service to return the sample response
         phi_detection_service._comprehend_medical_service.detect_phi.return_value = (
@@ -262,7 +262,7 @@ class TestAWSComprehendMedicalPHIDetection:
         # Verify service was called
         phi_detection_service._comprehend_medical_service.detect_phi.assert_called_once()
 
-    def test_contains_phi_empty_text(self, phi_detection_service):
+    def test_contains_phi_empty_text(self, phi_detection_service) -> None:
         """Test contains_phi method with empty text."""
         # Call the method
         result = phi_detection_service.contains_phi("")

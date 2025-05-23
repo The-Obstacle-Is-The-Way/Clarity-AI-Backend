@@ -32,9 +32,9 @@ class TemporalNeurotransmitterSequence(TemporalSequence):
         start_time: datetime,
         end_time: datetime,
         resolution_hours: float = 24.0,
-        sequence_id: UUID = None,
-        name: str = None,
-        metadata: dict[str, Any] = None,
+        sequence_id: UUID | None = None,
+        name: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ):
         """
         Initialize a new temporal neurotransmitter sequence.

@@ -374,7 +374,7 @@ async def bedrock_pat_service(pat_config):
 
 
 @pytest.mark.asyncio
-async def test_initialization(bedrock_pat_service, pat_config):
+async def test_initialization(bedrock_pat_service, pat_config) -> None:
     """Test successful initialization (attributes set by fixture)."""
     # Initialization is now handled by the fixture
     # await bedrock_pat_service.initialize(pat_config) # Removed
@@ -390,7 +390,7 @@ async def test_initialization(bedrock_pat_service, pat_config):
 
 
 @pytest.mark.asyncio
-async def test_initialization_failure_invalid_config():
+async def test_initialization_failure_invalid_config() -> None:
     """Test initialization failure with invalid configuration (missing keys)."""
     mock_factory = MockAWSServiceFactory()
     service = BedrockPAT(aws_service_factory=mock_factory)
@@ -402,7 +402,7 @@ async def test_initialization_failure_invalid_config():
 
 
 @pytest.mark.asyncio
-async def test_sanitize_phi(bedrock_pat_service, pat_config):
+async def test_sanitize_phi(bedrock_pat_service, pat_config) -> None:
     """Test PHI sanitization (assuming method exists or will be added)."""
     # Initialization handled by fixture
     # await bedrock_pat_service.initialize(pat_config) # Removed
@@ -421,7 +421,7 @@ async def test_sanitize_phi(bedrock_pat_service, pat_config):
 
 
 @pytest.mark.asyncio
-async def test_analyze_actigraphy(bedrock_pat_service, pat_config):
+async def test_analyze_actigraphy(bedrock_pat_service, pat_config) -> None:
     """Test analyzing actigraphy data."""
     # Initialization handled by fixture
     # await bedrock_pat_service.initialize(pat_config) # Removed
@@ -476,7 +476,7 @@ async def test_analyze_actigraphy(bedrock_pat_service, pat_config):
 
 
 @pytest.mark.asyncio
-async def test_get_actigraphy_embeddings(bedrock_pat_service):
+async def test_get_actigraphy_embeddings(bedrock_pat_service) -> None:
     """Test getting actigraphy embeddings."""
     # Arrange
     patient_id = "test-patient-id"
@@ -509,7 +509,7 @@ async def test_get_actigraphy_embeddings(bedrock_pat_service):
 
 
 @pytest.mark.asyncio
-async def test_get_analysis_by_id(bedrock_pat_service):
+async def test_get_analysis_by_id(bedrock_pat_service) -> None:
     """Test retrieving analysis by ID."""
     # Patch the method directly to bypass potential internal issues
     analysis_id_to_get = "test-analysis-id"
@@ -541,7 +541,7 @@ async def test_get_analysis_by_id(bedrock_pat_service):
 
 
 @pytest.mark.asyncio
-async def test_get_patient_analyses(bedrock_pat_service):
+async def test_get_patient_analyses(bedrock_pat_service) -> None:
     """Test retrieving analyses for a patient."""
     # Patch the method directly
     patient_id_to_get = "test-patient-id"
@@ -585,7 +585,7 @@ async def test_get_patient_analyses(bedrock_pat_service):
 
 
 @pytest.mark.asyncio
-async def test_get_model_info(bedrock_pat_service):
+async def test_get_model_info(bedrock_pat_service) -> None:
     """Test getting model information."""
     # Initialization handled by fixture
     # Act

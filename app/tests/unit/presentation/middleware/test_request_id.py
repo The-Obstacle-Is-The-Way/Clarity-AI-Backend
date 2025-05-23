@@ -24,7 +24,7 @@ async def dummy_call_next(request: Request) -> Response:
 
 
 @pytest.mark.asyncio
-async def test_request_id_middleware_generates_id():
+async def test_request_id_middleware_generates_id() -> None:
     """Test that middleware generates an ID if none is provided."""
     with patch("uuid.uuid4") as mock_uuid4:
         fixed_test_uuid = "123e4567-e89b-12d3-a456-426614174000"  # A fixed, known UUID string
@@ -42,7 +42,7 @@ async def test_request_id_middleware_generates_id():
 
 
 @pytest.mark.asyncio
-async def test_request_id_middleware_uses_valid_incoming_id():
+async def test_request_id_middleware_uses_valid_incoming_id() -> None:
     """Test that middleware uses a valid incoming X-Request-ID."""
     incoming_id = str(uuid.uuid4())
     headers = Headers({"X-Request-ID": incoming_id})
@@ -57,7 +57,7 @@ async def test_request_id_middleware_uses_valid_incoming_id():
 
 
 @pytest.mark.asyncio
-async def test_request_id_middleware_generates_id_for_invalid_incoming_id():
+async def test_request_id_middleware_generates_id_for_invalid_incoming_id() -> None:
     """Test that middleware generates an ID if the incoming one is invalid."""
     with patch("uuid.uuid4") as mock_uuid4_local:
         fixed_test_uuid = (

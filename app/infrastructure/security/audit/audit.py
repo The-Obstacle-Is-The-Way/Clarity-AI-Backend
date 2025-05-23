@@ -687,7 +687,7 @@ except Exception as e:
                 "days": days,
             }
 
-        def _send_to_external_audit_service(self, *args, **kwargs):
+        def _send_to_external_audit_service(self, *args, **kwargs) -> None:
             pass
 
     audit_logger = DummyAuditLogger()

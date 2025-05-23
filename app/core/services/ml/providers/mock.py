@@ -571,7 +571,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
     def _generate(
         self,
         prompt: str,
-        model: str = None,
+        model: str | None = None,
         max_tokens: int | None = None,
         temperature: float | None = None,
         **kwargs,

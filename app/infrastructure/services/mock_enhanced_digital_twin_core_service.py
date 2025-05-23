@@ -747,10 +747,8 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
 
             if existing_index is not None:
                 mapping.receptor_profiles[existing_index] = new_profile
-                event_type = "receptor_profile_updated"
             else:
                 mapping.receptor_profiles.append(new_profile)
-                event_type = "receptor_profile_added"
 
             # NOTE: Individual profile events removed to match test expectations
             # Only publish the aggregate profiles_updated event below
@@ -905,7 +903,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         self.event_subscribers.append(callback)
         return uuid.uuid4()
 
-    async def _publish_event(self, event_type: str, data: dict, patient_id: UUID = None):
+    async def _publish_event(self, event_type: str, data: dict, patient_id: UUID | None = None) -> None:
         """Publish an event to all subscribers."""
         # FIXED: Call subscribers with correct signature (event_type, event_data, source, patient_id)
         for callback in self.event_subscribers:

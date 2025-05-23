@@ -10,15 +10,13 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     JSON,
-)
-from sqlalchemy import UUID as SQLAlchemyUUID
-from sqlalchemy import (
     Column,
     ForeignKey,
     Integer,
     String,
     Text,
 )
+from sqlalchemy import UUID as SQLAlchemyUUID
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import relationship
 
@@ -118,9 +116,9 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
         domain_tags = set()
         if self.tags and isinstance(self.tags, dict):
             # Extract values if tags is stored as a dict, otherwise convert keys
-            domain_tags = set(str(v) for v in self.tags.values()) if self.tags else set()
-        elif self.tags and isinstance(self.tags, (list, set)):
-            domain_tags = set(str(tag) for tag in self.tags)
+            domain_tags = {str(v) for v in self.tags.values()} if self.tags else set()
+        elif self.tags and isinstance(self.tags, list | set):
+            domain_tags = {str(tag) for tag in self.tags}
 
         return ClinicalNote(
             id=self.id,

@@ -37,12 +37,12 @@ def sample_appointment():
 class TestAppointment:
     """Tests for the Appointment entity."""
 
-    def test_init(self, sample_appointment):
+    def test_init(self, sample_appointment) -> None:
         """Test that an appointment can be initialized with valid parameters."""
         assert sample_appointment.status == AppointmentStatus.SCHEDULED
         assert sample_appointment.appointment_type == "INITIAL_CONSULTATION"
 
-    def test_reschedule(self, sample_appointment):
+    def test_reschedule(self, sample_appointment) -> None:
         """Test that an appointment can be rescheduled."""
         new_start = sample_appointment.start_time + timedelta(days=1)
         new_end = new_start + timedelta(hours=1)
@@ -52,7 +52,7 @@ class TestAppointment:
         assert sample_appointment.start_time == new_start
         assert sample_appointment.end_time == new_end
 
-    def test_cancel(self, sample_appointment):
+    def test_cancel(self, sample_appointment) -> None:
         """Test that an appointment can be canceled."""
         reason = "Patient request"
         cancelled_by = UUID(str(uuid4()))  # Create a user ID for who cancelled

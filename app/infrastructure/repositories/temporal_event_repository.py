@@ -112,9 +112,9 @@ class SqlAlchemyEventRepository(EventRepository):
 
         if not root_events:
             # If no root found (circular dependency?), just use the first event
-            root_event = events[0]
+            events[0]
         else:
-            root_event = root_events[0]
+            root_events[0]
 
         # Create event chain with proper hierarchy
         # Pass correlation_id and events to initialize the chain

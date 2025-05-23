@@ -63,17 +63,17 @@ def ml_settings_instance():
 class TestMLSettingsStructure:
     """Test the structure and defaults of the new MLSettings model."""
 
-    def test_ml_settings_instantiation(self, ml_settings_instance):
+    def test_ml_settings_instantiation(self, ml_settings_instance) -> None:
         """Test that MLSettings can be instantiated."""
         assert isinstance(ml_settings_instance, MLSettings)
 
-    def test_default_paths(self, ml_settings_instance):
+    def test_default_paths(self, ml_settings_instance) -> None:
         """Test default path settings."""
         assert ml_settings_instance.models_path == "/models"
         assert ml_settings_instance.cache_path == "/cache"
         assert ml_settings_instance.storage_path == "/storage"
 
-    def test_nested_model_settings_exist(self, ml_settings_instance):
+    def test_nested_model_settings_exist(self, ml_settings_instance) -> None:
         """Test that nested settings for specific models exist."""
         assert hasattr(ml_settings_instance, "mentallama")
         assert hasattr(ml_settings_instance, "pat")
@@ -81,14 +81,14 @@ class TestMLSettingsStructure:
         assert hasattr(ml_settings_instance, "lstm")
         assert hasattr(ml_settings_instance, "phi_detection")
 
-    def test_nested_mentallama_defaults(self, ml_settings_instance):
+    def test_nested_mentallama_defaults(self, ml_settings_instance) -> None:
         """Test default values for MentalLlamaSettings."""
         mentallama_settings = ml_settings_instance.mentallama
         assert mentallama_settings.provider == "openai"
         assert mentallama_settings.request_timeout == 60
         assert mentallama_settings.openai_api_key is None
 
-    def test_nested_xgboost_defaults(self, ml_settings_instance):
+    def test_nested_xgboost_defaults(self, ml_settings_instance) -> None:
         """Test default values for XGBoostSettings."""
         xgboost_settings = ml_settings_instance.xgboost
         assert hasattr(xgboost_settings, "aws_region_name")
@@ -103,7 +103,7 @@ class TestMLSettingsStructure:
 
 
 class TestEnums:
-    def test_model_type_enum(self):
+    def test_model_type_enum(self) -> None:
         """Test the MLModelType enum (now imported as ModelType)."""
         # Check enum values from app.domain.ml.ml_model.ModelType
         assert ModelType.TRANSFORMER.value == "transformer"

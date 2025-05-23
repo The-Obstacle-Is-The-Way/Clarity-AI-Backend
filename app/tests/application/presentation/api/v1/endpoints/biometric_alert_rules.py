@@ -302,7 +302,7 @@ async def delete_alert_rule(
     rule_id: UUID = Path(..., description="ID of the rule"),
     rule_repository: BiometricRuleRepository = Depends(get_rule_repository),
     current_user: UserResponseSchema = Depends(get_current_user),
-):
+) -> None:
     """
     Delete a specific alert rule by its ID.
 

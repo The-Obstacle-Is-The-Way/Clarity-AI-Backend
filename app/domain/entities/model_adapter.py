@@ -274,7 +274,7 @@ class DigitalTwinStateAdapter:
             active_treatments=self.active_treatments.copy(),
         )
 
-    def add_clinical_insight(self, insight: ClinicalInsight):
+    def add_clinical_insight(self, insight: ClinicalInsight) -> None:
         """Add a clinical insight to the state."""
         # Make sure the insight isn't already present (by ID)
         existing_ids = {i.id for i in self.clinical_insights}

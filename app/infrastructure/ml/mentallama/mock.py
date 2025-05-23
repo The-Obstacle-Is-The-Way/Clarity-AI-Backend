@@ -895,7 +895,7 @@ class MockMentaLLaMA:
         user_messages = [msg for msg in session["messages"] if msg["role"] == "user"]
 
         # Generate themes based on message content
-        all_text = " ".join([msg["content"] for msg in user_messages])
+        " ".join([msg["content"] for msg in user_messages])
         themes = session["insights"]["themes"]
 
         # Add standard recommendations

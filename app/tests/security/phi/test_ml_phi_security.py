@@ -147,7 +147,7 @@ def phi_sanitizer():
 class TestMLModelPHISecurity:
     """Test suite for ML model PHI security."""
 
-    def test_phi_is_properly_deidentified(self, phi_sanitizer):
+    def test_phi_is_properly_deidentified(self, phi_sanitizer) -> None:
         """Test that PHI is properly de-identified in ML input data."""
         # Arrange
         phi_data = "Patient John Doe, SSN: 123-45-6789"
@@ -160,7 +160,7 @@ class TestMLModelPHISecurity:
         assert sanitized_data == expected_sanitized
         assert not phi_sanitizer.contains_phi(sanitized_data)
 
-    def test_phi_data_is_never_logged(self, sample_patient_data, caplog):
+    def test_phi_data_is_never_logged(self, sample_patient_data, caplog) -> None:
         """Test that PHI is never logged during ML processing."""
         import logging
 
@@ -176,7 +176,6 @@ class TestMLModelPHISecurity:
         phi_log_message = f"Processing patient: {sample_patient_data['name']} with SSN: {sample_patient_data['ssn']}"
 
         # We'll use this later to verify our log has been sanitized
-        expected_sanitized = "Processing patient: [REDACTED NAME] with SSN: [REDACTED SSN]"
 
         # We need to manually sanitize the log message here since we're not using the
         # proper logging configuration/handlers that would do it in production
@@ -207,7 +206,7 @@ class TestMLModelPHISecurity:
         # Ensure our test log was actually captured
         assert phi_found, "Test log message not found in captured logs"
 
-    def test_model_output_has_no_phi(self, phi_sanitizer):
+    def test_model_output_has_no_phi(self, phi_sanitizer) -> None:
         """Test that ML model output has PHI properly sanitized."""
         # Arrange: Model output with recommendations that shouldn't be redacted
         # and patient info that should be redacted
@@ -244,7 +243,7 @@ class TestMLModelPHISecurity:
         assert sanitized_data["recommendations"][0] == "Regular check-ins"
         assert sanitized_data["recommendations"][1] == "Medication review"
 
-    def test_phi_is_never_stored_in_plain_text(self, mock_encryption_service):
+    def test_phi_is_never_stored_in_plain_text(self, mock_encryption_service) -> None:
         """Test that PHI is never stored in plain text in ML models."""
         # Arrange: Patient SSN that should be encrypted
         ssn = "123-45-6789"
@@ -261,7 +260,7 @@ class TestMLModelPHISecurity:
         decrypted_ssn = mock_encryption_service.decrypt(encrypted_ssn)
         assert decrypted_ssn == ssn
 
-    def test_ml_model_storage_encryption(self, mock_encryption_service, tmpdir):
+    def test_ml_model_storage_encryption(self, mock_encryption_service, tmpdir) -> None:
         """Test that ML models are stored with encryption."""
         # Arrange: Create a model file with PHI
         model_file = os.path.join(tmpdir, "model.pkl")

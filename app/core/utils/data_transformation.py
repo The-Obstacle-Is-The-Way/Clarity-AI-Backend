@@ -585,7 +585,7 @@ class FeatureEngineer:
     def create_rolling_features(
         data: np.ndarray,
         window_sizes: list[int],
-        functions: list[Callable] = [np.mean, np.std, np.min, np.max],
+        functions: list[Callable] | None = None,
     ) -> np.ndarray:
         """
         Create rolling window features for time series data.
@@ -598,6 +598,8 @@ class FeatureEngineer:
         Returns:
             Data with rolling features
         """
+        if functions is None:
+            functions = [np.mean, np.std, np.min, np.max]
         n_samples, n_features = data.shape
         all_features = [data]
 

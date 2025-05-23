@@ -28,7 +28,7 @@ def password_handler() -> PasswordHandler:
 class TestPasswordHashing:
     """Test suite for password hashing and verification (using standalone functions)."""
 
-    def test_password_hash_different_from_original(self):
+    def test_password_hash_different_from_original(self) -> None:
         """Test that the hashed password is different from the original."""
         password = "SecurePassword123!"
         hashed = get_password_hash(password)
@@ -36,7 +36,7 @@ class TestPasswordHashing:
         assert isinstance(hashed, str)
         assert len(hashed) > len(password)
 
-    def test_password_hash_is_deterministic_with_same_salt(self):
+    def test_password_hash_is_deterministic_with_same_salt(self) -> None:
         """Test verify_password works correctly (hashing is deterministic internally)."""
         password = "SecurePassword123!"
         # Hash it once
@@ -46,7 +46,7 @@ class TestPasswordHashing:
         # Verify again, should still work
         assert verify_password(password, hashed) is True
 
-    def test_different_passwords_different_hashes(self):
+    def test_different_passwords_different_hashes(self) -> None:
         """Test that different passwords produce different hashes."""
         password1 = "SecurePassword123!"
         password2 = "DifferentPassword456!"
@@ -54,14 +54,14 @@ class TestPasswordHashing:
         hashed2 = get_password_hash(password2)
         assert hashed1 != hashed2
 
-    def test_verify_correct_password(self):
+    def test_verify_correct_password(self) -> None:
         """Test that verification succeeds with correct password."""
         password = "SecurePassword123!"
         hashed = get_password_hash(password)
         result = verify_password(password, hashed)
         assert result is True
 
-    def test_verify_incorrect_password(self):
+    def test_verify_incorrect_password(self) -> None:
         """Test that verification fails with incorrect password."""
         correct_password = "SecurePassword123!"
         wrong_password = "WrongPassword123!"
@@ -69,13 +69,13 @@ class TestPasswordHashing:
         result = verify_password(wrong_password, hashed)
         assert result is False
 
-    def test_verify_handles_none_values(self):
+    def test_verify_handles_none_values(self) -> None:
         """Test that verification properly handles None values."""
         assert verify_password(None, "somehash") is False
         assert verify_password("somepassword", None) is False
         assert verify_password(None, None) is False
 
-    def test_hashing_is_slow_enough_for_security(self):
+    def test_hashing_is_slow_enough_for_security(self) -> None:
         """Test that password hashing takes a reasonable amount of time for security."""
         password = "SecurePassword123!"
         start_time = time.time()
@@ -89,14 +89,14 @@ class TestPasswordHashing:
 class TestPasswordStrengthValidation:
     """Test suite for password strength validation (using PasswordHandler method)."""
 
-    def test_valid_password_strength(self, password_handler: PasswordHandler):
+    def test_valid_password_strength(self, password_handler: PasswordHandler) -> None:
         """Test that a strong password passes validation."""
         password = "SecureP@ssw0rd123!"
         is_valid, message = password_handler.validate_password_strength(password)
         assert is_valid is True
         assert message is None
 
-    def test_short_password(self, password_handler: PasswordHandler):
+    def test_short_password(self, password_handler: PasswordHandler) -> None:
         """Test that short passwords are rejected."""
         password = "Short1!"
         is_valid, message = password_handler.validate_password_strength(password)
@@ -104,7 +104,7 @@ class TestPasswordStrengthValidation:
         assert message is not None
         assert "must be at least 12 characters" in message
 
-    def test_password_without_complexity(self, password_handler: PasswordHandler):
+    def test_password_without_complexity(self, password_handler: PasswordHandler) -> None:
         """Test that passwords missing complexity requirements fail."""
         password = "nouppercase123!"  # Long enough but missing uppercase
         is_valid, message = password_handler.validate_password_strength(password)
@@ -112,7 +112,7 @@ class TestPasswordStrengthValidation:
         assert message is not None
         assert "must include uppercase, lowercase, digits, and special characters" in message
 
-    def test_common_password(self, password_handler: PasswordHandler):
+    def test_common_password(self, password_handler: PasswordHandler) -> None:
         """Test that common passwords are rejected."""
         password = "Password12345!"
         is_valid, message = password_handler.validate_password_strength(password)
@@ -120,7 +120,7 @@ class TestPasswordStrengthValidation:
         assert message is not None
         assert "common patterns" in message
 
-    def test_repeated_characters(self, password_handler: PasswordHandler):
+    def test_repeated_characters(self, password_handler: PasswordHandler) -> None:
         """Test that passwords with repeated characters fail."""
         password = "Passssword123!"  # Contains repeated 's'
         is_valid, message = password_handler.validate_password_strength(password)
@@ -135,13 +135,13 @@ class TestPasswordStrengthValidation:
 class TestRandomPasswordGeneration:
     """Test suite for random password generation (using PasswordHandler method)."""
 
-    def test_random_password_length(self, password_handler: PasswordHandler):
+    def test_random_password_length(self, password_handler: PasswordHandler) -> None:
         """Test that generated passwords have the requested length."""
         length = 16
         password = password_handler.generate_secure_password(length)
         assert len(password) == length
 
-    def test_random_password_complexity(self, password_handler: PasswordHandler):
+    def test_random_password_complexity(self, password_handler: PasswordHandler) -> None:
         """Test that generated passwords meet complexity requirements."""
         password = password_handler.generate_secure_password(16)
         is_valid, message = password_handler.validate_password_strength(password)
@@ -149,7 +149,7 @@ class TestRandomPasswordGeneration:
             is_valid is True
         ), f"Generated password failed strength check: {password}, Message: {message}"
 
-    def test_random_password_uniqueness(self, password_handler: PasswordHandler):
+    def test_random_password_uniqueness(self, password_handler: PasswordHandler) -> None:
         """Test that generated passwords are unique."""
         num_passwords = 100
         passwords = [password_handler.generate_secure_password(16) for _ in range(num_passwords)]
@@ -158,7 +158,7 @@ class TestRandomPasswordGeneration:
     @patch("app.infrastructure.security.password.password_handler.secrets.choice")
     def test_uses_cryptographically_secure_rng(
         self, mock_choice: MagicMock, password_handler: PasswordHandler
-    ):
+    ) -> None:
         """Test that password generation uses cryptographically secure RNG."""
         mock_choice.side_effect = lambda x: x[0]
         password_handler.generate_secure_password(16)

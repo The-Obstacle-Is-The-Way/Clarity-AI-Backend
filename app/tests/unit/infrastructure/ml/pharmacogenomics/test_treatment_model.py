@@ -30,7 +30,7 @@ class TestTreatmentResponseModel:
         with patch(
             "app.infrastructure.ml.pharmacogenomics.treatment_model.joblib",
             autospec=True,
-        ) as mock_joblib:  # Removed trailing comma
+        ):  # Removed trailing comma
             model = TreatmentResponseModel(
                 model_path="test_model_path",
                 medication_data_path="test_medication_path",
@@ -138,7 +138,7 @@ class TestTreatmentResponseModel:
     @pytest.mark.asyncio
     async def test_initialize_loads_model_and_medication_data(
         self, model
-    ):  # Added model fixture and colon
+    ) -> None:  # Added model fixture and colon
         """Test that initialize loads the model and medication data correctly."""
         # Setup - Using patch as context manager
         mock_joblib_patch = patch(
@@ -207,14 +207,14 @@ class TestTreatmentResponseModel:
     @pytest.mark.asyncio
     async def test_initialize_handles_missing_files(
         self,
-    ):  # No model fixture needed here
+    ) -> None:  # No model fixture needed here
         """Test that initialize handles missing model and medication data files gracefully."""
         # Setup
         mock_exists_patch = patch(
             "app.infrastructure.ml.pharmacogenomics.treatment_model.os.path.exists",
             return_value=False,
         )
-        mock_exists = mock_exists_patch.start()
+        mock_exists_patch.start()
 
         try:
             # Create model instance
@@ -238,7 +238,7 @@ class TestTreatmentResponseModel:
     @pytest.mark.asyncio
     async def test_predict_treatment_response_success(  # Added colon
         self, model, sample_patient_data
-    ):
+    ) -> None:
         """Test successful treatment response prediction."""
         # Setup # Corrected indentation
         medications = ["fluoxetine", "sertraline", "bupropion"]
@@ -274,7 +274,7 @@ class TestTreatmentResponseModel:
     @pytest.mark.asyncio
     async def test_predict_treatment_response_no_medications(  # Added colon
         self, model, sample_patient_data
-    ):
+    ) -> None:
         """Test prediction with empty medications list."""
         # Execute and assert # Corrected indentation
         with pytest.raises(ValueError):  # Added closing parenthesis
@@ -287,7 +287,7 @@ class TestTreatmentResponseModel:
     @pytest.mark.asyncio
     async def test_predict_treatment_response_invalid_medication(  # Added colon
         self, model, sample_patient_data
-    ):
+    ) -> None:
         """Test prediction with invalid medication."""
         # Setup - A medication not in the model's data # Corrected indentation
         medications = ["invalid_medication"]
@@ -307,7 +307,7 @@ class TestTreatmentResponseModel:
         assert result["comparative_analysis"] == {}  # Added indentation for block
 
     @pytest.mark.asyncio
-    async def test_preprocess_patient_data(self, model, sample_patient_data):  # Added colon
+    async def test_preprocess_patient_data(self, model, sample_patient_data) -> None:  # Added colon
         """Test patient data preprocessing."""
         # Execute # Corrected indentation
         features = model._preprocess_patient_data(sample_patient_data)
@@ -318,7 +318,7 @@ class TestTreatmentResponseModel:
         assert features.shape[1] > 0  # Multiple features
 
     @pytest.mark.asyncio
-    async def test_format_efficacy_result(self, model):  # Added colon
+    async def test_format_efficacy_result(self, model) -> None:  # Added colon
         """Test efficacy result formatting."""
         # Setup # Corrected indentation
         efficacy_score = 0.72
@@ -336,7 +336,7 @@ class TestTreatmentResponseModel:
         assert 0 <= result["percentile"] <= 100  # Added indentation for block
 
     @pytest.mark.asyncio
-    async def test_format_side_effects_result(self, model):  # Added colon, corrected indentation
+    async def test_format_side_effects_result(self, model) -> None:  # Added colon, corrected indentation
         """Test side effects result formatting."""
         # Setup # Corrected indentation
         medication = "fluoxetine"
@@ -357,7 +357,7 @@ class TestTreatmentResponseModel:
         assert risks == [0.35, 0.28, 0.15]  # Added indentation for block
 
     @pytest.mark.asyncio
-    async def test_get_model_info(self, model):  # Added colon
+    async def test_get_model_info(self, model) -> None:  # Added colon
         """Test model info retrieval."""
         # Execute # Corrected indentation
         info = await model.get_model_info()

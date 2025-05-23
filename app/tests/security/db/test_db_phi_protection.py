@@ -216,7 +216,7 @@ class TestDBPHIProtection:
         return {"role": "guest", "user_id": None}
 
     @pytest.mark.asyncio
-    async def test_data_encryption_at_rest(self, unit_of_work, admin_context, mock_logger, db):
+    async def test_data_encryption_at_rest(self, unit_of_work, admin_context, mock_logger, db) -> None:
         """Test that PHI is encrypted when stored in the database."""
         uow = unit_of_work
 
@@ -356,7 +356,7 @@ class TestDBPHIProtection:
     @pytest.mark.asyncio
     async def test_role_based_access_control(
         self, unit_of_work, admin_context, patient_context, doctor_context
-    ):
+    ) -> None:
         """Test that access to PHI is properly controlled by role."""
         uow = unit_of_work
         patient_id = uuid.uuid4()
@@ -435,7 +435,7 @@ class TestDBPHIProtection:
         assert retrieved_patient_doctor.first_name == "RBACTest"
 
     @pytest.mark.asyncio
-    async def test_patient_data_isolation(self, unit_of_work):
+    async def test_patient_data_isolation(self, unit_of_work) -> None:
         """Test that patients can only access their own data."""
         uow = unit_of_work
         patient1_id = uuid.uuid4()
@@ -491,7 +491,7 @@ class TestDBPHIProtection:
         unit_of_work: AsyncSQLAlchemyUnitOfWork,
         mock_logger: MagicMock,
         admin_context: dict,
-    ):
+    ) -> None:
         """
         Test that repository operations (create, read, update) are properly logged for audit purposes.
         This includes both general operational logging and specific PHI access logging.
@@ -536,7 +536,6 @@ class TestDBPHIProtection:
                 )
             assert retrieved_patient is not None, "Patient retrieval failed"
             # Assert that PHI access was logged for get_by_id
-            expected_debug_log_get = f"Attempting to retrieve Patient by ID: {created_domain_patient.id} with context: {test_user_context}"
         # Test update logging
         if retrieved_patient and retrieved_patient.id:
             mock_logger.reset_mock()  # Reset before update
@@ -582,7 +581,7 @@ class TestDBPHIProtection:
             pytest.fail("Cannot proceed to get/update tests as patient creation failed.")
 
     @pytest.mark.asyncio
-    async def test_phi_filtering_by_role(self, unit_of_work, admin_context, patient_context):
+    async def test_phi_filtering_by_role(self, unit_of_work, admin_context, patient_context) -> None:
         """Test PHI filtering based on user roles."""
         uow = unit_of_work
         patient_id = uuid.uuid4()
@@ -621,7 +620,7 @@ class TestDBPHIProtection:
         # This would require a different repository or service method.
 
     @pytest.mark.asyncio
-    async def test_transaction_rollback_on_error(self, db, mock_logger):
+    async def test_transaction_rollback_on_error(self, db, mock_logger) -> None:
         """
         Simplified test to diagnose UoW session lifecycle.
         Original test: Test that transactions are rolled back on error using AsyncUoW.
@@ -675,7 +674,7 @@ class TestDBPHIProtection:
         )
 
     @pytest.mark.asyncio
-    async def test_no_phi_in_error_messages(self, unit_of_work, mock_logger):
+    async def test_no_phi_in_error_messages(self, unit_of_work, mock_logger) -> None:
         """Test that error messages from DB operations do not contain PHI."""
         uow = unit_of_work
         mock_logger.info(
@@ -712,12 +711,12 @@ class TestDBPHIProtection:
         )  # Check for the mocked error message
 
     @pytest.mark.asyncio
-    async def test_phi_in_query_parameters(self, unit_of_work, mock_logger, db):
+    async def test_phi_in_query_parameters(self, unit_of_work, mock_logger, db) -> None:
         """Test that PHI is not directly used in SQL query parameters (conceptual)."""
         uow = unit_of_work  # Corrected
 
         # Get a real session from the db fixture to patch its `execute` method
-        async with await db.get_session() as real_session:
+        async with await db.get_session():
             # Patch 'execute' on the *instance* of the session the UoW will use.
             # This is tricky because the UoW creates its own session.
             # A better approach is to patch it on the session_factory.

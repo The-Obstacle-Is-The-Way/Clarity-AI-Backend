@@ -119,7 +119,7 @@ def client(app):
 class TestAuditLoggingIntegration:
     """Integration tests for audit logging system."""
 
-    def test_phi_access_logged(self, client, audit_service, mock_repository):
+    def test_phi_access_logged(self, client, audit_service, mock_repository) -> None:
         """Test that PHI access is logged."""
         # Reset mock
         mock_repository._create.reset_mock()
@@ -148,7 +148,7 @@ class TestAuditLoggingIntegration:
         assert phi_access_log.action == "view"
         assert phi_access_log.status == "success"
 
-    def test_non_phi_path_not_logged(self, client, audit_service, mock_repository):
+    def test_non_phi_path_not_logged(self, client, audit_service, mock_repository) -> None:
         """Test that non-PHI paths are not logged."""
         # Reset mock
         mock_repository._create.reset_mock()
@@ -169,7 +169,7 @@ class TestAuditLoggingIntegration:
 
         assert phi_access_log is None
 
-    def test_failed_request_logged(self, client, audit_service, mock_repository):
+    def test_failed_request_logged(self, client, audit_service, mock_repository) -> None:
         """Test that failed requests are logged."""
         # Reset mock
         mock_repository._create.reset_mock()
@@ -204,7 +204,7 @@ class TestAuditLogExport:
     """Tests for audit log export functionality."""
 
     @pytest.mark.asyncio
-    async def test_export_audit_logs(self, audit_service, mock_repository):
+    async def test_export_audit_logs(self, audit_service, mock_repository) -> None:
         """Test exporting audit logs."""
         # Create some test logs
         test_logs = [
@@ -239,7 +239,7 @@ class TestAuditLogExport:
         # Export logs using a mock for non-async file operations
         with patch("builtins.open", mock_open()) as mock_file:
             # Call export
-            file_path = await audit_service.export_audit_logs(
+            await audit_service.export_audit_logs(
                 format="csv",
                 filters={"actor_id": TEST_USER_ID},
                 start_time=datetime.now(timezone.utc) - timedelta(days=1),
@@ -266,7 +266,7 @@ class TestAuditAnomalyDetection:
     """Tests for audit anomaly detection functionality."""
 
     @pytest.mark.asyncio
-    async def test_detect_anomalies(self, audit_service, mock_repository):
+    async def test_detect_anomalies(self, audit_service, mock_repository) -> None:
         """Test detecting access velocity anomalies."""
         # Reset mock
         mock_repository._create.reset_mock()
@@ -275,7 +275,7 @@ class TestAuditAnomalyDetection:
         test_user_id = str(uuid.uuid4())
 
         # Simulate rapid access to trigger anomaly detection (10 requests)
-        for i in range(10):
+        for _i in range(10):
             patient_id = str(uuid.uuid4())
             await audit_service.log_phi_access(
                 actor_id=test_user_id,
@@ -313,7 +313,7 @@ class TestAuditAnomalyDetection:
         assert security_event_logged, "No security alert was logged for anomalous access pattern"
 
     @pytest.mark.asyncio
-    async def test_geographic_anomaly(self, audit_service, mock_repository):
+    async def test_geographic_anomaly(self, audit_service, mock_repository) -> None:
         """Test geographic anomaly detection."""
         # Reset mock
         mock_repository._create.reset_mock()

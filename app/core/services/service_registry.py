@@ -13,7 +13,7 @@ _SERVICE_REGISTRY = {}
 T = TypeVar("T")
 
 
-def register_service(service_name: str, service_instance: Any):
+def register_service(service_name: str, service_instance: Any) -> None:
     """Register a service instance (Placeholder)."""
     print(f"Registering service: {service_name}")
     _SERVICE_REGISTRY[service_name] = service_instance

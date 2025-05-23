@@ -271,7 +271,7 @@ class MockDigitalTwinService(DigitalTwinInterface):  # Corrected base class
             Response message
         """
         # Get patient ID for personalization
-        patient_id = session.get("patient_id", "")
+        session.get("patient_id", "")
 
         # Simple keyword matching for common message types
         message_lower = message.lower()

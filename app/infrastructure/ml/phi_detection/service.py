@@ -312,7 +312,7 @@ class PHIDetectionService:
     def get_phi_types(self) -> list[str]:
         """Returns the list of PHI types supported by the service."""
         self.ensure_initialized()
-        return sorted(list(set(pattern.name for pattern in self.patterns)))
+        return sorted({pattern.name for pattern in self.patterns})
 
     def get_statistics(self) -> dict:
         """Returns statistics about the loaded PHI patterns."""

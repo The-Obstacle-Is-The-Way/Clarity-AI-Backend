@@ -182,7 +182,7 @@ class SQLAlchemyBiometricRuleRepository(IBiometricRuleRepository):
     async def get_active_rules(self, patient_id: UUID | None = None) -> list[BiometricRule]:
         """Retrieve active (enabled) rules, optionally filtered by patient."""
         try:
-            stmt = select(BiometricRuleModel).where(BiometricRuleModel.is_active == True)
+            stmt = select(BiometricRuleModel).where(BiometricRuleModel.is_active)
             if patient_id is not None:
                 stmt = stmt.where(BiometricRuleModel.patient_id == patient_id)
 
@@ -253,7 +253,7 @@ class SQLAlchemyBiometricRuleRepository(IBiometricRuleRepository):
             stmt = (
                 select(func.count(BiometricRuleModel.id))
                 .where(BiometricRuleModel.patient_id == patient_id)
-                .where(BiometricRuleModel.is_active == True)
+                .where(BiometricRuleModel.is_active)
             )
             result = await self.session.execute(stmt)
             count = result.scalar_one_or_none() or 0

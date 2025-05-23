@@ -52,7 +52,7 @@ class TestEncryptionUtils:
     #     key2 = derive_key(b"password", TEST_SALT)
     #     assert key1 == key2
 
-    def test_encrypt_decrypt_cycle(self, encryption_service):
+    def test_encrypt_decrypt_cycle(self, encryption_service) -> None:
         """Test that encrypting and then decrypting returns the original data."""
         encrypted = encryption_service.encrypt(TEST_DATA)  # Use service method
         assert encrypted != TEST_DATA
@@ -62,7 +62,7 @@ class TestEncryptionUtils:
         decrypted = encryption_service.decrypt(encrypted)  # Use service method
         assert decrypted == TEST_DATA
 
-    def test_decrypt_invalid_token(self, encryption_service):
+    def test_decrypt_invalid_token(self, encryption_service) -> None:
         """Test decryption with an invalid token raises ValueError."""
         invalid_encrypted_data = "v1:this-is-not-valid-base64-or-fernet-token"
         with pytest.raises(ValueError):
@@ -109,14 +109,14 @@ def encryption_service() -> BaseEncryptionService:
 class TestEnhancedEncryptionService:
     """Tests for the EncryptionService class."""
 
-    def test_initialization(self, encryption_service: BaseEncryptionService):
+    def test_initialization(self, encryption_service: BaseEncryptionService) -> None:
         """Test initialization of EncryptionService."""
         # Verify the service is initialized
         assert encryption_service is not None
         assert encryption_service.cipher is not None
         assert isinstance(encryption_service.cipher, Fernet)  # Check type
 
-    def test_encrypt_decrypt(self, encryption_service: BaseEncryptionService):
+    def test_encrypt_decrypt(self, encryption_service: BaseEncryptionService) -> None:
         """Test encryption and decryption of data."""
         # Test data
         data = "Sensitive patient information"
@@ -135,7 +135,7 @@ class TestEnhancedEncryptionService:
         # Verify decrypted data matches original
         assert decrypted == data
 
-    def test_encrypt_decrypt_dict(self, encryption_service: BaseEncryptionService):
+    def test_encrypt_decrypt_dict(self, encryption_service: BaseEncryptionService) -> None:
         """Test encryption and decryption of dictionaries."""
         # Test data
         data = {
@@ -198,7 +198,7 @@ class TestEnhancedEncryptionService:
         # Verify decrypted data matches original (deep comparison might be needed)
         assert decrypted == data  # Simple comparison works if structure and values match
 
-    def test_key_rotation(self):
+    def test_key_rotation(self) -> None:
         """Test encryption key rotation using fixed test keys."""
         # Use fixed test keys and salt for reliable testing
         primary_key = "test_primary_key_for_rotation_testing_1"
@@ -233,7 +233,7 @@ class TestEnhancedEncryptionService:
         with pytest.raises(ValueError, match="Decryption failed: Invalid token"):
             service_prev.decrypt(encrypted_with_new)
 
-    def test_file_encryption(self, encryption_service: BaseEncryptionService, tmp_path):
+    def test_file_encryption(self, encryption_service: BaseEncryptionService, tmp_path) -> None:
         """Test encryption and decryption of files."""
         # Create test file paths
         test_file = tmp_path / "test.txt"
@@ -258,7 +258,7 @@ class TestEnhancedEncryptionService:
         assert decrypted_file.exists()
         assert decrypted_file.read_text() == test_content
 
-    def test_encrypt_file_nonexistent(self, encryption_service: BaseEncryptionService, tmp_path):
+    def test_encrypt_file_nonexistent(self, encryption_service: BaseEncryptionService, tmp_path) -> None:
         """Test encrypting a nonexistent file raises FileNotFoundError."""
         nonexistent_file = tmp_path / "nonexistent.txt"
         output_file = tmp_path / "output.bin"
@@ -267,7 +267,7 @@ class TestEnhancedEncryptionService:
         with pytest.raises(FileNotFoundError):
             encryption_service.encrypt_file(str(nonexistent_file), str(output_file))
 
-    def test_decrypt_file_nonexistent(self, encryption_service: BaseEncryptionService, tmp_path):
+    def test_decrypt_file_nonexistent(self, encryption_service: BaseEncryptionService, tmp_path) -> None:
         """Test decrypting a nonexistent file raises FileNotFoundError."""
         nonexistent_file = tmp_path / "nonexistent.bin"
         output_file = tmp_path / "output.txt"
@@ -278,7 +278,7 @@ class TestEnhancedEncryptionService:
 
     def test_decrypt_invalid_file_content(
         self, encryption_service: BaseEncryptionService, tmp_path
-    ):
+    ) -> None:
         """Test decrypting a file with invalid content raises ValueError."""
         invalid_encrypted_file = tmp_path / "invalid.bin"
         output_file = tmp_path / "output.txt"

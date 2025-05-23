@@ -35,7 +35,7 @@ def patient_service(mock_patient_repository, mock_encryption_service):
 class TestPatientService:
     """Test suite for PatientService."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures for each test method."""
         # Create mock repositories
         self.mock_patient_repo = AsyncMock(spec=PatientRepository)
@@ -70,28 +70,28 @@ class TestPatientService:
         # Create a patient entity
         self.patient = Patient(**self.patient_data)
 
-    def test_get_patient_by_id_success(self):
+    def test_get_patient_by_id_success(self) -> None:
         """Test successfully retrieving a patient by ID."""
         self.mock_patient_repo.get_by_id.return_value = self.patient
         result = asyncio.run(self.service.get_by_id(self.patient_id))
         assert result == self.patient
         self.mock_patient_repo.get_by_id.assert_called_once_with(self.patient_id)
 
-    def test_get_patient_by_id_not_found(self):
+    def test_get_patient_by_id_not_found(self) -> None:
         """Test retrieving a non-existent patient by ID."""
         self.mock_patient_repo.get_by_id.return_value = None
         with pytest.raises(PatientNotFoundError):
             asyncio.run(self.service.get_by_id(self.patient_id))
         self.mock_patient_repo.get_by_id.assert_called_once_with(self.patient_id)
 
-    def test_create_patient_success(self):
+    def test_create_patient_success(self) -> None:
         """Test successfully creating a patient."""
         self.mock_patient_repo.create.return_value = self.patient
         result = asyncio.run(self.service.create(self.patient_data))
         assert result == self.patient
         self.mock_patient_repo.create.assert_called_once()
 
-    def test_update_patient_success(self):
+    def test_update_patient_success(self) -> None:
         """Test successfully updating a patient."""
         self.mock_patient_repo.get_by_id.return_value = self.patient
         self.mock_patient_repo.update.return_value = self.patient
@@ -101,7 +101,7 @@ class TestPatientService:
         self.mock_patient_repo.get_by_id.assert_called_once_with(self.patient_id)
         self.mock_patient_repo.update.assert_called_once()
 
-    def test_delete_patient_success(self):
+    def test_delete_patient_success(self) -> None:
         """Test successfully deleting a patient."""
         self.mock_patient_repo.get_by_id.return_value = self.patient
         self.mock_patient_repo.delete.return_value = True

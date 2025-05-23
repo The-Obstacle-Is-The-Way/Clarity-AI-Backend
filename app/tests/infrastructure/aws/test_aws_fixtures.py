@@ -14,13 +14,13 @@ from app.infrastructure.aws.in_memory_aws_services import (
 )
 
 
-def test_aws_service_factory(aws_service_factory):
+def test_aws_service_factory(aws_service_factory) -> None:
     """Test that the aws_service_factory fixture returns the expected type."""
     assert isinstance(aws_service_factory, AWSServiceFactory)
     assert isinstance(aws_service_factory, InMemoryAWSServiceFactory)
 
 
-def test_dynamodb_service(dynamodb_service):
+def test_dynamodb_service(dynamodb_service) -> None:
     """Test that the dynamodb_service fixture returns the expected type."""
     assert isinstance(dynamodb_service, InMemoryDynamoDBService)
     # Verify we can perform operations
@@ -28,7 +28,7 @@ def test_dynamodb_service(dynamodb_service):
     assert "test_table" in dynamodb_service.tables
 
 
-def test_s3_service(s3_service):
+def test_s3_service(s3_service) -> None:
     """Test that the s3_service fixture returns the expected type."""
     assert isinstance(s3_service, InMemoryS3Service)
     # Verify we can perform operations
@@ -40,7 +40,7 @@ def test_s3_service(s3_service):
     assert test_key in s3_service._buckets["novamind-test-bucket"]
 
 
-def test_sagemaker_service(sagemaker_service):
+def test_sagemaker_service(sagemaker_service) -> None:
     """Test that the sagemaker_service fixture returns the expected type."""
     assert isinstance(sagemaker_service, InMemorySageMakerService)
     # Verify the test endpoints were set up
@@ -48,7 +48,7 @@ def test_sagemaker_service(sagemaker_service):
     assert sagemaker_service._endpoints["xgboost-suicide-risk"]["status"] == "InService"
 
 
-def test_aws_config(test_aws_config):
+def test_aws_config(test_aws_config) -> None:
     """Test that the test_aws_config fixture returns the expected configuration."""
     assert isinstance(test_aws_config, dict)
     assert test_aws_config["aws_region"] == "us-east-1"

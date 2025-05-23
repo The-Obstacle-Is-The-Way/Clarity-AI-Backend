@@ -120,7 +120,7 @@ def jwt_service(test_settings: Settings) -> JWTServiceImpl:
 class TestJWTService:
     """Comprehensive tests for the JWTService class."""
 
-    def test_initialization(self, jwt_service: JWTServiceInterface, test_settings: Settings):
+    def test_initialization(self, jwt_service: JWTServiceInterface, test_settings: Settings) -> None:
         """Test JWT service initialization with settings."""
         assert jwt_service.secret_key == TEST_SECRET_KEY
         assert jwt_service.algorithm == TEST_ALGORITHM
@@ -134,7 +134,7 @@ class TestJWTService:
     @pytest.mark.asyncio
     @freeze_time("2024-01-01 12:00:00")
     @pytest.mark.asyncio
-    async def test_create_access_token(self, jwt_service: JWTServiceInterface):
+    async def test_create_access_token(self, jwt_service: JWTServiceInterface) -> None:
         """Test creating access tokens with various claims."""
         # Test with subject as a string
         user_id = "user123"
@@ -166,7 +166,7 @@ class TestJWTService:
         assert decoded.get("type") == TokenType.ACCESS.value
 
     @pytest.mark.asyncio
-    async def test_create_refresh_token(self, jwt_service: JWTServiceInterface):
+    async def test_create_refresh_token(self, jwt_service: JWTServiceInterface) -> None:
         """Test creation of refresh tokens."""
         # Create a refresh token using proper Interface Segregation Principle
         # Pass subject as string and additional data as named parameter
@@ -213,7 +213,7 @@ class TestJWTService:
     @pytest.mark.asyncio
     @freeze_time("2024-01-01 12:00:00")
     @pytest.mark.asyncio
-    async def test_verify_token_valid(self, jwt_service: JWTServiceInterface):
+    async def test_verify_token_valid(self, jwt_service: JWTServiceInterface) -> None:
         """Test verification of valid tokens."""
         # Create a valid token with subject as a string
         subject = "user123"
@@ -257,7 +257,7 @@ class TestJWTService:
         assert payload.type == TokenType.ACCESS
 
     @pytest.mark.asyncio
-    async def test_verify_token_expired(self, jwt_service: JWTServiceInterface):
+    async def test_verify_token_expired(self, jwt_service: JWTServiceInterface) -> None:
         """Test verification of expired tokens."""
         # Create token that's already expired
         data = {
@@ -293,7 +293,7 @@ class TestJWTService:
         assert decoded.sub == "user123"
 
     @pytest.mark.asyncio
-    async def test_verify_token_invalid_signature(self, jwt_service: JWTServiceInterface):
+    async def test_verify_token_invalid_signature(self, jwt_service: JWTServiceInterface) -> None:
         """Test verification of tokens with invalid signatures."""
         # Create a valid token
         data = {"sub": "user123", "role": "patient"}
@@ -320,7 +320,7 @@ class TestJWTService:
     @pytest.mark.asyncio
     async def test_verify_token_invalid_audience(
         self, jwt_service: JWTServiceInterface, test_settings: MagicMock
-    ):
+    ) -> None:
         """Test verification of tokens with invalid audience."""
         # Create token with the correct audience first
         data = {"sub": "user123", "role": "patient"}
@@ -354,7 +354,7 @@ class TestJWTService:
     @pytest.mark.asyncio
     @freeze_time("2024-01-01 12:00:00")
     @pytest.mark.asyncio
-    async def test_verify_token_invalid_issuer(self, jwt_service: JWTServiceInterface):
+    async def test_verify_token_invalid_issuer(self, jwt_service: JWTServiceInterface) -> None:
         """Test verification of tokens with invalid issuer."""
         # Create token with the correct issuer
         data = {"sub": "user123", "role": "patient"}
@@ -377,7 +377,7 @@ class TestJWTService:
             pass
 
     @pytest.mark.asyncio
-    async def test_verify_token_malformed(self, jwt_service: JWTServiceInterface):
+    async def test_verify_token_malformed(self, jwt_service: JWTServiceInterface) -> None:
         """Test verification of malformed tokens."""
         # Create malformed token
         malformed_token = "invalid.token.format"
@@ -388,7 +388,7 @@ class TestJWTService:
 
     # @pytest.mark.asyncio # Test no longer needs to be async
     @freeze_time("2024-01-01 12:00:00")
-    def test_refresh_access_token(self, jwt_service: JWTServiceInterface):
+    def test_refresh_access_token(self, jwt_service: JWTServiceInterface) -> None:
         """Test refreshing access tokens with valid refresh tokens using existing JWTService methods."""
         user_data_for_refresh = {"sub": "user123", "original_claim": "value"}
 
@@ -426,7 +426,7 @@ class TestJWTService:
 
     # @pytest.mark.asyncio # Test no longer needs to be async
     @freeze_time("2024-01-01 12:00:00")
-    def test_refresh_access_token_with_non_refresh_token(self, jwt_service: JWTServiceInterface):
+    def test_refresh_access_token_with_non_refresh_token(self, jwt_service: JWTServiceInterface) -> None:
         """Test that attempting to refresh with a non-refresh token (e.g., an access token) fails at payload check."""
         user_data = {"sub": "user123", "role": "patient"}
         non_refresh_token = jwt_service.create_access_token(data=user_data)
@@ -459,7 +459,7 @@ class TestJWTService:
 
     # @pytest.mark.asyncio # Test no longer needs to be async
     @freeze_time("2024-01-01 12:00:00")
-    def test_get_token_identity(self, jwt_service: JWTServiceInterface):
+    def test_get_token_identity(self, jwt_service: JWTServiceInterface) -> None:
         """Test extraction of identity from tokens."""
         # Create token with subject as a simple string (not a dictionary)
         subject = "user123"
@@ -476,7 +476,7 @@ class TestJWTService:
             pytest.fail(f"Failed to decode token or extract identity: {e!s}")
 
     @pytest.mark.asyncio
-    async def test_get_token_identity_missing_sub(self, jwt_service: JWTServiceInterface):
+    async def test_get_token_identity_missing_sub(self, jwt_service: JWTServiceInterface) -> None:
         """Test handling tokens without a subject (sub) field."""
         # Create a token without a sub field
         data_no_sub = {

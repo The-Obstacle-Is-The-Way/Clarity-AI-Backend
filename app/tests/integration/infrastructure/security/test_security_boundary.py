@@ -82,7 +82,7 @@ class TestSecurityBoundary:
     """Test suite for integrated security boundaries."""
 
     @pytest.mark.asyncio
-    async def test_complete_auth_flow(self, security_components):
+    async def test_complete_auth_flow(self, security_components) -> None:
         """Test a complete authentication flow with all security components."""
         jwt_service, password_handler, role_manager = security_components
 
@@ -113,7 +113,7 @@ class TestSecurityBoundary:
         assert not role_manager.has_permission(role, "view_all_medical_records")
 
     @pytest.mark.asyncio
-    async def test_token_expiration(self, security_components, mock_settings):
+    async def test_token_expiration(self, security_components, mock_settings) -> None:
         """Test token expiration handling."""
         jwt_service, _, _ = security_components
 
@@ -147,7 +147,7 @@ class TestSecurityBoundary:
             )
 
     @pytest.mark.asyncio
-    async def test_role_based_access_control(self, security_components):
+    async def test_role_based_access_control(self, security_components) -> None:
         """Test role-based access control with different roles."""
         jwt_service, _, role_manager = security_components
 
@@ -185,7 +185,7 @@ class TestSecurityBoundary:
                     role, permission
                 ), f"Role {role} should not have permission {permission}"
 
-    def test_password_strength_validation(self, security_components):
+    def test_password_strength_validation(self, security_components) -> None:
         """Test password strength validation."""
         # Unpack components
         _, password_handler, _ = security_components
@@ -211,7 +211,7 @@ class TestSecurityBoundary:
             assert error is not None
 
     @pytest.mark.asyncio
-    async def test_admin_special_privileges(self, security_components):
+    async def test_admin_special_privileges(self, security_components) -> None:
         """Test admin special privileges that override normal permissions."""
         jwt_service, _, role_manager = security_components
 
@@ -229,8 +229,8 @@ class TestSecurityBoundary:
         admin_token = jwt_service.create_access_token(data=admin_user_data)
         nurse_token = jwt_service.create_access_token(data=nurse_user_data)
 
-        admin_data = jwt_service.decode_token(admin_token)
-        nurse_data = jwt_service.decode_token(nurse_token)
+        jwt_service.decode_token(admin_token)
+        jwt_service.decode_token(nurse_token)
 
         assert role_manager.has_permission(Role.ADMIN, "view_all_data")
         assert role_manager.has_permission(Role.ADMIN, "manage_users")
@@ -239,7 +239,7 @@ class TestSecurityBoundary:
         assert not role_manager.has_permission(Role.NURSE, "manage_users")
 
     @pytest.mark.asyncio
-    async def test_token_generation_and_validation(self, mock_settings):
+    async def test_token_generation_and_validation(self, mock_settings) -> None:
         """Test the complete token generation and validation flow."""
         # Create a JWT service
         from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl as JWTService
@@ -293,7 +293,7 @@ class TestSecurityBoundary:
         assert getattr(refresh_payload, "refresh", False) is True
 
     @pytest.mark.asyncio
-    async def test_expired_token_validation(self, mock_settings):
+    async def test_expired_token_validation(self, mock_settings) -> None:
         """Test that an expired token raises TokenExpiredException."""
         jwt_service = JWTService(settings=mock_settings, user_repository=None)
         user_id = str(uuid.uuid4())
@@ -307,7 +307,7 @@ class TestSecurityBoundary:
             jwt_service.decode_token(expired_token, options={"verify_exp": True})
 
     @pytest.mark.asyncio
-    async def test_invalid_token_validation(self, mock_settings):
+    async def test_invalid_token_validation(self, mock_settings) -> None:
         """Test that an invalid/tampered token raises InvalidTokenException."""
         jwt_service = JWTService(settings=mock_settings, user_repository=None)
         invalid_token = "this.is.not.a.valid.token"
@@ -324,7 +324,7 @@ class TestSecurityBoundary:
             jwt_service.decode_token(tampered_token)
 
     @pytest.mark.asyncio
-    async def test_token_with_minimal_payload(self, mock_settings):
+    async def test_token_with_minimal_payload(self, mock_settings) -> None:
         """Test token validation with minimal required payload."""
         jwt_service = JWTService(settings=mock_settings, user_repository=None)
         user_id = str(uuid.uuid4())
@@ -342,7 +342,7 @@ class TestSecurityBoundary:
         assert payload.roles == []  # Default empty list
 
     @pytest.mark.asyncio
-    async def test_short_lived_token_validation(self, mock_settings):
+    async def test_short_lived_token_validation(self, mock_settings) -> None:
         """Test validation of a very short-lived token."""
         mock_settings.ACCESS_TOKEN_EXPIRE_MINUTES = 1 / 60  # 1 second
         jwt_service = JWTService(settings=mock_settings, user_repository=None)

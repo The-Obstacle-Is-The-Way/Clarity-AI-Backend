@@ -41,7 +41,7 @@ class TimestampMixin:  # Inherit from object (or nothing)
     """
 
     @declared_attr
-    def created_at(cls):
+    def created_at(self):
         return Column(
             DateTime(timezone=True),
             default=now_utc,
@@ -51,7 +51,7 @@ class TimestampMixin:  # Inherit from object (or nothing)
         )
 
     @declared_attr
-    def updated_at(cls):
+    def updated_at(self):
         return Column(
             DateTime(timezone=True),
             default=now_utc,

@@ -173,7 +173,7 @@ def mock_encryption_service():
     """Mock encryption service for testing."""
     service = MagicMock(spec=BaseEncryptionService)
 
-    def encrypt_side_effect(value):
+    def encrypt_side_effect(value) -> str | None:
         if value is None:
             return None
         return f"ENCRYPTED_{value!s}"
@@ -196,7 +196,7 @@ class TestPatientBasics:
     """Basic sanity tests for patient database operations."""
 
     @pytest.mark.asyncio
-    async def test_create_and_get_patient(self, test_db_session: AsyncSession):
+    async def test_create_and_get_patient(self, test_db_session: AsyncSession) -> None:
         """Test creating and retrieving a patient directly."""
         # Create a test patient with the helper function that properly handles foreign keys
         test_patient = await create_test_patient(
@@ -220,7 +220,7 @@ class TestPatientBasics:
         assert retrieved_patient.last_name == "ENCRYPTED_Patient"
 
     @pytest.mark.asyncio
-    async def test_update_patient(self, test_db_session: AsyncSession):
+    async def test_update_patient(self, test_db_session: AsyncSession) -> None:
         """Test updating a patient using test models."""
         # Create a test patient using helper function
         test_patient = await create_test_patient(
@@ -244,7 +244,7 @@ class TestPatientBasics:
         assert updated_patient.first_name == "ENCRYPTED_Updated"
 
     @pytest.mark.asyncio
-    async def test_delete_patient(self, test_db_session: AsyncSession):
+    async def test_delete_patient(self, test_db_session: AsyncSession) -> None:
         """Test deleting a patient using test models."""
         # Create a test patient
         test_patient = await create_test_patient(
@@ -267,7 +267,7 @@ class TestPatientBasics:
         assert deleted_patient is None
 
     @pytest.mark.asyncio
-    async def test_get_all_patients(self, test_db_session: AsyncSession):
+    async def test_get_all_patients(self, test_db_session: AsyncSession) -> None:
         """Test retrieving multiple patients using test models."""
         # Create test patients
         patient_ids = []

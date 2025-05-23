@@ -521,7 +521,7 @@ class ExtendedTemporalSequence(_GenericTemporalSequence):
             # Generic initialization for repository or service usages
             _GenericTemporalSequence.__init__(self, *args, **kwargs)
 
-    def add_time_point(self, time_value, data):
+    def add_time_point(self, time_value, data) -> None:
         """Add a time point with associated data."""
         point = TimePoint(time_value, data)
         self.time_points.append(point)

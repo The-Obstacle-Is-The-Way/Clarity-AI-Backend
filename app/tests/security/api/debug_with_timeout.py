@@ -16,7 +16,7 @@ logging.basicConfig(
 logger = logging.getLogger("debug_with_timeout")
 
 
-async def run_test_with_timeout(client_app_tuple):
+async def run_test_with_timeout(client_app_tuple) -> bool | None:
     """Run the exact test with timeout to identify where it hangs."""
     client, current_fastapi_app = client_app_tuple
     logger.debug("Starting the test with timeout...")
@@ -75,7 +75,7 @@ async def run_test_with_timeout(client_app_tuple):
 
 
 # This function can be imported and run from pytest
-async def run_debug_test(client_app_tuple_func_scoped):
+async def run_debug_test(client_app_tuple_func_scoped) -> None:
     """Function that can be called from pytest."""
     success = await run_test_with_timeout(client_app_tuple_func_scoped)
     # Force the test to pass or fail based on our success flag

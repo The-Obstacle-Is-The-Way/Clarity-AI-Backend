@@ -5,7 +5,7 @@ This module provides test endpoints that are only registered in test mode.
 They are used to trigger specific error conditions for testing.
 """
 
-from typing import Any
+from typing import Any, NoReturn
 
 from fastapi import APIRouter, HTTPException, status
 
@@ -76,18 +76,18 @@ async def test_hello():
 
 
 @router.get("/error")
-async def test_error():
+async def test_error() -> NoReturn:
     """Test endpoint that raises an HTTP exception."""
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Test error")
 
 
 @router.get("/runtime-error")
-async def test_runtime_error():
+async def test_runtime_error() -> NoReturn:
     """Test endpoint that raises a RuntimeError with sensitive information that should be masked."""
     raise RuntimeError("This is a sensitive internal error detail that should be masked")
 
 
 @router.get("/value-error")
-async def test_value_error():
+async def test_value_error() -> NoReturn:
     """Test endpoint that raises a ValueError."""
     raise ValueError("This is a test ValueError")

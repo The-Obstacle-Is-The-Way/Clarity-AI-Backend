@@ -8,7 +8,7 @@ from app.domain.entities.patient import Patient
 
 
 @pytest.mark.asyncio
-async def test_execute_creates_patient_and_returns_result():
+async def test_execute_creates_patient_and_returns_result() -> None:
     # Arrange
     mock_repo = AsyncMock()
     dummy_patient = Patient(id=uuid.uuid4(), date_of_birth="1990-01-01", gender="F")
@@ -29,7 +29,7 @@ async def test_execute_creates_patient_and_returns_result():
 
 
 @pytest.mark.asyncio
-async def test_execute_raises_value_error_for_invalid_data():
+async def test_execute_raises_value_error_for_invalid_data() -> None:
     # Arrange
     mock_repo = AsyncMock()
     use_case = CreatePatientUseCase(mock_repo)

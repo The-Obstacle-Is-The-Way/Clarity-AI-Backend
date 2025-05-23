@@ -1105,7 +1105,7 @@ class JWTServiceImpl(IJwtService):
             # Add to blacklist (handling test environment specially)
             if hasattr(self.settings, "TESTING") and self.settings.TESTING:
                 # In test mode, use fixed timestamps to match test expectations
-                now = datetime.fromtimestamp(1704110400, timezone.utc)  # 2024-01-01 12:00:00 UTC
+                datetime.fromtimestamp(1704110400, timezone.utc)  # 2024-01-01 12:00:00 UTC
                 # Use exactly 30 minutes later for access token expiry (1800 seconds)
                 expire = datetime.fromtimestamp(1704112200, timezone.utc)  # 2024-01-01 12:30:00 UTC
                 await self.token_blacklist_repository.add_to_blacklist(jti, expire)
@@ -1242,7 +1242,7 @@ class JWTServiceImpl(IJwtService):
         return cookies.get("access_token")
 
     def check_resource_access(
-        self, request, resource_path: str, resource_owner_id: str = None
+        self, request, resource_path: str, resource_owner_id: str | None = None
     ) -> bool:
         """Check if request has access to the specified resource.
 

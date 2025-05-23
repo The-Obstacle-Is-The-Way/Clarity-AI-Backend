@@ -271,7 +271,7 @@ class RedisService(IRedisService):
         """
         try:
             # Convert value to string if it's not already
-            if not isinstance(value, (str, bytes, int, float)):
+            if not isinstance(value, str | bytes | int | float):
                 value = json.dumps(value)
             return await self._redis.hset(name, key, value)
         except Exception as e:

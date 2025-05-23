@@ -31,7 +31,7 @@ class IJwtService(ABC):
     async def create_access_token(
         self,
         user_id: str | UUID,
-        roles: list[str] = None,
+        roles: list[str] | None = None,
         expires_delta_minutes: int | None = None,
     ) -> str:
         """

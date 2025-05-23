@@ -10,6 +10,7 @@ These tests verify that repositories handling PHI/ePHI properly:
     """
 import logging
 import uuid
+from typing import NoReturn
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -33,7 +34,7 @@ def encryption_service():
     service._encryption_key = test_key
 
     # Create functional encrypt/decrypt methods for testing
-    def mock_encrypt(data):
+    def mock_encrypt(data) -> str | None:
         if data is None:
             return None
         # Simulate encryption by prepending 'ENC:'
@@ -135,11 +136,11 @@ def patient_repository(db_session, encryption_service):
 
 @pytest.mark.db_required()
 @pytest.mark.asyncio
-async def test_patient_creation_encrypts_phi(patient_repository, encryption_service):
+async def test_patient_creation_encrypts_phi(patient_repository, encryption_service) -> None:
     """Test that patient creation encrypts PHI fields before storage."""
     # GIVEN a patient with sensitive PHI data
     patient_id = str(uuid.uuid4())
-    test_patient = Patient(
+    Patient(
         id=patient_id,
         first_name="John",
         last_name="Doe",
@@ -193,7 +194,7 @@ async def test_patient_creation_encrypts_phi(patient_repository, encryption_serv
 
 
 @pytest.mark.asyncio
-async def test_patient_retrieval_decrypts_phi(encryption_service):
+async def test_patient_retrieval_decrypts_phi(encryption_service) -> None:
     """Test that patient retrieval properly decrypts sensitive fields."""
     # GIVEN a set of encrypted PHI fields that would be stored in a database
     encrypted_phi = {
@@ -240,7 +241,7 @@ async def test_patient_retrieval_decrypts_phi(encryption_service):
 
 
 @pytest.mark.asyncio
-async def test_authorization_check_before_operations():
+async def test_authorization_check_before_operations() -> None:
     """Test that authorization checks are correctly enforced for patient data access."""
     # GIVEN different user contexts with varying permission levels
     admin_user = {"id": "admin_123", "role": "admin"}
@@ -249,7 +250,7 @@ async def test_authorization_check_before_operations():
     unrelated_user = {"id": "unrelated_012", "role": "patient"}
 
     # AND a function that performs permission checks
-    def check_permission(user_context, patient_id, operation_type):
+    def check_permission(user_context, patient_id, operation_type) -> bool:
         # Admin has all permissions
         if user_context.get("role") == "admin":
             return True
@@ -271,40 +272,40 @@ async def test_authorization_check_before_operations():
     # THEN we should see appropriate permission enforcements
 
     # Admin should have access to all operations
-    assert check_permission(admin_user, "123", "view") == True, "Admins should have view access"
-    assert check_permission(admin_user, "123", "edit") == True, "Admins should have edit access"
+    assert check_permission(admin_user, "123", "view"), "Admins should have view access"
+    assert check_permission(admin_user, "123", "edit"), "Admins should have edit access"
 
     # Doctors should have access to patient operations
-    assert check_permission(doctor_user, "123", "view") == True, "Doctors should have view access"
-    assert check_permission(doctor_user, "123", "edit") == True, "Doctors should have edit access"
+    assert check_permission(doctor_user, "123", "view"), "Doctors should have view access"
+    assert check_permission(doctor_user, "123", "edit"), "Doctors should have edit access"
 
     # Patients should only have access to their own data
     assert (
-        check_permission(patient_user, "789", "view") == True
+        check_permission(patient_user, "789", "view")
     ), "Patients should have view access to own records"
     assert (
-        check_permission(patient_user, "789", "edit") == True
+        check_permission(patient_user, "789", "edit")
     ), "Patients should have edit access to own records"
 
     # Patients should NOT have access to other patients' data
     assert (
-        check_permission(patient_user, "123", "view") == False
+        not check_permission(patient_user, "123", "view")
     ), "Patients should not access others' records"
     assert (
-        check_permission(patient_user, "123", "edit") == False
+        not check_permission(patient_user, "123", "edit")
     ), "Patients should not edit others' records"
 
     # Unrelated users should have no access
     assert (
-        check_permission(unrelated_user, "123", "view") == False
+        not check_permission(unrelated_user, "123", "view")
     ), "Unrelated users should have no access"
     assert (
-        check_permission(unrelated_user, "123", "edit") == False
+        not check_permission(unrelated_user, "123", "edit")
     ), "Unrelated users should have no edit rights"
 
 
 @pytest.mark.asyncio  # Mark as async test
-async def test_audit_logging_on_patient_changes():
+async def test_audit_logging_on_patient_changes() -> None:
     """Test that patient changes are properly logged for audit purposes."""
     # GIVEN a patient record and a logging system
     patient_id = str(uuid.uuid4())
@@ -360,11 +361,11 @@ async def test_audit_logging_on_patient_changes():
 
 
 @pytest.mark.asyncio
-async def test_phi_never_appears_in_exceptions():
+async def test_phi_never_appears_in_exceptions() -> None:
     """Test that PHI never appears in exception messages for HIPAA compliance."""
 
     # GIVEN a function that might raise an exception with patient data
-    def get_patient_data(patient_id):
+    def get_patient_data(patient_id) -> NoReturn:
         # Simulate a database error that might occur
         raise Exception("Error retrieving data")
 
@@ -382,7 +383,7 @@ async def test_phi_never_appears_in_exceptions():
     try:
         # Simulate an error during patient data retrieval
         get_patient_data("test_id")
-        assert False, "Expected an exception to be raised"
+        raise AssertionError("Expected an exception to be raised")
     except Exception as e:
         # Verify no PHI appears in the exception message
         error_message = str(e)
@@ -395,7 +396,7 @@ async def test_phi_never_appears_in_exceptions():
         assert "Error retrieving data" in error_message, "Error should be generic without PHI"
 
 
-def test_encryption_key_rotation(encryption_service):
+def test_encryption_key_rotation(encryption_service) -> None:
     """Test that encryption key rotation works correctly."""
     # Arrange
     old_key = encryption_service._encryption_key
@@ -406,7 +407,6 @@ def test_encryption_key_rotation(encryption_service):
     new_key = b"newtestkeyfortestingonly1234567890ab"
     # Mock or simulate storing the old key for decrypting existing data
     # encryption_service.rotate_key(new_key) # Comment out - method does not exist
-    new_key_after_rotation = encryption_service._encryption_key
 
     # Mock decryption to use old key for existing data if necessary
     with patch.object(encryption_service, "decrypt", side_effect=lambda x: data) as mock_decrypt:
@@ -419,7 +419,7 @@ def test_encryption_key_rotation(encryption_service):
     assert old_key != new_key, "Key should have been rotated"
 
 
-def test_field_level_encryption(encryption_service):
+def test_field_level_encryption(encryption_service) -> None:
     """Test that encryption operates at the field level not record level."""
     # Encrypt multiple fields
     ssn = "123-45-6789"
@@ -442,7 +442,7 @@ def test_field_level_encryption(encryption_service):
 
 
 @pytest.mark.asyncio  # Mark as async test
-async def test_phi_never_appears_in_exceptions(patient_repository, db_session):
+async def test_phi_never_appears_in_exceptions(patient_repository, db_session) -> None:
     """Test that PHI never appears in exception messages."""
     # Arrange
     patient_id = str(uuid.uuid4())
@@ -462,7 +462,7 @@ async def test_phi_never_appears_in_exceptions(patient_repository, db_session):
     try:
         # Pass user context
         await patient_repository.get_by_id(patient_id, user=mock_user)
-        assert False, "Expected an exception to be raised"
+        raise AssertionError("Expected an exception to be raised")
     except Exception as e:
         assert "123-45-6789" not in str(e), "SSN should not appear in exception"
         assert "john.doe" not in str(e), "Email should not appear in exception"

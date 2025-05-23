@@ -305,7 +305,7 @@ class MentaLLaMA(MentaLLaMAInterface):
 
         # Count occurrences of depression keywords
         keyword_counts = {}
-        for keyword, weight in depression_keywords.items():
+        for keyword, _weight in depression_keywords.items():
             count = sum(1 for word in words if keyword in word)
             if count > 0:
                 keyword_counts[keyword] = count
@@ -462,7 +462,7 @@ class MentaLLaMA(MentaLLaMAInterface):
 
         # Count keyword occurrences
         keyword_counts = {}
-        for keyword, weight in keywords.items():
+        for keyword, _weight in keywords.items():
             count = text_lower.count(keyword)
             if count > 0:
                 keyword_counts[keyword] = count

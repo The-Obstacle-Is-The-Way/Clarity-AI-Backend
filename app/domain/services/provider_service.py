@@ -232,7 +232,7 @@ class ProviderService:
         issues = []
 
         # Check for expired credentials
-        for i, credential in enumerate(provider.credentials):
+        for _i, credential in enumerate(provider.credentials):
             if credential.is_expired:
                 issues.append(f"Credential {credential.type} from {credential.issuer} is expired")
             elif credential.expires_soon:

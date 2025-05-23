@@ -32,7 +32,7 @@ def model():
         autospec=True,
     ) as mock_json, patch(
         "builtins.open", mock_open(read_data="{}")
-    ) as mock_file, patch(
+    ), patch(
         "os.path.exists", return_value=True
     ):  # Assume files exist for fixture setup
         # Mock joblib.load to return a mock model
@@ -131,7 +131,7 @@ class TestGeneMedicationModel:
     """Tests for the GeneMedicationModel."""
 
     @pytest.mark.asyncio  # Keep async if initialize is async
-    async def test_initialize_loads_model_and_knowledge_base(self):
+    async def test_initialize_loads_model_and_knowledge_base(self) -> None:
         """Test that initialize loads the model and knowledge base correctly."""
         # Setup - Use patches within the test for clarity
         with patch(
@@ -171,7 +171,7 @@ class TestGeneMedicationModel:
             assert model_instance._knowledge_base is mock_kb
 
     @pytest.mark.asyncio  # Keep async if initialize is async
-    async def test_initialize_handles_missing_files(self):
+    async def test_initialize_handles_missing_files(self) -> None:
         """Test that initialize handles missing model and knowledge base files gracefully."""
         # Setup
         with patch("os.path.exists", return_value=False), patch(
@@ -200,7 +200,7 @@ class TestGeneMedicationModel:
             }  # KB should be empty
 
     @pytest.mark.asyncio  # Add async
-    async def test_predict_medication_interactions_success(self, model, sample_genetic_data):
+    async def test_predict_medication_interactions_success(self, model, sample_genetic_data) -> None:
         """Test that predict_medication_interactions correctly processes genetic data and returns interactions."""
         # Setup
         medications = [
@@ -221,7 +221,6 @@ class TestGeneMedicationModel:
         # Expecting 1 known (fluoxetine/CYP2D6 intermediate) + 1 predicted (fluoxetine)
         assert len(interactions) >= 1  # Allow flexibility if prediction logic changes
 
-        found_fluoxetine_known = False
         found_fluoxetine_predicted = False  # Model predicts interaction for fluoxetine
         found_sertraline = False
 
@@ -236,7 +235,6 @@ class TestGeneMedicationModel:
                 interaction["medication"] == "fluoxetine"
                 and interaction["interaction_type"] == "known"
             ):
-                found_fluoxetine_known = True
                 assert interaction["gene"] == "CYP2D6"  # Based on intermediate status
                 assert interaction["effect"] == "slightly_increased_levels"
             # Check for predicted interaction if model predicts it (mock returns [1,0,0])
@@ -264,7 +262,7 @@ class TestGeneMedicationModel:
         assert metabolizer_status["CYP2C19"] == "intermediate"  # From *1/*2
 
     @pytest.mark.asyncio  # Add async
-    async def test_predict_medication_interactions_empty_genetic_data(self, model):
+    async def test_predict_medication_interactions_empty_genetic_data(self, model) -> None:
         """Test predict_medication_interactions handles empty genetic data."""
         # Setup
         empty_genetic_data = {"genes": []}
@@ -279,7 +277,7 @@ class TestGeneMedicationModel:
     @pytest.mark.asyncio  # Add async
     async def test_predict_medication_interactions_empty_medications(
         self, model, sample_genetic_data
-    ):
+    ) -> None:
         """Test predict_medication_interactions handles empty medications list."""
         # Setup
         empty_medications = []
@@ -291,7 +289,7 @@ class TestGeneMedicationModel:
         assert "No medications specified" in str(excinfo.value)
 
     # Test private methods directly for focused unit testing
-    def test_extract_gene_features(self, model, sample_genetic_data):
+    def test_extract_gene_features(self, model, sample_genetic_data) -> None:
         """Test _extract_gene_features correctly transforms genetic data."""
         # Execute
         features = model._extract_gene_features(sample_genetic_data)
@@ -305,7 +303,7 @@ class TestGeneMedicationModel:
         assert features["CYP2C19"] == "*1/*2"
         assert features["CYP1A2"] == "*1F/*1F"
 
-    def test_determine_metabolizer_status(self, model):
+    def test_determine_metabolizer_status(self, model) -> None:
         """Test _determine_metabolizer_status correctly determines status."""
         # Setup
         gene_variants = {
@@ -334,7 +332,7 @@ class TestGeneMedicationModel:
         assert status["CYP1A2"] == "rapid"
         assert status["DPYD"] == "poor"
 
-    def test_lookup_known_interactions(self, model):
+    def test_lookup_known_interactions(self, model) -> None:
         """Test _lookup_known_interactions correctly looks up interactions."""
         # Setup
         metabolizer_status = {"CYP2D6": "poor", "CYP2C19": "normal"}
@@ -358,7 +356,7 @@ class TestGeneMedicationModel:
         assert fluoxetine_interaction["effect"] == "increased_levels"
         assert fluoxetine_interaction["recommendation"] == "dose_reduction"
 
-    def test_predict_novel_interactions(self, model):
+    def test_predict_novel_interactions(self, model) -> None:
         """Test _predict_novel_interactions correctly predicts interactions."""
         # Setup
         gene_features = {  # Example features, structure depends on actual feature engineering

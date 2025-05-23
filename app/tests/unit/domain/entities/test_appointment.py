@@ -55,7 +55,7 @@ def valid_appointment_data(future_datetime):
 class TestAppointment:
     """Tests for the Appointment class."""
 
-    def test_create_appointment(self, valid_appointment_data):
+    def test_create_appointment(self, valid_appointment_data) -> None:
         """Test creating an appointment."""
         appointment = Appointment(**valid_appointment_data)
 
@@ -71,7 +71,7 @@ class TestAppointment:
         assert isinstance(appointment.created_at, datetime)
         assert isinstance(appointment.last_updated, datetime)
 
-    def test_create_appointment_with_string_type(self, valid_appointment_data):
+    def test_create_appointment_with_string_type(self, valid_appointment_data) -> None:
         """Test creating an appointment with string type (enum conversion)."""
         data = valid_appointment_data.copy()
         data["appointment_type"] = "follow_up"  # Use string value
@@ -81,7 +81,7 @@ class TestAppointment:
         assert appointment.appointment_type == AppointmentType.FOLLOW_UP
         assert appointment.status == AppointmentStatus.SCHEDULED  # Check default
 
-    def test_validate_required_fields(self, future_datetime):
+    def test_validate_required_fields(self, future_datetime) -> None:
         """Test validation of required fields (via TypeError)."""
         patient_id = uuid.uuid4()
         provider_id = uuid.uuid4()
@@ -130,7 +130,7 @@ class TestAppointment:
                 end_time=end_time,
             )
 
-    def test_validate_appointment_times(self, valid_appointment_data):
+    def test_validate_appointment_times(self, valid_appointment_data) -> None:
         """Test validation of appointment times in __post_init__."""
         data = valid_appointment_data.copy()
         # End time before start time
@@ -149,7 +149,7 @@ class TestAppointment:
         ):
             Appointment(**data)
 
-    def test_update_status(self, valid_appointment_data):
+    def test_update_status(self, valid_appointment_data) -> None:
         """Test updating the appointment status."""
         appointment = Appointment(**valid_appointment_data)
         original_updated_at = appointment.last_updated
@@ -165,7 +165,7 @@ class TestAppointment:
         assert appointment.status == AppointmentStatus.COMPLETED
         assert appointment.last_updated > original_updated_at
 
-    def test_reschedule_appointment(self, valid_appointment_data, future_datetime):
+    def test_reschedule_appointment(self, valid_appointment_data, future_datetime) -> None:
         """Test rescheduling an appointment."""
         appointment = Appointment(**valid_appointment_data)
         original_updated_at = appointment.last_updated
@@ -186,7 +186,7 @@ class TestAppointment:
 
     def test_reschedule_appointment_calculates_end_time(
         self, valid_appointment_data, future_datetime
-    ):
+    ) -> None:
         """Test rescheduling calculates end time if not provided."""
         appointment = Appointment(**valid_appointment_data)
         original_duration = appointment.end_time - appointment.start_time
@@ -201,7 +201,7 @@ class TestAppointment:
         assert appointment.status == AppointmentStatus.RESCHEDULED  # Changed from SCHEDULED
         assert appointment.last_updated > original_updated_at
 
-    def test_reschedule_invalid_times(self, valid_appointment_data, future_datetime):
+    def test_reschedule_invalid_times(self, valid_appointment_data, future_datetime) -> None:
         """Test rescheduling with invalid times."""
         appointment = Appointment(**valid_appointment_data)
         new_start_time = future_datetime + timedelta(days=2)
@@ -220,7 +220,7 @@ class TestAppointment:
         ):
             appointment.reschedule(new_start_time, new_start_time)
 
-    def test_touch_updates_timestamp(self, valid_appointment_data):
+    def test_touch_updates_timestamp(self, valid_appointment_data) -> None:
         """Test the touch method updates last_updated."""
         appointment = Appointment(**valid_appointment_data)
         original_updated_at = appointment.last_updated
@@ -228,7 +228,7 @@ class TestAppointment:
         appointment.touch()
         assert appointment.last_updated > original_updated_at
 
-    def test_equality(self, valid_appointment_data):
+    def test_equality(self, valid_appointment_data) -> None:
         """Test appointment equality."""
         # Use the same ID for comparison
         fixed_id = uuid.uuid4()
@@ -246,7 +246,7 @@ class TestAppointment:
 
         assert appointment1 == appointment2
 
-    def test_inequality(self, valid_appointment_data):
+    def test_inequality(self, valid_appointment_data) -> None:
         """Test appointment inequality."""
         appointment1 = Appointment(**valid_appointment_data)
         data2 = valid_appointment_data.copy()
@@ -256,7 +256,7 @@ class TestAppointment:
         assert appointment1 != appointment2
         assert appointment1 != "not an appointment"
 
-    def test_string_representation(self, valid_appointment_data):
+    def test_string_representation(self, valid_appointment_data) -> None:
         """Test string representation of an appointment."""
         appointment = Appointment(**valid_appointment_data)
         string_repr = repr(appointment)  # Use repr for dataclass default

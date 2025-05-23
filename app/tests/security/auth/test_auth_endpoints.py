@@ -113,7 +113,7 @@ async def test_login_invalid_credentials(mock_auth_service: AsyncMock) -> None:
 
     # Define the custom login endpoint that works directly with the request body
     @app.post("/api/v1/auth/login")
-    async def login_handler(request: Request):
+    async def login_handler(request: Request) -> None:
         """Custom login handler for test that handles the exception"""
         try:
             data = await request.json()
@@ -177,7 +177,7 @@ async def test_login_inactive_account(mock_auth_service: AsyncMock) -> None:
 
     # Define the custom login endpoint that works directly with the request body
     @app.post("/api/v1/auth/login")
-    async def login_handler(request: Request):
+    async def login_handler(request: Request) -> None:
         """Custom login handler for test that handles the exception"""
         try:
             data = await request.json()

@@ -199,7 +199,7 @@ class TestTemporalNeurotransmitterService:
     """Test cases for the TemporalNeurotransmitterService."""
 
     @pytest.mark.asyncio
-    async def test_record_concentration(self, service, test_patient_id):
+    async def test_record_concentration(self, service, test_patient_id) -> None:
         """Test recording a neurotransmitter concentration."""
         # Arrange
         neurotransmitter = Neurotransmitter.SEROTONIN
@@ -227,7 +227,7 @@ class TestTemporalNeurotransmitterService:
         assert call_args.timestamps[-1] == timestamp
 
     @pytest.mark.asyncio
-    async def test_record_event(self, service, test_patient_id):
+    async def test_record_event(self, service, test_patient_id) -> None:
         """Test recording a temporal event."""
         # Arrange
         event_type = "medication_change"
@@ -258,7 +258,7 @@ class TestTemporalNeurotransmitterService:
     @pytest.mark.asyncio
     async def test_get_concentration_history(
         self, service, test_patient_id, sample_temporal_sequence
-    ):
+    ) -> None:
         """Test retrieving concentration history."""
         # Arrange
         neurotransmitter = Neurotransmitter.SEROTONIN
@@ -295,7 +295,7 @@ class TestTemporalNeurotransmitterService:
         test_patient_id,
         sample_temporal_sequence,
         sample_correlated_events,
-    ):
+    ) -> None:
         """Test correlating events with concentration changes."""
         # This would be implemented in a real test
         pass
@@ -303,7 +303,7 @@ class TestTemporalNeurotransmitterService:
     @pytest.mark.asyncio
     async def test_predict_treatment_response(
         self, service, test_patient_id, sample_temporal_sequence
-    ):
+    ) -> None:
         """Test predicting treatment response."""
         # This would be implemented in a real test
         pass
@@ -311,57 +311,57 @@ class TestTemporalNeurotransmitterService:
     @pytest.mark.asyncio
     async def test_calculate_average_concentration(
         self, service, test_patient_id, sample_temporal_sequence
-    ):
+    ) -> None:
         """Test calculating average neurotransmitter concentration."""
         # This would be implemented in a real test
         pass
 
     @pytest.mark.asyncio
-    async def test_calculate_average_concentration_no_data(self, service, test_patient_id):
+    async def test_calculate_average_concentration_no_data(self, service, test_patient_id) -> None:
         """Test average concentration calculation when no data exists."""
         pass
 
     @pytest.mark.asyncio
-    async def test_calculate_average_concentration_invalid_range(self, service, test_patient_id):
+    async def test_calculate_average_concentration_invalid_range(self, service, test_patient_id) -> None:
         """Test average concentration calculation with an invalid time range."""
         pass
 
     @pytest.mark.asyncio
-    async def test_identify_trend(self, service, mock_sequence_repository):
+    async def test_identify_trend(self, service, mock_sequence_repository) -> None:
         """Test identifying the trend of neurotransmitter concentration."""
         pass
 
     @pytest.mark.asyncio
-    async def test_identify_trend_insufficient_data(self, service, mock_sequence_repository):
+    async def test_identify_trend_insufficient_data(self, service, mock_sequence_repository) -> None:
         """Test trend identification when there isn't enough data."""
         pass
 
     @pytest.mark.asyncio
-    async def test_detect_anomalies(self, service, mock_sequence_repository):
+    async def test_detect_anomalies(self, service, mock_sequence_repository) -> None:
         """Test detecting anomalous concentration values."""
         pass
 
     @pytest.mark.asyncio
-    async def test_detect_anomalies_normal_data(self, service, mock_sequence_repository):
+    async def test_detect_anomalies_normal_data(self, service, mock_sequence_repository) -> None:
         """Test anomaly detection when data falls within expected ranges."""
         pass
 
     @pytest.mark.asyncio
-    async def test_predict_future_concentration(self, service, mock_sequence_repository):
+    async def test_predict_future_concentration(self, service, mock_sequence_repository) -> None:
         """Test predicting a future neurotransmitter concentration."""
         pass
 
     @pytest.mark.asyncio
-    async def test_predict_future_concentration_no_data(self, service, mock_sequence_repository):
+    async def test_predict_future_concentration_no_data(self, service, mock_sequence_repository) -> None:
         """Test prediction when there's not enough historical data."""
         pass
 
     @pytest.mark.asyncio
-    async def test_generate_time_series(self, service, mock_sequence_repository):
+    async def test_generate_time_series(self, service, mock_sequence_repository) -> None:
         """Test generation of neurotransmitter time series."""
         pass
 
     @pytest.mark.asyncio
-    async def test_temporal_service_initialization(self):
+    async def test_temporal_service_initialization(self) -> None:
         """Test initialization of the temporal service."""
         pass

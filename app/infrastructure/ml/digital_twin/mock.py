@@ -61,7 +61,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
         if "response_style" in config and not isinstance(config["response_style"], str):
             raise InvalidConfigurationError("response_style must be a string.")
         if "session_duration_minutes" in config and not isinstance(
-            config["session_duration_minutes"], (int, float)
+            config["session_duration_minutes"], int | float
         ):
             raise InvalidConfigurationError("session_duration_minutes must be a number.")
 
@@ -172,7 +172,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
         self,
         twin_id: str,
         session_type: str = "therapy",
-        context: dict[str, Any] = None,
+        context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Create a new therapy session for a digital twin.
@@ -493,9 +493,9 @@ class MockDigitalTwinService(DigitalTwinInterface):
     def get_insights(
         self,
         twin_id: str,
-        insight_type: str = None,
+        insight_type: str | None = None,
         time_period: str = "last_30_days",
-        insight_types: list[str] = None,
+        insight_types: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Generate mock insights from the digital twin's data.

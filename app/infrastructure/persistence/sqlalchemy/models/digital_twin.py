@@ -12,9 +12,6 @@ from typing import Any
 
 from sqlalchemy import (
     JSON,
-)
-from sqlalchemy import UUID as SQLAlchemyUUID
-from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
@@ -22,6 +19,7 @@ from sqlalchemy import (
     String,
     Text,
 )
+from sqlalchemy import UUID as SQLAlchemyUUID
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 

@@ -137,11 +137,9 @@ def _convert_biometric_rule_to_alert_rule(rule: BiometricRule) -> BiometricAlert
     from app.domain.entities.biometric_alert_rule import (
         BiometricMetricType,
         ComparatorOperator,
-    )
-    from app.domain.entities.biometric_alert_rule import RuleCondition as AlertRuleCondition
-    from app.domain.entities.biometric_alert_rule import (
         RuleLogicalOperator,
     )
+    from app.domain.entities.biometric_alert_rule import RuleCondition as AlertRuleCondition
 
     # Convert conditions
     alert_conditions = []

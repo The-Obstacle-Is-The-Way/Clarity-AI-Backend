@@ -14,9 +14,9 @@ from app.domain.entities.appointment import (
     AppointmentStatus,
     AppointmentType,
 )
-from app.domain.exceptions import EntityNotFoundError  # Use generic not found error
 from app.domain.exceptions import (
     AppointmentConflictError,
+    EntityNotFoundError,  # Use generic not found error
     InvalidAppointmentStateError,
     InvalidAppointmentTimeError,
 )
@@ -239,7 +239,7 @@ class AppointmentService:
         new_start_time: datetime,
         new_end_time: datetime | None = None,
         reason: str | None = None,
-        user_id: UUID | str = None,
+        user_id: UUID | str | None = None,
     ) -> Appointment:
         """
         Reschedule an appointment.

@@ -342,7 +342,7 @@ class Settings(BaseSettings):
     DATABASE_SSL_CA: str | None = Field(default=None, json_schema_extra={"env": "DATABASE_SSL_CA"})
 
     @model_validator(mode="after")
-    def _set_debug_env(cls, values):  # type: ignore
+    def _set_debug_env(self, values):  # type: ignore
         """Set DEBUG env var for testing environment."""
         try:
             # Don't change the environment value when running tests

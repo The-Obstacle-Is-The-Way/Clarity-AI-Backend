@@ -70,7 +70,7 @@ class MockEncryptionService(BaseEncryptionService):
         Mock encrypt data with a deterministic algorithm.
         Returns the result as a versioned string.
         """
-        if not isinstance(data, (str, bytes)):
+        if not isinstance(data, str | bytes):
             raise ValueError(f"Data must be string or bytes, got {type(data)}")
 
         # Convert to bytes if string
@@ -165,14 +165,14 @@ class MockEncryptionService(BaseEncryptionService):
                         self.encrypt_dict(item)
                         if isinstance(item, dict)
                         else self.encrypt(json.dumps(item))
-                        if not isinstance(item, (str, bytes))
+                        if not isinstance(item, str | bytes)
                         else self.encrypt(item)
                         for item in result[key]
                     ]
                 # Handle simple values - convert to string first if not already
                 else:
                     value = result[key]
-                    if not isinstance(value, (str, bytes)):
+                    if not isinstance(value, str | bytes):
                         value = json.dumps(value)
                     result[key] = self.encrypt(value)
 
@@ -205,12 +205,12 @@ class MockEncryptionService(BaseEncryptionService):
                         self.decrypt_dict(item)
                         if isinstance(item, dict)
                         else self.decrypt(item)
-                        if isinstance(item, (str, bytes)) and self._looks_encrypted(item)
+                        if isinstance(item, str | bytes) and self._looks_encrypted(item)
                         else item
                         for item in result[key]
                     ]
                 # Handle simple values - decrypt if it looks encrypted
-                elif isinstance(result[key], (str, bytes)) and self._looks_encrypted(result[key]):
+                elif isinstance(result[key], str | bytes) and self._looks_encrypted(result[key]):
                     try:
                         decrypted = self.decrypt(result[key])
                         # Try to parse as JSON if it looks like a serialized object

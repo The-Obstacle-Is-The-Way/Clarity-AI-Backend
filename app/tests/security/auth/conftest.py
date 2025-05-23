@@ -221,7 +221,7 @@ def middleware_patch(test_settings, authenticated_user):
 
         try:
             # Extract token from header
-            token = auth_header.replace("Bearer ", "")
+            auth_header.replace("Bearer ", "")
 
             # Don't verify these test tokens, just use the test user directly
             # (In a real middleware, we would verify the token)

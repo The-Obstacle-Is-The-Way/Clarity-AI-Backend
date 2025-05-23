@@ -253,9 +253,9 @@ class MockSageMakerRuntimeService(SageMakerRuntimeServiceInterface):
 
         # Parse the request payload for testing
         try:
-            request_payload = json.loads(Body.decode("utf-8"))
+            json.loads(Body.decode("utf-8"))
         except Exception:
-            request_payload = {"error": "Failed to parse request payload"}
+            pass
 
         # Create a properly structured response body that matches AWS SageMaker response format
         response_body = MockResponseBody(self.response_payload)

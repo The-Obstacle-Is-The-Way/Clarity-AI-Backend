@@ -67,7 +67,6 @@ class RBACMiddleware(BaseHTTPMiddleware):
 
         # --- Endpoint-Specific RBAC Rules (Example) ---
         # In a real app, these rules might come from endpoint decorators or a config map.
-        required_permission: str | None = None
         path = request.url.path
         method = request.method
 

@@ -88,14 +88,14 @@ class BiometricAlert:
         self.resolved_at = resolved_at
         self.resolution_note = resolution_note
 
-    def acknowledge(self, provider_id, timestamp):
+    def acknowledge(self, provider_id, timestamp) -> None:
         """Acknowledge the alert."""
         self.status = AlertStatus.ACKNOWLEDGED
         self.acknowledged_by = provider_id
         self.acknowledged_at = timestamp
         self.updated_at = timestamp
 
-    def resolve(self, provider_id, timestamp, note=None):
+    def resolve(self, provider_id, timestamp, note=None) -> None:
         """Resolve the alert."""
         self.status = AlertStatus.RESOLVED
         self.resolved_by = provider_id
@@ -401,7 +401,7 @@ def mock_session() -> AsyncMock:
 class TestSQLAlchemyBiometricAlertRepository:
     """Tests for the SQLAlchemy implementation of BiometricAlertRepository."""
 
-    def test_init(self, mock_session: AsyncMock):
+    def test_init(self, mock_session: AsyncMock) -> None:
         """Test that the repository initializes correctly."""
         # Arrange & Act
         repository = SQLAlchemyBiometricAlertRepository(mock_session)
@@ -410,7 +410,7 @@ class TestSQLAlchemyBiometricAlertRepository:
         assert repository.session == mock_session
 
     @pytest.mark.asyncio
-    async def test_save_new_alert(self, mock_session: AsyncMock, sample_alert: BiometricAlert):
+    async def test_save_new_alert(self, mock_session: AsyncMock, sample_alert: BiometricAlert) -> None:
         """Test saving a new biometric alert."""
         # Arrange
         # Use patch to mock the internal implementation of the repository methods
@@ -455,7 +455,7 @@ class TestSQLAlchemyBiometricAlertRepository:
         mock_session: AsyncMock,
         sample_alert: BiometricAlert,
         sample_alert_model: BiometricAlertModel,
-    ):
+    ) -> None:
         """Test retrieving a biometric alert by ID."""
         # Arrange
         repository = SQLAlchemyBiometricAlertRepository(mock_session)
@@ -480,7 +480,7 @@ class TestSQLAlchemyBiometricAlertRepository:
             mock_map_to_entity.assert_called_once_with(sample_alert_model)
 
     @pytest.mark.asyncio
-    async def test_get_alert_by_id_not_found(self, mock_session: AsyncMock):
+    async def test_get_alert_by_id_not_found(self, mock_session: AsyncMock) -> None:
         """Test retrieving a non-existent biometric alert by ID."""
         # Arrange
         repository = SQLAlchemyBiometricAlertRepository(mock_session)
@@ -502,7 +502,7 @@ class TestSQLAlchemyBiometricAlertRepository:
         mock_session: AsyncMock,
         sample_alert: BiometricAlert,
         sample_alert_model: BiometricAlertModel,
-    ):
+    ) -> None:
         """Test retrieving all biometric alerts for a patient."""
         # Arrange
         repository = SQLAlchemyBiometricAlertRepository(mock_session)

@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import sys
+from typing import NoReturn
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -21,7 +22,7 @@ app = FastAPI()
 
 
 @app.get("/test-error")
-async def force_runtime_error():
+async def force_runtime_error() -> NoReturn:
     """Test endpoint that raises a RuntimeError."""
     logger.debug("Endpoint called, raising RuntimeError")
     raise RuntimeError("Test error that should be masked")
@@ -48,7 +49,7 @@ async def debug_middleware(request: Request, call_next):
         raise
 
 
-async def debug_test():
+async def debug_test() -> None:
     """Run a simplified test case to debug the hanging issue."""
     logger.debug("Starting debug test")
     transport = ASGITransport(app=app)

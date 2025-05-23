@@ -43,7 +43,7 @@ def mfa_service():
 class TestMFAService:
     """Tests for the MFAService class."""
 
-    def test_generate_secret_key(self, mfa_service: MFAService):
+    def test_generate_secret_key(self, mfa_service: MFAService) -> None:
         """Test generating a secret key."""
         secret_key = mfa_service.generate_secret_key()
         assert isinstance(secret_key, str)
@@ -53,7 +53,7 @@ class TestMFAService:
     @patch("qrcode.QRCode")
     def test_setup_totp(
         self, mock_qrcode: MagicMock, mock_totp: MagicMock, mfa_service: MFAService
-    ):
+    ) -> None:
         """Test setting up TOTP."""
         mock_totp_instance = MagicMock()
         mock_totp_instance.provisioning_uri.return_value = "otpauth://totp/Novamind%20Psychiatry:test%40example.com?secret=ABCDEFGH&issuer=Novamind%20Psychiatry"
@@ -82,7 +82,7 @@ class TestMFAService:
             mock_img.save.assert_called_once()
 
     @patch("pyotp.TOTP")
-    def test_verify_totp_valid(self, mock_totp: MagicMock, mfa_service: MFAService):
+    def test_verify_totp_valid(self, mock_totp: MagicMock, mfa_service: MFAService) -> None:
         """Test verifying a valid TOTP code."""
         mock_totp_instance = MagicMock()
         mock_totp_instance.verify.return_value = True
@@ -94,7 +94,7 @@ class TestMFAService:
         mock_totp_instance.verify.assert_called_once_with("123456")
 
     @patch("pyotp.TOTP")
-    def test_verify_totp_invalid(self, mock_totp: MagicMock, mfa_service: MFAService):
+    def test_verify_totp_invalid(self, mock_totp: MagicMock, mfa_service: MFAService) -> None:
         """Test verifying an invalid TOTP code."""
         mock_totp_instance = MagicMock()
         mock_totp_instance.verify.return_value = False
@@ -106,7 +106,7 @@ class TestMFAService:
         mock_totp_instance.verify.assert_called_once_with("654321")
 
     @patch("random.choice")
-    def test_generate_verification_code(self, mock_choice: MagicMock, mfa_service: MFAService):
+    def test_generate_verification_code(self, mock_choice: MagicMock, mfa_service: MFAService) -> None:
         """Test generating a verification code."""
         mock_choice.return_value = "1"
         code = mfa_service.generate_verification_code(6)
@@ -114,7 +114,7 @@ class TestMFAService:
         assert code == "111111"
 
     @patch("time.time")
-    def test_setup_sms_mfa(self, mock_time: MagicMock, mfa_service: MFAService):
+    def test_setup_sms_mfa(self, mock_time: MagicMock, mfa_service: MFAService) -> None:
         """Test setting up SMS MFA."""
         current_time = 1000.0
         mock_time.return_value = current_time
@@ -129,7 +129,7 @@ class TestMFAService:
             mock_generate.assert_called_once_with(mfa_service.sms_code_length)
 
     @patch("time.time")
-    def test_setup_email_mfa(self, mock_time: MagicMock, mfa_service: MFAService):
+    def test_setup_email_mfa(self, mock_time: MagicMock, mfa_service: MFAService) -> None:
         """Test setting up email MFA."""
         current_time = 1000.0
         mock_time.return_value = current_time
@@ -144,28 +144,28 @@ class TestMFAService:
             mock_generate.assert_called_once_with(mfa_service.email_code_length)
 
     @patch("time.time")
-    def test_verify_code_valid(self, mock_time: MagicMock, mfa_service: MFAService):
+    def test_verify_code_valid(self, mock_time: MagicMock, mfa_service: MFAService) -> None:
         """Test verifying a valid code."""
         mock_time.return_value = 1200.0  # Before expiration
         result = mfa_service.verify_code("123456", "123456", 1300.0)
         assert result is True
 
     @patch("time.time")
-    def test_verify_code_expired(self, mock_time: MagicMock, mfa_service: MFAService):
+    def test_verify_code_expired(self, mock_time: MagicMock, mfa_service: MFAService) -> None:
         """Test verifying an expired code."""
         mock_time.return_value = 1500.0  # After expiration
         result = mfa_service.verify_code("123456", "123456", 1300.0)
         assert result is False
 
     @patch("time.time")
-    def test_verify_code_invalid(self, mock_time: MagicMock, mfa_service: MFAService):
+    def test_verify_code_invalid(self, mock_time: MagicMock, mfa_service: MFAService) -> None:
         """Test verifying an invalid code."""
         mock_time.return_value = 1000.0
         result = mfa_service.verify_code("123456", "654321", 1300.0)
         assert result is False
 
     @patch("uuid.uuid4")
-    def test_get_backup_codes(self, mock_uuid: MagicMock, mfa_service: MFAService):
+    def test_get_backup_codes(self, mock_uuid: MagicMock, mfa_service: MFAService) -> None:
         """Test generating backup codes."""
         mock_uuid.side_effect = [
             MagicMock(hex="abcdef1234"),
@@ -177,7 +177,7 @@ class TestMFAService:
         assert all(len(code) == 10 for code in codes)
         assert codes == ["ABCDEF1234", "1234ABCDEF", "FEDCBA4321"]
 
-    def test_hash_backup_code(self, mfa_service: MFAService):
+    def test_hash_backup_code(self, mfa_service: MFAService) -> None:
         """Test hashing a backup code."""
         code = "ABCDEF1234"
         hashed_code = mfa_service.hash_backup_code(code)
@@ -187,7 +187,7 @@ class TestMFAService:
         hashed_code2 = mfa_service.hash_backup_code(code)
         assert hashed_code == hashed_code2
 
-    def test_verify_backup_code_valid(self, mfa_service: MFAService):
+    def test_verify_backup_code_valid(self, mfa_service: MFAService) -> None:
         """Test verifying a valid backup code."""
         code = "ABCDEF1234"
         hashed_code = mfa_service.hash_backup_code(code)
@@ -195,14 +195,14 @@ class TestMFAService:
         result = mfa_service.verify_backup_code(code, stored_hashes)
         assert result is True
 
-    def test_verify_backup_code_invalid(self, mfa_service: MFAService):
+    def test_verify_backup_code_invalid(self, mfa_service: MFAService) -> None:
         """Test verifying an invalid backup code."""
         hashed_code = mfa_service.hash_backup_code("ABCDEF1234")
         stored_hashes = ["some_other_hash", hashed_code, "another_hash"]
         result = mfa_service.verify_backup_code("ZYXWVU9876", stored_hashes)
         assert result is False
 
-    def test_verify_backup_code_not_in_list(self, mfa_service: MFAService):
+    def test_verify_backup_code_not_in_list(self, mfa_service: MFAService) -> None:
         """Test verifying a backup code not present in the stored list."""
         stored_hashes = ["hash1", "hash2"]
         result = mfa_service.verify_backup_code("ABCDEF1234", stored_hashes)
@@ -212,22 +212,22 @@ class TestMFAService:
 class TestMFAStrategyFactory:
     """Tests for the MFAStrategyFactory class."""
 
-    def test_create_totp_strategy(self, mfa_service: MFAService):
+    def test_create_totp_strategy(self, mfa_service: MFAService) -> None:
         """Test creating a TOTP strategy."""
         strategy = MFAStrategyFactory.create_strategy(MFAType.TOTP, mfa_service)
         assert isinstance(strategy, TOTPStrategy)
 
-    def test_create_sms_strategy(self, mfa_service: MFAService):
+    def test_create_sms_strategy(self, mfa_service: MFAService) -> None:
         """Test creating an SMS strategy."""
         strategy = MFAStrategyFactory.create_strategy(MFAType.SMS, mfa_service)
         assert isinstance(strategy, SMSStrategy)
 
-    def test_create_email_strategy(self, mfa_service: MFAService):
+    def test_create_email_strategy(self, mfa_service: MFAService) -> None:
         """Test creating an email strategy."""
         strategy = MFAStrategyFactory.create_strategy(MFAType.EMAIL, mfa_service)
         assert isinstance(strategy, EmailStrategy)
 
-    def test_create_invalid_strategy(self, mfa_service: MFAService):
+    def test_create_invalid_strategy(self, mfa_service: MFAService) -> None:
         """Test creating an invalid strategy."""
         with pytest.raises(ValueError, match="Unsupported MFA type"):
             MFAStrategyFactory.create_strategy("invalid_type", mfa_service)
@@ -236,7 +236,7 @@ class TestMFAStrategyFactory:
 class TestTOTPStrategy:
     """Tests for the TOTPStrategy class."""
 
-    def test_setup(self, mfa_service: MFAService):
+    def test_setup(self, mfa_service: MFAService) -> None:
         """Test setting up TOTP."""
         strategy = TOTPStrategy(mfa_service)
         with patch.object(
@@ -246,13 +246,13 @@ class TestTOTPStrategy:
             assert result == {"result": "success"}
             mock_setup.assert_called_once_with("user123", "test@example.com")
 
-    def test_setup_missing_email(self, mfa_service: MFAService):
+    def test_setup_missing_email(self, mfa_service: MFAService) -> None:
         """Test setting up TOTP without an email."""
         strategy = TOTPStrategy(mfa_service)
         with pytest.raises(MFASetupException, match="Email is required for TOTP setup"):
             strategy.setup(user_id="user123")
 
-    def test_verify(self, mfa_service: MFAService):
+    def test_verify(self, mfa_service: MFAService) -> None:
         """Test verifying TOTP."""
         strategy = TOTPStrategy(mfa_service)
         with patch.object(mfa_service, "verify_totp", return_value=True) as mock_verify:
@@ -260,7 +260,7 @@ class TestTOTPStrategy:
             assert result is True
             mock_verify.assert_called_once_with("ABCDEFGH", "123456")
 
-    def test_verify_missing_parameters(self, mfa_service: MFAService):
+    def test_verify_missing_parameters(self, mfa_service: MFAService) -> None:
         """Test verifying TOTP without required parameters."""
         strategy = TOTPStrategy(mfa_service)
         with pytest.raises(
@@ -273,7 +273,7 @@ class TestTOTPStrategy:
 class TestSMSStrategy:
     """Tests for the SMSStrategy class."""
 
-    def test_setup(self, mfa_service: MFAService):
+    def test_setup(self, mfa_service: MFAService) -> None:
         """Test setting up SMS MFA."""
         strategy = SMSStrategy(mfa_service)
         with patch.object(
@@ -283,13 +283,13 @@ class TestSMSStrategy:
             assert result == {"result": "success"}
             mock_setup.assert_called_once_with("user123", "+1234567890")
 
-    def test_setup_missing_phone_number(self, mfa_service: MFAService):
+    def test_setup_missing_phone_number(self, mfa_service: MFAService) -> None:
         """Test setting up SMS MFA without a phone number."""
         strategy = SMSStrategy(mfa_service)
         with pytest.raises(MFASetupException, match="Phone number is required for SMS setup"):
             strategy.setup(user_id="user123")
 
-    def test_verify(self, mfa_service: MFAService):
+    def test_verify(self, mfa_service: MFAService) -> None:
         """Test verifying SMS code."""
         strategy = SMSStrategy(mfa_service)
         with patch.object(mfa_service, "verify_code", return_value=True) as mock_verify:
@@ -297,7 +297,7 @@ class TestSMSStrategy:
             assert result is True
             mock_verify.assert_called_once_with("123456", "123456", 1300.0)
 
-    def test_verify_missing_parameters(self, mfa_service: MFAService):
+    def test_verify_missing_parameters(self, mfa_service: MFAService) -> None:
         """Test verifying SMS code without required parameters."""
         strategy = SMSStrategy(mfa_service)
         with pytest.raises(
@@ -310,7 +310,7 @@ class TestSMSStrategy:
 class TestEmailStrategy:
     """Tests for the EmailStrategy class."""
 
-    def test_setup(self, mfa_service: MFAService):
+    def test_setup(self, mfa_service: MFAService) -> None:
         """Test setting up email MFA."""
         strategy = EmailStrategy(mfa_service)
         with patch.object(
@@ -320,13 +320,13 @@ class TestEmailStrategy:
             assert result == {"result": "success"}
             mock_setup.assert_called_once_with("user123", "test@example.com")
 
-    def test_setup_missing_email(self, mfa_service: MFAService):
+    def test_setup_missing_email(self, mfa_service: MFAService) -> None:
         """Test setting up email MFA without an email."""
         strategy = EmailStrategy(mfa_service)
         with pytest.raises(MFASetupException, match="Email is required for Email setup"):
             strategy.setup(user_id="user123")
 
-    def test_verify(self, mfa_service: MFAService):
+    def test_verify(self, mfa_service: MFAService) -> None:
         """Test verifying email code."""
         strategy = EmailStrategy(mfa_service)
         with patch.object(mfa_service, "verify_code", return_value=True) as mock_verify:
@@ -334,7 +334,7 @@ class TestEmailStrategy:
             assert result is True
             mock_verify.assert_called_once_with("12345678", "12345678", 1300.0)
 
-    def test_verify_missing_parameters(self, mfa_service: MFAService):
+    def test_verify_missing_parameters(self, mfa_service: MFAService) -> None:
         """Test verifying email code without required parameters."""
         strategy = EmailStrategy(mfa_service)
         with pytest.raises(
