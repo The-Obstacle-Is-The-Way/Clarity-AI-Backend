@@ -297,20 +297,23 @@ def mock_redis_client():
     """Fixture for mocking the Redis client."""
     client = AsyncMock()
     
-    # Configure pipeline to return an AsyncMock pipeline directly
-    pipeline_mock = AsyncMock()
+    # Configure pipeline to return a MagicMock (not AsyncMock) for pipeline operations
+    pipeline_mock = MagicMock()
     pipeline_mock.incr.return_value = pipeline_mock
     pipeline_mock.expire.return_value = pipeline_mock
     pipeline_mock.zadd.return_value = pipeline_mock
     pipeline_mock.zremrangebyscore.return_value = pipeline_mock
     pipeline_mock.zcard.return_value = pipeline_mock
+    # Only execute() should be async
     pipeline_mock.execute = AsyncMock(return_value=[
-        1,
-        True,
-    ])  # Example: Simulate INCR returning 1, EXPIRE returning True
+        1,  # zadd result
+        0,  # zremrangebyscore result
+        1,  # zcard result
+        True,  # expire result
+    ])
     
-    # Make pipeline() return the pipeline_mock directly (not context manager)
-    client.pipeline.return_value = pipeline_mock
+    # Make pipeline() return the pipeline_mock directly (sync method, sync return)
+    client.pipeline = MagicMock(return_value=pipeline_mock)
     
     client.ping = AsyncMock(return_value=True)
     client.exists = AsyncMock(return_value=0)  # Default to key not existing
