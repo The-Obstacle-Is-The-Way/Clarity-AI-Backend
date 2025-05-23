@@ -40,7 +40,7 @@ class TestEmergencyContact:
 
     def test_emergency_contact_creation(self, valid_contact_data):
         """Test successful creation of emergency contact."""
-        contact = EmergencyContact(**valid_contact_data)
+        contact = EmergencyContact.create(**valid_contact_data)
 
         # Verify all attributes
         assert contact.name == valid_contact_data["name"]
@@ -136,7 +136,7 @@ class TestEmergencyContact:
 
     def test_emergency_contact_to_dict(self, valid_contact_data):
         """Test conversion of emergency contact to dictionary."""
-        contact = EmergencyContact(
+        contact = EmergencyContact.create(
             **valid_contact_data,
         )
         contact_dict = contact.to_dict()
