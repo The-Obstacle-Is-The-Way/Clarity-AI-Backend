@@ -32,6 +32,14 @@ _registered_tables: set[str] = set()
 # This is accessed by some tests that expect the old registry interface
 _class_registry: dict[str, type[Any]] = {}
 
+# Expose the mapper_registry's _class_registry if it exists, otherwise use our own
+# This ensures compatibility with different SQLAlchemy access patterns
+if hasattr(mapper_registry, '_class_registry'):
+    _class_registry = mapper_registry._class_registry
+else:
+    # Attach our _class_registry to the mapper_registry for consistency
+    mapper_registry._class_registry = _class_registry
+
 
 def register_model(model_class: type[Any]) -> type[Any]:
     """
