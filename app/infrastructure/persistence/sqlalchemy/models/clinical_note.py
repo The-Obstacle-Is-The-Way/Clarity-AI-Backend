@@ -112,20 +112,28 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
         Returns:
             ClinicalNote: Domain entity instance
         """
-        from app.domain.entities.clinical_note import ClinicalNote, NoteType
+        from app.domain.entities.clinical_note import ClinicalNote, NoteType, NoteStatus
+
+        # Convert tags from JSON dict to set of strings, handling None
+        domain_tags = set()
+        if self.tags and isinstance(self.tags, dict):
+            # Extract values if tags is stored as a dict, otherwise convert keys
+            domain_tags = set(str(v) for v in self.tags.values()) if self.tags else set()
+        elif self.tags and isinstance(self.tags, (list, set)):
+            domain_tags = set(str(tag) for tag in self.tags)
 
         return ClinicalNote(
             id=self.id,
             patient_id=self.patient_id,
             provider_id=self.provider_id,
-            appointment_id=self.appointment_id,
-            note_type=NoteType(self.note_type) if self.note_type else None,
+            note_type=NoteType(self.note_type) if self.note_type else NoteType.PROGRESS_NOTE,
             content=self.content,
-            redacted_content=self.redacted_content,
-            title=self.title,
-            tags=self.tags,
-            version=self.version,
-            parent_note_id=self.parent_note_id,
+            appointment_id=self.appointment_id,
+            status=NoteStatus.DRAFT,  # Default status, could be enhanced with actual status tracking
             created_at=self.created_at,
             updated_at=self.updated_at,
+            tags=domain_tags,
+            version=self.version,
+            # Note: redacted_content, title, parent_note_id are persistence-layer concerns
+            # and are not included in the core domain entity
         )

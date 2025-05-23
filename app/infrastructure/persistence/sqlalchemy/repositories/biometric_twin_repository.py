@@ -1,17 +1,24 @@
 """
-SQLAlchemy implementation of the BiometricTwinStateRepository.
+SQLAlchemy implementation of the BiometricTwinRepository.
 
 This module provides a concrete implementation of the BiometricTwinRepository
-interface using SQLAlchemy ORM for database operations.
+interface using SQLAlchemy ORM for database operations with proper Data Mapper pattern.
 """
 
 from typing import Any
 from uuid import UUID
+from datetime import datetime
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.domain.entities.biometric_twin import BiometricDataPoint, BiometricTwinState
+from app.domain.entities.biometric_twin_enhanced import (
+    BiometricTwin,
+    BiometricDataPoint,
+    BiometricTimeseriesData,
+    BiometricType,
+    BiometricSource,
+)
 from app.domain.repositories.biometric_twin_repository import BiometricTwinRepository
 from app.infrastructure.persistence.sqlalchemy.models.biometric_twin_model import (
     BiometricDataPointModel,
@@ -24,7 +31,8 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
     SQLAlchemy implementation of the BiometricTwinRepository interface.
 
     This class provides concrete implementations of the repository methods
-    using SQLAlchemy ORM for database operations.
+    using SQLAlchemy ORM for database operations with proper Clean Architecture
+    Data Mapper pattern to convert between domain entities and persistence models.
     """
 
     def __init__(self, session: Session) -> None:
@@ -36,7 +44,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         """
         self.session = session
 
-    def get_by_id(self, twin_id: UUID) -> BiometricTwinState | None:
+    def get_by_id(self, twin_id: UUID) -> BiometricTwin | None:
         """
         Retrieve a BiometricTwin by its ID.
 
@@ -48,7 +56,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         """
         twin_model = (
             self.session.query(BiometricTwinModel)
-            .filter(BiometricTwinModel.twin_id == str(twin_id))
+            .filter(BiometricTwinModel.id == twin_id)
             .first()
         )
 
@@ -57,7 +65,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
 
         return self._map_to_entity(twin_model)
 
-    def get_by_patient_id(self, patient_id: UUID) -> BiometricTwinState | None:
+    def get_by_patient_id(self, patient_id: UUID) -> BiometricTwin | None:
         """
         Retrieve a BiometricTwin by the associated patient ID.
 
@@ -69,7 +77,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         """
         twin_model = (
             self.session.query(BiometricTwinModel)
-            .filter(BiometricTwinModel.patient_id == str(patient_id))
+            .filter(BiometricTwinModel.patient_id == patient_id)
             .first()
         )
 
@@ -78,7 +86,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
 
         return self._map_to_entity(twin_model)
 
-    def save(self, biometric_twin: BiometricTwinState) -> BiometricTwinState:
+    def save(self, biometric_twin: BiometricTwin) -> BiometricTwin:
         """
         Save a BiometricTwin entity.
 
@@ -93,7 +101,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         # Check if the twin already exists
         existing_model = (
             self.session.query(BiometricTwinModel)
-            .filter(BiometricTwinModel.twin_id == str(biometric_twin.twin_id))
+            .filter(BiometricTwinModel.id == biometric_twin.id)
             .first()
         )
 
@@ -106,8 +114,8 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
             twin_model = self._map_to_model(biometric_twin)
             self.session.add(twin_model)
 
-        # Save data points
-        self._save_data_points(biometric_twin)
+        # Save timeseries data
+        self._save_timeseries_data(biometric_twin)
 
         # Commit changes
         self.session.commit()
@@ -131,14 +139,14 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         # Delete associated data points first
         data_points_deleted = (
             self.session.query(BiometricDataPointModel)
-            .filter(BiometricDataPointModel.twin_id == str(twin_id))
+            .filter(BiometricDataPointModel.twin_id == twin_id)
             .delete()
         )
 
         # Delete the twin
         twin_deleted = (
             self.session.query(BiometricTwinModel)
-            .filter(BiometricTwinModel.twin_id == str(twin_id))
+            .filter(BiometricTwinModel.id == twin_id)
             .delete()
         )
 
@@ -146,7 +154,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
 
         return twin_deleted > 0
 
-    def list_by_connected_device(self, device_id: str) -> list[BiometricTwinState]:
+    def list_by_connected_device(self, device_id: str) -> list[BiometricTwin]:
         """
         List all BiometricTwin entities connected to a specific device.
 
@@ -165,7 +173,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
 
         return [self._map_to_entity(model) for model in twin_models]
 
-    def list_all(self, limit: int = 100, offset: int = 0) -> list[BiometricTwinState]:
+    def list_all(self, limit: int = 100, offset: int = 0) -> list[BiometricTwin]:
         """
         List all BiometricTwin entities with pagination.
 
@@ -193,11 +201,12 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         Returns:
             The total count of BiometricTwin entities
         """
-        return self.session.query(func.count(BiometricTwinModel.twin_id)).scalar()
+        result = self.session.query(func.count(BiometricTwinModel.id)).scalar()
+        return int(result) if result is not None else 0
 
-    def _map_to_entity(self, model: BiometricTwinModel) -> BiometricTwinState:
+    def _map_to_entity(self, model: BiometricTwinModel) -> BiometricTwin:
         """
-        Map a BiometricTwinModel to a BiometricTwin entity.
+        Map a BiometricTwinModel to a BiometricTwin entity using Data Mapper pattern.
 
         Args:
             model: The database model to map
@@ -208,27 +217,61 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         # Get data points for this twin
         data_point_models = (
             self.session.query(BiometricDataPointModel)
-            .filter(BiometricDataPointModel.twin_id == model.twin_id)
+            .filter(BiometricDataPointModel.twin_id == model.id)
+            .order_by(BiometricDataPointModel.timestamp)
             .all()
         )
 
-        # Map data points to entities
-        data_points = [self._map_data_point_to_entity(dp_model) for dp_model in data_point_models]
+        # Group data points by biometric type to create timeseries
+        timeseries_data: dict[BiometricType, BiometricTimeseriesData] = {}
+        data_points_by_type: dict[BiometricType, list[BiometricDataPoint]] = {}
+
+        for dp_model in data_point_models:
+            try:
+                biometric_type = BiometricType(dp_model.data_type)
+            except ValueError:
+                # Skip unknown biometric types for forward compatibility
+                continue
+
+            if biometric_type not in data_points_by_type:
+                data_points_by_type[biometric_type] = []
+
+            # Map data point model to domain entity
+            # Note: MyPy sees Column descriptors, but at runtime these are actual values
+            data_point = BiometricDataPoint(
+                timestamp=dp_model.timestamp,  # type: ignore[arg-type]
+                value=self._deserialize_value(dp_model.value, dp_model.value_type),  # type: ignore[arg-type]
+                source=BiometricSource(dp_model.source) if dp_model.source else BiometricSource.CLINICAL,  # type: ignore[arg-type]
+                metadata=dp_model.metadata_json or {},  # type: ignore[arg-type]
+            )
+
+            data_points_by_type[biometric_type].append(data_point)
+
+        # Create timeseries for each biometric type
+        for biometric_type, data_points in data_points_by_type.items():
+            # Get appropriate unit for this biometric type
+            unit = self._get_unit_for_biometric_type(biometric_type)
+            
+            timeseries = BiometricTimeseriesData(
+                biometric_type=biometric_type,
+                unit=unit,
+                data_points=data_points,
+            )
+            timeseries_data[biometric_type] = timeseries
 
         # Create the BiometricTwin entity
-        return BiometricTwinState(
-            patient_id=UUID(model.patient_id),
-            twin_id=UUID(model.twin_id),
-            data_points=data_points,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-            baseline_established=model.baseline_established,
-            connected_devices=set(model.connected_devices) if model.connected_devices else set(),
+        # Note: MyPy sees Column descriptors, but at runtime these are actual values
+        return BiometricTwin(
+            id=str(model.id),
+            patient_id=str(model.patient_id),  # type: ignore[arg-type]
+            timeseries_data=timeseries_data,
+            created_at=model.created_at,  # type: ignore[arg-type]
+            updated_at=model.updated_at,  # type: ignore[arg-type]
         )
 
-    def _map_to_model(self, entity: BiometricTwinState) -> BiometricTwinModel:
+    def _map_to_model(self, entity: BiometricTwin) -> BiometricTwinModel:
         """
-        Map a BiometricTwin entity to a BiometricTwinModel.
+        Map a BiometricTwin entity to a BiometricTwinModel using Data Mapper pattern.
 
         Args:
             entity: The domain entity to map
@@ -236,16 +279,23 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         Returns:
             The corresponding database model
         """
+        # Extract connected devices from timeseries metadata if any
+        connected_devices = set()
+        for timeseries in entity.timeseries_data.values():
+            for data_point in timeseries.data_points:
+                if "device_id" in data_point.metadata:
+                    connected_devices.add(data_point.metadata["device_id"])
+
         return BiometricTwinModel(
-            twin_id=str(entity.twin_id),
-            patient_id=str(entity.patient_id),
+            id=entity.id,
+            patient_id=entity.patient_id,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
-            baseline_established=entity.baseline_established,
-            connected_devices=list(entity.connected_devices) if entity.connected_devices else [],
+            baseline_established=True,  # Assume baseline is established if we have data
+            connected_devices=list(connected_devices),
         )
 
-    def _update_model(self, model: BiometricTwinModel, entity: BiometricTwinState) -> None:
+    def _update_model(self, model: BiometricTwinModel, entity: BiometricTwin) -> None:
         """
         Update a BiometricTwinModel with values from a BiometricTwin entity.
 
@@ -253,32 +303,53 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
             model: The database model to update
             entity: The domain entity with updated values
         """
-        model.updated_at = entity.updated_at
-        model.baseline_established = entity.baseline_established
-        model.connected_devices = list(entity.connected_devices) if entity.connected_devices else []
+        # Note: MyPy sees Column descriptors, but at runtime these are actual attributes
+        model.updated_at = entity.updated_at  # type: ignore[assignment]
+        
+        # Update connected devices
+        connected_devices = set()
+        for timeseries in entity.timeseries_data.values():
+            for data_point in timeseries.data_points:
+                if "device_id" in data_point.metadata:
+                    connected_devices.add(data_point.metadata["device_id"])
+        
+        model.connected_devices = list(connected_devices)  # type: ignore[assignment]
+        model.baseline_established = bool(entity.timeseries_data)  # type: ignore[assignment]
 
-    def _map_data_point_to_entity(self, model: BiometricDataPointModel) -> BiometricDataPoint:
+    def _save_timeseries_data(self, entity: BiometricTwin) -> None:
         """
-        Map a BiometricDataPointModel to a BiometricDataPoint entity.
+        Save all timeseries data for a BiometricTwin.
 
         Args:
-            model: The database model to map
-
-        Returns:
-            The corresponding domain entity
+            entity: The BiometricTwin entity containing timeseries data to save
         """
-        return BiometricDataPoint(
-            data_type=model.data_type,
-            value=self._deserialize_value(model.value, model.value_type),
-            timestamp=model.timestamp,
-            source=model.source,
-            metadata=model.metadata_json,
-            confidence=model.confidence,
-            data_id=UUID(model.data_id),
+        # Get existing data point IDs to avoid duplicates
+        existing_data_points = set(
+            str(dp_id)
+            for dp_id, in self.session.query(BiometricDataPointModel.data_id)
+            .filter(BiometricDataPointModel.twin_id == entity.id)
+            .all()
         )
 
+        # Process each timeseries
+        for biometric_type, timeseries in entity.timeseries_data.items():
+            for data_point in timeseries.data_points:
+                # Generate a unique ID for the data point if needed
+                data_point_id = f"{entity.id}_{biometric_type.value}_{int(data_point.timestamp.timestamp())}"
+                
+                if data_point_id not in existing_data_points:
+                    # New data point, add to database
+                    data_point_model = self._map_data_point_to_model(
+                        data_point, entity.id, biometric_type, data_point_id
+                    )
+                    self.session.add(data_point_model)
+
     def _map_data_point_to_model(
-        self, data_point: BiometricDataPoint, twin_id: UUID
+        self, 
+        data_point: BiometricDataPoint, 
+        twin_id: str, 
+        biometric_type: BiometricType,
+        data_point_id: str
     ) -> BiometricDataPointModel:
         """
         Map a BiometricDataPoint entity to a BiometricDataPointModel.
@@ -286,6 +357,8 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         Args:
             data_point: The domain entity to map
             twin_id: The ID of the associated BiometricTwin
+            biometric_type: The type of biometric data
+            data_point_id: Unique identifier for the data point
 
         Returns:
             The corresponding database model
@@ -293,46 +366,16 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         value, value_type = self._serialize_value(data_point.value)
 
         return BiometricDataPointModel(
-            data_id=str(data_point.data_id),
-            twin_id=str(twin_id),
-            data_type=data_point.data_type,
+            data_id=data_point_id,
+            twin_id=twin_id,
+            data_type=biometric_type.value,
             value=value,
             value_type=value_type,
             timestamp=data_point.timestamp,
-            source=data_point.source,
+            source=data_point.source.value,
             metadata_json=data_point.metadata,
-            confidence=data_point.confidence,
+            confidence=1.0,  # Default confidence if not specified
         )
-
-    def _save_data_points(self, entity: BiometricTwinState) -> None:
-        """
-        Save all data points for a BiometricTwin.
-
-        Args:
-            entity: The BiometricTwin entity containing data points to save
-        """
-        # Get existing data point IDs
-        existing_data_point_ids = set(
-            str(dp_id)
-            for dp_id, in self.session.query(BiometricDataPointModel.data_id)
-            .filter(BiometricDataPointModel.twin_id == str(entity.twin_id))
-            .all()
-        )
-
-        # Process each data point
-        for data_point in entity.data_points:
-            data_point_id = str(data_point.data_id)
-
-            if data_point_id in existing_data_point_ids:
-                # Data point already exists, remove from set to track processed points
-                existing_data_point_ids.remove(data_point_id)
-            else:
-                # New data point, add to database
-                data_point_model = self._map_data_point_to_model(data_point, entity.twin_id)
-                self.session.add(data_point_model)
-
-        # Any remaining IDs in the set are data points that were removed from the entity
-        # We don't delete them here as that should be handled explicitly
 
     def _serialize_value(self, value: Any) -> tuple[str, str]:
         """
@@ -356,7 +399,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
             # Convert to string as fallback
             return str(value), "string"
 
-    def _deserialize_value(self, value: str, value_type: str) -> str | float | int | dict:
+    def _deserialize_value(self, value: str, value_type: str) -> str | float | int | dict[Any, Any]:
         """
         Deserialize a value from the database.
 
@@ -376,9 +419,36 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
             except ValueError:
                 return float(value)
         elif value_type == "json":
-            return json.loads(value)
+            result: dict[str, Any] = json.loads(value)
+            return result
         else:
             return value
+
+    def _get_unit_for_biometric_type(self, biometric_type: BiometricType) -> str:
+        """
+        Get the appropriate unit for a biometric type.
+
+        Args:
+            biometric_type: The biometric type
+
+        Returns:
+            The unit string for the biometric type
+        """
+        unit_map = {
+            BiometricType.HEART_RATE: "bpm",
+            BiometricType.BLOOD_PRESSURE: "mmHg",
+            BiometricType.TEMPERATURE: "°C",
+            BiometricType.RESPIRATORY_RATE: "breaths/min",
+            BiometricType.BLOOD_GLUCOSE: "mg/dL",
+            BiometricType.OXYGEN_SATURATION: "%",
+            BiometricType.WEIGHT: "kg",
+            BiometricType.HRV: "ms",
+            BiometricType.SLEEP: "hours",
+            BiometricType.ACTIVITY: "steps",
+            BiometricType.STRESS: "score",
+            BiometricType.MOOD: "score",
+        }
+        return unit_map.get(biometric_type, "")
 
 
 # Export alias to maintain backward compatibility with names used in UnitOfWorkFactory

@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import UUID as SQLAlchemyUUID
 from sqlalchemy import (
-    Boolean,
     Column,
     DateTime,
 )
@@ -62,7 +61,6 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
     appointment_type = Column(String(50), nullable=False)
     status = Column(SQLAlchemyEnum(AppointmentStatus), nullable=False)
     notes = Column(Text, nullable=True)
-    virtual = Column(Boolean, default=False, nullable=False)
     location = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.now, nullable=False)
     updated_at = Column(
@@ -103,7 +101,6 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
             appointment_type=appointment.appointment_type.value,
             status=appointment.status.value,
             notes=appointment.notes,
-            virtual=appointment.virtual,
             location=appointment.location,
         )
 
@@ -117,6 +114,7 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
         from app.domain.entities.appointment import (
             Appointment,
             AppointmentType,
+            AppointmentStatus,
         )
 
         return Appointment(
@@ -126,8 +124,7 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
             start_time=self.start_time,
             end_time=self.end_time,
             appointment_type=AppointmentType(self.appointment_type),
-            status=self.status,
+            status=AppointmentStatus(self.status),
             notes=self.notes,
-            virtual=self.virtual,
             location=self.location,
         )

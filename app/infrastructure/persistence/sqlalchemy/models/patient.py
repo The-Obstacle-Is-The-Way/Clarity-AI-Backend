@@ -24,8 +24,8 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import (
     ForeignKey,
     String,
-    inspect,
 )
+from sqlalchemy import inspect as sql_inspect
 from sqlalchemy.orm import relationship
 
 from app.domain.entities.digital_twin_enums import Gender  # Corrected Gender import
@@ -87,7 +87,8 @@ class Patient(Base, TimestampMixin, AuditMixin):
     __table_args__ = {"extend_existing": True}
 
     # --- Primary Key and Foreign Keys ---
-    # Note: id column MUST be defined precisely to avoid SQLAlchemy mapping issues
+    # Clean Architecture: Pure SQLAlchemy Column definitions without conflicting type annotations
+    # Data Mapper pattern implemented through to_domain() and from_domain() methods
     id = Column(GUID(), primary_key=True, default=uuid.uuid4, nullable=False, index=True)
     external_id = Column(String(64), unique=True, index=True, nullable=True)
     user_id = Column(GUID(), ForeignKey("users.id"), index=True, nullable=True)
@@ -97,91 +98,42 @@ class Patient(Base, TimestampMixin, AuditMixin):
     is_active = Column(Boolean, default=True, nullable=False)
 
     # --- Encrypted PHI Fields (Stored as Text/Blob in DB) ---
-    # QUANTUM FIX: Use prefixed column names with underscore for encrypted fields
-    # This ensures compatibility with test expectations and encryption handling
-    if TYPE_CHECKING:
-        # Type annotations for mypy
-        _first_name: str | None
-        _last_name: str | None
-        _middle_name: str | None
-        _gender: Gender | None
-        _date_of_birth: str | None
-        _ssn: str | None
-    else:
-        # Actual column definitions for runtime
-        _first_name = Column("first_name", EncryptedString, nullable=True)
-        _last_name = Column("last_name", EncryptedString, nullable=True)
-        _middle_name = Column("middle_name", EncryptedString, nullable=True)
-        _gender = Column("gender", SQLEnum(Gender, name="gender_enum"), nullable=True)
-        _date_of_birth = Column("date_of_birth", EncryptedString, nullable=True)
-        _ssn = Column("ssn", EncryptedString, nullable=True)
-    if TYPE_CHECKING:
-        # Type annotations for mypy
-        _mrn: str | None
-        _email: str | None
-        _phone_number: str | None
+    # Pure infrastructure layer - no domain type annotations to avoid MyPy confusion
+    _first_name = Column("first_name", EncryptedString, nullable=True)
+    _last_name = Column("last_name", EncryptedString, nullable=True)
+    _middle_name = Column("middle_name", EncryptedString, nullable=True)
+    _gender = Column("gender", SQLEnum(Gender, name="gender_enum"), nullable=True)
+    _date_of_birth = Column("date_of_birth", EncryptedString, nullable=True)
+    _ssn = Column("ssn", EncryptedString, nullable=True)
+    _mrn = Column("mrn", EncryptedString, nullable=True)
+    _email = Column("email", EncryptedString, nullable=True)
+    _phone_number = Column("phone_number", EncryptedString, nullable=True)
 
-        # Insurance-related fields (PHI)
-        _insurance_provider: str | None
-        _insurance_policy_number: str | None
-        _insurance_group_number: str | None
-    else:
-        # Actual column definitions for runtime
-        _mrn = Column("mrn", EncryptedString, nullable=True)
-        _email = Column("email", EncryptedString, nullable=True)
-        _phone_number = Column("phone_number", EncryptedString, nullable=True)
-
-        # Insurance-related fields (PHI)
-        _insurance_provider = Column("insurance_provider", EncryptedString, nullable=True)
-        _insurance_policy_number = Column("insurance_policy_number", EncryptedString, nullable=True)
-        _insurance_group_number = Column("insurance_group_number", EncryptedString, nullable=True)
+    # Insurance-related fields (PHI)
+    _insurance_provider = Column("insurance_provider", EncryptedString, nullable=True)
+    _insurance_policy_number = Column("insurance_policy_number", EncryptedString, nullable=True)
+    _insurance_group_number = Column("insurance_group_number", EncryptedString, nullable=True)
     _address_line1 = Column("address_line1", EncryptedString, nullable=True)
     _address_line2 = Column("address_line2", EncryptedString, nullable=True)
     _city = Column("city", EncryptedString, nullable=True)
     _state = Column("state", EncryptedString, nullable=True)
     _zip_code = Column("zip_code", EncryptedString, nullable=True)
     _country = Column("country", EncryptedString, nullable=True)
-    if TYPE_CHECKING:
-        # Type annotations for mypy
-        _emergency_contact_name: str | None
-        _emergency_contact_phone: str | None
-        _emergency_contact_relationship: str | None
-    else:
-        # Actual column definitions for runtime
-        _emergency_contact_name = Column("emergency_contact_name", EncryptedString, nullable=True)
-        _emergency_contact_phone = Column("emergency_contact_phone", EncryptedString, nullable=True)
-        _emergency_contact_relationship = Column(
-            "emergency_contact_relationship", EncryptedString, nullable=True
-        )
+    _emergency_contact_name = Column("emergency_contact_name", EncryptedString, nullable=True)
+    _emergency_contact_phone = Column("emergency_contact_phone", EncryptedString, nullable=True)
+    _emergency_contact_relationship = Column("emergency_contact_relationship", EncryptedString, nullable=True)
 
     # Complex data fields (JSON/JSONB in PostgreSQL, stored as encrypted blobs)
-    if TYPE_CHECKING:
-        # Type annotations for mypy
-        _contact_info: dict[str, Any] | None
-        _address_details: dict[str, Any] | None
-        _emergency_contact_details: dict[str, Any] | None
-        _preferences: dict[str, Any] | None
-    else:
-        # Actual column definitions for runtime
-        _contact_info = Column("contact_info", EncryptedJSON, nullable=True)
-        _address_details = Column("address_details", EncryptedJSON, nullable=True)
-        _emergency_contact_details = Column(
-            "emergency_contact_details", EncryptedJSON, nullable=True
-        )
-        _preferences = Column("preferences", EncryptedJSON, nullable=True)
+    _contact_info = Column("contact_info", EncryptedJSON, nullable=True)
+    _address_details = Column("address_details", EncryptedJSON, nullable=True)
+    _emergency_contact_details = Column("emergency_contact_details", EncryptedJSON, nullable=True)
+    _preferences = Column("preferences", EncryptedJSON, nullable=True)
+
     # Medical data fields (PHI - stored as encrypted text)
-    if TYPE_CHECKING:
-        # Type annotations for mypy
-        _medical_history: str | None
-        _medications: str | None
-        _allergies: str | None
-        _notes: str | None
-    else:
-        # Actual column definitions for runtime
-        _medical_history = Column("medical_history", EncryptedText, nullable=True)
-        _medications = Column("medications", EncryptedText, nullable=True)
-        _allergies = Column("allergies", EncryptedText, nullable=True)
-        _notes = Column("notes", EncryptedText, nullable=True)
+    _medical_history = Column("medical_history", EncryptedText, nullable=True)
+    _medications = Column("medications", EncryptedText, nullable=True)
+    _allergies = Column("allergies", EncryptedText, nullable=True)
+    _notes = Column("notes", EncryptedText, nullable=True)
     _custom_fields = Column("custom_fields", EncryptedJSON, nullable=True)
     _extra_data = Column("extra_data", EncryptedJSON, nullable=True)
 

@@ -4,7 +4,7 @@ Token Blacklist Repository Implementation.
 This module provides a repository for managing blacklisted tokens.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.interfaces.repositories.token_repository_interface import ITokenRepository
 from app.domain.exceptions.repository import RepositoryException
@@ -93,7 +93,7 @@ class TokenBlacklistRepository(ITokenRepository):
                 return False
 
             # Check if token has expired from the blacklist
-            if self._token_blacklist[token] < datetime.now(datetime.timezone.utc):
+            if self._token_blacklist[token] < datetime.now(timezone.utc):
                 # Clean up expired token
                 del self._token_blacklist[token]
                 return False
@@ -115,7 +115,7 @@ class TokenBlacklistRepository(ITokenRepository):
         """
         try:
             # Add an extra year to the expiration to ensure tokens are rejected
-            now = datetime.now(datetime.timezone.utc)
+            now = datetime.now(timezone.utc)
             expiry = now.replace(year=now.year + 1)
 
             # Blacklist all user tokens
@@ -144,7 +144,7 @@ class TokenBlacklistRepository(ITokenRepository):
         """
         try:
             # Add an extra year to the expiration to ensure tokens are rejected
-            now = datetime.now(datetime.timezone.utc)
+            now = datetime.now(timezone.utc)
             expiry = now.replace(year=now.year + 1)
 
             # Blacklist all session tokens
@@ -172,7 +172,7 @@ class TokenBlacklistRepository(ITokenRepository):
             RepositoryException: If the operation fails
         """
         try:
-            now = datetime.now(datetime.timezone.utc)
+            now = datetime.now(timezone.utc)
             expired_tokens = [
                 token for token, expires_at in self._token_blacklist.items() if expires_at < now
             ]

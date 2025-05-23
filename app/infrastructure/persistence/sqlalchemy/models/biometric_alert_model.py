@@ -54,14 +54,14 @@ class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
     )
     alert_type = Column(String, index=True, nullable=False)
     description = Column(String, nullable=False)
-    priority = Column(SQLAlchemyEnum(AlertPriorityEnum), nullable=False)
+    priority: Column[AlertPriorityEnum] = Column(SQLAlchemyEnum(AlertPriorityEnum), nullable=False)
     rule_id = Column(
         SQLAlchemyUUID(as_uuid=True),
         ForeignKey("biometric_rules.id"),
         nullable=False,
         index=True,
     )
-    status = Column(
+    status: Column[AlertStatusEnum] = Column(
         SQLAlchemyEnum(AlertStatusEnum),
         default=AlertStatusEnum.NEW,
         nullable=False,
