@@ -88,13 +88,31 @@ class Address:
 
     @classmethod
     def create_from_dict(cls, data: dict[str, Any]) -> "Address":
-        """Create Address from dictionary data."""
+        """Create Address from dictionary data with backward compatibility."""
+        # Handle backward compatibility: 'line1' -> 'street'
+        street = data.get("street") or data.get("line1", "")
+        
         return cls(
-            street=data["street"],
+            street=street,
             city=data["city"],
             state=data["state"],
             zip_code=data["zip_code"],
             country=data.get("country", "US"),
+        )
+
+    @classmethod
+    def create(cls, **kwargs: Any) -> "Address":
+        """Factory method with backward compatibility for legacy 'line1' parameter."""
+        # Handle legacy 'line1' parameter
+        if "line1" in kwargs and "street" not in kwargs:
+            kwargs["street"] = kwargs.pop("line1")
+        
+        return cls(
+            street=kwargs["street"],
+            city=kwargs["city"],
+            state=kwargs["state"],
+            zip_code=kwargs["zip_code"],
+            country=kwargs.get("country", "US"),
         )
 
     def validate_completeness(self) -> bool:
