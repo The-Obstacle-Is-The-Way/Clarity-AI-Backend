@@ -204,9 +204,9 @@ async def get_current_user(
                 
             # Handle async mock that returns coroutines
             if hasattr(payload, '__await__'):
-                logger.debug("JWT service returned a coroutine - this is likely a test mock issue")
-                # For mocks, we need to handle this case gracefully
-                payload = None
+                logger.debug("JWT service returned a coroutine - awaiting it")
+                # For async mocks, we need to await the coroutine
+                payload = await payload
                 
         except Exception as decode_error:
             logger.warning(f"JWT decode failed: {decode_error}")

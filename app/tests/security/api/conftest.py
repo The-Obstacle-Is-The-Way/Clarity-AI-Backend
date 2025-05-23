@@ -807,38 +807,9 @@ async def get_valid_auth_headers(
             days=7
         )
 
-        # Also register the exact token string in the service's decode_token mock
-        # This is necessary to ensure the token is recognized by the service
-        async def patched_decode_token_for_test(
-            token_str: str = None, options: dict = None, **kwargs
-        ) -> dict[str, Any]:
-            # Handle different parameter naming conventions
-            test_token = token_str
-            if "token" in kwargs:
-                test_token = kwargs["token"]
-
-            if test_token == token:
-                return token_data
-
-            # Call the original side effect with the correct parameter names
-            if global_mock_jwt_service.decode_token.side_effect:
-                try:
-                    if "token" in kwargs:
-                        return await global_mock_jwt_service.decode_token.side_effect(
-                            token=test_token, options=options
-                        )
-                    else:
-                        return await global_mock_jwt_service.decode_token.side_effect(
-                            test_token, options
-                        )
-                except Exception as e:
-                    logger.warning(f"Error calling original side effect: {e}")
-
-            # Fall back to default token handling if side effect fails
-            return await mock_decode_token(test_token, options)
-
-        # Replace the mock's side effect with our patched version
-        global_mock_jwt_service.decode_token.side_effect = patched_decode_token_for_test
+        # Store the token directly without complex side effect chaining
+        # This ensures the token will be found by the base mock_decode_token function
+        logger.debug(f"Storing token for future decode: {token[:20]}...")
 
     return headers
 
@@ -875,34 +846,8 @@ async def get_valid_provider_auth_headers(
     global_mock_jwt_service.token_store[token] = user_data
     global_mock_jwt_service.token_exp_store[token] = datetime.now(timezone.utc) + timedelta(days=7)
 
-    # Create a special handler for this specific token
-    async def patched_decode_token_for_provider(
-        token_str: str = None, options: dict = None, **kwargs
-    ) -> dict[str, Any]:
-        # Handle different parameter naming conventions
-        test_token = token_str
-        if "token" in kwargs:
-            test_token = kwargs["token"]
-
-        if test_token == token:
-            return user_data
-
-        # Chain to the existing handler
-        existing_handler = global_mock_jwt_service.decode_token.side_effect
-        if existing_handler and callable(existing_handler):
-            try:
-                if "token" in kwargs:
-                    return await existing_handler(token=test_token, options=options)
-                else:
-                    return await existing_handler(test_token, options)
-            except Exception as e:
-                logger.warning(f"Error calling existing handler: {e}")
-
-        # Fall back to default token handling
-        return await mock_decode_token(test_token, options)
-
-    # Update the mock's side effect
-    global_mock_jwt_service.decode_token.side_effect = patched_decode_token_for_provider
+    # Store the token directly without complex side effect chaining
+    logger.debug(f"Storing provider token for future decode: {token[:20]}...")
 
     return headers
 
@@ -1049,24 +994,32 @@ def global_mock_jwt_service() -> JWTServiceInterface:
                 options={
                     "verify_signature": False,
                     "verify_aud": False,
-                    "verify_exp": skip_exp_verification,
+                    "verify_exp": False,  # Always skip expiration for initial decode
                     "verify_iss": False,
                 },
             )
 
-            # Check if this is a test token
-            is_test_token = (
-                ("iss" in unverified_payload and unverified_payload.get("iss") == "test-issuer")
-                or ("sub" in unverified_payload and "test" in unverified_payload.get("sub", ""))
-                or (getattr(test_settings, "TEST_MODE", False))
-            )
-
-            if is_test_token:
-                # If it's a test token, add it to our store for future reference
-                mock_service.token_store[token] = unverified_payload
-                # Set a default expiration far in the future
-                mock_service.token_exp_store[token] = datetime.now(timezone.utc) + timedelta(days=7)
-                return unverified_payload
+            # Always treat tokens as test tokens in the test environment
+            # This ensures all JWT tokens created during tests are properly handled
+            logger.debug(f"Decoded test token with sub: {unverified_payload.get('sub', 'unknown')}")
+            
+            # Store the token for future reference
+            mock_service.token_store[token] = unverified_payload
+            # Set a default expiration far in the future for test tokens
+            mock_service.token_exp_store[token] = datetime.now(timezone.utc) + timedelta(days=7)
+            
+            # Now check expiration if requested
+            if not skip_exp_verification:
+                exp_timestamp = unverified_payload.get('exp')
+                if exp_timestamp:
+                    exp_datetime = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
+                    if exp_datetime < datetime.now(timezone.utc):
+                        raise TokenExpiredException("Token has expired")
+            
+            return unverified_payload
+        except jose_jwt.JWTError as e:
+            # If JWT decoding fails, raise appropriate exception
+            raise InvalidTokenException(f"Invalid token format: {e!s}")
         except Exception as e:
             # If not a token we recognize, raise the appropriate exception
             raise InvalidTokenException(
