@@ -636,27 +636,29 @@ class Patient(Base, TimestampMixin, AuditMixin):
         logger.debug(f"[to_domain] Accessing complex fields for {self.id}")
 
         # Prepare ContactInfo domain object
+        from app.core.domain.entities.patient import ContactInfo as DomainContactInfo
+        
         contact_info_raw = self._contact_info  # Should be dict or None after EncryptedJSON
         contact_info_domain_obj = None
         if isinstance(contact_info_raw, dict):
             try:
-                # Assuming DomainPatient's __init__ or a validator handles ContactInfo creation from dict
-                # Or, if ContactInfo is a Pydantic model itself in DomainPatient:
-                # from app.core.domain.entities.patient import ContactInfo as DomainContactInfo
-                # contact_info_domain_obj = DomainContactInfo(**contact_info_raw)
-                contact_info_domain_obj = contact_info_raw  # Pass dict if DomainPatient expects it
+                # Create proper ContactInfo Pydantic object from dict
+                contact_info_domain_obj = DomainContactInfo(**contact_info_raw)
             except Exception as e:
-                logger.error(f"Failed to process contact_info for patient {self.id}: {e}")
+                logger.error(f"Failed to create ContactInfo object for patient {self.id}: {e}")
+                # Fallback to default ContactInfo
+                contact_info_domain_obj = DomainContactInfo()
         elif isinstance(contact_info_raw, str):
-            # Try to parse JSON string to dict
+            # Try to parse JSON string to dict, then create ContactInfo
             try:
-                contact_info_domain_obj = json.loads(contact_info_raw)
-            except json.JSONDecodeError:
-                logger.error(f"Failed to parse contact_info JSON string for patient {self.id}")
-        elif contact_info_raw is not None:
-            logger.warning(
-                f"contact_info for patient {self.id} is not a dict or string: {type(contact_info_raw)}"
-            )
+                contact_info_dict = json.loads(contact_info_raw)
+                contact_info_domain_obj = DomainContactInfo(**contact_info_dict)
+            except (json.JSONDecodeError, Exception) as e:
+                logger.error(f"Failed to parse/create contact_info from JSON string for patient {self.id}: {e}")
+                contact_info_domain_obj = DomainContactInfo()
+        else:
+            # Use default ContactInfo if None or invalid type
+            contact_info_domain_obj = DomainContactInfo()
 
         # Prepare Address domain object
         address_raw = self._address_details  # Should be dict or None after EncryptedJSON
@@ -785,6 +787,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
             "ssn": ssn,  # Required for social_security_number_lve property
             "address": address_domain_obj,
             "emergency_contact": emergency_contact_domain_obj,
+            "contact_info": contact_info_domain_obj,
             "medical_history": _ensure_parsed_json(self._medical_history),
             "medications": _ensure_parsed_json(self._medications),
             "allergies": _ensure_parsed_json(self._allergies),
