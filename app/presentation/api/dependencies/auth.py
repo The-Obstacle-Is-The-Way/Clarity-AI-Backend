@@ -41,7 +41,7 @@ from app.infrastructure.persistence.sqlalchemy.repositories.user_repository impo
 
 # from app.infrastructure.repositories.user_repository import get_user_repository # DELETED OLD IMPORT
 from app.infrastructure.security.auth.auth_service import get_auth_service
-from app.infrastructure.security.jwt.jwt_service import JWTService, get_jwt_service
+from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
 from app.infrastructure.services.redis.redis_cache_service import RedisCacheService
 
 # REMOVED: from app.infrastructure.database.session import get_async_session
@@ -59,7 +59,6 @@ from app.infrastructure.security.auth.authentication_service import (
 )
 
 AuthServiceDep = Annotated[AuthenticationService, Depends(get_auth_service)]
-JWTServiceDep = Annotated[JWTService, Depends(get_jwt_service)]
 
 # --- Dependency Functions --- #
 
@@ -127,8 +126,8 @@ async def get_jwt_service(
     token_blacklist_repository: RedisTokenBlacklistRepository = Depends(
         get_token_blacklist_repository
     ),
-) -> JWTService:  # Return concrete implementation, not interface
-    """Dependency function to get JWTService instance conforming to IJwtService."""
+) -> JWTServiceImpl:  # Return concrete implementation that properly implements IJwtService
+    """Dependency function to get JWTServiceImpl instance conforming to IJwtService."""
     # Extract and validate settings, providing defaults if not present
     secret_key = str(settings.JWT_SECRET_KEY)
     algorithm = getattr(settings, "JWT_ALGORITHM", "HS256")
@@ -137,8 +136,8 @@ async def get_jwt_service(
     issuer = getattr(settings, "JWT_ISSUER", None)
     audience = getattr(settings, "JWT_AUDIENCE", None)
 
-    # Create JWT service with validated settings
-    return JWTService(
+    # Create JWT service with validated settings using proper implementation
+    return JWTServiceImpl(
         secret_key=secret_key,
         algorithm=algorithm,
         access_token_expire_minutes=access_expire,
@@ -151,10 +150,14 @@ async def get_jwt_service(
     )
 
 
+# Define JWT Service type annotation after function definition to avoid forward reference issues
+JWTServiceDep = Annotated[JWTServiceImpl, Depends(get_jwt_service)]
+
+
 async def get_current_user(
     token_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     settings: Settings = Depends(get_settings),
-    jwt_service: JWTService = Depends(get_jwt_service),
+    jwt_service: JWTServiceImpl = Depends(get_jwt_service),
     user_repo: SQLAlchemyUserRepository = Depends(get_user_repository_dependency),
     options: dict = None,
 ) -> DomainUser:
@@ -450,7 +453,7 @@ async def get_current_active_user_wrapper(
 
 async def get_optional_user(
     token_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
-    jwt_service: JWTServiceDep = None,
+    jwt_service: JWTServiceImpl = Depends(get_jwt_service),
     user_repo: UserRepoDep = None,
     **kwargs,
 ) -> DomainUser | None:
