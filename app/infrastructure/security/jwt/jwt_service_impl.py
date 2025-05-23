@@ -191,15 +191,16 @@ class JWTServiceImpl(IJwtService):
         self.audit_logger = audit_logger
 
         # JWT settings - prioritize direct parameters over settings
-        self.secret_key = secret_key or (
+        # Store as private attributes to implement interface properties
+        self._secret_key = secret_key or (
             self.settings.jwt_secret_key
             if hasattr(self.settings, "jwt_secret_key")
             else TEST_SECRET_KEY
         )
-        self.algorithm = algorithm or (
+        self._algorithm = algorithm or (
             self.settings.jwt_algorithm if hasattr(self.settings, "jwt_algorithm") else "HS256"
         )
-        self.access_token_expire_minutes = access_token_expire_minutes or (
+        self._access_token_expire_minutes = access_token_expire_minutes or (
             self.settings.access_token_expire_minutes
             if hasattr(self.settings, "access_token_expire_minutes")
             else 15
@@ -207,31 +208,71 @@ class JWTServiceImpl(IJwtService):
 
         # Handle refresh token expiry in days or minutes
         if refresh_token_expire_days:
-            self.refresh_token_expire_minutes = refresh_token_expire_days * 24 * 60
+            self._refresh_token_expire_minutes = refresh_token_expire_days * 24 * 60
         else:
-            self.refresh_token_expire_minutes = (
+            self._refresh_token_expire_minutes = (
                 self.settings.refresh_token_expire_minutes
                 if hasattr(self.settings, "refresh_token_expire_minutes")
                 else 10080  # Default to 7 days in minutes
             )
 
         # Store audience and issuer - these are important for JWT validation
-        self.audience = audience or (
+        self._audience = audience or (
             self.settings.token_audience if hasattr(self.settings, "token_audience") else None
         )
-        self.issuer = issuer or (
+        self._issuer = issuer or (
             self.settings.token_issuer if hasattr(self.settings, "token_issuer") else None
         )
 
-        # Keep old attribute names for backward compatibility
-        self.token_issuer = self.issuer
-        self.token_audience = self.audience
+        # Store as private attributes for property access
+        self._token_issuer = self._issuer
+        self._token_audience = self._audience
+        
+        # Keep old attribute names for backward compatibility in existing code
+        self.audience = self._audience
+        self.issuer = self._issuer
 
         # In-memory blacklist for testing
         self._token_blacklist = {}
         self._token_families = {}
 
-        logger.info(f"JWT Service initialized with algorithm {self.algorithm}")
+        logger.info(f"JWT Service initialized with algorithm {self._algorithm}")
+
+    # Property implementations for Interface Segregation Principle compliance
+    @property
+    def secret_key(self) -> str:
+        """JWT signing secret key."""
+        return self._secret_key
+    
+    @property
+    def algorithm(self) -> str:
+        """JWT signing algorithm."""
+        return self._algorithm
+    
+    @property
+    def access_token_expire_minutes(self) -> int:
+        """Access token expiration time in minutes."""
+        return self._access_token_expire_minutes
+    
+    @property
+    def refresh_token_expire_minutes(self) -> int:
+        """Refresh token expiration time in minutes."""
+        return self._refresh_token_expire_minutes
+    
+    @property
+    def refresh_token_expire_days(self) -> int:
+        """Refresh token expiration time in days."""
+        return self._refresh_token_expire_minutes // (24 * 60) if self._refresh_token_expire_minutes else 7
+    
+    @property
+    def token_issuer(self) -> str | None:
+        """JWT token issuer."""
+        return self._token_issuer
+    
+    @property
+    def token_audience(self) -> str | None:
+        """JWT token audience."""
+        return self._token_audience
 
     def create_access_token(
         self,
@@ -307,7 +348,7 @@ class JWTServiceImpl(IJwtService):
                 now = datetime.fromtimestamp(1704110400, timezone.utc)  # 2024-01-01 12:00:00 UTC
                 expire = datetime.fromtimestamp(1704112200, timezone.utc)  # 2024-01-01 12:30:00 UTC
             else:
-                expire = now + timedelta(minutes=self.access_token_expire_minutes)
+                expire = now + timedelta(minutes=self._access_token_expire_minutes)
 
         # Create token claims
         claims = {
@@ -335,11 +376,11 @@ class JWTServiceImpl(IJwtService):
         claims["roles"] = roles
 
         # Add the issuer and audience if specified
-        if self.issuer:
-            claims["iss"] = self.issuer
+        if self._issuer:
+            claims["iss"] = self._issuer
 
-        if self.audience:
-            claims["aud"] = self.audience
+        if self._audience:
+            claims["aud"] = self._audience
 
         # Add any additional claims
         if additional_claims:
@@ -347,7 +388,7 @@ class JWTServiceImpl(IJwtService):
                 claims[key] = value
 
         # Create token
-        token = jwt_encode(claims, self.secret_key, algorithm=self.algorithm)
+        token = jwt_encode(claims, self._secret_key, algorithm=self._algorithm)
 
         # Audit log the token creation
         try:
@@ -434,7 +475,7 @@ class JWTServiceImpl(IJwtService):
                 # 7 days = 604800 seconds
                 expire = datetime.fromtimestamp(1704110400 + 604800, timezone.utc)
             else:
-                expire = now + timedelta(minutes=self.refresh_token_expire_minutes)
+                expire = now + timedelta(minutes=self._refresh_token_expire_minutes)
 
         # Create token claims
         claims = {
@@ -448,11 +489,11 @@ class JWTServiceImpl(IJwtService):
         }
 
         # Add the issuer and audience if specified
-        if self.token_issuer:
-            claims["iss"] = self.token_issuer
+        if self._token_issuer:
+            claims["iss"] = self._token_issuer
 
-        if self.token_audience:
-            claims["aud"] = self.token_audience
+        if self._token_audience:
+            claims["aud"] = self._token_audience
 
         # Add any additional claims
         if additional_claims:
@@ -461,7 +502,7 @@ class JWTServiceImpl(IJwtService):
                     claims[key] = value
 
         # Create token
-        token = jwt_encode(claims, self.secret_key, algorithm=self.algorithm)
+        token = jwt_encode(claims, self._secret_key, algorithm=self._algorithm)
 
         # Audit log the token creation
         try:
@@ -512,17 +553,17 @@ class JWTServiceImpl(IJwtService):
             decode_options["verify_signature"] = False
 
         # Default algorithms if not provided
-        algs = algorithms or [self.algorithm]
+        algs = algorithms or [self._algorithm]
 
         try:
             # Use jose.jwt to decode
             decoded = jwt_decode(
                 token=token,
-                key=self.secret_key,
+                key=self._secret_key,
                 algorithms=algs,
                 options=decode_options,
-                audience=audience or self.audience,
-                issuer=self.issuer,
+                audience=audience or self._audience,
+                issuer=self._issuer,
                 # Disable subject validation - we'll handle that ourselves
                 subject=None,
             )
@@ -607,20 +648,7 @@ class JWTServiceImpl(IJwtService):
             logger.error(f"Unexpected error decoding token: {e!s}")
             raise InvalidTokenException(f"Failed to decode token: {e!s}")
 
-    @property
-    def refresh_token_expire_days(self) -> int:
-        """Get refresh token expiration days.
 
-        Returns:
-            int: Number of days until refresh token expires
-        """
-        if hasattr(self.settings, "TESTING") and self.settings.TESTING:
-            return 7  # Fixed 7 days for tests
-        return (
-            self.refresh_token_expire_minutes // (24 * 60)
-            if self.refresh_token_expire_minutes
-            else 7
-        )  # Default to 7 days if not set
 
     async def get_user_from_token(self, token: str) -> User | None:
         """Get user from a token.
