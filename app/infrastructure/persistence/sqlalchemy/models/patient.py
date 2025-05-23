@@ -635,30 +635,10 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # Access complex fields directly. EncryptedJSON handles decryption & deserialization.
         logger.debug(f"[to_domain] Accessing complex fields for {self.id}")
 
-        # Prepare ContactInfo domain object
-        from app.core.domain.entities.patient import ContactInfo as DomainContactInfo
-        
-        contact_info_raw = self._contact_info  # Should be dict or None after EncryptedJSON
-        contact_info_domain_obj = None
-        if isinstance(contact_info_raw, dict):
-            try:
-                # Create proper ContactInfo Pydantic object from dict
-                contact_info_domain_obj = DomainContactInfo(**contact_info_raw)
-            except Exception as e:
-                logger.error(f"Failed to create ContactInfo object for patient {self.id}: {e}")
-                # Fallback to default ContactInfo
-                contact_info_domain_obj = DomainContactInfo()
-        elif isinstance(contact_info_raw, str):
-            # Try to parse JSON string to dict, then create ContactInfo
-            try:
-                contact_info_dict = json.loads(contact_info_raw)
-                contact_info_domain_obj = DomainContactInfo(**contact_info_dict)
-            except (json.JSONDecodeError, Exception) as e:
-                logger.error(f"Failed to parse/create contact_info from JSON string for patient {self.id}: {e}")
-                contact_info_domain_obj = DomainContactInfo()
-        else:
-            # Use default ContactInfo if None or invalid type
-            contact_info_domain_obj = DomainContactInfo()
+        # NOTE: ContactInfo handling removed - domain Patient uses ContactInfo descriptor
+        # The descriptor creates ContactInfo instances from email/phone fields automatically
+        # This ensures consistency with the domain Patient's architecture and avoids mixing domain models
+        contact_info_domain_obj = None  # Domain Patient doesn't accept contact_info parameter
 
         # Prepare Address domain object
         address_raw = self._address_details  # Should be dict or None after EncryptedJSON
