@@ -234,30 +234,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             "correlation": random.uniform(0.4, 0.8)
         }
 
-    async def generate_clinical_insights(
-        self,
-        patient_id: UUID,
-        insight_types: list,
-        time_range: tuple | None = None,
-    ) -> list:
-        """Generate clinical insights from the Digital Twin."""
-        logger.info(f"Generating clinical insights for patient {patient_id}")
-        
-        insights = []
-        for insight_type in insight_types:
-            insights.append({
-                "type": insight_type.value if hasattr(insight_type, 'value') else str(insight_type),
-                "description": f"Mock insight for {insight_type}",
-                "significance": random.choice([
-                    ClinicalSignificance.HIGH.value,
-                    ClinicalSignificance.MEDIUM.value,
-                    ClinicalSignificance.LOW.value,
-                ]),
-                "confidence": random.uniform(0.7, 0.95),
-                "supporting_evidence": ["clinical_data", "biomarkers"]
-            })
-        
-        return insights
+    # Removed duplicate generate_clinical_insights method - DRY principle violation fixed
 
     async def predict_treatment_response(
         self,
