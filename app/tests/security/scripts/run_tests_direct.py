@@ -12,7 +12,7 @@ import re
 import subprocess
 import sys
 from datetime import datetime
-from typing import Any
+from typing import Any, Dict, List
 
 # Add the root directory to Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
@@ -27,14 +27,14 @@ class DirectSecurityTestRunner:
         Args:
             output_path: Path to save test reports
         """
-        self.base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.output_path = output_path or os.path.join(self.base_dir, "test_results")
+        self.base_dir: str = os.path.dirname(os.path.abspath(__file__))
+        self.output_path: str = output_path or os.path.join(self.base_dir, "test_results")
 
         # Ensure output directory exists
         os.makedirs(self.output_path, exist_ok=True)
 
         # Define all test modules to run in priority order
-        self.tests = [
+        self.tests: List[Dict[str, str]] = [
             # Core encryption tests
             {
                 "name": "Core Encryption",
@@ -56,7 +56,7 @@ class DirectSecurityTestRunner:
         ]
 
         # Results storage
-        self.results = {
+        self.results: Dict[str, Any] = {
             "timestamp": datetime.now().isoformat(),
             "tests": {},
             "summary": {"total": 0, "passed": 0, "failed": 0, "errors": 0},
