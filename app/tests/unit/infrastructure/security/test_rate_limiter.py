@@ -40,14 +40,14 @@ def mock_redis():
     """Create a mock Redis client using AsyncMock for proper async handling."""
     mock = AsyncMock(spec=redis.Redis)  # Use AsyncMock instead of MagicMock
     # Set default return values for common methods used by RedisRateLimiter
-    mock.zcard.return_value = 0
-    mock.zadd.return_value = 1  # Typically returns number of elements added
-    mock.zremrangebyscore.return_value = 0  # Number of elements removed
-    mock.exists.return_value = 0  # Redis returns 0 if key doesn't exist
-    mock.setex.return_value = True
-    mock.delete.return_value = 1  # Number of keys deleted
-    mock.zcount.return_value = 0
-    mock.expire.return_value = True  # Add expire method
+    mock.zcard = AsyncMock(return_value=0)
+    mock.zadd = AsyncMock(return_value=1)  # Typically returns number of elements added
+    mock.zremrangebyscore = AsyncMock(return_value=0)  # Number of elements removed
+    mock.exists = AsyncMock(return_value=0)  # Redis returns 0 if key doesn't exist
+    mock.setex = AsyncMock(return_value=True)
+    mock.delete = AsyncMock(return_value=1)  # Number of keys deleted
+    mock.zcount = AsyncMock(return_value=0)
+    mock.expire = AsyncMock(return_value=True)  # Add expire method
     return mock
 
 
@@ -460,7 +460,6 @@ async def test_check_rate_limit_redis_unavailable(
 async def test_check_rate_limit_redis_with_user_id(
     distributed_rate_limiter: RedisRateLimiter,
     mock_redis_client: AsyncMock,
-    async_mock_patch,
 ):
     """Test check_rate_limit with a specific user ID using a different limit type."""
     identifier = "ip:192.168.1.6"
@@ -469,25 +468,8 @@ async def test_check_rate_limit_redis_with_user_id(
     combined_key = f"{limit_type.value}:{user_id}:{identifier}"  # Key used by RedisRateLimiter
     config = distributed_rate_limiter.configs[limit_type]
 
-    # Simulate Redis returning 0 for count (new identifier/user combo)
-    mock_redis_client.zcard.return_value = 0
-    # Simulate pipeline execution result for adding the first request
-    pipeline_mock = AsyncMock()
-    # Configure mock to return the mock itself when these methods are called
-    # This allows for method chaining in async context
-    pipeline_mock.zadd.return_value = pipeline_mock
-    pipeline_mock.zremrangebyscore.return_value = pipeline_mock
-    pipeline_mock.zcard.return_value = pipeline_mock
-    pipeline_mock.pttl.return_value = pipeline_mock
-    # Make execute return a list with the expected results
-    pipeline_mock.execute.return_value = [
-        1,
-        0,
-        1,
-        config.period_seconds * 1000,
-    ]  # zadd=1, zrem=0, zcard=1, pttl=period_ms
-    # Configure the pipeline context manager
-    mock_redis_client.pipeline.return_value.__aenter__.return_value = pipeline_mock
+    # Get the pipeline mock from the fixture
+    pipeline_mock = mock_redis_client.pipeline.return_value
 
     is_limited, info = await distributed_rate_limiter.check_rate_limit(
         identifier, limit_type, user_id=user_id

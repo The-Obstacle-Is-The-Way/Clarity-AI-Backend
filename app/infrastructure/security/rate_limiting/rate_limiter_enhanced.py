@@ -395,31 +395,35 @@ class RedisRateLimiter(AsyncRateLimiter):
         This method executes the same Redis calls as the real implementation
         but uses the mocked Redis client for testing verification.
         """
-        now = datetime.now().timestamp()
-        blocked_key = self._get_blocked_key(key)
-        counter_key = self._get_counter_key(key)
-        
-        # Check if the key is blocked
-        blocked_exists = await self._redis.exists(blocked_key)
-        if blocked_exists:
-            return False
-        
-        # Clean up old requests
-        expired_cutoff = now - config.window_seconds
-        await self._redis.zremrangebyscore(counter_key, 0, expired_cutoff)
-        
-        # Check if over the limit
-        request_count = await self._redis.zcard(counter_key)
-        if request_count is not None and request_count >= config.requests:
-            if config.block_seconds:
-                await self._redis.setex(blocked_key, config.block_seconds, 1)
-            return False
-        
-        # Add this request to the log
-        await self._redis.zadd(counter_key, {str(now): now})
-        # Set expiration on the sorted set
-        await self._redis.expire(counter_key, config.window_seconds * 2)
-        return True
+        try:
+            now = datetime.now().timestamp()
+            blocked_key = self._get_blocked_key(key)
+            counter_key = self._get_counter_key(key)
+            
+            # Check if the key is blocked
+            blocked_exists = await self._redis.exists(blocked_key)
+            if blocked_exists:
+                return False
+            
+            # Clean up old requests
+            expired_cutoff = now - config.window_seconds
+            await self._redis.zremrangebyscore(counter_key, 0, expired_cutoff)
+            
+            # Check if over the limit
+            request_count = await self._redis.zcard(counter_key)
+            if request_count is not None and request_count >= config.requests:
+                if config.block_seconds:
+                    await self._redis.setex(blocked_key, config.block_seconds, 1)
+                return False
+            
+            # Add this request to the log
+            await self._redis.zadd(counter_key, {str(now): now})
+            # Set expiration on the sorted set
+            await self._redis.expire(counter_key, config.window_seconds * 2)
+            return True
+        except redis.RedisError as e:
+            logger.error(f"Redis error in async mock rate limiter: {e}")
+            return True  # Fail open - allow request if Redis is unavailable
 
     async def _check_rate_limit_pipeline_async(
         self, identifier: str, limit_type: RateLimitType, user_id: str
