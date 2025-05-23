@@ -354,12 +354,15 @@ class AWSXGBoostService(XGBoostInterface, Observable):
             ) from e
 
     def get_available_models(self) -> list[dict[str, Any]]:
-        """Get a list of available models.
+        """Get a list of available XGBoost models from AWS SageMaker.
 
         Returns:
             List of model information dictionaries
         """
         self._ensure_initialized()
+
+        if self._sagemaker is None:
+            raise ConfigurationError("SageMaker client not initialized")
 
         try:
             # List SageMaker endpoints
@@ -408,6 +411,9 @@ class AWSXGBoostService(XGBoostInterface, Observable):
             ModelNotFoundError: If model is not found
         """
         self._ensure_initialized()
+
+        if self._sagemaker is None:
+            raise ConfigurationError("SageMaker client not initialized")
 
         try:
             endpoint_name = self._get_model_endpoint(model_type)
@@ -555,7 +561,7 @@ class AWSXGBoostService(XGBoostInterface, Observable):
                 f"No endpoint configured for model type: {model_type}", model_type=model_type
             )
 
-        return endpoints[model_type]
+        return str(endpoints[model_type])
 
     def _prepare_prediction_payload(self, features: dict[str, Any], **kwargs: Any) -> str:
         """Prepare prediction payload for SageMaker.
@@ -595,6 +601,9 @@ class AWSXGBoostService(XGBoostInterface, Observable):
             ModelTimeoutError: If endpoint times out
             ThrottlingError: If requests are throttled
         """
+        if self._sagemaker_runtime is None:
+            raise ConfigurationError("SageMaker runtime client not initialized")
+
         try:
             response = self._sagemaker_runtime.invoke_endpoint(
                 EndpointName=endpoint_name, ContentType="application/json", Body=payload
@@ -706,6 +715,10 @@ class AWSXGBoostService(XGBoostInterface, Observable):
             prediction_id: Prediction ID
             result: Prediction result
         """
+        if self._dynamodb is None:
+            logger.warning("DynamoDB client not initialized, skipping metadata storage")
+            return
+
         try:
             table_name = self._config["dynamodb_table"]
 
@@ -735,6 +748,10 @@ class AWSXGBoostService(XGBoostInterface, Observable):
         Returns:
             Prediction metadata if found
         """
+        if self._dynamodb is None:
+            logger.warning("DynamoDB client not initialized, cannot retrieve metadata")
+            return None
+
         try:
             table_name = self._config["dynamodb_table"]
 
