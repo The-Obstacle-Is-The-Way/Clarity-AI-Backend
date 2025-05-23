@@ -32,7 +32,7 @@ from app.domain.exceptions.token_exceptions import (
 )
 from app.domain.models.user import User, UserRole
 from app.infrastructure.security.jwt.jwt_service_impl import (
-    JWTServiceImpl,
+    JWTServiceImpl as JWTService,
     TokenPayload,
 )
 from app.domain.enums.token_type import TokenType
@@ -146,7 +146,7 @@ def mock_settings(monkeypatch) -> MagicMock:
 
 
 @pytest.fixture
-def jwt_service(mock_settings: MagicMock) -> JWTServiceImpl:
+def jwt_service(mock_settings: MagicMock) -> JWTService:
     """
     Create a JWT service for testing using the mock settings.
 
@@ -154,7 +154,7 @@ def jwt_service(mock_settings: MagicMock) -> JWTServiceImpl:
     but that factory now requires a settings parameter. So we directly create a JWTService instance.
     """
     # Create a JWTService instance directly using the mock settings
-    return JWTServiceImpl(
+    return JWTService(
         secret_key=mock_settings.JWT_SECRET_KEY.get_secret_value(),
         algorithm=mock_settings.JWT_ALGORITHM,
         access_token_expire_minutes=mock_settings.ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -211,7 +211,7 @@ class TestJWTAuthentication:
     """Test suite for JWT authentication system."""
 
     @pytest.mark.asyncio
-    async def test_token_creation(self, jwt_service: JWTServiceImpl):
+    async def test_token_creation(self, jwt_service: JWTService):
         """Test token creation with user data."""
         user = TEST_USERS["doctor"]
         user_data = {
@@ -238,7 +238,7 @@ class TestJWTAuthentication:
         # assert payload.exp > int(time.time()), "Expiration time should be in the future"
 
     @pytest.mark.asyncio
-    async def test_token_validation(self, jwt_service: JWTServiceImpl, token_factory, monkeypatch):
+    async def test_token_validation(self, jwt_service: JWTService, token_factory, monkeypatch):
         """Verify valid tokens and rejection of invalid ones."""
         # Test valid token
         valid_token = await token_factory(user_type="admin")
@@ -306,7 +306,7 @@ class TestJWTAuthentication:
         ), f"Unexpected malformed token error: {exc_info.value!s}"
 
     @pytest.mark.asyncio
-    async def test_role_based_access(self, jwt_service: JWTServiceImpl, token_factory):
+    async def test_role_based_access(self, jwt_service: JWTService, token_factory):
         """Test that role-based access control works correctly."""
         # We need to modify our check_resource_access method for restricted resources
         # Original implementation always returns True for testing
@@ -384,7 +384,7 @@ class TestJWTAuthentication:
             jwt_service.check_resource_access = original_check
 
     @pytest.mark.asyncio
-    async def test_token_from_request(self, jwt_service: JWTServiceImpl, token_factory):
+    async def test_token_from_request(self, jwt_service: JWTService, token_factory):
         """Test that tokens are correctly extracted from requests"""
         # Generate test token
         token = await token_factory(user_type="doctor")
@@ -404,7 +404,7 @@ class TestJWTAuthentication:
         extracted_token = jwt_service.extract_token_from_request(request_without_token)
         assert extracted_token is None, "Should return None for request without token"
 
-    def test_unauthorized_response(self, jwt_service: JWTServiceImpl):
+    def test_unauthorized_response(self, jwt_service: JWTService):
         """Test that unauthorized requests get proper responses"""
         # Test expired token response
         expired_response = jwt_service.create_unauthorized_response(
@@ -441,7 +441,7 @@ class TestJWTAuthentication:
         ), "Error message should mention permissions"
 
     @pytest.mark.asyncio
-    async def test_refresh_token(self, jwt_service: JWTServiceImpl, client: TestClient, token_factory):
+    async def test_refresh_token(self, jwt_service: JWTService, client: TestClient, token_factory):
         """Test refresh token functionality.
         Now updated to work with our test client and verify_refresh_token implementation.
         """
@@ -480,7 +480,7 @@ class TestJWTAuthentication:
         ), "Invalid token should be rejected"
 
     @pytest.mark.asyncio
-    async def test_hipaa_compliance_in_errors(self, jwt_service: JWTServiceImpl, token_factory):
+    async def test_hipaa_compliance_in_errors(self, jwt_service: JWTService, token_factory):
         """Test that error messages are HIPAA compliant."""
         # Generate a UUID that would be considered PHI if exposed
         test_uuid = str(uuid.uuid4())
@@ -515,7 +515,7 @@ class TestJWTAuthentication:
             assert error_type == response["body"]["error_type"], "Error type should be preserved"
 
     @pytest.mark.asyncio
-    async def test_token_security_properties(self, jwt_service: JWTServiceImpl):
+    async def test_token_security_properties(self, jwt_service: JWTService):
         """Check for essential security claims (jti, iat, exp)."""
         user_data = {
             "sub": TEST_USERS["patient"]["sub"],
@@ -557,7 +557,7 @@ def test_app(mock_settings: MagicMock) -> FastAPI:
 
     # Create a jwt_service dependency that builds a service directly
     def get_test_jwt_service():
-        return JWTServiceImpl(
+        return JWTService(
             secret_key=mock_settings.JWT_SECRET_KEY.get_secret_value(),
             algorithm=mock_settings.JWT_ALGORITHM,
             access_token_expire_minutes=mock_settings.ACCESS_TOKEN_EXPIRE_MINUTES,
