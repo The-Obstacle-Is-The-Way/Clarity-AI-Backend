@@ -4,6 +4,7 @@ Unit tests for the Digital Twin entity.
 This module contains tests for the core Digital Twin entity, verifying its
 initialization and state/configuration updates.
 """
+import time
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 

@@ -24,7 +24,7 @@ from app.domain.entities.temporal_events import CorrelatedEvent, EventChain
 from app.domain.entities.temporal_neurotransmitter_mapping import (
     extend_neurotransmitter_mapping,
 )
-from app.domain.entities.temporal_sequence import TemporalSequence
+from app.domain.entities.temporal_sequence import ExtendedTemporalSequence
 from app.domain.services.visualization_preprocessor import (
     NeurotransmitterEffectVisualizer,
     NeurotransmitterVisualizationPreprocessor,
@@ -105,7 +105,7 @@ class TestTemporalSequence:
     def test_temporal_sequence_creation(self):
         """Test creation of temporal sequences."""
         # Create a sequence
-        sequence = TemporalSequence(
+        sequence = ExtendedTemporalSequence(
             name="test_sequence",
             description="Test temporal sequence",
             time_unit="hours",
@@ -206,7 +206,7 @@ class TestTemporalNeurotransmitterMapping:
         mapping.add_receptor_profile(profile)
 
         # Create a temporal sequence for serotonin changes
-        sequence = TemporalSequence(
+        sequence = ExtendedTemporalSequence(
             name="serotonin_response",
             description="Serotonin response over time",
             time_unit="hours",
@@ -258,7 +258,7 @@ class TestTemporalNeurotransmitterMapping:
         )
 
         # Create a temporal sequence for serotonin changes
-        sequence = TemporalSequence(
+        sequence = ExtendedTemporalSequence(
             name="serotonin_increase",
             description="Serotonin increase over time",
             time_unit="hours",

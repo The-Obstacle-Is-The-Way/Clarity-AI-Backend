@@ -71,7 +71,7 @@ class TestProvider:
 
     def test_create_provider(self, valid_provider_data):
         provider = Provider(**valid_provider_data)
-        assert provider.id == valid_provider_data["id"]
+        assert provider.id == uuid.UUID(valid_provider_data["id"])
         assert provider.first_name == valid_provider_data["first_name"]
         assert provider.last_name == valid_provider_data["last_name"]
         assert provider.provider_type == valid_provider_data["provider_type"]

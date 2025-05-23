@@ -3,7 +3,9 @@ Tests for the Appointment entity.
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import time
+from typing import Any
 
 import pytest
 
