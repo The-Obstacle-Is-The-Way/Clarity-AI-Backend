@@ -31,7 +31,10 @@ import jwt
 from pydantic import BaseModel
 
 from app.config.settings import Settings
-from app.core.constants.audit import AuditEventType, AuditSeverity
+from app.core.interfaces.services.audit_logger_interface import (
+    AuditEventType,
+    AuditSeverity,
+)
 from app.core.exceptions.auth import (
     InvalidTokenException,
     TokenBlacklistedException,
@@ -98,8 +101,8 @@ class JWTService:
         self.algorithm = "HS256"  # HMAC with SHA-256
 
         # Validate that we have required secrets
-        if not self.settings.jwt_secret_key:
-            raise ValueError("JWT_SECRET_KEY is required")
+        if not self.settings.SECRET_KEY:
+            raise ValueError("SECRET_KEY is required")
 
     def create_access_token(
         self,
@@ -133,7 +136,7 @@ class JWTService:
         if expires_delta_minutes:
             expires_delta = timedelta(minutes=expires_delta_minutes)
         elif not expires_delta:
-            expires_delta = timedelta(minutes=self.settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
+            expires_delta = timedelta(minutes=self.settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
         expire = utcnow() + expires_delta
         expires_in = int(expires_delta.total_seconds())
@@ -156,11 +159,11 @@ class JWTService:
         }
 
         # Create token
-        access_token = jwt.encode(payload, self.settings.jwt_secret_key, algorithm=self.algorithm)
+        access_token = jwt.encode(payload, self.settings.SECRET_KEY.get_secret_value(), algorithm=self.algorithm)
 
         # Log token creation
         self.audit_logger.log_security_event(
-            event_type="ACCESS_TOKEN_CREATED",
+            event_type=AuditEventType.TOKEN_CREATION,
             user_id=user_id,
             description=f"Access token created for user {email}",
             metadata={
@@ -221,11 +224,11 @@ class JWTService:
         }
 
         # Create token
-        refresh_token = jwt.encode(payload, self.settings.jwt_secret_key, algorithm=self.algorithm)
+        refresh_token = jwt.encode(payload, self.settings.SECRET_KEY.get_secret_value(), algorithm=self.algorithm)
 
         # Log token creation
         self.audit_logger.log_security_event(
-            event_type="REFRESH_TOKEN_CREATED",
+            event_type=AuditEventType.TOKEN_CREATION,
             user_id=user_id,
             description=f"Refresh token created for user {email}",
             metadata={
@@ -254,14 +257,14 @@ class JWTService:
             TokenBlacklistedException: If the token is blacklisted
         """
         try:
-            payload = jwt.decode(token, self.settings.jwt_secret_key, algorithms=[self.algorithm])
+            payload = jwt.decode(token, self.settings.SECRET_KEY.get_secret_value(), algorithms=[self.algorithm])
             token_payload = TokenPayload(**payload)
 
             # Check if token is blacklisted using JTI
             jti = token_payload.jti
-            if asyncio.run(self.blacklist_repo.is_jti_blacklisted(jti)):
+            if asyncio.run(self.blacklist_repo.is_blacklisted(jti)):
                 self.audit_logger.log_security_event(
-                    event_type=AuditEventType.TOKEN_VALIDATION_FAILURE,
+                    event_type=AuditEventType.TOKEN_VALIDATION_FAILED,
                     user_id=token_payload.user_id,
                     description=f"{token_type.capitalize()} token validation failed: token is blacklisted",
                     severity=AuditSeverity.HIGH,
@@ -272,7 +275,7 @@ class JWTService:
             # Verify expiration
             if token_payload.exp < time.time():
                 self.audit_logger.log_security_event(
-                    event_type=AuditEventType.TOKEN_VALIDATION_FAILURE,
+                    event_type=AuditEventType.TOKEN_VALIDATION_FAILED,
                     user_id=token_payload.user_id,
                     description=f"{token_type.capitalize()} token validation failed: token has expired",
                     severity=AuditSeverity.HIGH,
@@ -285,16 +288,16 @@ class JWTService:
 
         except jwt.ExpiredSignatureError as e:
             self.audit_logger.log_security_event(
-                event_type=AuditEventType.TOKEN_VALIDATION_FAILURE,
+                event_type=AuditEventType.TOKEN_VALIDATION_FAILED,
                 description=f"{token_type.capitalize()} token validation failed: {e!s}",
-                severity=AuditSeverity.MEDIUM,
+                severity=AuditSeverity.WARNING,
                 metadata={"token_type": token_type, "error": str(e)},
             )
             raise TokenExpiredException(f"{token_type.capitalize()} token has expired.") from e
 
         except jwt.InvalidTokenError as e:
             self.audit_logger.log_security_event(
-                event_type=AuditEventType.TOKEN_VALIDATION_FAILURE,
+                event_type=AuditEventType.TOKEN_VALIDATION_FAILED,
                 description=f"{token_type.capitalize()} token validation failed: {e!s}",
                 severity=AuditSeverity.HIGH,
                 metadata={"token_type": token_type, "error": str(e)},
@@ -325,11 +328,11 @@ class JWTService:
             session_id = token_data.get("session_id", "unknown")
 
             # Blacklist the token
-            await self.blacklist_repo.add_to_blacklist(token, token_id)
+            await self.blacklist_repo.add_to_blacklist(token_id, datetime.fromtimestamp(token_data.get('exp', 0)))
 
             # Log the blacklisting
             self.audit_logger.log_security_event(
-                event_type=AuditEventType.TOKEN_BLACKLISTED,
+                event_type=AuditEventType.TOKEN_REVOCATION,
                 user_id=user_id,
                 description="Token blacklisted successfully",
                 severity=AuditSeverity.INFO,
@@ -337,12 +340,13 @@ class JWTService:
             )
 
         except Exception as e:
-            # If we can't decode, still try to blacklist the raw token
-            await self.blacklist_repo.add_to_blacklist(token)
+            # If we can't decode, still try to blacklist using a generated JTI
+            jti = str(uuid.uuid4())
+            await self.blacklist_repo.add_to_blacklist(jti, utcnow() + timedelta(days=7))
 
             # Log the issue
             self.audit_logger.log_security_event(
-                event_type=AuditEventType.TOKEN_BLACKLIST_FAILURE,
+                event_type=AuditEventType.TOKEN_VALIDATION_FAILED,
                 user_id=user_id if user_id else "unknown",
                 description="Failed to blacklist token due to decoding or other error",
                 severity=AuditSeverity.WARNING,
@@ -367,7 +371,7 @@ class JWTService:
 
         # Log the session blacklisting
         self.audit_logger.log_security_event(
-            event_type=AuditEventType.SESSION_TOKENS_BLACKLISTED,
+            event_type=AuditEventType.LOGOUT,
             user_id=user_id if user_id else "unknown",
             description="All tokens for session blacklisted successfully",
             severity=AuditSeverity.INFO,
