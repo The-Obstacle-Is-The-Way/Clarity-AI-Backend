@@ -244,7 +244,9 @@ def get_settings() -> Settings:
         settings.AUDIT_LOG_FILE = "logs/audit_test.log"  # Test-specific audit log
         # Ensure JWT_SECRET_KEY is set for tests, even if default_factory had issues
         if not hasattr(settings, "JWT_SECRET_KEY") or not settings.JWT_SECRET_KEY:
-            settings.JWT_SECRET_KEY = SecretStr("test_jwt_secret_for_test_environment_only_1234567890_abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ_01234567890_abcdefghijklmnopqrstuvwxyz")
+            settings.JWT_SECRET_KEY = SecretStr(
+                "test_jwt_secret_for_test_environment_only_1234567890_abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ_01234567890_abcdefghijklmnopqrstuvwxyz"
+            )
             logger.warning("JWT_SECRET_KEY was not set for test environment, fallback applied.")
 
         return settings  # Return the modified global instance

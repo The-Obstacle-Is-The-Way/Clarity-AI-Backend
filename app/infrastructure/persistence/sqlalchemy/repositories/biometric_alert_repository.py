@@ -4,11 +4,8 @@ SQLAlchemy implementation of the BiometricAlertRepository.
 This module provides a concrete implementation of the BiometricAlertRepository
 interface using SQLAlchemy ORM for database operations.
 """
-from datetime import timezone
-
-from uuid import uuid4
-from datetime import datetime
-from uuid import UUID
+from datetime import datetime, timezone
+from uuid import UUID, uuid4
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
@@ -378,7 +375,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             query = select(func.count(BiometricAlertModel.alert_id)).where(
                 and_(
                     BiometricAlertModel.patient_id == str(patient_id),
-                    BiometricAlertModel.acknowledged == False
+                    BiometricAlertModel.acknowledged == False,
                 )
             )
 
@@ -552,7 +549,9 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
                 patient_id=patient_id,
                 rule_id=model.rule_id,
                 rule_name=model.rule_name,
-                priority=AlertPriority(model.priority) if model.priority else AlertPriority.INFORMATIONAL,
+                priority=AlertPriority(model.priority)
+                if model.priority
+                else AlertPriority.INFORMATIONAL,
                 data_point=data_point_mock,
                 message=model.message,
                 context=model.context,
@@ -583,7 +582,11 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
                 patient_id=str(entity.patient_id) if entity.patient_id else None,
                 rule_id=entity.rule_id,
                 rule_name=entity.rule_name or "",  # Ensure non-null string
-                priority=entity.priority.value if entity.priority and hasattr(entity.priority, "value") else str(entity.priority) if entity.priority else "INFORMATIONAL",
+                priority=entity.priority.value
+                if entity.priority and hasattr(entity.priority, "value")
+                else str(entity.priority)
+                if entity.priority
+                else "INFORMATIONAL",
                 message=entity.message or "",  # Ensure non-null string
                 context=entity.context or {},  # Ensure non-null dict
                 created_at=entity.created_at
@@ -613,7 +616,13 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             model.patient_id = str(entity.patient_id) if entity.patient_id else None
             model.rule_id = entity.rule_id
             model.rule_name = entity.rule_name or ""  # Ensure non-null string
-            model.priority = entity.priority.value if entity.priority and hasattr(entity.priority, "value") else str(entity.priority) if entity.priority else "INFORMATIONAL"
+            model.priority = (
+                entity.priority.value
+                if entity.priority and hasattr(entity.priority, "value")
+                else str(entity.priority)
+                if entity.priority
+                else "INFORMATIONAL"
+            )
             model.message = entity.message or ""  # Ensure non-null string
             model.context = entity.context or {}  # Ensure non-null dict
 

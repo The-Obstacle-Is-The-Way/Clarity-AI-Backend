@@ -40,7 +40,9 @@ class PATServiceError(Exception):
 class ValidationError(PATServiceError):
     """Exception raised when validation of input data fails."""
 
-    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs: Any) -> None:
+    def __init__(
+        self, message: str, field: str | None = None, value: Any = None, **kwargs: Any
+    ) -> None:
         """
         Initialize a validation error.
 
@@ -194,7 +196,9 @@ class ServiceConnectionError(PATServiceError):
 class ConfigurationError(PATServiceError):
     """Exception raised when there is a configuration error."""
 
-    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs: Any) -> None:
+    def __init__(
+        self, message: str, field: str | None = None, value: Any = None, **kwargs: Any
+    ) -> None:
         """
         Initialize a configuration error.
 
@@ -214,7 +218,9 @@ class InvalidConfigurationError(ConfigurationError):
     are present but invalid or incompatible with the operation being performed.
     """
 
-    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs: Any) -> None:
+    def __init__(
+        self, message: str, field: str | None = None, value: Any = None, **kwargs: Any
+    ) -> None:
         """
         Initialize an invalid configuration error.
 
@@ -326,5 +332,5 @@ class StorageError(PATServiceError):
             operation=operation,
             resource_id=resource_id,
             cause=cause,
-            **kwargs
+            **kwargs,
         )

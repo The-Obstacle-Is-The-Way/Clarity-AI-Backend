@@ -287,8 +287,9 @@ class TestAuditAnomalyDetection:
 
         # Give the anomaly detection a moment to process (it may be running asynchronously)
         import time
+
         time.sleep(0.1)
-        
+
         # Add one more access that should trigger the anomaly
         await audit_service.log_phi_access(
             actor_id=test_user_id,
@@ -297,7 +298,7 @@ class TestAuditAnomalyDetection:
             action="view",
             status="success",
         )
-        
+
         # Allow time for processing
         time.sleep(0.1)
 

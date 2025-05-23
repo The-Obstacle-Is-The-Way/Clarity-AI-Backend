@@ -87,9 +87,7 @@ class PHIAuditor:
         for category, findings in self.findings.items():
             # Only count non-allowed findings as issues
             if category == "code_phi":
-                total += sum(
-                    1 for finding in findings if not finding.get("is_allowed", False)
-                )
+                total += sum(1 for finding in findings if not finding.get("is_allowed", False))
             else:
                 total += len(findings)
         return total
@@ -244,12 +242,8 @@ class PHIAuditor:
         test_indicators = ["test", "example", "mock", "dummy", "sample", "fixture"]
 
         # Check for combinations of PHI and test indicators
-        has_phi_indicator = any(
-            indicator in content.lower() for indicator in phi_indicators
-        )
-        has_test_indicator = any(
-            indicator in content.lower() for indicator in test_indicators
-        )
+        has_phi_indicator = any(indicator in content.lower() for indicator in phi_indicators)
+        has_test_indicator = any(indicator in content.lower() for indicator in test_indicators)
 
         if has_phi_indicator and has_test_indicator:
             return True
@@ -273,9 +267,7 @@ class PHIAuditor:
                 content = f.read()
 
                 # Check if this is a test file focused on PHI testing
-                result.is_test_file = (
-                    "test" in file_path.lower() or "/tests/" in file_path
-                )
+                result.is_test_file = "test" in file_path.lower() or "/tests/" in file_path
                 result.is_allowed_phi_test = self.is_phi_test_file(file_path, content)
 
                 # If it's allowed to have PHI, mark it as such
@@ -416,12 +408,7 @@ class PHIDetector:
             return "Phone"
         elif re.match(r"4[0-9]{12}", pattern) or re.match(r"5[1-5][0-9]{14}", pattern):
             return "Credit Card"
-        elif (
-            "Mr." in pattern
-            or "Mrs." in pattern
-            or "Ms." in pattern
-            or "Dr." in pattern
-        ):
+        elif "Mr." in pattern or "Mrs." in pattern or "Ms." in pattern or "Dr." in pattern:
             return "Name"
         elif "PATIENT" in pattern or "PT" in pattern:
             return "Patient ID"
@@ -493,9 +480,7 @@ def install_phi_auditor():
 
     # Extract everything except the install_phi_auditor function
     pattern = r"def install_phi_auditor.*?if __name__ == \"__main__\":"
-    modified_content = re.sub(
-        pattern, 'if __name__ == "__main__":', content, flags=re.DOTALL
-    )
+    modified_content = re.sub(pattern, 'if __name__ == "__main__":', content, flags=re.DOTALL)
 
     # Create the directory structure if it doesn't exist
     os.makedirs(os.path.dirname(target_path), exist_ok=True)

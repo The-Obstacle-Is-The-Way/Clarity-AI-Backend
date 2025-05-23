@@ -13,8 +13,8 @@ from app.infrastructure.persistence.sqlalchemy.repositories.user_repository impo
 from app.infrastructure.security.auth.authentication_service import (
     AuthenticationService,
 )
-from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
 from app.infrastructure.security.jwt.jwt_service import get_jwt_service
+from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
 from app.infrastructure.security.password.password_handler import PasswordHandler
 from app.presentation.api.dependencies.repositories import get_user_repository
 from app.presentation.api.dependencies.security import get_password_handler

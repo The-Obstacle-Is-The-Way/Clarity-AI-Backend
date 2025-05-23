@@ -130,9 +130,7 @@ class DockerTestRunner:
 
         logger.info("Environment prepared")
 
-    def _wait_for_postgres(
-        self, host: str, max_retries: int = 30, delay: int = 1
-    ) -> None:
+    def _wait_for_postgres(self, host: str, max_retries: int = 30, delay: int = 1) -> None:
         """Wait for PostgreSQL to be ready with exponential backoff."""
         logger.info(f"Waiting for PostgreSQL at {host}...")
 
@@ -158,9 +156,7 @@ class DockerTestRunner:
                 logger.warning(f"Error checking PostgreSQL: {e}")
 
             time.sleep(retry_delay)
-            retry_delay = min(
-                retry_delay * 2, 10
-            )  # Exponential backoff, max 10 seconds
+            retry_delay = min(retry_delay * 2, 10)  # Exponential backoff, max 10 seconds
             retry += 1
 
         logger.warning(f"PostgreSQL not ready after {max_retries} attempts")
@@ -191,9 +187,7 @@ class DockerTestRunner:
                 logger.warning(f"Error checking Redis: {e}")
 
             time.sleep(retry_delay)
-            retry_delay = min(
-                retry_delay * 2, 10
-            )  # Exponential backoff, max 10 seconds
+            retry_delay = min(retry_delay * 2, 10)  # Exponential backoff, max 10 seconds
             retry += 1
 
         logger.warning(f"Redis not ready after {max_retries} attempts")
@@ -255,15 +249,9 @@ def main() -> int:
     """
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Docker Test Runner for Novamind Digital Twin"
-    )
-    parser.add_argument(
-        "level", choices=list(TEST_LEVELS.keys()), help="Test level to run"
-    )
-    parser.add_argument(
-        "--timeout", type=int, default=300, help="Test timeout in seconds"
-    )
+    parser = argparse.ArgumentParser(description="Docker Test Runner for Novamind Digital Twin")
+    parser.add_argument("level", choices=list(TEST_LEVELS.keys()), help="Test level to run")
+    parser.add_argument("--timeout", type=int, default=300, help="Test timeout in seconds")
 
     args = parser.parse_args()
 

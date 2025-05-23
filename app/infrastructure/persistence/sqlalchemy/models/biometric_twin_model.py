@@ -12,15 +12,15 @@ import uuid
 
 from sqlalchemy import (
     JSON,
+)
+from sqlalchemy import UUID as SQLAlchemyUUID
+from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
     Float,
     ForeignKey,
     String,
-)
-from sqlalchemy import (
-    UUID as SQLAlchemyUUID,
 )
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import relationship

@@ -40,9 +40,7 @@ if any("--docker" in arg for arg in sys.argv):
     os.environ["TEST_MODE"] = "1"
 
 # Import and customize run_tests_by_level for Docker
-from scripts.test.runners.legacy.run_tests_by_level import (
-    main as original_main,
-)
+from scripts.test.runners.legacy.run_tests_by_level import main as original_main
 
 
 def docker_enhanced_main():
@@ -56,16 +54,12 @@ def docker_enhanced_main():
     parser.add_argument(
         "--timeout", type=int, default=300, help="Timeout in seconds for test execution"
     )
-    parser.add_argument(
-        "--fix", action="store_true", help="Apply fixes for standalone tests"
-    )
+    parser.add_argument("--fix", action="store_true", help="Apply fixes for standalone tests")
     parser.add_argument("--xml", action="store_true", help="Generate XML reports")
     parser.add_argument(
         "--cleanup", action="store_true", help="Cleanup temporary files after tests"
     )
-    parser.add_argument(
-        "--docker", action="store_true", help="Running in Docker environment"
-    )
+    parser.add_argument("--docker", action="store_true", help="Running in Docker environment")
 
     args = parser.parse_args()
 

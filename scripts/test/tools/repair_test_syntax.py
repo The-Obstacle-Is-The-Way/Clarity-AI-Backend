@@ -170,9 +170,7 @@ class TestSyntaxRepair:
             Fixed content with added imports
         """
         # Check if file contains certain test-related features without imports
-        needs_unittest_mock = any(
-            x in content for x in ["Mock(", "MagicMock(", "patch(", "@patch"]
-        )
+        needs_unittest_mock = any(x in content for x in ["Mock(", "MagicMock(", "patch(", "@patch"])
         needs_pytest = any(x in content for x in ["pytest.", "@pytest."])
         needs_fixture = "@fixture" in content or "pytest.fixture" in content
 
@@ -204,9 +202,7 @@ class TestSyntaxRepair:
                 doc_end = content.find('"""', content.find('"""') + 3) + 3
                 pre_content = content[:doc_end]
                 post_content = content[doc_end:]
-                return (
-                    pre_content + "\n" + "\n".join(import_lines) + "\n" + post_content
-                )
+                return pre_content + "\n" + "\n".join(import_lines) + "\n" + post_content
             else:
                 # Just add to the top
                 return "\n".join(import_lines) + "\n\n" + content
@@ -236,9 +232,7 @@ class TestSyntaxRepair:
 
             # Check if we fixed it
             if content == fixed_content:
-                print(
-                    f"{Colors.WARNING}No automatic fixes available for {file_path}{Colors.ENDC}"
-                )
+                print(f"{Colors.WARNING}No automatic fixes available for {file_path}{Colors.ENDC}")
                 self.skipped_files += 1
                 return False
 
@@ -337,9 +331,7 @@ class TestSyntaxRepair:
         print(f"  {Colors.FAIL}Failed: {self.error_files}{Colors.ENDC}")
 
         if not dry_run and self.fixed_files > 0:
-            print(
-                f"\n{Colors.GREEN}Successfully fixed {self.fixed_files} files!{Colors.ENDC}"
-            )
+            print(f"\n{Colors.GREEN}Successfully fixed {self.fixed_files} files!{Colors.ENDC}")
         if self.error_files > 0:
             print(
                 f"\n{Colors.WARNING}Some files still need manual fixes. See above for details.{Colors.ENDC}"

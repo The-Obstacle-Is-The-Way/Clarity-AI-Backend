@@ -79,7 +79,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
                 "reason": "manual_blacklist",
             }
             await self._redis.set(jti_key, jti_data, ttl=ttl)
-            
+
             # Add to active JTIs set for efficient retrieval
             await self._add_to_active_jtis(token_jti, ttl)
 
@@ -127,10 +127,10 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
     async def get_all_blacklisted(self) -> list[dict]:
         """
         Get all blacklisted tokens.
-        
+
         Note: This implementation maintains a set of active JTI keys for efficient retrieval
         since Redis pattern scanning is not available in the cache service.
-        
+
         Returns:
             List[dict]: List of dictionaries containing token_jti and expires_at
         """
@@ -138,10 +138,10 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             # Get the set of active JTI keys
             active_jtis_key = f"{self._jti_prefix}active_set"
             active_jtis_data = await self._redis.get(active_jtis_key)
-            
+
             if not active_jtis_data:
                 return []
-            
+
             # Parse the active JTIs list
             if isinstance(active_jtis_data, str):
                 try:
@@ -150,16 +150,16 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
                     active_jtis = []
             else:
                 active_jtis = active_jtis_data if isinstance(active_jtis_data, list) else []
-            
+
             result = []
             for jti in active_jtis:
                 if not jti:
                     continue
-                    
+
                 # Get the data for this JTI
                 jti_key = f"{self._jti_prefix}{jti}"
                 jti_data = await self._redis.get(jti_key)
-                
+
                 if jti_data and isinstance(jti_data, dict):
                     try:
                         expires_at_str = jti_data.get("expires_at")
@@ -168,7 +168,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
                             result.append({"token_jti": jti, "expires_at": expires_at})
                     except (ValueError, TypeError):
                         logger.warning(f"Invalid expiration format for JTI {jti}")
-            
+
             return result
         except Exception as e:
             logger.error(f"Error retrieving blacklisted tokens: {e!s}")
@@ -177,7 +177,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
     async def remove_expired(self) -> int:
         """
         Remove expired tokens from the blacklist to maintain performance.
-        
+
         Returns:
             int: Number of expired tokens removed from blacklist
         """
@@ -189,10 +189,10 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
     async def remove_from_blacklist(self, token_jti: str) -> bool:
         """
         Remove a specific token from the blacklist.
-        
+
         Args:
             token_jti: The unique JWT ID to remove
-            
+
         Returns:
             bool: True if token was removed, False if not found
         """
@@ -200,16 +200,16 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             # Check if JTI exists in blacklist
             jti_key = f"{self._jti_prefix}{token_jti}"
             exists = await self._redis.exists(jti_key)
-            
+
             if not exists:
                 return False
-                
+
             # Remove the JTI entry
             await self._redis.delete(jti_key)
-            
+
             # Remove from active JTIs set
             await self._remove_from_active_jtis(token_jti)
-            
+
             logger.info(f"Removed token with JTI {token_jti} from blacklist")
             return True
         except Exception as e:
@@ -221,7 +221,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         try:
             active_jtis_key = f"{self._jti_prefix}active_set"
             current_data = await self._redis.get(active_jtis_key)
-            
+
             if current_data:
                 if isinstance(current_data, str):
                     active_jtis = current_data.split(",") if current_data else []
@@ -229,12 +229,12 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
                     active_jtis = current_data if isinstance(current_data, list) else []
             else:
                 active_jtis = []
-            
+
             if jti not in active_jtis:
                 active_jtis.append(jti)
                 # Store as comma-separated string for simplicity
                 await self._redis.set(active_jtis_key, ",".join(active_jtis), ttl=ttl + 3600)
-                
+
         except Exception as e:
             logger.warning(f"Failed to add JTI to active set: {e!s}")
 
@@ -243,13 +243,13 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         try:
             active_jtis_key = f"{self._jti_prefix}active_set"
             current_data = await self._redis.get(active_jtis_key)
-            
+
             if current_data:
                 if isinstance(current_data, str):
                     active_jtis = current_data.split(",") if current_data else []
                 else:
                     active_jtis = current_data if isinstance(current_data, list) else []
-                
+
                 if jti in active_jtis:
                     active_jtis.remove(jti)
                     # Update the set
@@ -257,6 +257,6 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
                         await self._redis.set(active_jtis_key, ",".join(active_jtis))
                     else:
                         await self._redis.delete(active_jtis_key)
-                        
+
         except Exception as e:
             logger.warning(f"Failed to remove JTI from active set: {e!s}")

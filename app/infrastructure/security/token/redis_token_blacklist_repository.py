@@ -225,23 +225,23 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         """
         logger.debug("Redis handles TTL automatically; clear_expired_tokens is a no-op.")
         return 0
-        
+
     async def get_all_blacklisted(self) -> list[dict]:
         """
         Get all blacklisted tokens.
-        
+
         Returns:
             List[dict]: List of dictionaries containing token_jti and expires_at
         """
         try:
             # Get all keys matching the JTI pattern
             jti_keys = await self._redis.keys(f"{self._jti_prefix}*")
-            
+
             result = []
             for key in jti_keys:
                 # Extract the JTI from the key
                 jti = key.replace(self._jti_prefix, "")
-                
+
                 # Get the expiration timestamp
                 jti_data = await self._redis.get(key)
                 if jti_data and isinstance(jti_data, dict) and "expires_at" in jti_data:
@@ -250,32 +250,32 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
                         result.append({"token_jti": jti, "expires_at": expires_at})
                     except (ValueError, TypeError):
                         logger.warning(f"Invalid expiration format for JTI {jti}")
-            
+
             return result
         except Exception as e:
             logger.error(f"Error retrieving blacklisted tokens: {e!s}")
             raise RepositoryException(f"Failed to retrieve blacklisted tokens: {e!s}") from e
-            
+
     async def remove_expired(self) -> int:
         """
         Remove expired tokens from the blacklist to maintain performance.
-        
+
         Redis handles TTL automatically, so this is mostly a no-op,
         but implemented for interface compliance.
-        
+
         Returns:
             int: Number of expired tokens removed from blacklist (always 0 for Redis)
         """
         logger.debug("Redis handles TTL automatically; remove_expired is a no-op.")
         return 0
-            
+
     async def remove_from_blacklist(self, token_jti: str) -> bool:
         """
         Remove a specific token from the blacklist.
-        
+
         Args:
             token_jti: The unique JWT ID to remove
-            
+
         Returns:
             bool: True if token was removed, False if not found
         """
@@ -283,24 +283,24 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             # Check if JTI exists in blacklist
             jti_key = f"{self._jti_prefix}{token_jti}"
             exists = await self._redis.exists(jti_key)
-            
+
             if not exists:
                 return False
-                
+
             # Remove the JTI entry
             await self._redis.delete(jti_key)
-            
+
             # Also try to remove any token entry if it exists
             # Note: This is a best-effort approach since we may not have the original token
             token_keys = await self._redis.keys(f"{self._token_prefix}*")
-            
+
             for key in token_keys:
                 # Check if this token entry corresponds to our JTI
                 stored_jti = await self._redis.get(key)
                 if stored_jti == token_jti:
                     await self._redis.delete(key)
                     break
-            
+
             logger.info(f"Removed token with JTI {token_jti} from blacklist")
             return True
         except Exception as e:

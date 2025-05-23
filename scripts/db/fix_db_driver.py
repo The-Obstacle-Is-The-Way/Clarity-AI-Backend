@@ -73,10 +73,7 @@ def fix_db_driver():
         db_content = f.read()
 
     # Ensure correct SQLAlchemy imports and configuration for async
-    if (
-        "from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine"
-        not in db_content
-    ):
+    if "from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine" not in db_content:
         print("Adding missing async SQLAlchemy imports...")
         db_content = db_content.replace(
             "from sqlalchemy.ext.asyncio import",
@@ -110,9 +107,7 @@ def fix_db_driver():
                 f.write("\n# Async database driver for SQLAlchemy\nasyncpg>=0.27.0\n")
 
     print("\nDatabase driver fix complete!")
-    print(
-        "Please run 'pip install -r requirements.txt' to install the new dependencies."
-    )
+    print("Please run 'pip install -r requirements.txt' to install the new dependencies.")
     return True
 
 

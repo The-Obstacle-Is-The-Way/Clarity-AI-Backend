@@ -66,7 +66,7 @@ def map_rule_entity_to_model(rule: BiometricRule) -> BiometricRuleModel:
         provider_id=rule.provider_id,
         created_at=rule.created_at if rule.created_at else datetime.now(timezone.utc),
         updated_at=updated_at,
-        rule_metadata=getattr(rule, 'metadata', None),
+        rule_metadata=getattr(rule, "metadata", None),
     )
 
 

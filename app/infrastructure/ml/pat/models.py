@@ -203,7 +203,9 @@ class AnalysisResult(BaseModel):
         data: dict[str, Any] = {}
         if hasattr(info, "data"):
             # Pydantic v2 pattern - cast data to dict safely
-            data = {} if info.data is None else dict(info.data) if hasattr(info.data, "items") else {}
+            data = (
+                {} if info.data is None else dict(info.data) if hasattr(info.data, "items") else {}
+            )
 
         # Early return if we don't have analysis_type
         if "analysis_type" not in data:
@@ -277,11 +279,11 @@ class HistoricalAnalysisRequest(BaseModel):
 
 class ModelInfo(BaseModel):
     """Model information data structure.
-    
+
     Used by services to report and exchange information about ML models.
     This is the core model data structure used between layers.
     """
-    
+
     model_config = ConfigDict(protected_namespaces=())
     model_id: str = Field(..., description="Unique identifier for the model")
     name: str = Field(..., description="Human-readable name of the model")
@@ -289,7 +291,9 @@ class ModelInfo(BaseModel):
     type: str = Field(..., description="Model type (e.g., 'bedrock', 'custom')")
     provider: str = Field(..., description="Provider of the model (e.g., 'AWS', 'local')")
     version: str = Field(..., description="Model version")
-    capabilities: list[str] = Field(..., description="List of capabilities (e.g., 'text-generation')")
+    capabilities: list[str] = Field(
+        ..., description="List of capabilities (e.g., 'text-generation')"
+    )
     last_updated: str = Field(..., description="ISO timestamp of when the model was last updated")
     parameters: int | None = Field(None, description="Number of model parameters if known")
     context_length: int | None = Field(None, description="Maximum context length if applicable")

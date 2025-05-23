@@ -74,7 +74,7 @@ def sample_user_data() -> dict:
         "email": "test@example.com",
         "roles": ["user"],
         "session_id": str(uuid4()),
-        "custom_key": "custom_value"  # Add this directly for test compatibility
+        "custom_key": "custom_value",  # Add this directly for test compatibility
     }
 
 
@@ -100,7 +100,7 @@ class TestJWTService:
         """Test successful creation of a basic access token."""
         # Store the user_id for later use
         user_id = sample_user_data["sub"]
-        
+
         token = jwt_service.create_access_token(data=sample_user_data)
         assert isinstance(token, str)
         payload = jwt_service.decode_token(token)
@@ -146,7 +146,7 @@ class TestJWTService:
         """Test decoding a valid access token returns correct payload."""
         # Store the user_id for later use
         user_id = sample_user_data["sub"]
-        
+
         token = jwt_service.create_access_token(data=sample_user_data)
 
         # --- Debug Assertion ---
@@ -320,20 +320,20 @@ class TestJWTService:
         """Test token creation with UUID objects."""
         # Generate a UUID object (not string)
         user_id = uuid4()
-        
+
         # Create access token with UUID
         # For test compatibility, explicitly add subject
         access_token = jwt_service.create_access_token(subject=str(user_id))
         access_payload = jwt_service.decode_token(access_token)
-        
+
         # Create refresh token with UUID
         refresh_token = jwt_service.create_refresh_token(subject=str(user_id))
         refresh_payload = jwt_service.decode_token(refresh_token)
-        
+
         # Test access token
         assert isinstance(access_token, str)
         assert str(access_payload.sub) == str(user_id)  # Use str comparison
-        
+
         # Test refresh token
         assert isinstance(refresh_token, str)
         assert str(refresh_payload.sub) == str(user_id)  # Use str comparison

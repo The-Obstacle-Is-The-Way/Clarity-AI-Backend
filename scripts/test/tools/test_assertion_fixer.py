@@ -220,9 +220,7 @@ class TestAssertionFixer:
                 # Wrap in a function if necessary
                 if i > 0 and "class" in lines[i - 1]:
                     # This is probably a method that's missing its def line
-                    fixed_lines.append(
-                        f"{' ' * current_indent}def missing_method(self):"
-                    )
+                    fixed_lines.append(f"{' ' * current_indent}def missing_method(self):")
                     fixed_lines.append(f"{' ' * (current_indent + 4)}{line.strip()}")
                     continue
                 else:
@@ -233,15 +231,8 @@ class TestAssertionFixer:
             fixed_lines.append(line)
 
             # Check for end of function
-            if (
-                in_function
-                and function_indent >= current_indent
-                and i > 0
-                and lines[i - 1].strip()
-            ):
-                if not line.strip().startswith("def") and not line.strip().startswith(
-                    "class"
-                ):
+            if in_function and function_indent >= current_indent and i > 0 and lines[i - 1].strip():
+                if not line.strip().startswith("def") and not line.strip().startswith("class"):
                     in_function = False
 
         return "\n".join(fixed_lines)
@@ -258,9 +249,7 @@ class TestAssertionFixer:
         print(f"Tests directory: {self.tests_dir}")
 
         if self.dry_run:
-            print(
-                f"{Colors.YELLOW}DRY RUN MODE: No files will be modified{Colors.ENDC}"
-            )
+            print(f"{Colors.YELLOW}DRY RUN MODE: No files will be modified{Colors.ENDC}")
 
         test_files = self.find_test_files()
         print(f"Found {len(test_files)} test files")
@@ -282,12 +271,8 @@ class TestAssertionFixer:
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Test Assertion Fixer for Novamind Backend"
-    )
-    parser.add_argument(
-        "--dry-run", action="store_true", help="Don't write any changes to files"
-    )
+    parser = argparse.ArgumentParser(description="Test Assertion Fixer for Novamind Backend")
+    parser.add_argument("--dry-run", action="store_true", help="Don't write any changes to files")
     parser.add_argument("--verbose", action="store_true", help="Show detailed output")
     return parser.parse_args()
 

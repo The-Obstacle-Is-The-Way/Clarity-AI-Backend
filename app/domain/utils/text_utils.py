@@ -66,7 +66,9 @@ def format_date_iso(date_obj: datetime.date) -> str:
     return date_obj.isoformat()
 
 
-def is_date_in_range(target_date: datetime.date, start_date: datetime.date, end_date: datetime.date) -> bool:
+def is_date_in_range(
+    target_date: datetime.date, start_date: datetime.date, end_date: datetime.date
+) -> bool:
     """
     Check if a target date is within a range of dates (inclusive).
 

@@ -71,9 +71,7 @@ def parse_args() -> argparse.Namespace:
         "-v", "--verbose", action="store_true", help="Run tests with verbose output"
     )
     parser.add_argument("--failfast", action="store_true", help="Stop on first failure")
-    parser.add_argument(
-        "--ci-mode", action="store_true", help="Generate reports for CI/CD"
-    )
+    parser.add_argument("--ci-mode", action="store_true", help="Generate reports for CI/CD")
     return parser.parse_args()
 
 
@@ -104,17 +102,13 @@ def run_tests(
     if ci_mode and report_name:
         report_dir = os.path.join(project_root, "test-results")
         os.makedirs(report_dir, exist_ok=True)
-        cmd.append(
-            f"--junitxml={os.path.join(report_dir, f'{report_name}-results.xml')}"
-        )
+        cmd.append(f"--junitxml={os.path.join(report_dir, f'{report_name}-results.xml')}")
 
     # Add coverage reporting
     if coverage_dir:
         coverage_path = os.path.join(project_root, "coverage_html", coverage_dir)
         os.makedirs(coverage_path, exist_ok=True)
-        cmd.extend(
-            ["--cov=app", "--cov-report=term", f"--cov-report=html:{coverage_path}"]
-        )
+        cmd.extend(["--cov=app", "--cov-report=term", f"--cov-report=html:{coverage_path}"])
 
     # Add the test directory
     cmd.append(test_path)
@@ -180,9 +174,7 @@ def main():
             print(f"{Colors.RED}✗ {name}: FAILED{Colors.NC}")
 
     # Return non-zero status if any test suite failed
-    failed_suites = [
-        result for _, result in results if result is not None and result != 0
-    ]
+    failed_suites = [result for _, result in results if result is not None and result != 0]
     return 1 if failed_suites else 0
 
 

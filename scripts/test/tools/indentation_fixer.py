@@ -29,9 +29,7 @@ class Colors:
 
 
 class IndentationFixer:
-    def __init__(
-        self, project_root: Path, dry_run: bool = False, verbose: bool = False
-    ):
+    def __init__(self, project_root: Path, dry_run: bool = False, verbose: bool = False):
         self.project_root = project_root
         self.tests_dir = project_root / "app" / "tests"
         self.dry_run = dry_run
@@ -111,9 +109,7 @@ class IndentationFixer:
                 self.fixed_files.append(file_path)
                 return True
             elif self.verbose:
-                print(
-                    f"{Colors.BLUE}No indentation issues found in {file_path}{Colors.ENDC}"
-                )
+                print(f"{Colors.BLUE}No indentation issues found in {file_path}{Colors.ENDC}")
 
             return True
 
@@ -266,9 +262,7 @@ class IndentationFixer:
 
         return lines
 
-    def _fix_return_outside_function(
-        self, lines: list[str], line_idx: int
-    ) -> list[str]:
+    def _fix_return_outside_function(self, lines: list[str], line_idx: int) -> list[str]:
         """Fix 'return' outside function by wrapping it in a function."""
         # Find the indentation of the return statement
         line = lines[line_idx]
@@ -340,9 +334,7 @@ class IndentationFixer:
         print(f"Tests directory: {self.tests_dir}")
 
         if self.dry_run:
-            print(
-                f"{Colors.YELLOW}DRY RUN MODE: No files will be modified{Colors.ENDC}"
-            )
+            print(f"{Colors.YELLOW}DRY RUN MODE: No files will be modified{Colors.ENDC}")
 
         test_files = self.find_test_files()
         print(f"Found {len(test_files)} test files")
@@ -371,9 +363,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Indentation Fixer for Novamind Backend Test Files"
     )
-    parser.add_argument(
-        "--dry-run", action="store_true", help="Don't write any changes to files"
-    )
+    parser.add_argument("--dry-run", action="store_true", help="Don't write any changes to files")
     parser.add_argument("--verbose", action="store_true", help="Show detailed output")
     parser.add_argument("--fix-file", type=str, help="Fix a specific file")
     return parser.parse_args()

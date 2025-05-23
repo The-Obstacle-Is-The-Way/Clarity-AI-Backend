@@ -74,9 +74,7 @@ class EnhancedSyntaxRepair:
 
         return test_files
 
-    def check_syntax(
-        self, file_path: Path
-    ) -> tuple[SyntaxError | None, int | None, int | None]:
+    def check_syntax(self, file_path: Path) -> tuple[SyntaxError | None, int | None, int | None]:
         """
         Check if a Python file has syntax errors and return detailed information.
 
@@ -182,9 +180,7 @@ class EnhancedSyntaxRepair:
             # Check if line ends with colon (start of a new block)
             if line_content.endswith(":"):
                 fixed_lines.append(line)
-                indent_stack.append(
-                    current_indent + 4
-                )  # Push expected indent for next line
+                indent_stack.append(current_indent + 4)  # Push expected indent for next line
                 continue
 
             # Check if this is a block ending line
@@ -278,12 +274,9 @@ class EnhancedSyntaxRepair:
         """
         # Check if file contains certain test-related features without imports
         needs_unittest_mock = any(
-            x in content
-            for x in ["Mock(", "MagicMock(", "patch(", "@patch", "AsyncMock("]
+            x in content for x in ["Mock(", "MagicMock(", "patch(", "@patch", "AsyncMock("]
         )
-        needs_pytest = any(
-            x in content for x in ["pytest.", "@pytest.", "pytest.fixture"]
-        )
+        needs_pytest = any(x in content for x in ["pytest.", "@pytest.", "pytest.fixture"])
         needs_fixture = "@fixture" in content or "pytest.fixture" in content
         needs_pytest_raises = "pytest.raises" in content or "with raises(" in content
 
@@ -291,9 +284,7 @@ class EnhancedSyntaxRepair:
         import_lines = []
 
         if needs_unittest_mock and "from unittest.mock import" not in content:
-            import_lines.append(
-                "from unittest.mock import Mock, MagicMock, patch, AsyncMock"
-            )
+            import_lines.append("from unittest.mock import Mock, MagicMock, patch, AsyncMock")
 
         if needs_pytest and "import pytest" not in content:
             import_lines.append("import pytest")
@@ -330,9 +321,7 @@ class EnhancedSyntaxRepair:
                 doc_end = content.find('"""', content.find('"""') + 3) + 3
                 pre_content = content[:doc_end]
                 post_content = content[doc_end:]
-                return (
-                    pre_content + "\n" + "\n".join(import_lines) + "\n" + post_content
-                )
+                return pre_content + "\n" + "\n".join(import_lines) + "\n" + post_content
             else:
                 # Just add to the top
                 return "\n".join(import_lines) + "\n\n" + content
@@ -390,9 +379,7 @@ class EnhancedSyntaxRepair:
         # Handle common syntax errors in test files
         if "invalid syntax" in error_msg:
             # Check for common test-specific errors
-            if line_content.startswith("@pytest.fixture") and not line_content.endswith(
-                ")"
-            ):
+            if line_content.startswith("@pytest.fixture") and not line_content.endswith(")"):
                 # Fix incomplete fixture decorator
                 lines[line_number - 1] = problem_line + ")"
                 return "\n".join(lines)
@@ -447,9 +434,7 @@ class EnhancedSyntaxRepair:
                     if not dry_run:
                         with open(file_path, "w", encoding="utf-8") as f:
                             f.write(fixed_content)
-                        print(
-                            f"{Colors.GREEN}Fixed {file_path} with targeted fix{Colors.ENDC}"
-                        )
+                        print(f"{Colors.GREEN}Fixed {file_path} with targeted fix{Colors.ENDC}")
                         self.fixed_files += 1
                     else:
                         print(
@@ -470,9 +455,7 @@ class EnhancedSyntaxRepair:
 
             # Check if we fixed it
             if content == fixed_content:
-                print(
-                    f"{Colors.WARNING}No automatic fixes available for {file_path}{Colors.ENDC}"
-                )
+                print(f"{Colors.WARNING}No automatic fixes available for {file_path}{Colors.ENDC}")
                 self.skipped_files += 1
                 return False
 
@@ -482,9 +465,7 @@ class EnhancedSyntaxRepair:
                 if not dry_run:
                     with open(file_path, "w", encoding="utf-8") as f:
                         f.write(fixed_content)
-                    print(
-                        f"{Colors.GREEN}Fixed {file_path} with general fixes{Colors.ENDC}"
-                    )
+                    print(f"{Colors.GREEN}Fixed {file_path} with general fixes{Colors.ENDC}")
                     self.fixed_files += 1
                 else:
                     print(
@@ -586,9 +567,7 @@ class EnhancedSyntaxRepair:
         print(f"  {Colors.FAIL}Failed: {self.error_files}{Colors.ENDC}")
 
         if not dry_run and self.fixed_files > 0:
-            print(
-                f"\n{Colors.GREEN}Successfully fixed {self.fixed_files} files!{Colors.ENDC}"
-            )
+            print(f"\n{Colors.GREEN}Successfully fixed {self.fixed_files} files!{Colors.ENDC}")
         if self.error_files > 0:
             print(
                 f"\n{Colors.WARNING}Some files still need manual fixes. See above for details.{Colors.ENDC}"

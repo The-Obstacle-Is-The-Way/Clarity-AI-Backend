@@ -13,11 +13,13 @@ from dateutil.parser import parse
 from app.core.exceptions.base_exceptions import (
     ConfigurationError,
     DatabaseException,
-    InitializationError as CoreInitializationError,
-    InvalidConfigurationError,
-    ResourceNotFoundError as CoreResourceNotFoundError,
-    ValidationError as CoreValidationError,
 )
+from app.core.exceptions.base_exceptions import InitializationError as CoreInitializationError
+from app.core.exceptions.base_exceptions import (
+    InvalidConfigurationError,
+)
+from app.core.exceptions.base_exceptions import ResourceNotFoundError as CoreResourceNotFoundError
+from app.core.exceptions.base_exceptions import ValidationError as CoreValidationError
 from app.core.interfaces.aws_service_interface import (
     AWSServiceFactory,
     AWSSessionServiceInterface,
@@ -26,6 +28,7 @@ from app.core.interfaces.aws_service_interface import (
     DynamoDBServiceInterface,
     S3ServiceInterface,
 )
+
 # These are more specific PAT service exceptions that extend the core ones
 from app.core.services.ml.pat.exceptions import (
     AnalysisError,
@@ -35,7 +38,7 @@ from app.core.services.ml.pat.pat_interface import PATInterface
 from app.domain.entities.digital_twin import DigitalTwin
 from app.domain.utils.datetime_utils import UTC
 from app.infrastructure.aws.service_factory_provider import get_aws_service_factory
-from app.infrastructure.ml.pat.models import AnalysisResult, ModelInfo
+from app.infrastructure.ml.pat.models import AnalysisResult
 
 logger = logging.getLogger(__name__)
 
@@ -591,6 +594,7 @@ class BedrockPAT(PATInterface):
             if not item:
                 # Use PAT-specific exception instead of core exception
                 from app.core.services.ml.pat.exceptions import ResourceNotFoundError
+
                 raise ResourceNotFoundError(f"Analysis with ID {analysis_id} not found")
 
             # Parse the DynamoDB item using the helper function
@@ -613,6 +617,7 @@ class BedrockPAT(PATInterface):
             error_msg = f"Failed to retrieve analysis: {e}"
             logging.error(error_msg)
             from app.core.services.ml.pat.exceptions import ResourceNotFoundError
+
             raise ResourceNotFoundError(
                 f"Analysis with ID {analysis_id} could not be parsed: {e}"
             ) from e
@@ -622,6 +627,7 @@ class BedrockPAT(PATInterface):
             # Ensure we raise the PAT-specific ResourceNotFoundError
             if isinstance(e, CoreResourceNotFoundError):
                 from app.core.services.ml.pat.exceptions import ResourceNotFoundError
+
                 raise ResourceNotFoundError(str(e)) from e
             raise e  # Re-raise PAT-specific not found error
         except Exception as e:
@@ -681,7 +687,10 @@ class BedrockPAT(PATInterface):
             if not items:
                 # Use PAT-specific exception instead of core exception
                 from app.core.services.ml.pat.exceptions import ResourceNotFoundError
-                raise ResourceNotFoundError(f"No analyses found for patient {patient_hash} not found")
+
+                raise ResourceNotFoundError(
+                    f"No analyses found for patient {patient_hash} not found"
+                )
 
             # Extract analysis IDs based on response format
             # Important: Support both DynamoDB standard format and test mock format
@@ -769,6 +778,7 @@ class BedrockPAT(PATInterface):
                 error_msg = f"Could not retrieve any valid analyses for patient {patient_hash}"
                 logger.error(error_msg)
                 from app.core.services.ml.pat.exceptions import ResourceNotFoundError
+
                 raise ResourceNotFoundError(error_msg)
 
             return analyses
@@ -777,12 +787,14 @@ class BedrockPAT(PATInterface):
             # Ensure we raise the PAT-specific ResourceNotFoundError
             if isinstance(e, CoreResourceNotFoundError):
                 from app.core.services.ml.pat.exceptions import ResourceNotFoundError
+
                 raise ResourceNotFoundError(str(e)) from e
             raise e
         except Exception as e:
             error_msg = f"Error retrieving analyses for patient {patient_hash}: {e}"
             logger.error(error_msg)
             from app.core.services.ml.pat.exceptions import ResourceNotFoundError
+
             raise ResourceNotFoundError(error_msg) from e
 
     async def integrate_with_digital_twin(

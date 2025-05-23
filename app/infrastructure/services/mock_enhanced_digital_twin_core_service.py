@@ -8,14 +8,13 @@ import asyncio
 import logging
 import random
 import uuid
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from app.domain.entities.digital_twin import DigitalTwinState
 from app.domain.entities.digital_twin_enums import (
     BrainRegion,
-    ClinicalInsightType,
     ClinicalSignificance,
     Neurotransmitter,
 )
@@ -27,13 +26,13 @@ from app.domain.entities.neurotransmitter_mapping import (
     NeurotransmitterMapping,
     ReceptorProfile,
 )
-from app.domain.utils.datetime_utils import UTC
 from app.domain.services.enhanced_digital_twin_core_service import (
     EnhancedDigitalTwinCoreService,
 )
 from app.domain.services.enhanced_mentalllama_service import EnhancedMentalLLaMAService
 from app.domain.services.enhanced_pat_service import EnhancedPATService
 from app.domain.services.enhanced_xgboost_service import EnhancedXGBoostService
+from app.domain.utils.datetime_utils import UTC
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +40,7 @@ logger = logging.getLogger(__name__)
 class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     """
     Mock implementation of EnhancedDigitalTwinCoreService for testing.
-    
+
     Provides realistic mock data while maintaining proper type safety
     and following SOLID principles with dependency injection.
     """
@@ -56,16 +55,16 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         self.mental_llama_service = mental_llama_service
         self.xgboost_service = xgboost_service
         self.pat_service = pat_service
-        
+
         # Initialize mock data storage
-        self._mock_states: Dict[UUID, DigitalTwinState] = {}
-        self._mock_knowledge_graphs: Dict[UUID, TemporalKnowledgeGraph] = {}
-        self._mock_belief_networks: Dict[UUID, BayesianBeliefNetwork] = {}
-        self._neurotransmitter_mappings: Dict[UUID, NeurotransmitterMapping] = {}
-        
+        self._mock_states: dict[UUID, DigitalTwinState] = {}
+        self._mock_knowledge_graphs: dict[UUID, TemporalKnowledgeGraph] = {}
+        self._mock_belief_networks: dict[UUID, BayesianBeliefNetwork] = {}
+        self._neurotransmitter_mappings: dict[UUID, NeurotransmitterMapping] = {}
+
         # FIXED: Add missing attributes for patient validation and event system
-        self.digital_twins: Dict[UUID, Dict[str, Any]] = {}
-        self.event_subscribers: List[Any] = []
+        self.digital_twins: dict[UUID, dict[str, Any]] = {}
+        self.event_subscribers: list[Any] = []
 
     async def initialize_digital_twin(
         self,
@@ -76,32 +75,32 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     ) -> dict:
         """Initialize a new Digital Twin state with knowledge graph and belief network."""
         logger.info(f"Initializing Digital Twin for patient {patient_id}")
-        
+
         # Create mock Digital Twin state
         state = self._create_mock_digital_twin_state(patient_id, initial_data)
         self._mock_states[patient_id] = state
-        
+
         # Create mock knowledge graph if enabled
         knowledge_graph = None
         if enable_knowledge_graph:
             knowledge_graph = self._create_mock_knowledge_graph(patient_id)
             self._mock_knowledge_graphs[patient_id] = knowledge_graph
-        
+
         # Create mock belief network if enabled
         belief_network = None
         if enable_belief_network:
             belief_network = self._create_mock_belief_network(patient_id)
             self._mock_belief_networks[patient_id] = belief_network
-        
+
         # FIXED: Add to digital_twins for patient validation
         self.digital_twins[patient_id] = {
             "patient_id": patient_id,
             "status": "initialized",
             "knowledge_graph": knowledge_graph,
             "belief_network": belief_network,
-            "digital_twin_state": state
+            "digital_twin_state": state,
         }
-        
+
         return self.digital_twins[patient_id]
 
     async def digital_twin_exists(self, patient_id: UUID) -> bool:
@@ -148,7 +147,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                     "id": str(uuid.uuid4()),
                     "type": "symptom_of",
                     "strength": 0.8,
-                    "evidence": "clinical_observation"
+                    "evidence": "clinical_observation",
                 }
             ]
         }
@@ -172,10 +171,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     ) -> dict:
         """Query the belief network."""
         logger.info(f"Querying belief network for patient {patient_id}")
-        return {
-            "probability": random.uniform(0.3, 0.9),
-            "confidence": random.uniform(0.7, 0.95)
-        }
+        return {"probability": random.uniform(0.3, 0.9), "confidence": random.uniform(0.7, 0.95)}
 
     async def simulate_neurotransmitter_dynamics(
         self,
@@ -186,28 +182,30 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     ) -> dict:
         """Simulate neurotransmitter dynamics."""
         logger.info(f"Simulating neurotransmitter dynamics for patient {patient_id}")
-        
+
         timeline = []
         for day in range(duration_days):
-            timeline.append({
-                "day": day,
-                "neurotransmitter_levels": {
-                    "serotonin": 0.4 + (day * 0.01),
-                    "dopamine": 0.5 + (day * 0.005),
-                    "norepinephrine": 0.6 - (day * 0.002),
-                },
-                "clinical_effects": {
-                    "mood": random.uniform(0.3, 0.8),
-                    "anxiety": random.uniform(0.2, 0.6),
+            timeline.append(
+                {
+                    "day": day,
+                    "neurotransmitter_levels": {
+                        "serotonin": 0.4 + (day * 0.01),
+                        "dopamine": 0.5 + (day * 0.005),
+                        "norepinephrine": 0.6 - (day * 0.002),
+                    },
+                    "clinical_effects": {
+                        "mood": random.uniform(0.3, 0.8),
+                        "anxiety": random.uniform(0.2, 0.6),
+                    },
                 }
-            })
-        
+            )
+
         return {
             "timeline": timeline,
             "clinical_effects": {
                 "overall_improvement": random.uniform(0.3, 0.7),
-                "side_effects": random.uniform(0.1, 0.3)
-            }
+                "side_effects": random.uniform(0.1, 0.3),
+            },
         }
 
     async def add_temporal_sequence(
@@ -231,7 +229,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         return {
             "trend": "increasing",
             "significance": random.uniform(0.6, 0.9),
-            "correlation": random.uniform(0.4, 0.8)
+            "correlation": random.uniform(0.4, 0.8),
         }
 
     # Removed duplicate generate_clinical_insights method - DRY principle violation fixed
@@ -244,7 +242,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     ) -> dict:
         """Predict treatment response using the Digital Twin."""
         logger.info(f"Predicting treatment response for patient {patient_id}")
-        
+
         return {
             "response_probability": random.uniform(0.6, 0.9),
             "confidence": random.uniform(0.7, 0.95),
@@ -255,7 +253,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             "expected_neurotransmitter_changes": {
                 "serotonin": random.uniform(0.2, 0.5),
                 "dopamine": random.uniform(0.1, 0.3),
-            }
+            },
         }
 
     async def process_clinical_event(
@@ -266,7 +264,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     ) -> dict:
         """Process a clinical event in the Digital Twin."""
         logger.info(f"Processing clinical event for patient {patient_id}: {event_type}")
-        
+
         return {
             "event_id": str(uuid.uuid4()),
             "status": "processed",
@@ -274,9 +272,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 {
                     "type": "neurotransmitter_change",
                     "magnitude": random.uniform(0.1, 0.3),
-                    "confidence": random.uniform(0.7, 0.9)
+                    "confidence": random.uniform(0.7, 0.9),
                 }
-            ]
+            ],
         }
 
     async def get_clinical_events(
@@ -287,16 +285,13 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     ) -> list:
         """Get clinical events for the patient."""
         logger.info(f"Getting clinical events for patient {patient_id}")
-        
+
         return [
             {
                 "event_id": str(uuid.uuid4()),
                 "event_type": event_types[0] if event_types else "medication_change",
-                "event_data": {
-                    "medication": "Escitalopram",
-                    "change_type": "dosage_increase"
-                },
-                "timestamp": datetime.now()
+                "event_data": {"medication": "Escitalopram", "change_type": "dosage_increase"},
+                "timestamp": datetime.now(),
             }
         ]
 
@@ -309,24 +304,21 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     ) -> dict:
         """Generate a comprehensive multimodal clinical summary."""
         logger.info(f"Generating clinical summary for patient {patient_id}")
-        
+
         return {
             "metadata": {
                 "patient_id": str(patient_id),
                 "generated_at": datetime.now(),
-                "detail_level": detail_level
+                "detail_level": detail_level,
             },
             "sections": {
                 "status": {
                     "overall_status": "stable",
-                    "key_metrics": {"mood": 0.7, "anxiety": 0.4}
+                    "key_metrics": {"mood": 0.7, "anxiety": 0.4},
                 },
-                "trajectory": {
-                    "trend": "improving",
-                    "confidence": 0.85
-                }
+                "trajectory": {"trend": "improving", "confidence": 0.85},
             },
-            "integrated_summary": "Patient showing positive response to treatment with stable mood and decreasing anxiety."
+            "integrated_summary": "Patient showing positive response to treatment with stable mood and decreasing anxiety.",
         }
 
     async def generate_visualization_data(
@@ -338,7 +330,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     ) -> dict:
         """Generate data for advanced visualizations."""
         logger.info(f"Generating visualization data for patient {patient_id}")
-        
+
         if visualization_type == "brain_model":
             return {
                 "regions": [
@@ -346,24 +338,24 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                         "id": "prefrontal_cortex",
                         "name": "Prefrontal Cortex",
                         "activation": random.uniform(0.6, 0.9),
-                        "coordinates": {"x": 0, "y": 0, "z": 0}
+                        "coordinates": {"x": 0, "y": 0, "z": 0},
                     },
                     {
                         "id": "amygdala",
                         "name": "Amygdala",
                         "activation": random.uniform(0.6, 0.8),
-                        "coordinates": {"x": 1, "y": 1, "z": 1}
-                    }
+                        "coordinates": {"x": 1, "y": 1, "z": 1},
+                    },
                 ],
                 "neurotransmitters": [
                     {
                         "id": "serotonin",
                         "level": random.uniform(0.4, 0.8),
-                        "regions": ["prefrontal_cortex", "amygdala"]
+                        "regions": ["prefrontal_cortex", "amygdala"],
                     }
-                ]
+                ],
             }
-        
+
         return {"visualization_type": visualization_type, "data": {}}
 
     # Neurotransmitter mapping methods
@@ -375,11 +367,11 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     ) -> NeurotransmitterMapping:
         """Initialize neurotransmitter mapping for a patient."""
         logger.info(f"Initializing neurotransmitter mapping for patient {patient_id}")
-        
+
         # Validate patient exists - check if patient has a digital twin
         if patient_id not in self.digital_twins:
             raise ValueError(f"Patient {patient_id} not found")
-        
+
         # Create mapping based on parameters
         if custom_mapping:
             mapping = custom_mapping
@@ -390,18 +382,25 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             # Create empty mapping when both default and custom are disabled
             # FIXED: NeurotransmitterMapping only accepts patient_id parameter
             mapping = NeurotransmitterMapping(patient_id=patient_id)
-        
+
         # Store the mapping - FIXED: use _neurotransmitter_mappings for test compatibility
         self._neurotransmitter_mappings[patient_id] = mapping
-        
-        # FIXED: Publish initialization event
-        await self._publish_event("neurotransmitter_mapping.initialized", {
-            "patient_id": str(patient_id),
-            "mapping_type": "default" if use_default_mapping else "custom" if custom_mapping else "empty"
-        }, patient_id)
-        
-        return mapping
 
+        # FIXED: Publish initialization event
+        await self._publish_event(
+            "neurotransmitter_mapping.initialized",
+            {
+                "patient_id": str(patient_id),
+                "mapping_type": "default"
+                if use_default_mapping
+                else "custom"
+                if custom_mapping
+                else "empty",
+            },
+            patient_id,
+        )
+
+        return mapping
 
     async def analyze_neurotransmitter_interactions(
         self,
@@ -410,18 +409,18 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     ) -> dict:
         """Analyze interactions between neurotransmitters."""
         logger.info(f"Analyzing neurotransmitter interactions for patient {patient_id}")
-        
+
         return {
             "primary_interactions": [
                 {
                     "source": "serotonin",
                     "target": "dopamine",
                     "effect_type": "modulatory",
-                    "effect_magnitude": "medium"
+                    "effect_magnitude": "medium",
                 }
             ],
             "secondary_interactions": [],
-            "confidence": random.uniform(0.7, 0.9)
+            "confidence": random.uniform(0.7, 0.9),
         }
 
     async def predict_medication_effects(
@@ -432,21 +431,23 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     ) -> dict:
         """Predict medication effects on neurotransmitters."""
         logger.info(f"Predicting medication effects for patient {patient_id}")
-        
+
         timeline = []
         for day in range(prediction_timeframe_days):
-            timeline.append({
-                "day": day,
-                "neurotransmitter_levels": {
-                    "serotonin": 0.4 + (day * 0.01),
-                    "dopamine": 0.5 + (day * 0.005),
-                },
-                "expected_symptom_changes": {
-                    "mood": random.uniform(0.3, 0.8),
-                    "anxiety": random.uniform(0.2, 0.6),
+            timeline.append(
+                {
+                    "day": day,
+                    "neurotransmitter_levels": {
+                        "serotonin": 0.4 + (day * 0.01),
+                        "dopamine": 0.5 + (day * 0.005),
+                    },
+                    "expected_symptom_changes": {
+                        "mood": random.uniform(0.3, 0.8),
+                        "anxiety": random.uniform(0.2, 0.6),
+                    },
                 }
-            })
-        
+            )
+
         return {
             "primary_effects": {
                 "serotonin": 0.3,
@@ -454,7 +455,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             },
             "secondary_effects": {},
             "expected_timeline": timeline,
-            "confidence": random.uniform(0.7, 0.9)
+            "confidence": random.uniform(0.7, 0.9),
         }
 
     async def analyze_temporal_response(
@@ -466,19 +467,16 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     ) -> dict:
         """Analyze temporal response patterns."""
         logger.info(f"Analyzing temporal response for patient {patient_id}")
-        
+
         response_curve = []
         for day in range(30):
-            response_curve.append({
-                "day": day,
-                "response_level": random.uniform(0.3, 0.9)
-            })
-        
+            response_curve.append({"day": day, "response_level": random.uniform(0.3, 0.9)})
+
         return {
             "response_curve": response_curve,
             "peak_response_day": random.randint(7, 21),
             "stabilization_day": random.randint(21, 35),
-            "confidence": random.uniform(0.7, 0.9)
+            "confidence": random.uniform(0.7, 0.9),
         }
 
     async def generate_clinical_insights(
@@ -489,21 +487,27 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     ) -> list:
         """Generate clinical insights from the Digital Twin."""
         logger.info(f"Generating clinical insights for patient {patient_id}")
-        
+
         insights = []
         for insight_type in insight_types:
-            insights.append({
-                "type": insight_type.value if hasattr(insight_type, 'value') else str(insight_type),
-                "description": f"Mock insight for {insight_type}",
-                "significance": random.choice([
-                    ClinicalSignificance.HIGH.value,
-                    ClinicalSignificance.MEDIUM.value,
-                    ClinicalSignificance.LOW.value,
-                ]),
-                "confidence": random.uniform(0.7, 0.95),
-                "supporting_evidence": ["clinical_data", "biomarkers"]
-            })
-        
+            insights.append(
+                {
+                    "type": insight_type.value
+                    if hasattr(insight_type, "value")
+                    else str(insight_type),
+                    "description": f"Mock insight for {insight_type}",
+                    "significance": random.choice(
+                        [
+                            ClinicalSignificance.HIGH.value,
+                            ClinicalSignificance.MEDIUM.value,
+                            ClinicalSignificance.LOW.value,
+                        ]
+                    ),
+                    "confidence": random.uniform(0.7, 0.95),
+                    "supporting_evidence": ["clinical_data", "biomarkers"],
+                }
+            )
+
         return insights
 
     async def analyze_regional_effects(
@@ -514,7 +518,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     ) -> dict:
         """Analyze regional effects of neurotransmitter changes."""
         logger.info(f"Analyzing regional effects for patient {patient_id}")
-        
+
         return {
             "affected_brain_regions": [
                 {
@@ -522,7 +526,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                     "neurotransmitter": neurotransmitter.value,
                     "effect": effect_magnitude,
                     "confidence": random.uniform(0.7, 0.9),
-                    "clinical_significance": "moderate"
+                    "clinical_significance": "moderate",
                 }
             ],
             "expected_clinical_effects": [
@@ -530,10 +534,10 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                     "symptom": "mood",
                     "change_direction": "improvement",
                     "magnitude": random.uniform(0.3, 0.7),
-                    "confidence": random.uniform(0.7, 0.9)
+                    "confidence": random.uniform(0.7, 0.9),
                 }
             ],
-            "confidence": random.uniform(0.7, 0.9)
+            "confidence": random.uniform(0.7, 0.9),
         }
 
     async def simulate_neurotransmitter_cascade(
@@ -546,37 +550,52 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     ) -> dict:
         """Simulate neurotransmitter cascade effects."""
         logger.info(f"Simulating neurotransmitter cascade for patient {patient_id}")
-        
+
         # FIXED: Ensure mapping exists without publishing event
         if patient_id not in self._neurotransmitter_mappings:
             # Create empty mapping directly to avoid duplicate initialization event
-            self._neurotransmitter_mappings[patient_id] = NeurotransmitterMapping(patient_id=patient_id)
-        
+            self._neurotransmitter_mappings[patient_id] = NeurotransmitterMapping(
+                patient_id=patient_id
+            )
+
         timeline = []
         for step in range(simulation_steps):
             # Start with initial changes
             levels = {
-                nt.value: 0.4 + level + random.uniform(-0.05, 0.05)  # Start from baseline 0.4 + increase
+                nt.value: 0.4
+                + level
+                + random.uniform(-0.05, 0.05)  # Start from baseline 0.4 + increase
                 for nt, level in initial_changes.items()
             }
-            
+
             # Add cascade effects - simulate secondary neurotransmitter changes
             # If serotonin is increased, it affects dopamine (as shown in cascade_pathways)
             if Neurotransmitter.SEROTONIN in initial_changes:
                 # Dopamine is affected by serotonin changes over time
-                dopamine_effect = initial_changes[Neurotransmitter.SEROTONIN] * 0.3 * (step + 1) / simulation_steps
-                levels[Neurotransmitter.DOPAMINE.value] = 0.5 + dopamine_effect + random.uniform(-0.05, 0.05)
-            
-            timeline.append({
-                "time_hours": step * time_resolution_hours,
-                "neurotransmitter_levels": levels,
-                "region_effects": {  # FIXED: Added missing region_effects field
-                    BrainRegion.PREFRONTAL_CORTEX.value: random.uniform(0.15, 0.4),  # Ensure >= min_effect_threshold
-                    BrainRegion.AMYGDALA.value: random.uniform(0.15, 0.4),
-                    BrainRegion.HIPPOCAMPUS.value: random.uniform(0.15, 0.3)
+                dopamine_effect = (
+                    initial_changes[Neurotransmitter.SEROTONIN]
+                    * 0.3
+                    * (step + 1)
+                    / simulation_steps
+                )
+                levels[Neurotransmitter.DOPAMINE.value] = (
+                    0.5 + dopamine_effect + random.uniform(-0.05, 0.05)
+                )
+
+            timeline.append(
+                {
+                    "time_hours": step * time_resolution_hours,
+                    "neurotransmitter_levels": levels,
+                    "region_effects": {  # FIXED: Added missing region_effects field
+                        BrainRegion.PREFRONTAL_CORTEX.value: random.uniform(
+                            0.15, 0.4
+                        ),  # Ensure >= min_effect_threshold
+                        BrainRegion.AMYGDALA.value: random.uniform(0.15, 0.4),
+                        BrainRegion.HIPPOCAMPUS.value: random.uniform(0.15, 0.3),
+                    },
                 }
-            })
-        
+            )
+
         return {
             "timeline": timeline,
             "steps_data": timeline,  # Add steps_data as alias for timeline for test compatibility
@@ -585,7 +604,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                     "source": "serotonin",
                     "target": "dopamine",
                     "effect": random.uniform(0.1, 0.3),
-                    "confidence": random.uniform(0.7, 0.9)
+                    "confidence": random.uniform(0.7, 0.9),
                 }
             ],
             "pathways": [  # FIXED: Added missing pathways field as alias for cascade_pathways
@@ -593,59 +612,60 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                     "source": "serotonin",
                     "target": "dopamine",
                     "effect": random.uniform(0.1, 0.3),
-                    "confidence": random.uniform(0.7, 0.9)
+                    "confidence": random.uniform(0.7, 0.9),
                 }
             ],
             "affected_regions": [BrainRegion.PREFRONTAL_CORTEX.value, BrainRegion.AMYGDALA.value],
-            "most_affected_regions": [BrainRegion.PREFRONTAL_CORTEX.value, BrainRegion.AMYGDALA.value],  # FIXED: Added missing most_affected_regions field
+            "most_affected_regions": [
+                BrainRegion.PREFRONTAL_CORTEX.value,
+                BrainRegion.AMYGDALA.value,
+            ],  # FIXED: Added missing most_affected_regions field
             "simulation_parameters": {  # FIXED: Added missing simulation_parameters field
                 "simulation_steps": simulation_steps,
                 "time_resolution_hours": time_resolution_hours,
                 "initial_changes": {nt.value: level for nt, level in initial_changes.items()},
-                "min_effect_threshold": 0.15  # FIXED: Added missing min_effect_threshold parameter
+                "min_effect_threshold": 0.15,  # FIXED: Added missing min_effect_threshold parameter
             },
-            "confidence": random.uniform(0.7, 0.9)
+            "confidence": random.uniform(0.7, 0.9),
         }
-
 
     async def add_receptor_profile(
         self, patient_id: UUID, profile: ReceptorProfile
     ) -> NeurotransmitterMapping:
         """Add a receptor profile to the patient's neurotransmitter mapping."""
         logger.info(f"Adding receptor profile for patient {patient_id}")
-        
+
         # Get existing mapping or create new one
         mapping = self._neurotransmitter_mappings.get(patient_id)
         if not mapping:
             mapping = await self.initialize_neurotransmitter_mapping(patient_id)
-        
+
         # Remove any existing profile with the same characteristics
         mapping.receptor_profiles = [
-            p for p in mapping.receptor_profiles
+            p
+            for p in mapping.receptor_profiles
             if not (
                 p.brain_region == profile.brain_region
                 and p.neurotransmitter == profile.neurotransmitter
                 and p.receptor_subtype == profile.receptor_subtype
             )
         ]
-        
+
         # Add the new profile
         mapping.receptor_profiles.append(profile)
         mapping.updated_at = datetime.now()
-        
+
         self._neurotransmitter_mappings[patient_id] = mapping
         return mapping
 
-    async def get_neurotransmitter_mapping(
-        self, patient_id: UUID
-    ) -> NeurotransmitterMapping:
+    async def get_neurotransmitter_mapping(self, patient_id: UUID) -> NeurotransmitterMapping:
         """Get the current neurotransmitter mapping for a patient."""
         logger.info(f"Getting neurotransmitter mapping for patient {patient_id}")
-        
+
         mapping = self._neurotransmitter_mappings.get(patient_id)
         if not mapping:
             mapping = await self.initialize_neurotransmitter_mapping(patient_id)
-        
+
         return mapping
 
     # Stub implementations for remaining abstract methods
@@ -674,7 +694,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         return {"effects": {}, "confidence": 0.8}
 
     async def generate_intervention_response_coupling(self, *args, **kwargs) -> dict:
-        logger.info("MockEnhancedDigitalTwinCoreService.generate_intervention_response_coupling called")
+        logger.info(
+            "MockEnhancedDigitalTwinCoreService.generate_intervention_response_coupling called"
+        )
         return {"coupling_data": {}, "confidence": 0.8}
 
     async def detect_digital_phenotype(self, *args, **kwargs) -> dict:
@@ -682,7 +704,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         return {"phenotype": "mock_phenotype", "confidence": 0.8}
 
     async def generate_predictive_maintenance_plan(self, *args, **kwargs) -> dict:
-        logger.info("MockEnhancedDigitalTwinCoreService.generate_predictive_maintenance_plan called")
+        logger.info(
+            "MockEnhancedDigitalTwinCoreService.generate_predictive_maintenance_plan called"
+        )
         return {"plan": {}, "confidence": 0.8}
 
     async def perform_counterfactual_simulation(self, *args, **kwargs) -> list:
@@ -698,43 +722,48 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     ) -> NeurotransmitterMapping:
         """Update or add receptor profiles to the patient's neurotransmitter mapping."""
         logger.info("MockEnhancedDigitalTwinCoreService.update_receptor_profiles called")
-        
+
         # Ensure mapping exists - FIXED: Create empty mapping without publishing event
         if patient_id not in self._neurotransmitter_mappings:
             # Create empty mapping directly to avoid duplicate initialization event
-            self._neurotransmitter_mappings[patient_id] = NeurotransmitterMapping(patient_id=patient_id)
-        
+            self._neurotransmitter_mappings[patient_id] = NeurotransmitterMapping(
+                patient_id=patient_id
+            )
+
         mapping = self._neurotransmitter_mappings[patient_id]
-        
+
         # Update receptor profiles
         for new_profile in receptor_profiles:
             # Replace existing profile with same characteristics or add new one
             existing_index = None
             for i, existing_profile in enumerate(mapping.receptor_profiles):
-                if (existing_profile.neurotransmitter == new_profile.neurotransmitter and
-                    existing_profile.brain_region == new_profile.brain_region and
-                    existing_profile.receptor_type == new_profile.receptor_type):
+                if (
+                    existing_profile.neurotransmitter == new_profile.neurotransmitter
+                    and existing_profile.brain_region == new_profile.brain_region
+                    and existing_profile.receptor_type == new_profile.receptor_type
+                ):
                     existing_index = i
                     break
-            
+
             if existing_index is not None:
                 mapping.receptor_profiles[existing_index] = new_profile
                 event_type = "receptor_profile_updated"
             else:
                 mapping.receptor_profiles.append(new_profile)
                 event_type = "receptor_profile_added"
-            
+
             # NOTE: Individual profile events removed to match test expectations
             # Only publish the aggregate profiles_updated event below
-        
+
         mapping.updated_at = datetime.now(UTC)
-        
+
         # FIXED: Publish profiles updated event
-        await self._publish_event("neurotransmitter_mapping.profiles_updated", {
-            "patient_id": str(patient_id),
-            "profiles_count": len(receptor_profiles)
-        }, patient_id)
-        
+        await self._publish_event(
+            "neurotransmitter_mapping.profiles_updated",
+            {"patient_id": str(patient_id), "profiles_count": len(receptor_profiles)},
+            patient_id,
+        )
+
         return mapping
 
     async def get_neurotransmitter_effects(
@@ -745,24 +774,30 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     ) -> dict[BrainRegion, dict]:
         """Get the effects of a neurotransmitter on specified brain regions."""
         logger.info("MockEnhancedDigitalTwinCoreService.get_neurotransmitter_effects called")
-        
+
         # Ensure mapping exists
         if patient_id not in self._neurotransmitter_mappings:
             await self.initialize_neurotransmitter_mapping(patient_id)
-        
+
         # Use provided regions or default to all regions
         regions_to_analyze = brain_regions or [BrainRegion.PREFRONTAL_CORTEX, BrainRegion.AMYGDALA]
-        
+
         effects = {}
         for region in regions_to_analyze:
             effects[region] = {
                 "net_effect": random.uniform(0.3, 0.8),
                 "confidence": random.uniform(0.7, 0.9),
-                "receptor_types": ["5HT1A", "5HT2A"] if neurotransmitter == Neurotransmitter.SEROTONIN else ["D1", "D2"],
-                "receptor_count": random.randint(500, 1000),  # FIXED: Added missing receptor_count field
-                "is_produced_here": random.choice([True, False])  # FIXED: Added missing is_produced_here field
+                "receptor_types": ["5HT1A", "5HT2A"]
+                if neurotransmitter == Neurotransmitter.SEROTONIN
+                else ["D1", "D2"],
+                "receptor_count": random.randint(
+                    500, 1000
+                ),  # FIXED: Added missing receptor_count field
+                "is_produced_here": random.choice(
+                    [True, False]
+                ),  # FIXED: Added missing is_produced_here field
             }
-        
+
         return effects
 
     async def get_brain_region_neurotransmitter_sensitivity(
@@ -772,28 +807,39 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         neurotransmitters: list[Neurotransmitter] | None = None,
     ) -> dict[Neurotransmitter, dict]:
         """Get a brain region's sensitivity to different neurotransmitters."""
-        logger.info("MockEnhancedDigitalTwinCoreService.get_brain_region_neurotransmitter_sensitivity called")
-        
+        logger.info(
+            "MockEnhancedDigitalTwinCoreService.get_brain_region_neurotransmitter_sensitivity called"
+        )
+
         # Ensure mapping exists
         if patient_id not in self._neurotransmitter_mappings:
             await self.initialize_neurotransmitter_mapping(patient_id)
-        
+
         # Use provided neurotransmitters or default to common ones
-        neurotransmitters_to_analyze = neurotransmitters or [Neurotransmitter.SEROTONIN, Neurotransmitter.DOPAMINE]
-        
+        neurotransmitters_to_analyze = neurotransmitters or [
+            Neurotransmitter.SEROTONIN,
+            Neurotransmitter.DOPAMINE,
+        ]
+
         sensitivity_data = {}
         for nt in neurotransmitters_to_analyze:
-            receptor_types = ["5HT1A", "5HT2A"] if nt == Neurotransmitter.SEROTONIN else ["D1", "D2"]
+            receptor_types = (
+                ["5HT1A", "5HT2A"] if nt == Neurotransmitter.SEROTONIN else ["D1", "D2"]
+            )
             sensitivity_data[nt] = {
                 "sensitivity": random.uniform(0.5, 0.9),
                 "confidence": random.uniform(0.7, 0.9),
                 "receptor_count": random.randint(100, 1000),
                 "clinical_relevance": "high",
                 "receptor_types": receptor_types,  # FIXED: Added missing receptor_types field
-                "dominant_receptor_type": random.choice(receptor_types),  # FIXED: Added missing dominant_receptor_type field
-                "is_produced_here": random.choice([True, False])  # FIXED: Added missing is_produced_here field
+                "dominant_receptor_type": random.choice(
+                    receptor_types
+                ),  # FIXED: Added missing dominant_receptor_type field
+                "is_produced_here": random.choice(
+                    [True, False]
+                ),  # FIXED: Added missing is_produced_here field
             }
-        
+
         return sensitivity_data
 
     async def analyze_treatment_neurotransmitter_effects(
@@ -804,49 +850,53 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         neurotransmitters: list[Neurotransmitter] | None = None,
     ) -> dict:
         """Analyze how a treatment affects neurotransmitter levels and brain regions over time."""
-        logger.info("MockEnhancedDigitalTwinCoreService.analyze_treatment_neurotransmitter_effects called")
-        
+        logger.info(
+            "MockEnhancedDigitalTwinCoreService.analyze_treatment_neurotransmitter_effects called"
+        )
+
         # Ensure mapping exists
         if patient_id not in self._neurotransmitter_mappings:
             await self.initialize_neurotransmitter_mapping(patient_id)
-        
+
         timeline_data = [
             {
                 "time": tp.isoformat(),
                 "neurotransmitter_levels": {
                     "serotonin": random.uniform(0.4, 0.8),
-                    "dopamine": random.uniform(0.3, 0.7)
-                }
-            } for tp in time_points
+                    "dopamine": random.uniform(0.3, 0.7),
+                },
+            }
+            for tp in time_points
         ]
-        
+
         # FIXED: Create neurotransmitter_timeline as dictionary with neurotransmitter names as keys
         neurotransmitter_timeline = {}
-        
+
         # Use provided neurotransmitters or default ones
-        nt_list = neurotransmitters if neurotransmitters else [Neurotransmitter.SEROTONIN, Neurotransmitter.DOPAMINE]
-        
+        nt_list = (
+            neurotransmitters
+            if neurotransmitters
+            else [Neurotransmitter.SEROTONIN, Neurotransmitter.DOPAMINE]
+        )
+
         for nt in nt_list:
             neurotransmitter_timeline[nt.value] = [
-                {
-                    "time": tp.isoformat(),
-                    "level": random.uniform(0.4, 0.8)
-                } for tp in time_points
+                {"time": tp.isoformat(), "level": random.uniform(0.4, 0.8)} for tp in time_points
             ]
-        
+
         return {
-            "treatment": {
-                "id": str(treatment_id),
-                "type": "medication"
-            },
+            "treatment": {"id": str(treatment_id), "type": "medication"},
             "effects": {
                 "serotonin": random.uniform(0.3, 0.8),
-                "dopamine": random.uniform(0.2, 0.7)
+                "dopamine": random.uniform(0.2, 0.7),
             },
             "timeline": timeline_data,
             "neurotransmitter_timeline": neurotransmitter_timeline,  # FIXED: Now structured as dict with nt names as keys
-            "affected_brain_regions": [BrainRegion.PREFRONTAL_CORTEX.value, BrainRegion.AMYGDALA.value],  # FIXED: Added missing affected_brain_regions field
-            "confidence": random.uniform(0.7, 0.9)
+            "affected_brain_regions": [
+                BrainRegion.PREFRONTAL_CORTEX.value,
+                BrainRegion.AMYGDALA.value,
+            ],  # FIXED: Added missing affected_brain_regions field
+            "confidence": random.uniform(0.7, 0.9),
         }
 
     async def subscribe_to_events(self, callback, *args, **kwargs) -> UUID:
@@ -854,14 +904,16 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         # Store the callback for event publishing
         self.event_subscribers.append(callback)
         return uuid.uuid4()
-    
+
     async def _publish_event(self, event_type: str, data: dict, patient_id: UUID = None):
         """Publish an event to all subscribers."""
         # FIXED: Call subscribers with correct signature (event_type, event_data, source, patient_id)
         for callback in self.event_subscribers:
             try:
                 if asyncio.iscoroutinefunction(callback):
-                    await callback(event_type, data, "MockEnhancedDigitalTwinCoreService", patient_id)
+                    await callback(
+                        event_type, data, "MockEnhancedDigitalTwinCoreService", patient_id
+                    )
                 else:
                     callback(event_type, data, "MockEnhancedDigitalTwinCoreService", patient_id)
             except Exception as e:
@@ -876,7 +928,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         return uuid.uuid4()
 
     # Helper methods
-    def _create_mock_digital_twin_state(self, patient_id: UUID, initial_data: dict | None) -> DigitalTwinState:
+    def _create_mock_digital_twin_state(
+        self, patient_id: UUID, initial_data: dict | None
+    ) -> DigitalTwinState:
         """Create a mock Digital Twin state."""
         # This would create a proper DigitalTwinState object
         # For now, returning a mock dict
@@ -886,39 +940,29 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             "status": "active",
             "brain_regions": {},
             "neurotransmitters": {},
-            "version": 1
+            "version": 1,
         }
 
     def _create_mock_knowledge_graph(self, patient_id: UUID) -> TemporalKnowledgeGraph:
         """Create a mock temporal knowledge graph."""
-        return {
-            "patient_id": patient_id,
-            "nodes": [],
-            "edges": [],
-            "temporal_data": {}
-        }
+        return {"patient_id": patient_id, "nodes": [], "edges": [], "temporal_data": {}}
 
     def _create_mock_belief_network(self, patient_id: UUID) -> BayesianBeliefNetwork:
         """Create a mock Bayesian belief network."""
-        return {
-            "patient_id": patient_id,
-            "nodes": [],
-            "probabilities": {},
-            "evidence": {}
-        }
+        return {"patient_id": patient_id, "nodes": [], "probabilities": {}, "evidence": {}}
 
     def _create_mock_neurotransmitter_mapping(self, patient_id: UUID) -> NeurotransmitterMapping:
         """Create a mock neurotransmitter mapping."""
+        from app.domain.entities.digital_twin_enums import ClinicalSignificance
         from app.domain.entities.neurotransmitter_mapping import (
             NeurotransmitterMapping,
             ReceptorProfile,
-            ReceptorType,
             ReceptorSubtype,
+            ReceptorType,
         )
-        from app.domain.entities.digital_twin_enums import ClinicalSignificance
-        
+
         mapping = NeurotransmitterMapping(patient_id=patient_id)
-        
+
         # Add mock receptor profiles
         profiles = [
             ReceptorProfile(
@@ -928,7 +972,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 receptor_subtype=ReceptorSubtype.SEROTONIN_5HT2A,
                 density=0.7,
                 sensitivity=0.8,
-                clinical_relevance=ClinicalSignificance.MODERATE
+                clinical_relevance=ClinicalSignificance.MODERATE,
             ),
             ReceptorProfile(
                 brain_region=BrainRegion.AMYGDALA,
@@ -937,7 +981,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 receptor_subtype=ReceptorSubtype.GABA_A,
                 density=0.6,
                 sensitivity=0.9,
-                clinical_relevance=ClinicalSignificance.SIGNIFICANT
+                clinical_relevance=ClinicalSignificance.SIGNIFICANT,
             ),
             ReceptorProfile(
                 brain_region=BrainRegion.HIPPOCAMPUS,
@@ -946,7 +990,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 receptor_subtype=ReceptorSubtype.GLUTAMATE_NMDA,
                 density=0.8,
                 sensitivity=0.7,
-                clinical_relevance=ClinicalSignificance.MODERATE
+                clinical_relevance=ClinicalSignificance.MODERATE,
             ),
             ReceptorProfile(
                 brain_region=BrainRegion.PITUITARY,
@@ -955,11 +999,11 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                 receptor_subtype=ReceptorSubtype.DOPAMINE_D2,
                 density=0.5,
                 sensitivity=0.6,
-                clinical_relevance=ClinicalSignificance.MILD
-            )
+                clinical_relevance=ClinicalSignificance.MILD,
+            ),
         ]
-        
+
         for profile in profiles:
             mapping.add_receptor_profile(profile)
-        
+
         return mapping

@@ -327,9 +327,7 @@ def backup_file(file_path: Path, timestamp: str) -> None:
 def create_patches(timestamp: str) -> None:
     """Create patched files for standalone test fixes."""
     # Create standalone clinical rule engine
-    standalone_rule_engine = (
-        DOMAIN_DIR / "services" / "standalone_clinical_rule_engine.py"
-    )
+    standalone_rule_engine = DOMAIN_DIR / "services" / "standalone_clinical_rule_engine.py"
     backup_file(standalone_rule_engine, timestamp)
     standalone_rule_engine.parent.mkdir(exist_ok=True, parents=True)
     standalone_rule_engine.write_text(STANDALONE_CLINICAL_RULE_ENGINE)
@@ -359,26 +357,20 @@ def create_patches(timestamp: str) -> None:
     print(f"Created {provider_patch}")
 
     # Create biometric data point patch
-    biometric_patch = (
-        DOMAIN_DIR / "entities" / "digital_twin" / "biometric_data_point_patch.py"
-    )
+    biometric_patch = DOMAIN_DIR / "entities" / "digital_twin" / "biometric_data_point_patch.py"
     backup_file(biometric_patch, timestamp)
     biometric_patch.parent.mkdir(exist_ok=True, parents=True)
     biometric_patch.write_text(BIOMETRIC_DATA_POINT_PATCH)
     print(f"Created {biometric_patch}")
 
     # Create biometric twin model patch
-    twin_model_patch = (
-        DOMAIN_DIR / "entities" / "digital_twin" / "biometric_twin_model_patch.py"
-    )
+    twin_model_patch = DOMAIN_DIR / "entities" / "digital_twin" / "biometric_twin_model_patch.py"
     backup_file(twin_model_patch, timestamp)
     twin_model_patch.write_text(BIOMETRIC_TWIN_MODEL_PATCH)
     print(f"Created {twin_model_patch}")
 
     # Create MFA service patch
-    mfa_patch = (
-        ROOT_DIR / "app" / "infrastructure" / "security" / "mfa_service_patch.py"
-    )
+    mfa_patch = ROOT_DIR / "app" / "infrastructure" / "security" / "mfa_service_patch.py"
     backup_file(mfa_patch, timestamp)
     mfa_patch.parent.mkdir(exist_ok=True, parents=True)
     mfa_patch.write_text(MFA_SERVICE_PATCH)
@@ -549,9 +541,7 @@ def main():
     parser.add_argument(
         "--timeout", type=int, default=300, help="Timeout in seconds for test execution"
     )
-    parser.add_argument(
-        "--fix", action="store_true", help="Apply fixes for standalone tests"
-    )
+    parser.add_argument("--fix", action="store_true", help="Apply fixes for standalone tests")
     args = parser.parse_args()
 
     # Ensure necessary directories exist

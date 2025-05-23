@@ -52,7 +52,7 @@ class EmergencyContact:
     ) -> "EmergencyContact":
         """
         Factory method for creating EmergencyContact with dict address support.
-        
+
         This method handles the conversion of dict address to Address object
         before dataclass initialization.
         """
@@ -64,7 +64,7 @@ class EmergencyContact:
                 address_obj = address
             else:
                 raise ValueError("Address must be a dict or Address object")
-        
+
         return cls(
             name=name,
             relationship=relationship,
@@ -149,9 +149,12 @@ class EmergencyContact:
     def validate_completeness(self) -> bool:
         """Validate that all required fields are present and non-empty."""
         return bool(
-            self.name and self.name.strip() and
-            self.relationship and self.relationship.strip() and
-            self.phone and self.phone.strip()
+            self.name
+            and self.name.strip()
+            and self.relationship
+            and self.relationship.strip()
+            and self.phone
+            and self.phone.strip()
         )
 
     @classmethod

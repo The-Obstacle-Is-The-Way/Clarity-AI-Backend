@@ -8,11 +8,12 @@ allowing the application layer to depend on abstractions rather than concrete im
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class AuditEventType(str, Enum):
     """Standardized audit event types for consistent logging across the application."""
+
     # Authentication events
     LOGIN = "LOGIN"
     LOGOUT = "LOGOUT"
@@ -20,29 +21,29 @@ class AuditEventType(str, Enum):
     LOGIN_SUCCESS = "LOGIN_SUCCESS"  # Added for test compatibility
     PASSWORD_CHANGE = "PASSWORD_CHANGE"
     PASSWORD_RESET = "PASSWORD_RESET"
-    
+
     # Token events
     TOKEN_CREATION = "TOKEN_CREATION"
     TOKEN_VALIDATION = "TOKEN_VALIDATION"
     TOKEN_VALIDATION_FAILED = "TOKEN_VALIDATION_FAILED"
     TOKEN_REFRESH = "TOKEN_REFRESH"
     TOKEN_REVOCATION = "TOKEN_REVOCATION"
-    
+
     # Access control events
     ACCESS_GRANTED = "ACCESS_GRANTED"
     ACCESS_DENIED = "ACCESS_DENIED"
     PERMISSION_CHANGE = "PERMISSION_CHANGE"
-    
+
     # Data events
     DATA_ACCESS = "DATA_ACCESS"
     PHI_ACCESS = "PHI_ACCESS"  # Added for HIPAA logging
     DATA_MODIFICATION = "DATA_MODIFICATION"
     DATA_DELETION = "DATA_DELETION"
     DATA_EXPORT = "DATA_EXPORT"
-    
+
     # Security events
     SECURITY_ALERT = "SECURITY_ALERT"  # Added for security anomaly detection
-    
+
     # System events
     SYSTEM_STARTUP = "SYSTEM_STARTUP"
     SYSTEM_SHUTDOWN = "SYSTEM_SHUTDOWN"
@@ -53,6 +54,7 @@ class AuditEventType(str, Enum):
 
 class AuditSeverity(str, Enum):
     """Standardized severity levels for audit events."""
+
     DEBUG = "DEBUG"
     INFO = "INFO"
     WARNING = "WARNING"
@@ -63,23 +65,23 @@ class AuditSeverity(str, Enum):
 
 class IAuditLogger(ABC):
     """Interface for HIPAA-compliant audit logging services.
-    
+
     This interface ensures all audit logging implementations provide consistent
     methods for recording security events, errors, and other audit information
     while maintaining separation of concerns in the clean architecture.
     """
-    
+
     @abstractmethod
     def log_security_event(
-        self, 
+        self,
         event_type: AuditEventType,
         description: str,
         severity: AuditSeverity = AuditSeverity.INFO,
-        user_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        user_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Log a security-related event for audit purposes.
-        
+
         Args:
             event_type: Type of security event (e.g., LOGIN, LOGOUT, TOKEN_ISSUED)
             description: Human-readable description of the event
@@ -88,7 +90,7 @@ class IAuditLogger(ABC):
             metadata: Additional contextual information about the event
         """
         pass
-    
+
     @abstractmethod
     def log_data_access(
         self,
@@ -96,11 +98,11 @@ class IAuditLogger(ABC):
         resource_id: str,
         action: str,
         user_id: str,
-        reason: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        reason: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Log access to sensitive data for HIPAA compliance.
-        
+
         Args:
             resource_type: Type of resource being accessed (e.g., PATIENT, RECORD)
             resource_id: Identifier of the resource
@@ -110,20 +112,20 @@ class IAuditLogger(ABC):
             metadata: Additional contextual information about the access
         """
         pass
-    
+
     @abstractmethod
     def log_api_request(
         self,
         endpoint: str,
         method: str,
         status_code: int,
-        user_id: Optional[str] = None,
-        request_id: Optional[str] = None,
-        duration_ms: Optional[float] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        user_id: str | None = None,
+        request_id: str | None = None,
+        duration_ms: float | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Log API request information for audit trails.
-        
+
         Args:
             endpoint: API endpoint that was accessed
             method: HTTP method used (GET, POST, etc.)
@@ -134,17 +136,17 @@ class IAuditLogger(ABC):
             metadata: Additional contextual information about the request
         """
         pass
-    
+
     @abstractmethod
     def log_system_event(
         self,
         event_type: str,
         description: str,
         severity: AuditSeverity = AuditSeverity.INFO,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Log system-level events for operational auditing.
-        
+
         Args:
             event_type: Type of system event
             description: Human-readable description of the event

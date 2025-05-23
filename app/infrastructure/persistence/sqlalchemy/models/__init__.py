@@ -12,7 +12,7 @@ IMPORTANT: This module follows clean architecture principles:
 import logging
 import sys
 from importlib import import_module
-from typing import Any, List, Optional, Type, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, List, Optional, Type, cast
 
 # First import the Base class to establish registry
 from app.infrastructure.persistence.sqlalchemy.registry import (
@@ -29,21 +29,21 @@ from .user import User, UserRole
 
 # Create forward references for models that might not be available
 if TYPE_CHECKING:
+    from .appointment import AppointmentModel as AppointmentModelType
+    from .audit_log import AuditLog as AuditLogType
     from .biometric_alert_model import BiometricAlertModel as BiometricAlertModelType
     from .biometric_rule import BiometricRuleModel as BiometricRuleModelType
     from .biometric_twin_model import BiometricTwinModel as BiometricTwinModelType
-    from .digital_twin import DigitalTwinModel as DigitalTwinModelType
-    from .appointment import AppointmentModel as AppointmentModelType
     from .clinical_note import ClinicalNoteModel as ClinicalNoteModelType
+    from .digital_twin import DigitalTwinModel as DigitalTwinModelType
     from .medication import MedicationModel as MedicationModelType
-    from .audit_log import AuditLog as AuditLogType
 
 # Optional model imports - these may not be available in all environments
 # Using Any as a fallback type for models that couldn't be imported
-BiometricAlertModel: Optional[Type[Any]] = None
-BiometricRuleModel: Optional[Type[Any]] = None
-BiometricTwinModel: Optional[Type[Any]] = None
-DigitalTwinModel: Optional[Type[Any]] = None
+BiometricAlertModel: type[Any] | None = None
+BiometricRuleModel: type[Any] | None = None
+BiometricTwinModel: type[Any] | None = None
+DigitalTwinModel: type[Any] | None = None
 
 # Try to import the biometric and digital twin models
 try:
@@ -57,34 +57,36 @@ except ImportError as e:
 from .patient import Patient
 
 # Import other optional models
-AppointmentModel: Optional[Type[Any]] = None
+AppointmentModel: type[Any] | None = None
 try:
     from .appointment import AppointmentModel
 except ImportError:
     logging.warning("AppointmentModel could not be imported")
 
-ClinicalNoteModel: Optional[Type[Any]] = None
+ClinicalNoteModel: type[Any] | None = None
 try:
     from .clinical_note import ClinicalNoteModel
 except ImportError:
     logging.warning("ClinicalNoteModel could not be imported")
 
-MedicationModel: Optional[Type[Any]] = None
+MedicationModel: type[Any] | None = None
 try:
     from .medication import MedicationModel
 except ImportError:
     logging.warning("MedicationModel could not be imported")
 
-AuditLog: Optional[Type[Any]] = None
+AuditLog: type[Any] | None = None
 try:
     from .audit_log import AuditLog
 except ImportError:
     logging.warning("AuditLog could not be imported")
 
+
 # Define a helper function to conditionally include models in __all__
-def _include_if_available(model_name: str, model_obj: Any) -> List[str]:
+def _include_if_available(model_name: str, model_obj: Any) -> list[str]:
     """Helper function to conditionally include models in __all__."""
     return [model_name] if model_obj is not None else []
+
 
 # Comprehensive list of all models for proper export
 __all__ = [

@@ -43,9 +43,7 @@ class RedisValidator:
             # Handle simple host:port format
             parts = redis_url.split(":")
             host = parts[0] or "localhost"
-            port = (
-                int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else default_port
-            )
+            port = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else default_port
 
         return host, port
 
@@ -75,9 +73,7 @@ class RedisValidator:
             return False
 
     @staticmethod
-    def wait_for_redis(
-        redis_url: str, max_retries: int = 30, initial_delay: int = 1
-    ) -> bool:
+    def wait_for_redis(redis_url: str, max_retries: int = 30, initial_delay: int = 1) -> bool:
         """
         Wait for Redis to become available with exponential backoff.
 
@@ -100,16 +96,12 @@ class RedisValidator:
                 logger.info(f"Redis is available at {host}:{port}")
                 return True
 
-            logger.warning(
-                f"Redis not available at {host}:{port}, retrying in {delay}s..."
-            )
+            logger.warning(f"Redis not available at {host}:{port}, retrying in {delay}s...")
             time.sleep(delay)
 
             # Implement exponential backoff with a cap
             delay = min(delay * 2, 10)
             retries += 1
 
-        logger.error(
-            f"Redis not available at {host}:{port} after {max_retries} retries"
-        )
+        logger.error(f"Redis not available at {host}:{port} after {max_retries} retries")
         return False

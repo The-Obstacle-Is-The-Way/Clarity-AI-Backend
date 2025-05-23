@@ -34,7 +34,7 @@ _class_registry: dict[str, type[Any]] = {}
 
 # Expose the mapper_registry's _class_registry if it exists, otherwise use our own
 # This ensures compatibility with different SQLAlchemy access patterns
-if hasattr(mapper_registry, '_class_registry'):
+if hasattr(mapper_registry, "_class_registry"):
     _class_registry = mapper_registry._class_registry
 else:
     # Attach our _class_registry to the mapper_registry for consistency
@@ -133,6 +133,6 @@ def ensure_all_models_registered() -> None:
         logger.error(f"Error ensuring models are registered: {e!s}")
         # Don't raise the exception to allow for graceful degradation
 
-# Ensure _class_registry is always available at module level for test compatibility
-globals()['_class_registry'] = _class_registry
 
+# Ensure _class_registry is always available at module level for test compatibility
+globals()["_class_registry"] = _class_registry

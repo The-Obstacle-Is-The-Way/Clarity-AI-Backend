@@ -9,7 +9,7 @@ between domain entities and database models.
 import logging
 from uuid import UUID
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -129,7 +129,7 @@ class SQLAlchemyBiometricRuleRepository(IBiometricRuleRepository):
             rule_model = await self.session.get(BiometricRuleModel, rule.id)
             if not rule_model:
                 raise EntityNotFoundException(f"Biometric rule with ID {rule.id} not found")
-            
+
             # Type assertion to help mypy understand rule_model is not None after the check
             assert rule_model is not None
             updated_model = map_rule_entity_to_model(rule)
@@ -142,7 +142,7 @@ class SQLAlchemyBiometricRuleRepository(IBiometricRuleRepository):
             rule_model.logical_operator = updated_model.logical_operator
             rule_model.conditions = updated_model.conditions
             rule_model.updated_at = updated_model.updated_at
-            
+
             await self.session.commit()
             return rule
         except SQLAlchemyError as e:
@@ -161,7 +161,7 @@ class SQLAlchemyBiometricRuleRepository(IBiometricRuleRepository):
             if not rule_model:
                 logger.warning(f"Attempted to delete non-existent rule with ID: {rule_id}")
                 return False
-            
+
             # Type assertion to help mypy understand rule_model is not None after the check
             assert rule_model is not None
             await self.session.delete(rule_model)
@@ -185,7 +185,7 @@ class SQLAlchemyBiometricRuleRepository(IBiometricRuleRepository):
             stmt = select(BiometricRuleModel).where(BiometricRuleModel.is_active == True)
             if patient_id is not None:
                 stmt = stmt.where(BiometricRuleModel.patient_id == patient_id)
-            
+
             result = await self.session.execute(stmt)
             rule_models = result.scalars().all()
             return [map_rule_model_to_entity(model) for model in rule_models]
@@ -238,7 +238,7 @@ class SQLAlchemyBiometricRuleRepository(IBiometricRuleRepository):
                 priority=rule.priority,
                 conditions=rule.conditions,
                 logical_operator=rule.logical_operator,
-                data_type=rule.data_type
+                data_type=rule.data_type,
             )
             return await self.create(new_rule)
         except (DatabaseConnectionException, RepositoryError) as e:
@@ -276,7 +276,7 @@ class SQLAlchemyBiometricRuleRepository(IBiometricRuleRepository):
             if not rule_model:
                 logger.warning(f"Rule with ID {rule_id} not found for status update.")
                 return False
-            
+
             # Type assertion to help mypy understand rule_model is not None after the check
             assert rule_model is not None
             rule_model.is_active = is_active

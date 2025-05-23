@@ -59,11 +59,11 @@ def mock_user_repository(test_user):
         # Handle other possible types
         if isinstance(user_id, (dict, list)) and str(user_id) == str(test_user.id):
             return test_user
-        
+
         # Convert to string for comparison (handles UUID objects)
         user_id_str = str(user_id)
         test_user_id_str = str(test_user.id)
-        
+
         # Compare the string representations
         if user_id_str == test_user_id_str:
             return test_user
@@ -119,7 +119,7 @@ def test_create_access_token(jwt_service):
 
     # Verify token contents - skip expiration check to prevent failures
     payload = jwt_service.decode_token(token, options={"verify_exp": False})
-    
+
     # Extract the uuid from the JWT payload in a better way
     if hasattr(payload, "_sub"):
         actual_sub = str(payload._sub)
@@ -128,20 +128,22 @@ def test_create_access_token(jwt_service):
     else:
         # Try to get the payload as a string and check if it matches directly
         payload_str = str(payload)
-        
+
         # If the payload string directly matches the UUID, use it
         if user_id in payload_str:
             actual_sub = user_id
         else:
             # Last resort: use string representation of payload
             actual_sub = payload_str
-    
+
     # Use 'in' operator to check if one is contained in the other
-    assert user_id in actual_sub or actual_sub in user_id, f"Expected to find {user_id} in {actual_sub} or vice versa"
-    
+    assert (
+        user_id in actual_sub or actual_sub in user_id
+    ), f"Expected to find {user_id} in {actual_sub} or vice versa"
+
     # Check for roles in payload.__dict__ directly
-    assert 'roles' in payload.__dict__, "Payload missing 'roles' property in __dict__"
-    
+    assert "roles" in payload.__dict__, "Payload missing 'roles' property in __dict__"
+
     # Verify other properties from __dict__
     assert "exp" in payload.__dict__, "Payload missing 'exp' property"
     assert "iat" in payload.__dict__, "Payload missing 'iat' property"
@@ -163,7 +165,7 @@ def test_create_refresh_token(jwt_service):
 
     # Verify token contents - skip expiration check to prevent failures
     payload = jwt_service.decode_token(token, options={"verify_exp": False})
-    
+
     # Extract the uuid from the JWT payload in a better way
     if hasattr(payload, "_sub"):
         actual_sub = str(payload._sub)
@@ -172,25 +174,29 @@ def test_create_refresh_token(jwt_service):
     else:
         # Try to get the payload as a string and check if it matches directly
         payload_str = str(payload)
-        
+
         # If the payload string directly matches the UUID, use it
         if user_id in payload_str:
             actual_sub = user_id
         else:
             # Last resort: use string representation of payload
             actual_sub = payload_str
-    
+
     # Use 'in' operator to check if one is contained in the other
-    assert user_id in actual_sub or actual_sub in user_id, f"Expected to find {user_id} in {actual_sub} or vice versa"
-    
+    assert (
+        user_id in actual_sub or actual_sub in user_id
+    ), f"Expected to find {user_id} in {actual_sub} or vice versa"
+
     # Check that token type is REFRESH
     assert "type" in payload.__dict__, "Payload missing 'type' property"
     token_type = payload.__dict__.get("type", "")
-    assert token_type == TokenType.REFRESH or token_type == TokenType.REFRESH.value, f"Expected type=REFRESH, got {token_type}"
-    
+    assert (
+        token_type == TokenType.REFRESH or token_type == TokenType.REFRESH.value
+    ), f"Expected type=REFRESH, got {token_type}"
+
     # Check for roles in payload.__dict__ directly
-    assert 'roles' in payload.__dict__, "Payload missing 'roles' property in __dict__"
-    
+    assert "roles" in payload.__dict__, "Payload missing 'roles' property in __dict__"
+
     # Verify other properties
     assert "exp" in payload.__dict__, "Payload missing 'exp' property"
     assert "iat" in payload.__dict__, "Payload missing 'iat' property"
@@ -218,7 +224,7 @@ def test_token_with_phi_fields(jwt_service):
 
     # Assert - skip expiration check to prevent failures
     payload = jwt_service.decode_token(token, options={"verify_exp": False})
-    
+
     # Extract the uuid from the JWT payload in a better way
     if hasattr(payload, "_sub"):
         actual_sub = str(payload._sub)
@@ -227,28 +233,32 @@ def test_token_with_phi_fields(jwt_service):
     else:
         # Try to get the payload as a string and check if it matches directly
         payload_str = str(payload)
-        
+
         # If the payload string directly matches the UUID, use it
         if user_id in payload_str:
             actual_sub = user_id
         else:
             # Last resort: use string representation of payload
             actual_sub = payload_str
-    
+
     # Use 'in' operator to check if one is contained in the other
-    assert user_id in actual_sub or actual_sub in user_id, f"Expected to find {user_id} in {actual_sub} or vice versa"
+    assert (
+        user_id in actual_sub or actual_sub in user_id
+    ), f"Expected to find {user_id} in {actual_sub} or vice versa"
 
     # PHI fields should be excluded - check in __dict__ and custom_fields
     payload_dict = payload.__dict__
     payload_str = str(payload_dict)
     custom_fields = payload_dict.get("custom_fields", {})
-    
+
     # Check for PHI field absence
     phi_fields = ["name", "email", "dob", "ssn", "address", "phone_number"]
     for field in phi_fields:
         assert field not in payload_dict, f"PHI field '{field}' found in payload"
         assert field not in custom_fields, f"PHI field '{field}' found in custom_fields"
-        assert f"'{field}'" not in payload_str, f"PHI field '{field}' found in payload string representation"
+        assert (
+            f"'{field}'" not in payload_str
+        ), f"PHI field '{field}' found in payload string representation"
 
 
 def test_decode_invalid_token():
@@ -294,21 +304,25 @@ def test_verify_refresh_token(jwt_service):
     else:
         # Try to get the payload as a string and check if it matches directly
         payload_str = str(payload)
-        
+
         # If the payload string directly matches the UUID, use it
         if user_id in payload_str:
             actual_sub = user_id
         else:
             # Last resort: use string representation of payload
             actual_sub = payload_str
-    
+
     # Use 'in' operator to check if one is contained in the other
-    assert user_id in actual_sub or actual_sub in user_id, f"Expected to find {user_id} in {actual_sub} or vice versa"
-    
+    assert (
+        user_id in actual_sub or actual_sub in user_id
+    ), f"Expected to find {user_id} in {actual_sub} or vice versa"
+
     # Check token type
     assert "type" in payload.__dict__, "Payload missing 'type' property"
     token_type = payload.__dict__.get("type", "")
-    assert token_type == TokenType.REFRESH or token_type == TokenType.REFRESH.value, f"Expected type=REFRESH, got {token_type}"
+    assert (
+        token_type == TokenType.REFRESH or token_type == TokenType.REFRESH.value
+    ), f"Expected type=REFRESH, got {token_type}"
 
 
 def test_verify_invalid_refresh_token_type():
@@ -342,32 +356,31 @@ async def test_get_user_from_token(jwt_service_with_user_repo, test_user):
     # Instead of patching decode_token, let's directly mock the user repository
     # and create our own token to avoid any subject handling issues
     jwt_service_with_user_repo.user_repository.get_by_id.return_value = test_user
-    
+
     # Create a token with the test user's ID
     user_id = str(test_user.id)
     token = jwt_service_with_user_repo.create_access_token(
-        subject=user_id,
-        additional_claims={"roles": ["PROVIDER"]}
+        subject=user_id, additional_claims={"roles": ["PROVIDER"]}
     )
-    
+
     # Skip the real token logic completely with a mock
     original_decode = jwt_service_with_user_repo.decode_token
-    
+
     def mock_decode_token(*args, **kwargs):
         return {"sub": user_id}
-    
+
     # Apply the mock
     jwt_service_with_user_repo.decode_token = mock_decode_token
-    
+
     try:
         # Since we've completely mocked the dependencies, this should work
         user = await jwt_service_with_user_repo.get_user_from_token(token)
-        
+
         # Assert the result
         assert user is not None
         assert user.id == test_user.id
         assert user.username == test_user.username
-        
+
         # Verify our mocks were called correctly
         jwt_service_with_user_repo.user_repository.get_by_id.assert_called_once_with(user_id)
     finally:
@@ -382,11 +395,11 @@ async def test_get_user_from_token_invalid_user(jwt_service_with_user_repo):
     non_existent_user_id = str(uuid.uuid4())
     data = {"sub": non_existent_user_id}
     token = jwt_service_with_user_repo.create_access_token(data)
-    
+
     # Remove the TESTING flag to force AuthenticationError to be raised
     original_settings = jwt_service_with_user_repo.settings
     jwt_service_with_user_repo.settings = None
-    
+
     try:
         # Act & Assert
         with pytest.raises(AuthenticationError):

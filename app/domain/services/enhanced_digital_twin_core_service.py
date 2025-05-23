@@ -12,7 +12,6 @@ from app.domain.entities.digital_twin import DigitalTwinState
 from app.domain.entities.digital_twin_enums import (
     BrainRegion,
     ClinicalInsightType,
-    ClinicalSignificance,
     Neurotransmitter,
 )
 from app.domain.entities.knowledge_graph import (
@@ -552,9 +551,7 @@ class EnhancedDigitalTwinCoreService(ABC):
         pass
 
     @abstractmethod
-    async def get_neurotransmitter_mapping(
-        self, patient_id: UUID
-    ) -> NeurotransmitterMapping:
+    async def get_neurotransmitter_mapping(self, patient_id: UUID) -> NeurotransmitterMapping:
         """
         Get the current neurotransmitter mapping for a patient.
 
@@ -601,7 +598,11 @@ class EnhancedDigitalTwinCoreService(ABC):
 
     @abstractmethod
     async def analyze_temporal_response(
-        self, patient_id: UUID, treatment: dict[str, Any], brain_region: BrainRegion, neurotransmitter: Neurotransmitter
+        self,
+        patient_id: UUID,
+        treatment: dict[str, Any],
+        brain_region: BrainRegion,
+        neurotransmitter: Neurotransmitter,
     ) -> dict[str, Any]:
         """
         Analyze temporal response patterns for treatment effects.

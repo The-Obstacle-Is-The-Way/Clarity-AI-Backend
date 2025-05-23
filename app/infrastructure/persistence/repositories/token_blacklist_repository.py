@@ -6,8 +6,8 @@ This module provides a repository for managing blacklisted tokens.
 
 from datetime import datetime
 
-from app.domain.exceptions.repository import RepositoryException
 from app.core.interfaces.repositories.token_repository_interface import ITokenRepository
+from app.domain.exceptions.repository import RepositoryException
 from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)

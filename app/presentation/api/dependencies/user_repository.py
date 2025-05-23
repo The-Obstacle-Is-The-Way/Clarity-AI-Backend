@@ -9,7 +9,6 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.infrastructure.repositories.sqla.user_repository import SQLAlchemyUserRepository
 from app.presentation.api.dependencies.db_session import get_db_session
 
@@ -17,9 +16,9 @@ from app.presentation.api.dependencies.db_session import get_db_session
 def get_user_repository():
     """
     Provides a user repository implementation.
-    
+
     Creates and returns a SQLAlchemy-based user repository for accessing user data.
-    
+
     Returns:
         An implementation of the IUserRepository interface
     """
@@ -30,5 +29,4 @@ def get_user_repository():
 # Type annotation for dependency injection
 # Use concrete implementation for FastAPI compatibility while preserving
 # clean architecture inside the application
-from app.infrastructure.repositories.sqla.user_repository import SQLAlchemyUserRepository
 UserRepositoryDep = Annotated[SQLAlchemyUserRepository, Depends(get_user_repository)]

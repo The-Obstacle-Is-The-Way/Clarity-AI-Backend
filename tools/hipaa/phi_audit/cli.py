@@ -25,9 +25,7 @@ def setup_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument(
-        "--path", type=str, default="app", help="Path to scan for PHI leakage"
-    )
+    parser.add_argument("--path", type=str, default="app", help="Path to scan for PHI leakage")
 
     parser.add_argument(
         "--output",
@@ -40,9 +38,7 @@ def setup_parser() -> argparse.ArgumentParser:
         "--fix", action="store_true", help="Automatically fix common PHI leakage issues"
     )
 
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Enable verbose output"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
 
     parser.add_argument(
         "--exclude",
@@ -84,9 +80,7 @@ def run_audit(args: argparse.Namespace) -> int:
             )
 
             if args.fix and result.issues_found:
-                logger.info(
-                    "Issues found. Attempting to automatically fix common problems..."
-                )
+                logger.info("Issues found. Attempting to automatically fix common problems...")
                 from tools.hipaa.phi_audit.complete_phi_audit_fixer import (
                     fix_phi_issues,
                 )
@@ -95,9 +89,7 @@ def run_audit(args: argparse.Namespace) -> int:
                     issues=result.issues, path=args.path, verbose=args.verbose
                 )
 
-                logger.info(
-                    f"Fixed {fix_result.fixed_count} of {result.issues_found} issues"
-                )
+                logger.info(f"Fixed {fix_result.fixed_count} of {result.issues_found} issues")
 
                 # Re-run audit to verify fixes
                 logger.info("Re-running audit to verify fixes...")
@@ -109,9 +101,7 @@ def run_audit(args: argparse.Namespace) -> int:
                 )
 
             if result.issues_found > 0:
-                logger.warning(
-                    f"Found {result.issues_found} potential PHI leakage issues"
-                )
+                logger.warning(f"Found {result.issues_found} potential PHI leakage issues")
                 logger.info(f"See detailed report at: {args.output}")
                 return 1
             else:

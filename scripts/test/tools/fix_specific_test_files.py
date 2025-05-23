@@ -19,9 +19,7 @@ import re
 import sys
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("test_file_fixer")
 
 # List of files with identified issues based on error reports
@@ -91,9 +89,7 @@ def fix_indentation(content: str) -> str:
                 next_line = lines[i + 1]
                 # Skip empty lines and comments
                 j = i + 1
-                while j < len(lines) and (
-                    not lines[j].strip() or lines[j].strip().startswith("#")
-                ):
+                while j < len(lines) and (not lines[j].strip() or lines[j].strip().startswith("#")):
                     fixed_lines.append(lines[j])
                     j += 1
 

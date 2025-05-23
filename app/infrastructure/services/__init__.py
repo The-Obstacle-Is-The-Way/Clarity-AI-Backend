@@ -7,14 +7,14 @@ in accordance with clean architecture principles.
 
 # Import from security package
 # Import mock services for testing
+from app.infrastructure.ml.mentallama.mocks.mock_mentalllama_service import (
+    MockMentalLLaMAService,  # Note the capitalization: Mental not Menta
+)
 from app.infrastructure.services.mock_digital_twin_core_service import (
     MockDigitalTwinCoreService,
 )
 from app.infrastructure.services.mock_enhanced_digital_twin_core_service import (
     MockEnhancedDigitalTwinCoreService,
-)
-from app.infrastructure.ml.mentallama.mocks.mock_mentalllama_service import (
-    MockMentalLLaMAService,  # Note the capitalization: Mental not Menta
 )
 from app.infrastructure.services.mock_pat_service import (
     MockPATService,

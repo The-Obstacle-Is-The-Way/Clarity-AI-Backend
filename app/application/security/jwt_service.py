@@ -31,10 +31,6 @@ import jwt
 from pydantic import BaseModel
 
 from app.config.settings import Settings
-from app.core.interfaces.services.audit_logger_interface import (
-    AuditEventType,
-    AuditSeverity,
-)
 from app.core.exceptions.auth import (
     InvalidTokenException,
     TokenBlacklistedException,
@@ -44,7 +40,11 @@ from app.core.interfaces.repositories.token_blacklist_repository_interface impor
     ITokenBlacklistRepository,
 )
 from app.core.interfaces.repositories.token_repository_interface import ITokenRepository
-from app.core.interfaces.services.audit_logger_interface import IAuditLogger
+from app.core.interfaces.services.audit_logger_interface import (
+    AuditEventType,
+    AuditSeverity,
+    IAuditLogger,
+)
 
 
 def utcnow() -> datetime:
@@ -159,7 +159,9 @@ class JWTService:
         }
 
         # Create token
-        access_token = jwt.encode(payload, self.settings.SECRET_KEY.get_secret_value(), algorithm=self.algorithm)
+        access_token = jwt.encode(
+            payload, self.settings.SECRET_KEY.get_secret_value(), algorithm=self.algorithm
+        )
 
         # Log token creation
         self.audit_logger.log_security_event(
@@ -224,7 +226,9 @@ class JWTService:
         }
 
         # Create token
-        refresh_token = jwt.encode(payload, self.settings.SECRET_KEY.get_secret_value(), algorithm=self.algorithm)
+        refresh_token = jwt.encode(
+            payload, self.settings.SECRET_KEY.get_secret_value(), algorithm=self.algorithm
+        )
 
         # Log token creation
         self.audit_logger.log_security_event(
@@ -257,7 +261,9 @@ class JWTService:
             TokenBlacklistedException: If the token is blacklisted
         """
         try:
-            payload = jwt.decode(token, self.settings.SECRET_KEY.get_secret_value(), algorithms=[self.algorithm])
+            payload = jwt.decode(
+                token, self.settings.SECRET_KEY.get_secret_value(), algorithms=[self.algorithm]
+            )
             token_payload = TokenPayload(**payload)
 
             # Check if token is blacklisted using JTI
@@ -328,7 +334,9 @@ class JWTService:
             session_id = token_data.get("session_id", "unknown")
 
             # Blacklist the token
-            await self.blacklist_repo.add_to_blacklist(token_id, datetime.fromtimestamp(token_data.get('exp', 0)))
+            await self.blacklist_repo.add_to_blacklist(
+                token_id, datetime.fromtimestamp(token_data.get("exp", 0))
+            )
 
             # Log the blacklisting
             self.audit_logger.log_security_event(

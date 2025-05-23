@@ -9,7 +9,7 @@ from enum import Enum
 
 class Gender(Enum):
     """Gender classification for patient records."""
-    
+
     MALE = "male"
     FEMALE = "female"
     NON_BINARY = "non_binary"

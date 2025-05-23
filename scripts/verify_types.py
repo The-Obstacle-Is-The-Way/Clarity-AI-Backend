@@ -60,18 +60,14 @@ class TypeVerifier:
                 success = False
             except Exception as e:
                 # Sanitize exception message to prevent possible PHI leakage
-                logger.error(
-                    f"❌ Unexpected error importing {type_name}: {type(e).__name__}"
-                )
+                logger.error(f"❌ Unexpected error importing {type_name}: {type(e).__name__}")
                 success = False
 
         # Print details about successfully imported types
         if imported_types:
             logger.info("Imported type details:")
             for type_name, type_cls in imported_types.items():
-                logger.info(
-                    f"  - {type_name}: {type_cls.__module__}.{type_cls.__name__}"
-                )
+                logger.info(f"  - {type_name}: {type_cls.__module__}.{type_cls.__name__}")
 
         return success
 

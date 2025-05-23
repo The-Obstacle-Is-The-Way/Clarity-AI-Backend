@@ -91,7 +91,7 @@ class Address:
         """Create Address from dictionary data with backward compatibility."""
         # Handle backward compatibility: 'line1' -> 'street'
         street = data.get("street") or data.get("line1", "")
-        
+
         return cls(
             street=street,
             city=data["city"],
@@ -106,7 +106,7 @@ class Address:
         # Handle legacy 'line1' parameter
         if "line1" in kwargs and "street" not in kwargs:
             kwargs["street"] = kwargs.pop("line1")
-        
+
         return cls(
             street=kwargs["street"],
             city=kwargs["city"],

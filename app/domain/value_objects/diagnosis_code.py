@@ -26,9 +26,9 @@ class DiagnosisCode:
     This is an immutable value object with validation logic for
     psychiatric diagnosis codes from standard coding systems.
     """
-    
+
     # Regex pattern for general diagnosis code validation
-    CODE_PATTERN = re.compile(r'^[A-Z][0-9]+(\.[0-9]+)?$|^DSM-5-.+$|^[2-9][0-9.]+$')
+    CODE_PATTERN = re.compile(r"^[A-Z][0-9]+(\.[0-9]+)?$|^DSM-5-.+$|^[2-9][0-9.]+$")
 
     code: str
     system: CodeSystem

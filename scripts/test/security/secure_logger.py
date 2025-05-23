@@ -117,9 +117,7 @@ class PHISanitizer:
         sanitized = text
 
         # Check for PHI indicators first for efficiency
-        has_phi_indicator = any(
-            indicator in text.lower() for indicator in PHI_INDICATORS
-        )
+        has_phi_indicator = any(indicator in text.lower() for indicator in PHI_INDICATORS)
 
         if not has_phi_indicator:
             return text
@@ -195,7 +193,9 @@ class SecureLogger:
 
         # Default format
         if format_string is None:
-            format_string = "%(asctime)s - %(levelname)s - %(name)s - %(filename)s:%(lineno)d - %(message)s"
+            format_string = (
+                "%(asctime)s - %(levelname)s - %(name)s - %(filename)s:%(lineno)d - %(message)s"
+            )
 
         formatter = logging.Formatter(format_string)
 

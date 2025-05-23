@@ -9,7 +9,6 @@ to the interface defined in the core layer.
 import json
 import logging
 from collections.abc import Set as AbcSet
-from typing import Any, Dict, List, Optional, Union
 
 import redis.asyncio as redis_asyncio
 from redis.asyncio.client import Redis
@@ -36,7 +35,7 @@ class RedisService(IRedisService):
         """
         self._redis = redis_client
 
-    async def get(self, key: str) -> Optional[bytes]:
+    async def get(self, key: str) -> bytes | None:
         """
         Retrieve a value from Redis by key.
 
@@ -55,11 +54,11 @@ class RedisService(IRedisService):
     async def set(
         self,
         key: str,
-        value: Union[str, bytes, int, float],
-        ex: Optional[int] = None,
-        px: Optional[int] = None,
+        value: str | bytes | int | float,
+        ex: int | None = None,
+        px: int | None = None,
         nx: bool = False,
-        xx: bool = False
+        xx: bool = False,
     ) -> bool:
         """
         Set a value in Redis.
@@ -258,7 +257,7 @@ class RedisService(IRedisService):
             logger.error(f"Redis srem error for set '{name}': {e!s}")
             return 0
 
-    async def hset(self, name: str, key: str, value: Union[str, bytes, int, float]) -> int:
+    async def hset(self, name: str, key: str, value: str | bytes | int | float) -> int:
         """
         Set the value of a hash field.
 
@@ -279,7 +278,7 @@ class RedisService(IRedisService):
             logger.error(f"Redis hset error for hash '{name}', field '{key}': {e!s}")
             return 0
 
-    async def hget(self, name: str, key: str) -> Optional[bytes]:
+    async def hget(self, name: str, key: str) -> bytes | None:
         """
         Get the value of a hash field.
 
@@ -315,7 +314,7 @@ class RedisService(IRedisService):
             logger.error(f"Redis hdel error for hash '{name}', fields {keys}: {e!s}")
             return 0
 
-    async def hgetall(self, name: str) -> Dict[bytes, bytes]:
+    async def hgetall(self, name: str) -> dict[bytes, bytes]:
         """
         Get all fields and values in a hash.
 
@@ -348,7 +347,7 @@ class RedisService(IRedisService):
             logger.error(f"Redis incr error for key '{key}': {e!s}")
             return 0
 
-    async def keys(self, pattern: str) -> List[bytes]:
+    async def keys(self, pattern: str) -> list[bytes]:
         """
         Find all keys matching the given pattern.
 

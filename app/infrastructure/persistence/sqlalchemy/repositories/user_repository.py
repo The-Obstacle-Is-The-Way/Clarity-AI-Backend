@@ -365,15 +365,15 @@ class SQLAlchemyUserRepository(IUserRepository):
     async def list_users(self, skip: int = 0, limit: int = 100) -> list[User]:
         """Alias for list_all to maintain backward compatibility."""
         return await self.list_all(skip, limit)
-        
+
     async def search(self, search_term: str, skip: int = 0, limit: int = 100) -> list[User]:
         """Search for users with a search term matching username or email.
-        
+
         Args:
             search_term: The search term to use
             skip: Number of records to skip
             limit: Maximum number of records to return
-            
+
         Returns:
             List of User entities matching the search criteria
         """
@@ -381,13 +381,19 @@ class SQLAlchemyUserRepository(IUserRepository):
         try:
             # Use ilike for case-insensitive search
             from sqlalchemy import or_
-            stmt = select(UserModel).where(
-                or_(
-                    UserModel.username.ilike(f"%{search_term}%"),
-                    UserModel.email.ilike(f"%{search_term}%")
+
+            stmt = (
+                select(UserModel)
+                .where(
+                    or_(
+                        UserModel.username.ilike(f"%{search_term}%"),
+                        UserModel.email.ilike(f"%{search_term}%"),
+                    )
                 )
-            ).offset(skip).limit(limit)
-            
+                .offset(skip)
+                .limit(limit)
+            )
+
             result = await session.execute(stmt)
             db_users = result.scalars().all()
             return [self._mapper.to_domain(db_user) for db_user in db_users]
@@ -414,10 +420,7 @@ class SQLAlchemyUserRepository(IUserRepository):
                 role_enum = UserRole(role)
                 # Prepare query with enum
                 query = (
-                    select(UserModel)
-                    .where(UserModel.role == role_enum)
-                    .offset(skip)
-                    .limit(limit)
+                    select(UserModel).where(UserModel.role == role_enum).offset(skip).limit(limit)
                 )
             except ValueError:
                 # If role is not in UserRole enum, return empty list
@@ -513,7 +516,7 @@ class SQLAlchemyUserRepository(IUserRepository):
             A domain User entity
         """
         return self._mapper.to_domain(db_model)
-        
+
     def _to_model(self, user: User) -> UserModel:
         """
         Convert a User domain entity to a User model.
@@ -553,13 +556,14 @@ def get_user_repository(
 # Export aliases to maintain backward compatibility with names used in UnitOfWorkFactory
 UserRepositoryImpl = SQLAlchemyUserRepository
 
+
 # Provide a clean, type-safe factory function to create repository instances
 def create_user_repository(session: AsyncSession) -> IUserRepository:
     """Create a properly configured SQLAlchemyUserRepository instance.
-    
+
     Args:
         session: The SQLAlchemy async session to use
-        
+
     Returns:
         A properly configured IUserRepository implementation
     """

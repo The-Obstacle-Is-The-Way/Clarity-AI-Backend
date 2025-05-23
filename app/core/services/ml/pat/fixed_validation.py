@@ -28,7 +28,7 @@ def _validate_actigraphy_inputs(
         ValidationError: If any validation check fails
     """
     from pydantic import ValidationError
-    
+
     # Patient validation - critical for HIPAA compliance
     if not patient_id or (isinstance(patient_id, str) and patient_id.strip() == ""):
         raise ValidationError("Patient ID is required")
@@ -82,7 +82,7 @@ def _validate_embedding_inputs(
         ValidationError: If any validation check fails
     """
     from pydantic import ValidationError
-    
+
     # HIPAA validation for patient_id - critically important to catch empty strings
     if not patient_id or (isinstance(patient_id, str) and patient_id.strip() == ""):
         raise ValidationError("Patient ID is required")
@@ -122,9 +122,10 @@ def _validate_integration_params(
         AuthorizationError: If analysis doesn't belong to patient
     """
     from pydantic import ValidationError
-    from app.domain.exceptions import ResourceNotFoundError
+
     from app.core.exceptions.base_exceptions import AuthorizationError
-    
+    from app.domain.exceptions import ResourceNotFoundError
+
     # Basic validation - use consistent error message matching test expectations
     if not patient_id or (isinstance(patient_id, str) and patient_id.strip() == ""):
         raise ValidationError("Patient ID is required")

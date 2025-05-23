@@ -11,7 +11,6 @@ from uuid import UUID
 from app.core.domain.entities.user import User as DomainUser
 from app.core.domain.entities.user import UserRole as DomainUserRole
 from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel
-from app.infrastructure.persistence.sqlalchemy.models.user import UserRole as PersistenceUserRole
 
 
 class UserMapper:
@@ -238,7 +237,9 @@ class UserMapper:
         if hasattr(entity, "role") and entity.role is not None:
             try:
                 # Convert role to string value if it's an enum
-                role_value = entity.role.value if hasattr(entity.role, 'value') else str(entity.role)
+                role_value = (
+                    entity.role.value if hasattr(entity.role, "value") else str(entity.role)
+                )
                 model.role = role_value
             except (ValueError, AttributeError):
                 pass  # Keep existing role if new one is invalid
@@ -249,7 +250,7 @@ class UserMapper:
             for role in entity.roles:
                 if isinstance(role, str):
                     persistence_roles.append(role)
-                elif hasattr(role, 'value'):
+                elif hasattr(role, "value"):
                     persistence_roles.append(role.value)
                 else:
                     persistence_roles.append(str(role))

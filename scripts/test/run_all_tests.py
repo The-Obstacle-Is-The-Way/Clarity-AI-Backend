@@ -48,9 +48,7 @@ def run_syntax_check(test_files):
         except subprocess.CalledProcessError as e:
             invalid_files.append((test_file, str(e.output)))
 
-    print(
-        f"Syntax check complete: {len(valid_files)} valid, {len(invalid_files)} invalid"
-    )
+    print(f"Syntax check complete: {len(valid_files)} valid, {len(invalid_files)} invalid")
     if invalid_files:
         print("\nFiles with syntax errors:")
         for test_file, error in invalid_files:
@@ -95,9 +93,7 @@ def run_pytest(test_files, args):
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Run Novamind Backend tests")
-    parser.add_argument(
-        "--pattern", default="_test.py", help="Pattern to match test files"
-    )
+    parser.add_argument("--pattern", default="_test.py", help="Pattern to match test files")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     parser.add_argument(
         "--xvs",
@@ -105,9 +101,7 @@ def main():
         help="Run with -xvs flags (exit first, verbose, no capture)",
     )
     parser.add_argument("--skip-syntax", action="store_true", help="Skip syntax check")
-    parser.add_argument(
-        "--module", help="Test module to run (e.g., 'unit' or 'security')"
-    )
+    parser.add_argument("--module", help="Test module to run (e.g., 'unit' or 'security')")
     args = parser.parse_args()
 
     project_root = get_project_root()

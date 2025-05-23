@@ -26,6 +26,7 @@ Base = mapper_registry.generate_base(cls=AsyncAttrs)
 
 class TimestampMixin:
     """Mixin for timestamp fields using Column syntax."""
+
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
@@ -37,6 +38,7 @@ class TimestampMixin:
 
 class AuditMixin:
     """Mixin for audit trail fields using Column syntax."""
+
     # Add audit_id column for HIPAA compliance
     audit_id = Column(SQLAlchemyUUID(as_uuid=True), default=uuid.uuid4, nullable=True)
     created_by = Column(SQLAlchemyUUID(as_uuid=True), nullable=True)

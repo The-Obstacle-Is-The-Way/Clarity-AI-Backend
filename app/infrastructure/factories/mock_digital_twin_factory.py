@@ -4,6 +4,7 @@ This simplifies the creation and configuration of the Digital Twin system.
 """
 
 from app.domain.services.digital_twin_core_service import DigitalTwinCoreService
+from app.infrastructure.ml.mentallama.mocks.mock_mentalllama_service import MockMentalLLaMAService
 from app.infrastructure.repositories.mock_digital_twin_repository import (
     MockDigitalTwinRepository,
 )
@@ -15,7 +16,6 @@ from app.infrastructure.repositories.mock_patient_repository import (
 from app.infrastructure.services.mock_digital_twin_core_service import (
     MockDigitalTwinCoreService,
 )
-from app.infrastructure.ml.mentallama.mocks.mock_mentalllama_service import MockMentalLLaMAService
 from app.infrastructure.services.mock_pat_service import MockPATService
 from app.infrastructure.services.mock_xgboost_service import MockXGBoostService
 

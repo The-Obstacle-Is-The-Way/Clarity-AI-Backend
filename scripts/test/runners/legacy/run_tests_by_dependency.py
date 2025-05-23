@@ -193,9 +193,7 @@ def run_tests(stage: str, junit: bool = False) -> int:
     for current_stage in stages_to_run:
         # Skip DB tests if no database is available
         if STAGE_CONFIG[current_stage]["requires_db"] and not ensure_db_available():
-            print(
-                f"\nWarning: Skipping {current_stage} tests because no database is available"
-            )
+            print(f"\nWarning: Skipping {current_stage} tests because no database is available")
             continue
 
         exit_code, duration = run_test_stage(current_stage, junit)
@@ -210,9 +208,7 @@ def run_tests(stage: str, junit: bool = False) -> int:
             if (
                 current_stage != DependencyStage.DB
             ):  # Continue to DB tests even if earlier stages fail
-                print(
-                    f"\nError: {current_stage} tests failed, but continuing to next stage"
-                )
+                print(f"\nError: {current_stage} tests failed, but continuing to next stage")
 
     # Print summary
     total_duration = time.time() - start_time
@@ -246,9 +242,7 @@ def main():
         default=DependencyStage.ALL,
         help="Test stage to run (default: all)",
     )
-    parser.add_argument(
-        "--junit", action="store_true", help="Generate JUnit XML reports"
-    )
+    parser.add_argument("--junit", action="store_true", help="Generate JUnit XML reports")
     args = parser.parse_args()
 
     # Ensure we're in the correct directory

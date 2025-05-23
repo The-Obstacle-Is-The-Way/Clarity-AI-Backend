@@ -7,27 +7,33 @@ and handling JWT token creation, validation, and management for HIPAA compliance
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from uuid import UUID, uuid4
 
-from jose.exceptions import ExpiredSignatureError, JWTError, JWSError, JWTClaimsError
-from jose.jwt import decode as jwt_decode, encode as jwt_encode
+from jose.exceptions import ExpiredSignatureError, JWTClaimsError, JWTError
+from jose.jwt import decode as jwt_decode
+from jose.jwt import encode as jwt_encode
 from pydantic import BaseModel, Field
 
 from app.core.config.settings import Settings
 from app.core.domain.entities.user import User
-from app.core.interfaces.repositories.token_blacklist_repository_interface import ITokenBlacklistRepository 
+from app.core.interfaces.repositories.token_blacklist_repository_interface import (
+    ITokenBlacklistRepository,
+)
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
-from app.core.interfaces.services.audit_logger_interface import IAuditLogger, AuditEventType, AuditSeverity
+from app.core.interfaces.services.audit_logger_interface import (
+    AuditEventType,
+    AuditSeverity,
+    IAuditLogger,
+)
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.domain.enums.token_type import TokenType
 from app.domain.exceptions import (
-    AuthenticationError,
     InvalidTokenError,
-    TokenExpiredError,
-    TokenBlacklistedException,
     InvalidTokenException,
-    TokenExpiredException
+    TokenBlacklistedException,
+    TokenExpiredError,
+    TokenExpiredException,
 )
 
 # Use domain exceptions for backward compatibility
@@ -44,32 +50,33 @@ logger = logging.getLogger(__name__)
 
 class TokenPayload(BaseModel):
     """Token payload model with full compatibility for all tests."""
+
     # Required standard JWT claims
-    sub: Optional[str] = None
-    exp: Optional[int] = None
-    iat: Optional[int] = None
-    nbf: Optional[int] = None
-    jti: Optional[str] = None
-    iss: Optional[str] = None
-    aud: Optional[Union[str, List[str]]] = None
-    
+    sub: str | None = None
+    exp: int | None = None
+    iat: int | None = None
+    nbf: int | None = None
+    jti: str | None = None
+    iss: str | None = None
+    aud: str | list[str] | None = None
+
     # Application-specific claims
-    type: Optional[str] = None
-    roles: List[str] = Field(default_factory=list)
-    family_id: Optional[str] = None
-    session_id: Optional[str] = None
-    refresh: Optional[bool] = None
-    custom_key: Optional[str] = None
-    custom_fields: Dict[str, Any] = Field(default_factory=dict)
-    
+    type: str | None = None
+    roles: list[str] = Field(default_factory=list)
+    family_id: str | None = None
+    session_id: str | None = None
+    refresh: bool | None = None
+    custom_key: str | None = None
+    custom_fields: dict[str, Any] = Field(default_factory=dict)
+
     # Alias for subject to handle both patterns
-    subject: Optional[str] = None
-    
+    subject: str | None = None
+
     model_config = {
         "arbitrary_types_allowed": True,
         "extra": "allow",  # Allow extra fields not in the model
     }
-    
+
     def __init__(self, **data):
         """Initialize with special handling for subject/sub."""
         # Handle sub/subject conversion
@@ -89,16 +96,16 @@ class TokenPayload(BaseModel):
             # Set default subject if none provided
             data["sub"] = "guest"
             data["subject"] = "guest"
-        
+
         super().__init__(**data)
-    
+
     # For backward compatibility
     def __getattr__(self, key):
         """Support access to custom_fields as attributes."""
         if key in self.custom_fields:
             return self.custom_fields[key]
         raise AttributeError(f"{type(self).__name__!r} object has no attribute {key!r}")
-    
+
     def __getitem__(self, key):
         """Support dictionary-style access (payload['key'])."""
         if key == "sub" and self.sub is not None:
@@ -108,18 +115,18 @@ class TokenPayload(BaseModel):
         elif key in self.custom_fields:
             return self.custom_fields[key]
         raise KeyError(f"Key {key} not found in token payload")
-    
+
     def __contains__(self, key):
         """Support 'in' operator."""
         return (hasattr(self, key) and key != "custom_fields") or key in self.custom_fields
-    
+
     def get(self, key, default=None):
         """Dictionary-style get with default value."""
         try:
             return self[key]
         except (KeyError, AttributeError):
             return default
-            
+
     def __str__(self):
         """String representation for debugging and assertions."""
         if hasattr(self, "sub") and self.sub is not None:
@@ -127,7 +134,7 @@ class TokenPayload(BaseModel):
         if hasattr(self, "subject") and self.subject is not None:
             return str(self.subject)
         return super().__str__()
-        
+
     def __repr__(self):
         """Representation needed for test assertions."""
         if hasattr(self, "sub") and self.sub is not None:
@@ -135,7 +142,7 @@ class TokenPayload(BaseModel):
         if hasattr(self, "subject") and self.subject is not None:
             return str(self.subject)
         return super().__repr__()
-        
+
     def __eq__(self, other):
         """Equality comparison for test assertions."""
         if isinstance(other, str):
@@ -149,23 +156,23 @@ class TokenPayload(BaseModel):
 
 class JWTServiceImpl(IJwtService):
     """Implementation of the JWT Service interface."""
-    
+
     def __init__(
         self,
-        settings: Optional[Settings] = None,
-        user_repository: Optional[IUserRepository] = None,
-        token_blacklist_repository: Optional[ITokenBlacklistRepository] = None,
-        audit_logger: Optional[IAuditLogger] = None,
+        settings: Settings | None = None,
+        user_repository: IUserRepository | None = None,
+        token_blacklist_repository: ITokenBlacklistRepository | None = None,
+        audit_logger: IAuditLogger | None = None,
         # Additional parameters for direct initialization (test compatibility)
-        secret_key: Optional[str] = None,
-        algorithm: Optional[str] = None,
-        access_token_expire_minutes: Optional[int] = None,
-        refresh_token_expire_days: Optional[int] = None,
-        issuer: Optional[str] = None,
-        audience: Optional[str] = None,
+        secret_key: str | None = None,
+        algorithm: str | None = None,
+        access_token_expire_minutes: int | None = None,
+        refresh_token_expire_days: int | None = None,
+        issuer: str | None = None,
+        audience: str | None = None,
     ):
         """Initialize JWT service with necessary dependencies.
-        
+
         Args:
             settings: Application settings for JWT configuration
             user_repository: Repository for user data access
@@ -182,46 +189,61 @@ class JWTServiceImpl(IJwtService):
         self.user_repository = user_repository
         self.token_blacklist_repository = token_blacklist_repository
         self.audit_logger = audit_logger
-        
+
         # JWT settings - prioritize direct parameters over settings
-        self.secret_key = secret_key or (self.settings.jwt_secret_key if hasattr(self.settings, 'jwt_secret_key') else TEST_SECRET_KEY)
-        self.algorithm = algorithm or (self.settings.jwt_algorithm if hasattr(self.settings, 'jwt_algorithm') else "HS256")
-        self.access_token_expire_minutes = access_token_expire_minutes or (self.settings.access_token_expire_minutes if hasattr(self.settings, 'access_token_expire_minutes') else 15)
-        
+        self.secret_key = secret_key or (
+            self.settings.jwt_secret_key
+            if hasattr(self.settings, "jwt_secret_key")
+            else TEST_SECRET_KEY
+        )
+        self.algorithm = algorithm or (
+            self.settings.jwt_algorithm if hasattr(self.settings, "jwt_algorithm") else "HS256"
+        )
+        self.access_token_expire_minutes = access_token_expire_minutes or (
+            self.settings.access_token_expire_minutes
+            if hasattr(self.settings, "access_token_expire_minutes")
+            else 15
+        )
+
         # Handle refresh token expiry in days or minutes
         if refresh_token_expire_days:
             self.refresh_token_expire_minutes = refresh_token_expire_days * 24 * 60
         else:
             self.refresh_token_expire_minutes = (
-                self.settings.refresh_token_expire_minutes if hasattr(self.settings, 'refresh_token_expire_minutes') 
+                self.settings.refresh_token_expire_minutes
+                if hasattr(self.settings, "refresh_token_expire_minutes")
                 else 10080  # Default to 7 days in minutes
             )
-        
+
         # Store audience and issuer - these are important for JWT validation
-        self.audience = audience or (self.settings.token_audience if hasattr(self.settings, 'token_audience') else None)
-        self.issuer = issuer or (self.settings.token_issuer if hasattr(self.settings, 'token_issuer') else None)
-        
+        self.audience = audience or (
+            self.settings.token_audience if hasattr(self.settings, "token_audience") else None
+        )
+        self.issuer = issuer or (
+            self.settings.token_issuer if hasattr(self.settings, "token_issuer") else None
+        )
+
         # Keep old attribute names for backward compatibility
         self.token_issuer = self.issuer
         self.token_audience = self.audience
-        
+
         # In-memory blacklist for testing
         self._token_blacklist = {}
         self._token_families = {}
-        
+
         logger.info(f"JWT Service initialized with algorithm {self.algorithm}")
-    
+
     def create_access_token(
         self,
-        subject: Optional[str] = None,
-        additional_claims: Optional[Dict[str, Any]] = None,
-        expires_delta: Optional[timedelta] = None,
-        expires_delta_minutes: Optional[int] = None,
-        data: Optional[Union[Dict[str, Any], Any]] = None,
-        jti: Optional[str] = None,
+        subject: str | None = None,
+        additional_claims: dict[str, Any] | None = None,
+        expires_delta: timedelta | None = None,
+        expires_delta_minutes: int | None = None,
+        data: dict[str, Any] | Any | None = None,
+        jti: str | None = None,
     ) -> str:
         """Create an access token for a user.
-        
+
         Args:
             subject: User identifier
             additional_claims: Additional claims to include
@@ -229,19 +251,19 @@ class JWTServiceImpl(IJwtService):
             expires_delta_minutes: Custom expiration in minutes
             data: Alternative way to provide token data
             jti: Optional JWT ID
-            
+
         Returns:
             Encoded JWT access token
         """
         additional_claims = additional_claims or {}
-        
+
         # Handle data parameter for backward compatibility
         if data is not None:
             if isinstance(data, dict):
                 # Use subject from data if not provided directly
                 if subject is None and "sub" in data:
                     subject = data.get("sub")
-                    
+
                 # Copy all data fields to additional_claims (except sub)
                 for key, value in data.items():
                     if key != "sub" and key not in additional_claims:
@@ -254,24 +276,24 @@ class JWTServiceImpl(IJwtService):
             elif isinstance(data, str):
                 # Handle plain string as subject
                 subject = data
-        
+
         # Ensure we have a subject
         if subject is None and (not additional_claims or "sub" not in additional_claims):
             # For tests, use a default subject
             subject = "default-test-subject"
             logger.warning("No subject provided for token, using default test subject")
-            
+
         # Use subject from additional_claims if not provided directly
         if subject is None and "sub" in additional_claims:
             subject = additional_claims.pop("sub")
-        
+
         # Convert UUID or other types to string
         if subject is not None:
             subject = str(subject)
-        
+
         # Get current time
         now = datetime.now(timezone.utc)
-        
+
         # Set token expiration based on provided options
         if expires_delta:
             expire = now + expires_delta
@@ -286,7 +308,7 @@ class JWTServiceImpl(IJwtService):
                 expire = datetime.fromtimestamp(1704112200, timezone.utc)  # 2024-01-01 12:30:00 UTC
             else:
                 expire = now + timedelta(minutes=self.access_token_expire_minutes)
-        
+
         # Create token claims
         claims = {
             "sub": subject,
@@ -296,33 +318,37 @@ class JWTServiceImpl(IJwtService):
             "jti": jti or str(uuid4()),
             "type": TokenType.ACCESS.value,
         }
-        
+
         # Extract roles from additional_claims or set default empty list
-        roles = additional_claims.pop("roles", []) if additional_claims and "roles" in additional_claims else []
-        
+        roles = (
+            additional_claims.pop("roles", [])
+            if additional_claims and "roles" in additional_claims
+            else []
+        )
+
         # Handle role field for backward compatibility
         if additional_claims and "role" in additional_claims:
             role = additional_claims.get("role")
             if role and role not in roles:
                 roles.append(role)
-        
+
         claims["roles"] = roles
-        
+
         # Add the issuer and audience if specified
         if self.issuer:
             claims["iss"] = self.issuer
-        
+
         if self.audience:
             claims["aud"] = self.audience
-        
+
         # Add any additional claims
         if additional_claims:
             for key, value in additional_claims.items():
                 claims[key] = value
-        
+
         # Create token
         token = jwt_encode(claims, self.secret_key, algorithm=self.algorithm)
-        
+
         # Audit log the token creation
         try:
             if self.audit_logger:
@@ -331,30 +357,30 @@ class JWTServiceImpl(IJwtService):
                     description=f"Access token created for user: {subject}",
                     severity=AuditSeverity.INFO,
                     user_id=subject,
-                    metadata={"token_jti": claims["jti"], "token_type": TokenType.ACCESS.value}
+                    metadata={"token_jti": claims["jti"], "token_type": TokenType.ACCESS.value},
                 )
         except Exception as e:
             logger.warning(f"Failed to audit log token creation: {e}")
-            
+
         return token
-    
+
     def create_refresh_token(
         self,
-        subject: Optional[str] = None,
-        additional_claims: Optional[Dict[str, Any]] = None,
-        expires_delta: Optional[timedelta] = None,
-        expires_delta_minutes: Optional[int] = None,
-        data: Optional[Union[Dict[str, Any], Any]] = None,
+        subject: str | None = None,
+        additional_claims: dict[str, Any] | None = None,
+        expires_delta: timedelta | None = None,
+        expires_delta_minutes: int | None = None,
+        data: dict[str, Any] | Any | None = None,
     ) -> str:
         """Create a refresh token for a user.
-        
+
         Args:
             subject: User identifier
             additional_claims: Additional claims to include
             expires_delta: Custom expiration time
             expires_delta_minutes: Custom expiration in minutes
             data: Alternative way to provide token data
-            
+
         Returns:
             Encoded JWT refresh token
         """
@@ -365,34 +391,36 @@ class JWTServiceImpl(IJwtService):
                 # Create a copy to avoid modifying the original dict
                 data_copy = data.copy()
                 # Remove 'sub' to avoid duplicating it in claims
-                if 'sub' in data_copy:
-                    data_copy.pop('sub')
-                additional_claims = {**data_copy, **additional_claims} if additional_claims else data_copy
+                if "sub" in data_copy:
+                    data_copy.pop("sub")
+                additional_claims = (
+                    {**data_copy, **additional_claims} if additional_claims else data_copy
+                )
             elif hasattr(data, "id"):
                 # Handle User object or similar with id attribute
                 subject = str(data.id)
                 if hasattr(data, "roles") and not additional_claims:
                     additional_claims = {"roles": data.roles}
-        
+
         if subject is None and (not additional_claims or "sub" not in additional_claims):
             raise ValueError("Subject is required for token creation")
-            
+
         # Use subject from additional_claims if not provided directly
         if subject is None and additional_claims and "sub" in additional_claims:
             subject = additional_claims.pop("sub")
-        
+
         # Convert UUID to string if needed
         if isinstance(subject, UUID):
             subject = str(subject)
-        
+
         # Get roles from additional_claims
         roles = []
         if additional_claims and "roles" in additional_claims:
             roles = additional_claims.pop("roles", [])
-        
+
         # Get current time
         now = datetime.now(timezone.utc)
-        
+
         # Set token expiration based on provided options
         if expires_delta:
             expire = now + expires_delta
@@ -407,7 +435,7 @@ class JWTServiceImpl(IJwtService):
                 expire = datetime.fromtimestamp(1704110400 + 604800, timezone.utc)
             else:
                 expire = now + timedelta(minutes=self.refresh_token_expire_minutes)
-        
+
         # Create token claims
         claims = {
             "sub": subject,
@@ -418,23 +446,23 @@ class JWTServiceImpl(IJwtService):
             "type": TokenType.REFRESH.value,
             "roles": roles,
         }
-        
+
         # Add the issuer and audience if specified
         if self.token_issuer:
             claims["iss"] = self.token_issuer
-        
+
         if self.token_audience:
             claims["aud"] = self.token_audience
-        
+
         # Add any additional claims
         if additional_claims:
             for key, value in additional_claims.items():
                 if key not in claims:
                     claims[key] = value
-        
+
         # Create token
         token = jwt_encode(claims, self.secret_key, algorithm=self.algorithm)
-        
+
         # Audit log the token creation
         try:
             if self.audit_logger:
@@ -443,49 +471,49 @@ class JWTServiceImpl(IJwtService):
                     description=f"Refresh token created for user: {subject}",
                     severity=AuditSeverity.INFO,
                     user_id=subject,
-                    metadata={"token_jti": claims["jti"], "token_type": TokenType.REFRESH.value}
+                    metadata={"token_jti": claims["jti"], "token_type": TokenType.REFRESH.value},
                 )
         except Exception as e:
-            logger.warning(f"Failed to log token creation: {str(e)}")
-        
+            logger.warning(f"Failed to log token creation: {e!s}")
+
         return token
-    
+
     def decode_token(
         self,
         token: str,
         verify_signature: bool = True,
-        options: Optional[Dict[str, Any]] = None,
-        audience: Optional[str] = None,
-        algorithms: Optional[List[str]] = None,
+        options: dict[str, Any] | None = None,
+        audience: str | None = None,
+        algorithms: list[str] | None = None,
     ) -> TokenPayload:
         """Decode a JWT token and return a token payload object.
-        
+
         Args:
             token: JWT token to decode
             verify_signature: Whether to verify token signature
             options: JWT decode options
             audience: Override token audience
             algorithms: Override allowed algorithms
-            
+
         Returns:
             TokenPayload: Decoded token payload
-            
+
         Raises:
             InvalidTokenException: If token is invalid
         """
         if not token:
             raise InvalidTokenException("No token provided")
-            
+
         # Set default options
         decode_options = options or {}
-        
+
         # Allow disabling signature verification (for testing)
         if not verify_signature:
             decode_options["verify_signature"] = False
-            
+
         # Default algorithms if not provided
         algs = algorithms or [self.algorithm]
-            
+
         try:
             # Use jose.jwt to decode
             decoded = jwt_decode(
@@ -498,7 +526,7 @@ class JWTServiceImpl(IJwtService):
                 # Disable subject validation - we'll handle that ourselves
                 subject=None,
             )
-            
+
             # Convert to Pydantic model (with optional sub)
             if decoded and isinstance(decoded, dict):
                 # Handle 'sub' being a string or other object - ensure it's a string
@@ -508,38 +536,48 @@ class JWTServiceImpl(IJwtService):
                 else:
                     # Set a default subject for backward compatibility
                     decoded["sub"] = "default-subject-for-tests"
-                    
+
                 # Extract known fields for the model
                 known_fields = {
-                    "sub", "exp", "iat", "nbf", "jti", "iss", "aud", 
-                    "type", "roles", "family_id", "session_id", "refresh", 
-                    "custom_key"
+                    "sub",
+                    "exp",
+                    "iat",
+                    "nbf",
+                    "jti",
+                    "iss",
+                    "aud",
+                    "type",
+                    "roles",
+                    "family_id",
+                    "session_id",
+                    "refresh",
+                    "custom_key",
                 }
-                
+
                 # Create custom_fields dictionary with any non-standard fields
                 custom_fields = {}
                 for key, value in decoded.items():
                     if key not in known_fields:
                         custom_fields[key] = value
-                        
+
                 # Add custom_fields to the decoded data if there are any
                 if custom_fields:
                     decoded["custom_fields"] = custom_fields
-                
+
                 # Convert to TokenPayload model
                 payload = TokenPayload(**decoded)
-                
+
                 # Sanitize PHI from payload
                 sanitized_payload = self._sanitize_phi_in_payload(payload)
-                
+
                 return sanitized_payload
             else:
                 raise InvalidTokenException("Invalid token format")
-                
+
         except JWTError as e:
             error_str = str(e)
             logger.warning(f"JWT validation error: {error_str}.")
-            
+
             # Convert JWTError to our domain exceptions
             # Preserve original error information in the exception message
             if isinstance(e, ExpiredSignatureError):
@@ -564,61 +602,67 @@ class JWTServiceImpl(IJwtService):
                     raise InvalidTokenException(f"Invalid claim in token: {error_str}")
             else:
                 raise InvalidTokenException(f"Invalid token: {error_str}")
-                
+
         except Exception as e:
-            logger.error(f"Unexpected error decoding token: {str(e)}")
-            raise InvalidTokenException(f"Failed to decode token: {str(e)}")
-    
+            logger.error(f"Unexpected error decoding token: {e!s}")
+            raise InvalidTokenException(f"Failed to decode token: {e!s}")
+
     @property
     def refresh_token_expire_days(self) -> int:
         """Get refresh token expiration days.
-        
+
         Returns:
             int: Number of days until refresh token expires
         """
         if hasattr(self.settings, "TESTING") and self.settings.TESTING:
             return 7  # Fixed 7 days for tests
-        return self.refresh_token_expire_minutes // (24 * 60) if self.refresh_token_expire_minutes else 7  # Default to 7 days if not set
-    
-    async def get_user_from_token(self, token: str) -> Optional[User]:
+        return (
+            self.refresh_token_expire_minutes // (24 * 60)
+            if self.refresh_token_expire_minutes
+            else 7
+        )  # Default to 7 days if not set
+
+    async def get_user_from_token(self, token: str) -> User | None:
         """Get user from a token.
-        
+
         Args:
             token: JWT token
-            
+
         Returns:
             Optional[User]: User if found, None otherwise
         """
         if not self.user_repository:
             logger.warning("User repository not configured")
             return None
-        
+
         try:
             # Decode token with relaxed validation for testing
-            payload = self.decode_token(token, options={"verify_exp": False, "verify_iss": False, "verify_aud": False})
+            payload = self.decode_token(
+                token, options={"verify_exp": False, "verify_iss": False, "verify_aud": False}
+            )
             subject = payload.sub
-            
+
             # Get user from repository
             return await self.user_repository.get_by_id(subject)
         except Exception as e:
-            logger.error(f"Error retrieving user from token: {str(e)}")
+            logger.error(f"Error retrieving user from token: {e!s}")
             raise InvalidTokenError(str(e))
-    
+
     def verify_token(self, token: str) -> TokenPayload:
         """Verify a token and return its payload.
-        
+
         This function performs standard verification checks:
         - Signature validation
         - Expiration time check
         - Audience validation (if configured)
         - Issuer validation (if configured)
-        
+
         Args:
             token: JWT token to verify
-            
+
         Returns:
             TokenPayload: Verified token payload
-            
+
         Raises:
             InvalidTokenException: If token is invalid
             ExpiredTokenException: If token is expired
@@ -631,10 +675,10 @@ class JWTServiceImpl(IJwtService):
                 "verify_aud": self.audience is not None,
                 "verify_iss": self.issuer is not None,
             }
-            
+
             # Decode token with validation
             payload = self.decode_token(token, options=options)
-            
+
             # Check for token blacklisting if repository available
             if self.token_blacklist_repository:
                 if hasattr(payload, "jti") and payload.jti:
@@ -643,71 +687,77 @@ class JWTServiceImpl(IJwtService):
                     if is_blacklisted:
                         logger.warning("Token blacklist check failed")
                         raise InvalidTokenException("Token has been revoked")
-            
+
             # Clean any PHI from the payload
             payload = self._sanitize_phi_in_payload(payload)
-            
+
             return payload
-            
+
         except ExpiredSignatureError:
             logger.warning("Token verification failed - expired token")
             raise ExpiredTokenException("Token has expired")
         except (JWTError, InvalidTokenException) as e:
-            logger.warning(f"Token verification failed: {str(e)}")
-            raise InvalidTokenException(f"Invalid token: {str(e)}")
+            logger.warning(f"Token verification failed: {e!s}")
+            raise InvalidTokenException(f"Invalid token: {e!s}")
         except Exception as e:
-            logger.error(f"Unexpected error during token verification: {str(e)}")
-            raise InvalidTokenException(f"Token verification failed: {str(e)}")
-    
-    def verify_refresh_token(self, refresh_token: str, enforce_refresh_type: bool = True) -> TokenPayload:
+            logger.error(f"Unexpected error during token verification: {e!s}")
+            raise InvalidTokenException(f"Token verification failed: {e!s}")
+
+    def verify_refresh_token(
+        self, refresh_token: str, enforce_refresh_type: bool = True
+    ) -> TokenPayload:
         """Verify that a token is a valid refresh token.
-        
+
         Args:
             refresh_token: Token to verify
             enforce_refresh_type: Whether to enforce the token type is refresh
-            
+
         Returns:
             TokenPayload: Decoded token payload
-            
+
         Raises:
             InvalidTokenException: If token is not a refresh token
         """
         try:
             # Decode refresh token
             payload = self.decode_token(refresh_token)
-            
+
             # Verify it's a refresh token
             if enforce_refresh_type:
                 # Check for refresh flag or type field
                 if hasattr(payload, "refresh") and payload.refresh:
                     return payload
-                    
+
                 # Check type field directly
                 if hasattr(payload, "type"):
                     token_type = payload.type
                     # Handle both string and enum values
-                    if token_type == TokenType.REFRESH or token_type == "refresh" or token_type == "REFRESH":
+                    if (
+                        token_type == TokenType.REFRESH
+                        or token_type == "refresh"
+                        or token_type == "REFRESH"
+                    ):
                         return payload
-                
+
                 # Not a refresh token
                 raise InvalidTokenException("Token is not a refresh token")
-            
+
             return payload
-            
+
         except InvalidTokenException:
             # Re-raise specific exceptions
             raise
         except Exception as e:
             # Handle other errors
-            logger.error(f"Error verifying refresh token: {str(e)}")
+            logger.error(f"Error verifying refresh token: {e!s}")
             raise InvalidTokenException(f"Invalid refresh token: {e}")
-    
-    def get_token_payload_subject(self, payload: Any) -> Optional[str]:
+
+    def get_token_payload_subject(self, payload: Any) -> str | None:
         """Get the subject from a token payload.
-        
+
         Args:
             payload: Token payload
-            
+
         Returns:
             Optional[str]: Subject if present
         """
@@ -718,208 +768,212 @@ class JWTServiceImpl(IJwtService):
         elif hasattr(payload, "sub"):
             return payload.sub
         return None
-    
+
     def refresh_access_token(self, refresh_token: str) -> str:
         """Refresh an access token using a refresh token.
-        
+
         Args:
             refresh_token: Refresh token to use
-            
+
         Returns:
             str: New access token
-            
+
         Raises:
             InvalidTokenException: If token is not a refresh token
         """
         try:
             # Decode refresh token with strict refresh token verification
             payload = self.verify_refresh_token(refresh_token, enforce_refresh_type=True)
-            
+
             # Get subject and roles
             subject = payload.sub
-            
+
             # Get roles from payload
             roles = []
             if hasattr(payload, "roles") and payload.roles:
                 roles = payload.roles
-            
+
             # Create additional claims for the new token
             additional_claims = {"roles": roles}
-            
+
             # Preserve any custom claims that should be carried over
             for field in ["custom_key", "session_id"]:
                 if hasattr(payload, field) and getattr(payload, field) is not None:
                     additional_claims[field] = getattr(payload, field)
-            
+
             # Create new access token
-            return self.create_access_token(
-                subject=subject,
-                additional_claims=additional_claims
-            )
+            return self.create_access_token(subject=subject, additional_claims=additional_claims)
         except Exception as e:
             # Log and re-raise the exception with clear message
-            logger.error(f"Error refreshing access token: {str(e)}")
+            logger.error(f"Error refreshing access token: {e!s}")
             if isinstance(e, InvalidTokenException):
                 raise
-            raise InvalidTokenException(f"Failed to refresh token: {str(e)}")
-    
+            raise InvalidTokenException(f"Failed to refresh token: {e!s}")
+
     async def revoke_token(self, token: str) -> bool:
         """Revoke a token by adding it to the blacklist.
-        
+
         Args:
             token: Token to revoke
-            
+
         Returns:
             bool: True if token was successfully revoked
         """
         try:
             # First decode the token to get its JTI
             payload = self.decode_token(token, options={"verify_exp": False})
-            
+
             if not payload.jti:
                 logger.error("Token has no JTI claim, cannot revoke")
                 return False
-                
+
             # Add to blacklist
             return await self.blacklist_token(token)
         except Exception as e:
-            logger.error(f"Error revoking token: {str(e)}")
+            logger.error(f"Error revoking token: {e!s}")
             return False
-    
+
     async def blacklist_token(self, token: str) -> bool:
         """Add a token to the blacklist.
-        
+
         Args:
             token: Token to blacklist
-            
+
         Returns:
             bool: True if token was successfully blacklisted
         """
         if not self.token_blacklist_repository:
             logger.warning("Token blacklist repository not configured")
             return False
-        
+
         try:
             # Decode token with minimal validation to get expiry and JTI
             payload = self.decode_token(
                 token=token,
                 verify_signature=True,
-                options={"verify_exp": False, "verify_aud": False, "verify_iss": False}
+                options={"verify_exp": False, "verify_aud": False, "verify_iss": False},
             )
-            
+
             jti = payload.jti
             exp_timestamp = payload.exp
-            
+
             if not jti or not exp_timestamp:
                 logger.warning("Token missing required fields (jti, exp)")
                 return False
-            
+
             # Convert timestamp to datetime
             expires_at = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
-            
+
             # Add to blacklist (handling test environment specially)
             if hasattr(self.settings, "TESTING") and self.settings.TESTING:
                 # In test mode, use fixed timestamps to match test expectations
                 now = datetime.fromtimestamp(1704110400, timezone.utc)  # 2024-01-01 12:00:00 UTC
                 # Use exactly 30 minutes later for access token expiry (1800 seconds)
-                expire = datetime.fromtimestamp(1704112200, timezone.utc)  # 2024-01-01 12:30:00 UTC        
+                expire = datetime.fromtimestamp(1704112200, timezone.utc)  # 2024-01-01 12:30:00 UTC
                 await self.token_blacklist_repository.add_to_blacklist(jti, expire)
             else:
                 # Normal operation - use actual expiry time
                 await self.token_blacklist_repository.add_to_blacklist(jti, expires_at)
-            
+
             # Log blacklisting
             if self.audit_logger:
                 self.audit_logger.log_security_event(
                     event_type=AuditEventType.TOKEN_REVOCATION,
                     description=f"Token blacklisted: {jti}",
                     severity=AuditSeverity.INFO,
-                    metadata={"jti": jti}
+                    metadata={"jti": jti},
                 )
-            
+
             return True
-            
+
         except Exception as e:
-            logger.error(f"Failed to blacklist token: {str(e)}")
+            logger.error(f"Failed to blacklist token: {e!s}")
             return False
-    
+
     async def logout(self, token: str) -> bool:
         """Log out a user by revoking their token.
-        
+
         Args:
             token: JWT token to revoke
-            
+
         Returns:
             bool: True if logout was successful
         """
         # Just revoke the token
         return await self.revoke_token(token)
-    
+
     async def blacklist_session(self, session_id: str) -> bool:
         """Blacklist all tokens associated with a session.
-        
+
         Args:
             session_id: ID of the session to blacklist
-            
+
         Returns:
             bool: True if session was blacklisted
         """
         if not self.token_blacklist_repository:
             logger.warning("Token blacklist repository not configured")
             return False
-        
+
         try:
             # This assumes the repository has a method to blacklist by session ID
             # You may need to implement this method in the repository
             if hasattr(self.token_blacklist_repository, "blacklist_session"):
                 await self.token_blacklist_repository.blacklist_session(session_id)
-                
+
                 # Log blacklisting
                 if self.audit_logger:
                     self.audit_logger.log_security_event(
                         event_type=AuditEventType.TOKEN_REVOCATION,
                         description=f"Session blacklisted: {session_id}",
                         severity=AuditSeverity.INFO,
-                        metadata={"session_id": session_id}
+                        metadata={"session_id": session_id},
                     )
-                
+
                 return True
             else:
                 logger.warning("Token blacklist repository does not support session blacklisting")
                 return False
-                
+
         except Exception as e:
-            logger.error(f"Failed to blacklist session: {str(e)}")
+            logger.error(f"Failed to blacklist session: {e!s}")
             return False
-    
+
     def _sanitize_phi_in_payload(self, payload: TokenPayload) -> TokenPayload:
         """Sanitize PHI from payload for HIPAA compliance.
-        
+
         This ensures no PHI fields are included in the token string representations,
         which is essential for HIPAA compliance.
-        
+
         Args:
             payload: The token payload to sanitize
-            
+
         Returns:
             TokenPayload: Sanitized payload
         """
         # Define PHI fields that should never appear in tokens
         phi_fields = [
-            "name", "email", "dob", "ssn", "address", "phone_number", 
-            "birth_date", "social_security", "medical_record_number"
+            "name",
+            "email",
+            "dob",
+            "ssn",
+            "address",
+            "phone_number",
+            "birth_date",
+            "social_security",
+            "medical_record_number",
         ]
-        
+
         # Remove PHI fields from custom_fields
         if hasattr(payload, "custom_fields") and payload.custom_fields:
             for field in phi_fields:
                 if field in payload.custom_fields:
                     payload.custom_fields.pop(field, None)
-        
+
         # Also check for direct attributes (for backward compatibility)
         for field in phi_fields:
             if hasattr(payload, field):
                 # Set to None to keep the attribute but remove the value
                 setattr(payload, field, None)
-                
+
         return payload

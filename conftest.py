@@ -192,7 +192,6 @@ def _patch_test_module(mod: ModuleType) -> None:  # pragma: no cover – helper
     # schemas remain untouched.
     # -------------------------------------------------------------------
     try:
-
         from app.presentation.api.v1.schemas.digital_twin_schemas import (
             PersonalizedInsightResponse as _PIR,
         )
@@ -451,7 +450,9 @@ def protect_test_namespace():
                     # If it's trying to load xgboost.conftest from a path *not*
                     # related to the installed xgboost package, let our tests load.
                     # A more robust check might inspect the path if provided.
-                    return None  # Let Python continue searching, potentially finding our test version
+                    return (
+                        None  # Let Python continue searching, potentially finding our test version
+                    )
             return None  # Not our target, let other finders handle it.
 
     # Install our protector at the beginning of sys.meta_path

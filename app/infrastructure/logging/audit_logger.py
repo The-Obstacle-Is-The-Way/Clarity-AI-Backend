@@ -7,12 +7,11 @@ modifications, ensuring compliance with HIPAA Security Rule § 164.312(b).
 
 import json
 import logging
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from tempfile import gettempdir
-from typing import Any, Optional, Dict, List
-# In Python 3.12, we use built-in dict and list types rather than importing from typing
 
+# In Python 3.12, we use built-in dict and list types rather than importing from typing
 from app.core.config.settings import get_settings
 from app.core.constants.audit import AuditEventType, AuditSeverity
 from app.core.interfaces.services.audit_logger_interface import IAuditLogger
@@ -57,7 +56,7 @@ class AuditLogger(IAuditLogger):
             self.__class__.setup()
 
     @classmethod
-    def setup(cls, log_dir: Optional[str] = None) -> None:
+    def setup(cls, log_dir: str | None = None) -> None:
         """
         Set up the audit logger with appropriate handlers.
 
@@ -80,7 +79,7 @@ class AuditLogger(IAuditLogger):
                 audit_log_path = Path(audit_log_dir)
             else:  # Already a Path object
                 audit_log_path = audit_log_dir
-                
+
             audit_log_path.mkdir(parents=True, exist_ok=True)
 
             # Create a file handler for the audit log
@@ -110,7 +109,7 @@ class AuditLogger(IAuditLogger):
 
         # Log startup message
         cls._logger.info(f"HIPAA audit logging initialized (dir: {audit_log_dir})")
-            
+
     @classmethod
     def log_transaction(cls, metadata: dict) -> None:
         """
@@ -152,15 +151,15 @@ class AuditLogger(IAuditLogger):
     def log_phi_access(
         self,
         actor_id: str,
-        patient_id: Optional[str] = None,
-        resource_id: Optional[str] = None,
-        data_accessed: Optional[str] = None,
-        resource_type: Optional[str] = None,
-        access_reason: Optional[str] = None,
-        action: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        details: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        patient_id: str | None = None,
+        resource_id: str | None = None,
+        data_accessed: str | None = None,
+        resource_type: str | None = None,
+        access_reason: str | None = None,
+        action: str | None = None,
+        ip_address: str | None = None,
+        details: str | None = None,
+        metadata: dict | None = None,
     ) -> None:
         """
         Log access to Protected Health Information (PHI).
@@ -218,14 +217,14 @@ class AuditLogger(IAuditLogger):
     def log_security_event(
         self,
         event_type: str,
-        description: Optional[str] = None,
-        user_id: Optional[str] = None,
-        actor_id: Optional[str] = None,
+        description: str | None = None,
+        user_id: str | None = None,
+        actor_id: str | None = None,
         severity: AuditSeverity = AuditSeverity.INFO,
-        details: Optional[str] = None,
-        status: Optional[str] = None,
-        metadata: Optional[dict] = None,
-        ip_address: Optional[str] = None,
+        details: str | None = None,
+        status: str | None = None,
+        metadata: dict | None = None,
+        ip_address: str | None = None,
     ) -> None:
         """
         Log a security-related event.
@@ -279,14 +278,14 @@ class AuditLogger(IAuditLogger):
 
         # Log at appropriate level based on severity
         log_message = json.dumps(log_data)
-        
+
         if severity in (AuditSeverity.ERROR, AuditSeverity.CRITICAL):
             self.__class__._logger.error(f"SECURITY_EVENT: {log_message}")
         elif severity == AuditSeverity.WARNING:
             self.__class__._logger.warning(f"SECURITY_EVENT: {log_message}")
         else:
             self.__class__._logger.info(f"SECURITY_EVENT: {log_message}")
-            
+
         # Log the transaction for persistent storage
         self.__class__.log_transaction(log_data)
 
@@ -296,8 +295,8 @@ class AuditLogger(IAuditLogger):
         user_id: str,
         success: bool,
         description: str,
-        ip_address: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        ip_address: str | None = None,
+        metadata: dict | None = None,
     ) -> None:
         """
         Log an authentication or authorization event.
@@ -350,13 +349,13 @@ class AuditLogger(IAuditLogger):
 
         # Log the transaction for persistent storage
         self.__class__.log_transaction(log_data)
-    
+
     def log_system_event(
         self,
         event_type: str,
         description: str,
         severity: AuditSeverity = AuditSeverity.INFO,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> None:
         """
         Log a system-level event.
@@ -390,26 +389,26 @@ class AuditLogger(IAuditLogger):
 
         # Log at appropriate level based on severity
         log_message = json.dumps(log_data)
-        
+
         if severity in (AuditSeverity.ERROR, AuditSeverity.CRITICAL):
             self.__class__._logger.error(f"SYSTEM_EVENT: {log_message}")
         elif severity == AuditSeverity.WARNING:
             self.__class__._logger.warning(f"SYSTEM_EVENT: {log_message}")
         else:
             self.__class__._logger.info(f"SYSTEM_EVENT: {log_message}")
-            
+
         # Log the transaction for persistent storage
         self.__class__.log_transaction(log_data)
 
     def get_audit_trail(
         self,
-        user_id: Optional[str] = None,
-        patient_id: Optional[str] = None,
-        event_type: Optional[str] = None,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-        limit: Optional[int] = 100,
-        offset: Optional[int] = 0,
+        user_id: str | None = None,
+        patient_id: str | None = None,
+        event_type: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        limit: int | None = 100,
+        offset: int | None = 0,
     ) -> list:
         """
         Retrieve audit trail entries based on filtering criteria.
@@ -442,7 +441,7 @@ def log_phi_access(
     user_id: str,
     patient_id: str,
     action: str,
-    details: Optional[dict] = None,
+    details: dict | None = None,
 ) -> None:
     """Backward-compatible function for logging PHI access."""
     logger = AuditLogger()
@@ -456,8 +455,8 @@ def log_phi_access(
 
 def log_security_event(
     event_type: str,
-    user_id: Optional[str] = None,
-    details: Optional[dict] = None,
+    user_id: str | None = None,
+    details: dict | None = None,
 ) -> None:
     """Backward-compatible function for logging security events."""
     logger = AuditLogger()
@@ -473,8 +472,8 @@ def log_auth_event(
     user_id: str,
     success: bool,
     description: str,
-    ip_address: Optional[str] = None,
-    metadata: Optional[dict] = None,
+    ip_address: str | None = None,
+    metadata: dict | None = None,
 ) -> None:
     """Function for logging authentication events."""
     logger = AuditLogger()
@@ -486,6 +485,7 @@ def log_auth_event(
         ip_address=ip_address,
         metadata=metadata,
     )
+
 
 # Alias for backward compatibility with existing code
 audit_log_phi_access = log_phi_access

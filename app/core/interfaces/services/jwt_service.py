@@ -6,7 +6,7 @@ validation, and management according to HIPAA security standards.
 
 from abc import ABC, abstractmethod
 from datetime import timedelta
-from typing import Any, Optional
+from typing import Any
 
 try:
     from app.core.domain.entities.user import User
@@ -30,7 +30,7 @@ class IJwtService(ABC):
         data: dict[str, Any] | Any | None = None,
     ) -> str:
         """Creates a new access token.
-        
+
         Args:
             subject: The subject of the token (typically a user ID)
             additional_claims: Additional claims to include in the token
@@ -38,7 +38,7 @@ class IJwtService(ABC):
             expires_delta_minutes: Custom expiration time in minutes
             data: Alternative way to provide token data (for compatibility with tests)
                   When provided, this can contain both subject and claims in one object
-        
+
         Returns:
             The encoded JWT token as a string
         """
@@ -54,7 +54,7 @@ class IJwtService(ABC):
         data: dict[str, Any] | Any | None = None,
     ) -> str:
         """Creates a new refresh token.
-        
+
         Args:
             subject: The subject of the token (typically a user ID)
             additional_claims: Additional claims to include in the token
@@ -62,7 +62,7 @@ class IJwtService(ABC):
             expires_delta_minutes: Custom expiration time in minutes
             data: Alternative way to provide token data (for compatibility with tests)
                   When provided, this can contain both subject and claims in one object
-                  
+
         Returns:
             The encoded JWT refresh token as a string
         """
@@ -81,7 +81,7 @@ class IJwtService(ABC):
 
         Args:
             token: JWT token to decode
-            verify_signature: Whether to verify token signature 
+            verify_signature: Whether to verify token signature
             options: Options for decoding
             audience: Expected audience
             algorithms: List of allowed algorithms
@@ -102,12 +102,12 @@ class IJwtService(ABC):
         pass
 
     @abstractmethod
-    def get_token_payload_subject(self, payload: Any) -> Optional[str]:
+    def get_token_payload_subject(self, payload: Any) -> str | None:
         """Extracts the subject (user identifier) from the token payload.
-        
+
         Args:
             payload: Token payload
-            
+
         Returns:
             Subject string (user ID) if present, None otherwise
         """
@@ -121,10 +121,10 @@ class IJwtService(ABC):
     @abstractmethod
     async def revoke_token(self, token: str) -> bool:
         """Revokes a token by adding its JTI to the blacklist.
-        
+
         Args:
             token: Token to revoke
-            
+
         Returns:
             True if token was successfully revoked, False otherwise
         """
@@ -133,10 +133,10 @@ class IJwtService(ABC):
     @abstractmethod
     async def logout(self, token: str) -> bool:
         """Log out a user by revoking their token.
-        
+
         Args:
             token: JWT token to revoke
-            
+
         Returns:
             True if logout was successful, False otherwise
         """
@@ -145,10 +145,10 @@ class IJwtService(ABC):
     @abstractmethod
     async def blacklist_session(self, session_id: str) -> bool:
         """Blacklist all tokens associated with a session.
-        
+
         Args:
             session_id: ID of the session to blacklist
-            
+
         Returns:
             True if session was blacklisted, False otherwise
         """

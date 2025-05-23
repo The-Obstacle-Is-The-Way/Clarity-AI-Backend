@@ -82,12 +82,7 @@ def fix_indentation_errors(content):
     # Simple approach: make sure indentation is consistent
     # This won't fix all indentation issues but can handle simple cases
     for i, line in enumerate(lines):
-        if (
-            i > 0
-            and line.strip()
-            and lines[i - 1].strip()
-            and lines[i - 1].rstrip().endswith(":")
-        ):
+        if i > 0 and line.strip() and lines[i - 1].strip() and lines[i - 1].rstrip().endswith(":"):
             # If previous line ends with a colon, indent this line if not already indented
             if not line.startswith(" ") and not line.startswith("\t"):
                 line = "    " + line

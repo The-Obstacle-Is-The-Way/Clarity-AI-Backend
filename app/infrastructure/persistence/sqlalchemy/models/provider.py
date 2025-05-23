@@ -6,10 +6,9 @@ mapping the domain entity to the database schema following clean architecture pr
 """
 
 import uuid
-from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Column, DateTime, JSON, String, Text
+from sqlalchemy import JSON, Column, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -57,9 +56,17 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
     model_metadata = Column(JSON, nullable=False, default=dict)  # Additional metadata
 
     # Relationships
-    appointments = relationship("AppointmentModel", back_populates="provider", cascade="all, delete-orphan")
-    clinical_notes = relationship("ClinicalNoteModel", back_populates="provider", cascade="all, delete-orphan")
-    prescriptions_made = relationship("PatientMedicationModel", back_populates="prescribing_provider", cascade="all, delete-orphan")
+    appointments = relationship(
+        "AppointmentModel", back_populates="provider", cascade="all, delete-orphan"
+    )
+    clinical_notes = relationship(
+        "ClinicalNoteModel", back_populates="provider", cascade="all, delete-orphan"
+    )
+    prescriptions_made = relationship(
+        "PatientMedicationModel",
+        back_populates="prescribing_provider",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         """Return string representation of the provider."""
@@ -69,10 +76,10 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
     def from_domain(cls, provider: "DomainProvider") -> "ProviderModel":
         """
         Create a Provider model from domain entity.
-        
+
         Args:
             provider: Domain provider entity
-            
+
         Returns:
             ProviderModel instance
         """

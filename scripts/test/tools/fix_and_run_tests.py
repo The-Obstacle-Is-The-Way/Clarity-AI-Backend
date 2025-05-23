@@ -67,9 +67,7 @@ class TestRunner:
             logger.warning("Syntax fixer errors:\n" + process.stderr)
 
         # Check if unfixed_syntax_errors.txt was created
-        unfixed_errors_path = os.path.join(
-            self.backend_dir, "unfixed_syntax_errors.txt"
-        )
+        unfixed_errors_path = os.path.join(self.backend_dir, "unfixed_syntax_errors.txt")
         if os.path.exists(unfixed_errors_path):
             with open(unfixed_errors_path) as f:
                 error_files = [line.split(":")[0].strip() for line in f.readlines()]
@@ -109,8 +107,7 @@ class TestRunner:
 
         # Skip files with known syntax errors
         syntax_error_files_full = [
-            os.path.join(self.backend_dir, f)
-            for f in self.results["syntax_error_files"]
+            os.path.join(self.backend_dir, f) for f in self.results["syntax_error_files"]
         ]
         test_files = [f for f in test_files if f not in syntax_error_files_full]
 

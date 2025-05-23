@@ -18,9 +18,7 @@ class NeuralPathwayMapper:
     def __init__(self):
         """Initialize the neural pathway mapper with scientific accuracy."""
         self._region_connectivity = self._initialize_region_connectivity()
-        self._neurotransmitter_interactions = (
-            self._initialize_neurotransmitter_interactions()
-        )
+        self._neurotransmitter_interactions = self._initialize_neurotransmitter_interactions()
 
     def _initialize_region_connectivity(
         self,
@@ -59,16 +57,12 @@ class NeuralPathwayMapper:
 
         # Define interactions with proper effect magnitudes
         interactions[Neurotransmitter.SEROTONIN][Neurotransmitter.DOPAMINE] = "medium"
-        interactions[Neurotransmitter.SEROTONIN][
-            Neurotransmitter.NOREPINEPHRINE
-        ] = "medium"
+        interactions[Neurotransmitter.SEROTONIN][Neurotransmitter.NOREPINEPHRINE] = "medium"
 
         interactions[Neurotransmitter.DOPAMINE][Neurotransmitter.GLUTAMATE] = "large"
         interactions[Neurotransmitter.DOPAMINE][Neurotransmitter.GABA] = "medium"
 
-        interactions[Neurotransmitter.NOREPINEPHRINE][
-            Neurotransmitter.SEROTONIN
-        ] = "medium"
+        interactions[Neurotransmitter.NOREPINEPHRINE][Neurotransmitter.SEROTONIN] = "medium"
         interactions[Neurotransmitter.GLUTAMATE][Neurotransmitter.GABA] = "large"
         interactions[Neurotransmitter.GABA][Neurotransmitter.GLUTAMATE] = "large"
 
@@ -105,9 +99,7 @@ class NeuralPathwayMapper:
             for secondary_nt, interaction in self._neurotransmitter_interactions.get(
                 primary_neurotransmitter, {}
             ).items():
-                secondary_strength = effect_strength * self._magnitude_to_value(
-                    interaction
-                )
+                secondary_strength = effect_strength * self._magnitude_to_value(interaction)
                 effect_map[secondary_nt] = secondary_strength
 
         return effect_map

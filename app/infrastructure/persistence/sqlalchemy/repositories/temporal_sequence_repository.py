@@ -100,8 +100,11 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
 
         # Convert time_points to timestamps and values for TemporalSequence constructor
         timestamps = [tp.time_value for tp in time_points]
-        values = [[tp.data.get(fname, 0.0) for fname in sequence_model.feature_names] for tp in time_points]
-        
+        values = [
+            [tp.data.get(fname, 0.0) for fname in sequence_model.feature_names]
+            for tp in time_points
+        ]
+
         return TemporalSequence(
             sequence_id=sequence_model.sequence_id,
             patient_id=sequence_model.patient_id,
@@ -143,8 +146,10 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
 
             # Convert time_points to timestamps and values for TemporalSequence constructor
             timestamps = [tp.time_value for tp in time_points]
-            values = [[tp.data.get(fname, 0.0) for fname in seq_model.feature_names] for tp in time_points]
-            
+            values = [
+                [tp.data.get(fname, 0.0) for fname in seq_model.feature_names] for tp in time_points
+            ]
+
             sequence = TemporalSequence(
                 sequence_id=seq_model.sequence_id,
                 patient_id=seq_model.patient_id,
@@ -176,7 +181,9 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
 
         # Delete sequence
         result = await self.session.execute(
-            sa.delete(TemporalSequenceModel.__table__).where(TemporalSequenceModel.sequence_id == sequence_id)
+            sa.delete(TemporalSequenceModel.__table__).where(
+                TemporalSequenceModel.sequence_id == sequence_id
+            )
         )
 
         return result.rowcount > 0
@@ -229,8 +236,10 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
 
         # Convert time_points to timestamps and values for TemporalSequence constructor
         timestamps = [tp.time_value for tp in time_points]
-        values = [[tp.data.get(fname, 0.0) for fname in latest_model.feature_names] for tp in time_points]
-        
+        values = [
+            [tp.data.get(fname, 0.0) for fname in latest_model.feature_names] for tp in time_points
+        ]
+
         return TemporalSequence(
             sequence_id=latest_model.sequence_id,
             patient_id=latest_model.patient_id,

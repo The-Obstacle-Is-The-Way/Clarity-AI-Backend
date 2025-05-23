@@ -19,7 +19,7 @@ import logging
 import os
 import uuid
 from datetime import timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from app.core.config.settings import get_settings
 from app.core.interfaces.services.audit_logger_interface import (
@@ -76,9 +76,7 @@ class AuditLogger(IAuditLogger):
             console_handler.setLevel(self.log_level)
 
             # Create a formatter for consistent log format
-            formatter = logging.Formatter(
-                "%(asctime)s [%(levelname)s] [%(name)s] - %(message)s"
-            )
+            formatter = logging.Formatter("%(asctime)s [%(levelname)s] [%(name)s] - %(message)s")
             file_handler.setFormatter(formatter)
             console_handler.setFormatter(formatter)
 
@@ -86,16 +84,16 @@ class AuditLogger(IAuditLogger):
             self.logger.addHandler(file_handler)
             self.logger.addHandler(console_handler)
         except Exception as e:
-            logger.error(f"Failed to initialize audit logger: {str(e)}")
+            logger.error(f"Failed to initialize audit logger: {e!s}")
             # Continue with a fallback configuration
 
     def log_security_event(
-        self, 
+        self,
         event_type: AuditEventType | str,
         description: str,
         severity: AuditSeverity = AuditSeverity.HIGH,
-        user_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        user_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """
         Log a security-related event for audit purposes.
@@ -134,10 +132,10 @@ class AuditLogger(IAuditLogger):
         actor_id: str,
         event_type: str,
         success: bool,
-        details: Optional[Dict[str, Any]] = None,
-        user_id: Optional[str] = None,
-        description: Optional[str] = None,
-        ip_address: Optional[str] = None,
+        details: dict[str, Any] | None = None,
+        user_id: str | None = None,
+        description: str | None = None,
+        ip_address: str | None = None,
     ) -> str:
         """
         Log an authentication-related event.
@@ -155,7 +153,7 @@ class AuditLogger(IAuditLogger):
             The generated audit event ID
         """
         event_id = str(uuid.uuid4())
-        
+
         # Create the base event data
         log_entry = {
             "timestamp": datetime.datetime.now(timezone.utc).isoformat(),
@@ -168,26 +166,26 @@ class AuditLogger(IAuditLogger):
             "details": details or {},
             "severity": AuditSeverity.INFO.value if success else AuditSeverity.WARNING.value,
         }
-        
+
         # Add description if provided
         if description:
             log_entry["description"] = description
-            
+
         # Add IP address if provided
         if ip_address:
             log_entry["ip_address"] = ip_address
-        
+
         # Log at the appropriate level based on success/failure
         log_message = f"AUTH_EVENT: {json.dumps(log_entry)}"
         if success:
             self.logger.info(log_message)
         else:
             self.logger.warning(log_message)
-            
+
         # Send to external audit service if enabled
         if self.external_audit_enabled:
             self._send_to_external_audit_service(log_entry)
-            
+
         return event_id
 
     def log_phi_access(
@@ -201,7 +199,7 @@ class AuditLogger(IAuditLogger):
         reason: str | None = None,
         request: Any | None = None,
         request_context: dict[str, Any] | None = None,
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> str:
         """
         Log PHI access events in compliance with HIPAA requirements.
@@ -231,11 +229,11 @@ class AuditLogger(IAuditLogger):
             try:
                 if hasattr(request, "client") and hasattr(request.client, "host"):
                     context["ip_address"] = request.client.host
-                
+
                 if hasattr(request, "headers") and "user-agent" in request.headers:
                     context["user_agent"] = request.headers["user-agent"]
             except Exception as e:
-                logger.warning(f"Error extracting request context: {str(e)}")
+                logger.warning(f"Error extracting request context: {e!s}")
 
         # Create audit log entry
         log_entry = {
@@ -252,7 +250,7 @@ class AuditLogger(IAuditLogger):
             "reason": reason,
             "context": context,
         }
-        
+
         # Add details if provided
         if details:
             log_entry["details"] = details
@@ -276,11 +274,11 @@ class AuditLogger(IAuditLogger):
         resource_id: str,
         action: str,
         user_id: str,
-        reason: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        reason: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Log access to sensitive data for HIPAA compliance.
-        
+
         Args:
             resource_type: Type of resource being accessed (e.g., PATIENT, RECORD)
             resource_id: Identifier of the resource
@@ -297,7 +295,7 @@ class AuditLogger(IAuditLogger):
             action=action,
             status="success",
             reason=reason,
-            request_context=metadata
+            request_context=metadata,
         )
 
     def log_api_request(
@@ -305,13 +303,13 @@ class AuditLogger(IAuditLogger):
         endpoint: str,
         method: str,
         status_code: int,
-        user_id: Optional[str] = None,
-        request_id: Optional[str] = None,
-        duration_ms: Optional[float] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        user_id: str | None = None,
+        request_id: str | None = None,
+        duration_ms: float | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Log API request information for audit trails.
-        
+
         Args:
             endpoint: API endpoint that was accessed
             method: HTTP method used (GET, POST, etc.)
@@ -350,14 +348,14 @@ class AuditLogger(IAuditLogger):
         self,
         event_type: str,
         description: str,
-        details: Optional[Dict[str, Any]] = None,
-        actor_id: Optional[str] = None,
-        user_id: Optional[str] = None,
+        details: dict[str, Any] | None = None,
+        actor_id: str | None = None,
+        user_id: str | None = None,
         severity: AuditSeverity = AuditSeverity.INFO,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """Log system-level events for operational auditing.
-        
+
         Args:
             event_type: Type of system event
             description: Human-readable description of the event
@@ -366,12 +364,12 @@ class AuditLogger(IAuditLogger):
             user_id: ID of the user associated with the event (for compatibility)
             severity: Severity level (INFO, WARNING, ERROR)
             metadata: Additional contextual information about the event
-            
+
         Returns:
             The generated audit event ID
         """
         event_id = str(uuid.uuid4())
-        
+
         log_entry = {
             "timestamp": datetime.datetime.now(timezone.utc).isoformat(),
             "event_id": event_id,
@@ -383,7 +381,7 @@ class AuditLogger(IAuditLogger):
             "severity": severity.value if hasattr(severity, "value") else severity,
             "metadata": metadata or {},
         }
-        
+
         # Add details if provided
         if details:
             log_entry["details"] = details
@@ -400,7 +398,7 @@ class AuditLogger(IAuditLogger):
         # Send to external audit service if enabled
         if self.external_audit_enabled:
             self._send_to_external_audit_service(log_entry)
-            
+
         return event_id
 
     def get_audit_trail(
@@ -433,7 +431,7 @@ class AuditLogger(IAuditLogger):
             f"time range: {start_time} to {end_time}, "
             f"limit: {limit}, offset: {offset}"
         )
-        
+
         # In a real implementation, we'd search logs in the database
         # or parse the log file and apply filters
         return []
@@ -510,22 +508,21 @@ class AuditLogger(IAuditLogger):
         # In a real implementation, this would query the database
         # to compute security metrics
         start_time = datetime.datetime.now(timezone.utc) - datetime.timedelta(days=days)
-        
+
         # Get relevant audit logs for the time period
         logs = self.get_audit_trail(
             start_time=start_time,
             limit=10000,  # High limit to ensure we get all logs
         )
-        
+
         # Count different event types
         total_events = len(logs)
         security_incidents = sum(1 for log in logs if log.get("severity") in ["HIGH", "CRITICAL"])
         phi_access_count = sum(1 for log in logs if log.get("event_type") == "PHI_ACCESS")
         failed_logins = sum(
-            1 for log in logs
-            if log.get("event_type") == "LOGIN" and log.get("status") == "failure"
+            1 for log in logs if log.get("event_type") == "LOGIN" and log.get("status") == "failure"
         )
-        
+
         return {
             "total_events": total_events,
             "security_incidents": security_incidents,
@@ -547,37 +544,37 @@ class AuditLogger(IAuditLogger):
             # In a real implementation, we'd use aiohttp or similar to send
             # logs to the external service asynchronously
             logger.debug(f"Would send to external audit service: {log_entry}")
-        
+
         # We don't want to block on external service issues
         # so we catch and log any errors
         try:
             pass  # External audit service call would go here
         except Exception as e:
-            logger.error(f"Failed to send log to external audit service: {str(e)}")
+            logger.error(f"Failed to send log to external audit service: {e!s}")
 
 
 # Try to initialize the audit logger, fall back to dummy implementation on error
 try:
     audit_logger = AuditLogger()
 except Exception as e:
-    logger.error(f"Failed to initialize AuditLogger: {str(e)}")
-    
+    logger.error(f"Failed to initialize AuditLogger: {e!s}")
+
     # Create a dummy implementation as fallback
     class DummyAuditLogger(IAuditLogger):
         """Fallback audit logger that logs warnings but does not raise exceptions."""
-        
+
         def log_security_event(
-            self, 
+            self,
             event_type: AuditEventType | str,
             description: str,
             severity: AuditSeverity = AuditSeverity.HIGH,
-            user_id: Optional[str] = None,
-            metadata: Optional[Dict[str, Any]] = None
+            user_id: str | None = None,
+            metadata: dict[str, Any] | None = None,
         ) -> None:
             logger.warning(
                 "DummyAuditLogger.log_security_event called but logger not properly initialized"
             )
-        
+
         def log_phi_access(
             self,
             actor_id: str,
@@ -594,43 +591,43 @@ except Exception as e:
                 "DummyAuditLogger.log_phi_access called but logger not properly initialized"
             )
             return str(uuid.uuid4())
-        
+
         def log_data_access(
             self,
             resource_type: str,
             resource_id: str,
             action: str,
             user_id: str,
-            reason: Optional[str] = None,
-            metadata: Optional[Dict[str, Any]] = None
+            reason: str | None = None,
+            metadata: dict[str, Any] | None = None,
         ) -> None:
             """Log access to sensitive data for HIPAA compliance."""
             logger.warning(
                 "DummyAuditLogger.log_data_access called but logger not properly initialized"
             )
-        
+
         def log_api_request(
             self,
             endpoint: str,
             method: str,
             status_code: int,
-            user_id: Optional[str] = None,
-            request_id: Optional[str] = None,
-            duration_ms: Optional[float] = None,
-            metadata: Optional[Dict[str, Any]] = None
+            user_id: str | None = None,
+            request_id: str | None = None,
+            duration_ms: float | None = None,
+            metadata: dict[str, Any] | None = None,
         ) -> None:
             """Log API request information for audit trails."""
             logger.warning(
                 "DummyAuditLogger.log_api_request called but logger not properly initialized"
             )
-        
+
         def log_auth_event(
             self,
             actor_id: str,
             event_type: str,
             success: bool,
-            details: Optional[Dict[str, Any]] = None,
-            user_id: Optional[str] = None,
+            details: dict[str, Any] | None = None,
+            user_id: str | None = None,
         ) -> str:
             """Log authentication-related events."""
             logger.warning(
@@ -642,9 +639,9 @@ except Exception as e:
             self,
             event_type: str,
             description: str,
-            details: Optional[Dict[str, Any]] = None,
-            actor_id: Optional[str] = None,
-            user_id: Optional[str] = None,
+            details: dict[str, Any] | None = None,
+            actor_id: str | None = None,
+            user_id: str | None = None,
         ) -> str:
             """Log system-level events for operational auditing."""
             logger.warning(

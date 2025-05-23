@@ -27,6 +27,8 @@ from app.core.config.settings import Settings as AppSettings  # Use alias
 # Assuming base exceptions are in core.exceptions.base_exceptions
 from app.core.exceptions.base_exceptions import (
     ModelExecutionError,  # Changed from ModelInferenceError
+)
+from app.core.exceptions.base_exceptions import (
     ResourceNotFoundError,
 )
 from app.domain.entities.user import User  # Added User import

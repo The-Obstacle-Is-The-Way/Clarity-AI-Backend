@@ -150,9 +150,7 @@ class DockerTestOrchestrator:
             "db_required",
             "all",
         }:
-            print(
-                "Usage: docker_entrypoint.py [standalone|venv_only|db_required|all] [options]"
-            )
+            print("Usage: docker_entrypoint.py [standalone|venv_only|db_required|all] [options]")
             return 1
 
         test_level = args[1]

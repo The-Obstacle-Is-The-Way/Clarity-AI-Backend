@@ -18,9 +18,7 @@ import re
 import sys
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("enhanced_syntax_fixer")
 
 # Root path for test files
@@ -110,9 +108,7 @@ class PythonSyntaxFixer:
                 if self._is_missing_colon(line):
                     fixed_line = line.rstrip() + ":\n"
                     fixed_lines.append(fixed_line)
-                    result.add_fixed_issue(
-                        line_num + 1, "Added missing colon after declaration"
-                    )
+                    result.add_fixed_issue(line_num + 1, "Added missing colon after declaration")
 
                 # Fix 2: Missing indentation after function/class declaration
                 elif (
@@ -125,26 +121,19 @@ class PythonSyntaxFixer:
                     fixed_lines.append(line)
                     if line_num + 1 < len(lines):
                         fixed_lines.append("    " + next_line)
-                        result.add_fixed_issue(
-                            line_num + 2, "Fixed missing indentation"
-                        )
+                        result.add_fixed_issue(line_num + 2, "Fixed missing indentation")
                         line_num += 1  # Skip the next line since we've handled it
 
                 # Fix 3: Check for unindented docstring after class/function declaration
                 elif (
                     line.strip().endswith(":")
                     and next_line
-                    and (
-                        next_line.strip().startswith('"""')
-                        or next_line.strip().startswith("'''")
-                    )
+                    and (next_line.strip().startswith('"""') or next_line.strip().startswith("'''"))
                 ) and not next_line.startswith(" "):
                     fixed_lines.append(line)
                     if line_num + 1 < len(lines):
                         fixed_lines.append("    " + next_line)
-                        result.add_fixed_issue(
-                            line_num + 2, "Fixed docstring indentation"
-                        )
+                        result.add_fixed_issue(line_num + 2, "Fixed docstring indentation")
                         line_num += 1  # Skip the next line since we've handled it
 
                 # No fixes needed for this line
@@ -161,9 +150,7 @@ class PythonSyntaxFixer:
                 # Check if our fixes resolved the syntax errors
                 is_valid, error = self.check_syntax(file_path)
                 if not is_valid:
-                    result.add_error(
-                        0, f"Failed to fix syntax errors. Remaining error: {error}"
-                    )
+                    result.add_error(0, f"Failed to fix syntax errors. Remaining error: {error}")
 
         except Exception as e:
             result.add_error(0, f"Error fixing file: {e!s}")
@@ -243,9 +230,7 @@ def main():
     """Main function to run the script"""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Fix common syntax errors in test files"
-    )
+    parser = argparse.ArgumentParser(description="Fix common syntax errors in test files")
     parser.add_argument(
         "--test-path",
         default=DEFAULT_TEST_PATH,

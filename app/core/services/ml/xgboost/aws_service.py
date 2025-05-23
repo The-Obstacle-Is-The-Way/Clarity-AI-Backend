@@ -43,7 +43,7 @@ from app.presentation.api.schemas.xgboost import RiskLevel
 
 class ServiceInitializationError(Exception):
     """Raised when service initialization fails."""
-    
+
     def __init__(self, message: str, service: str = "", details: str = ""):
         super().__init__(message)
         self.service = service
@@ -223,9 +223,7 @@ class AWSXGBoostService(XGBoostInterface):
             )
 
         else:
-            raise ModelNotFoundError(
-                f"Prediction for model type '{model_type}' is not implemented"
-            )
+            raise ModelNotFoundError(f"Prediction for model type '{model_type}' is not implemented")
 
     async def predict_risk(
         self, patient_id: str, risk_type: str, clinical_data: dict[str, Any], **kwargs
@@ -276,7 +274,7 @@ class AWSXGBoostService(XGBoostInterface):
                 "features": features["features"],
                 "patient_id": patient_id,
                 "timestamp": timestamp.isoformat(),
-                **kwargs
+                **kwargs,
             }
 
             # Validate for PHI
@@ -551,7 +549,7 @@ class AWSXGBoostService(XGBoostInterface):
                 endpoint_name = endpoint.get("EndpointName", "")
                 if prefix and endpoint_name.startswith(prefix):
                     model_type = self._get_model_type_from_endpoint(endpoint_name)
-                    
+
                     available_models.append(
                         {
                             "model_type": model_type,
@@ -710,10 +708,10 @@ class AWSXGBoostService(XGBoostInterface):
                 s3 = self._aws_factory.get_s3_service()
                 if s3 is None:
                     raise ServiceConnectionError("Failed to get S3 service")
-                
+
                 if not self._bucket_name:
                     raise ConfigurationError("S3 bucket name not configured")
-                
+
                 bucket_exists = s3.check_bucket_exists(self._bucket_name)
                 health_status["components"]["s3"] = "HEALTHY" if bucket_exists else "UNHEALTHY"
                 if not bucket_exists:
@@ -728,10 +726,10 @@ class AWSXGBoostService(XGBoostInterface):
                 dynamodb = self._aws_factory.get_dynamodb_service()
                 if dynamodb is None:
                     raise ServiceConnectionError("Failed to get DynamoDB service")
-                
+
                 if not self._dynamodb_table_name:
                     raise ConfigurationError("DynamoDB table name not configured")
-                
+
                 dynamodb.scan_table(self._dynamodb_table_name)
                 health_status["components"]["dynamodb"] = "HEALTHY"
             except Exception as e:
@@ -744,10 +742,14 @@ class AWSXGBoostService(XGBoostInterface):
                 sagemaker = self._aws_factory.get_sagemaker_service()
                 if sagemaker is None:
                     raise ServiceConnectionError("Failed to get SageMaker service")
-                
+
                 endpoints_response = sagemaker.list_endpoints()
                 # Handle both dict response (with "Endpoints" key) and direct list response
-                endpoints = endpoints_response.get("Endpoints", []) if isinstance(endpoints_response, dict) else endpoints_response
+                endpoints = (
+                    endpoints_response.get("Endpoints", [])
+                    if isinstance(endpoints_response, dict)
+                    else endpoints_response
+                )
 
                 prefix = self._endpoint_prefix or ""
                 endpoints_list = []
@@ -816,10 +818,18 @@ class AWSXGBoostService(XGBoostInterface):
     def _validate_aws_config(self, config: dict[str, Any]) -> None:
         """Validate the AWS configuration."""
         self._region_name = config.get("aws_region") or os.environ.get("AWS_REGION", "us-east-1")
-        self._endpoint_prefix = config.get("endpoint_prefix") or os.environ.get("SAGEMAKER_ENDPOINT_PREFIX", "xgboost-")
-        self._bucket_name = config.get("bucket_name") or os.environ.get("XGBOOST_S3_BUCKET", "novamind-xgboost-data")
-        self._dynamodb_table_name = config.get("dynamodb_table_name") or os.environ.get("XGBOOST_DYNAMODB_TABLE", "xgboost-predictions")
-        self._audit_table_name = config.get("audit_table_name") or os.environ.get("XGBOOST_AUDIT_TABLE", "xgboost-audit-log")
+        self._endpoint_prefix = config.get("endpoint_prefix") or os.environ.get(
+            "SAGEMAKER_ENDPOINT_PREFIX", "xgboost-"
+        )
+        self._bucket_name = config.get("bucket_name") or os.environ.get(
+            "XGBOOST_S3_BUCKET", "novamind-xgboost-data"
+        )
+        self._dynamodb_table_name = config.get("dynamodb_table_name") or os.environ.get(
+            "XGBOOST_DYNAMODB_TABLE", "xgboost-predictions"
+        )
+        self._audit_table_name = config.get("audit_table_name") or os.environ.get(
+            "XGBOOST_AUDIT_TABLE", "xgboost-audit-log"
+        )
 
         model_mappings = config.get("model_mappings", {})
         if not isinstance(model_mappings, dict):
@@ -850,10 +860,10 @@ class AWSXGBoostService(XGBoostInterface):
         """Validate that required AWS resources exist and are accessible."""
         if self._s3 is None:
             raise ServiceConnectionError("S3 service not initialized")
-        
+
         if not self._bucket_name:
             raise ConfigurationError("S3 bucket name not configured")
-        
+
         if not self._s3.check_bucket_exists(self._bucket_name):
             raise ServiceConnectionError(
                 f"S3 bucket {self._bucket_name} does not exist or is not accessible",
@@ -863,7 +873,7 @@ class AWSXGBoostService(XGBoostInterface):
 
         if self._sagemaker is None:
             raise ServiceConnectionError("SageMaker service not initialized")
-        
+
         endpoints = self._sagemaker.list_endpoints()
         endpoint_count = len(endpoints) if isinstance(endpoints, list) else 0
         self._logger.info(f"Found {endpoint_count} SageMaker endpoints")
@@ -872,20 +882,24 @@ class AWSXGBoostService(XGBoostInterface):
         """Ensure the service is initialized before using it."""
         if not self._initialized:
             # Auto-initialize with default configuration
-            await self.initialize({
-                "aws_region": os.environ.get("AWS_REGION", "us-east-1"),
-                "endpoint_prefix": os.environ.get("SAGEMAKER_ENDPOINT_PREFIX", "xgboost-"),
-                "bucket_name": os.environ.get("XGBOOST_S3_BUCKET", "novamind-xgboost-data"),
-                "dynamodb_table_name": os.environ.get("XGBOOST_DYNAMODB_TABLE", "xgboost-predictions"),
-                "audit_table_name": os.environ.get("XGBOOST_AUDIT_TABLE", "xgboost-audit-log"),
-                "model_mappings": {
-                    ModelType.RISK_SUICIDE.value: "suicide-risk",
-                    ModelType.RISK_HOSPITALIZATION.value: "readmission-risk",
-                    ModelType.TREATMENT_MEDICATION_SSRI.value: "medication-ssri-response",
-                    ModelType.TREATMENT_MEDICATION_SNRI.value: "medication-snri-response",
-                    ModelType.TREATMENT_THERAPY_CBT.value: "therapy-cbt-response",
-                },
-            })
+            await self.initialize(
+                {
+                    "aws_region": os.environ.get("AWS_REGION", "us-east-1"),
+                    "endpoint_prefix": os.environ.get("SAGEMAKER_ENDPOINT_PREFIX", "xgboost-"),
+                    "bucket_name": os.environ.get("XGBOOST_S3_BUCKET", "novamind-xgboost-data"),
+                    "dynamodb_table_name": os.environ.get(
+                        "XGBOOST_DYNAMODB_TABLE", "xgboost-predictions"
+                    ),
+                    "audit_table_name": os.environ.get("XGBOOST_AUDIT_TABLE", "xgboost-audit-log"),
+                    "model_mappings": {
+                        ModelType.RISK_SUICIDE.value: "suicide-risk",
+                        ModelType.RISK_HOSPITALIZATION.value: "readmission-risk",
+                        ModelType.TREATMENT_MEDICATION_SSRI.value: "medication-ssri-response",
+                        ModelType.TREATMENT_MEDICATION_SNRI.value: "medication-snri-response",
+                        ModelType.TREATMENT_THERAPY_CBT.value: "therapy-cbt-response",
+                    },
+                }
+            )
 
     def _validate_risk_prediction_params(
         self, patient_id: str, risk_type: str, clinical_data: dict[str, Any]
@@ -1006,7 +1020,7 @@ class AWSXGBoostService(XGBoostInterface):
         """Extract model type from endpoint name."""
         prefix = self._endpoint_prefix or ""
         if endpoint_name.startswith(prefix):
-            suffix = endpoint_name[len(prefix):]
+            suffix = endpoint_name[len(prefix) :]
             # Reverse lookup in model mappings
             for model_type, endpoint_suffix in self._model_mappings.items():
                 if suffix == endpoint_suffix:
@@ -1059,13 +1073,15 @@ class AWSXGBoostService(XGBoostInterface):
                 raise PredictionError(f"Invalid response from SageMaker: {response}")
 
             response_body = response["Body"]
-            if hasattr(response_body, 'read'):
+            if hasattr(response_body, "read"):
                 body_content = response_body.read()
             else:
                 body_content = response_body
-            
+
             self._logger.debug(f"Received response: {body_content}")
-            return json.loads(body_content.decode("utf-8") if isinstance(body_content, bytes) else body_content)
+            return json.loads(
+                body_content.decode("utf-8") if isinstance(body_content, bytes) else body_content
+            )
 
         except Exception as e:
             if "Connection refused" in str(e) or "timeout" in str(e).lower():

@@ -112,11 +112,7 @@ def determine_destination(file_path, base_dir):
         parts.remove("refactored")
 
     # Domain entities
-    if (
-        "domain" in parts
-        and "entities" in parts
-        and "digital_twin" in file_path.lower()
-    ):
+    if "domain" in parts and "entities" in parts and "digital_twin" in file_path.lower():
         return os.path.join(
             base_dir,
             "app",
@@ -128,9 +124,7 @@ def determine_destination(file_path, base_dir):
 
     # Domain repositories
     if "repository" in file_path.lower() and "mongodb" not in file_path.lower():
-        return os.path.join(
-            base_dir, "app", "domain", "repositories", os.path.basename(file_path)
-        )
+        return os.path.join(base_dir, "app", "domain", "repositories", os.path.basename(file_path))
 
     # Infrastructure repositories
     if "repository" in file_path.lower() and "mongodb" in file_path.lower():
@@ -181,21 +175,15 @@ def determine_destination(file_path, base_dir):
 
     # API endpoints
     if "endpoint" in file_path.lower() or "api" in file_path.lower():
-        return os.path.join(
-            base_dir, "app", "api", "v1", "endpoints", os.path.basename(file_path)
-        )
+        return os.path.join(base_dir, "app", "api", "v1", "endpoints", os.path.basename(file_path))
 
     # API schemas
     if "schema" in file_path.lower() or "model" in file_path.lower():
-        return os.path.join(
-            base_dir, "app", "api", "v1", "schemas", os.path.basename(file_path)
-        )
+        return os.path.join(base_dir, "app", "api", "v1", "schemas", os.path.basename(file_path))
 
     # Security
     if "security" in file_path.lower() or "auth" in file_path.lower():
-        return os.path.join(
-            base_dir, "app", "core", "security", os.path.basename(file_path)
-        )
+        return os.path.join(base_dir, "app", "core", "security", os.path.basename(file_path))
 
     # Default: keep in same directory without 'refactored'
     return os.path.join(base_dir, *parts)

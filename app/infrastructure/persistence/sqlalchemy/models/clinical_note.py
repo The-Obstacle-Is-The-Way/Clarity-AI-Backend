@@ -10,14 +10,14 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     JSON,
+)
+from sqlalchemy import UUID as SQLAlchemyUUID
+from sqlalchemy import (
     Column,
     ForeignKey,
     Integer,
     String,
     Text,
-)
-from sqlalchemy import (
-    UUID as SQLAlchemyUUID,
 )
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import relationship
