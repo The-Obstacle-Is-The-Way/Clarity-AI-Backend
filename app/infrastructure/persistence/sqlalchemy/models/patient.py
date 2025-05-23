@@ -433,27 +433,39 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # EncryptedJSON fields can take the direct object if it's serializable or None.
         # For EncryptedText/EncryptedJSON that store serialized complex types, use json.dumps.
 
-        # Create contact_info from individual email and phone fields
-        # This ensures contact_info is properly populated even when domain Patient
-        # uses individual fields rather than a contact_info object
-        patient_email = getattr(patient, "email", None)
-        # Handle phone_number field from Pydantic Patient and contact_info.phone as fallback
-        patient_phone = None
-        if hasattr(patient, "phone_number"):
-            patient_phone = getattr(patient, "phone_number", None)
-        elif hasattr(patient, "phone"):
-            patient_phone = getattr(patient, "phone", None)
-        
-        # If still None, try to get from contact_info
-        if patient_phone is None and hasattr(patient, "contact_info") and patient.contact_info:
-            patient_phone = getattr(patient.contact_info, "phone", None)
-        
-        contact_info_dict = {
-            "email": patient_email,
-            "phone": patient_phone,
-            "email_secondary": None  # Default for now
-        }
-        model._contact_info = contact_info_dict
+        # Handle ContactInfo - prioritize existing contact_info object if present
+        existing_contact_info = getattr(patient, "contact_info", None)
+        if existing_contact_info is not None:
+            # Use existing ContactInfo object - serialize to dict for database storage
+            if hasattr(existing_contact_info, "model_dump"):
+                model._contact_info = existing_contact_info.model_dump(exclude_none=False)
+            elif hasattr(existing_contact_info, "dict"):
+                model._contact_info = existing_contact_info.dict(exclude_none=False)
+            elif isinstance(existing_contact_info, dict):
+                model._contact_info = existing_contact_info
+            else:
+                # Fallback: try to convert to dict
+                model._contact_info = {
+                    "email": getattr(existing_contact_info, "email", None),
+                    "phone": getattr(existing_contact_info, "phone", None),
+                    "email_secondary": getattr(existing_contact_info, "email_secondary", None)
+                }
+        else:
+            # Create contact_info from individual email and phone fields as fallback
+            patient_email = getattr(patient, "email", None)
+            # Handle phone_number field from Pydantic Patient and phone as fallback
+            patient_phone = None
+            if hasattr(patient, "phone_number"):
+                patient_phone = getattr(patient, "phone_number", None)
+            elif hasattr(patient, "phone"):
+                patient_phone = getattr(patient, "phone", None)
+            
+            contact_info_dict = {
+                "email": patient_email,
+                "phone": patient_phone,
+                "email_secondary": None  # Default for now
+            }
+            model._contact_info = contact_info_dict
 
         address_vo_from_domain = getattr(patient, "address", None)
         # Serialize Address VO to dict for database storage
