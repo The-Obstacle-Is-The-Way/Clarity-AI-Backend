@@ -401,6 +401,7 @@ async def test_generate_clinical_insights(
         ClinicalSignificance.MILD.value,
         ClinicalSignificance.MINIMAL.value,
         ClinicalSignificance.LOW.value,
+        ClinicalSignificance.MEDIUM.value,
     ]
 
 
