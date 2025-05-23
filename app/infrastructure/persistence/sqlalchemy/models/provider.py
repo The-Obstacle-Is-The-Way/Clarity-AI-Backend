@@ -58,6 +58,7 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
 
     # Relationships
     appointments = relationship("AppointmentModel", back_populates="provider", cascade="all, delete-orphan")
+    clinical_notes = relationship("ClinicalNoteModel", back_populates="provider", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         """Return string representation of the provider."""
