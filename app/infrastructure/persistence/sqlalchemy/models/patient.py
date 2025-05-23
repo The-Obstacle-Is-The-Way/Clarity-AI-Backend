@@ -499,15 +499,6 @@ class Patient(Base, TimestampMixin, AuditMixin):
             patient, "extra_data", None
         )  # EncryptedJSON handles dict serialization
 
-        # DEBUG PRINTS START
-        print("[DEBUG PatientModel.from_domain] Final model attributes before return:")
-        print(f"  _contact_info TYPE: {type(model._contact_info)}")
-        print(f"  _contact_info VALUE: {model._contact_info!r}")
-        print(f"  _address_details TYPE: {type(model._address_details)}")
-        print(f"  _address_details VALUE: {model._address_details!r}")
-        print(f"  _emergency_contact_details TYPE: {type(model._emergency_contact_details)}")
-        print(f"  _emergency_contact_details VALUE: {model._emergency_contact_details!r}")
-        # DEBUG PRINTS END
 
         logger.debug(f"[from_domain] Completed conversion for patient model ID: {model.id}")
         return model
@@ -518,49 +509,6 @@ class Patient(Base, TimestampMixin, AuditMixin):
         decrypting PHI fields using the provided encryption service.
         """
         logger.debug(f"[to_domain] Starting conversion for model patient ID: {self.id}")
-
-        # Add SQLAlchemy inspect debug prints here
-        print(f"DEBUG [PatientModel.to_domain] - Inspecting attributes for instance ID: {self.id}")
-        instance_state = inspect(self)
-
-        # Attributes to inspect (adjust as needed, especially for JSON fields)
-        attrs_to_inspect = [
-            "_first_name",
-            "_last_name",
-            "_middle_name",
-            "_suffix",
-            "_date_of_birth",
-            "_gender",
-            "_ssn_lve",
-            "_phone_number_lve",
-            "_contact_info",
-            "_address_details",
-            "_emergency_contact_details",
-        ]
-
-        for attr_name in attrs_to_inspect:
-            if hasattr(self, attr_name):
-                try:
-                    # Use a generic approach for getattr to avoid issues if attr is complex
-                    actual_value_via_getattr = getattr(self, attr_name)
-                    print(f"  DEBUG Attr [{attr_name}]:")
-                    print(f"    - Value via getattr(): {actual_value_via_getattr!r}")
-                    print(f"    - Type  via getattr(): {type(actual_value_via_getattr)}")
-
-                    if instance_state.attrs.has_key(attr_name):
-                        attr_state = instance_state.attrs.get(attr_name)
-                        print(f"    - SA State Value   : {attr_state.value!r}")
-                        print(f"    - SA State Type    : {type(attr_state.value)}")
-                        # History can be verbose, print only if necessary or summarized
-                        # print(f"    - SA State History : {attr_state.history}")
-                    else:
-                        print(
-                            f"    - SA State         : Attribute '{attr_name}' not found in instance_state.attrs"
-                        )
-                except Exception as e:
-                    print(f"  DEBUG Attr [{attr_name}]: Error during inspection: {e}")
-            else:
-                print(f"  DEBUG Attr [{attr_name}]: Not present on self.")
 
         def _decode_if_bytes(value: Any) -> Any:
             """Decode bytes to string if the value is bytes and strip 'encrypted_' prefix if present."""
@@ -820,7 +768,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
             "gender": gender,
             "date_of_birth": date_of_birth,
             "email": _decode_if_bytes(self._email),
-            "phone": _decode_if_bytes(self._phone_number),  # Map 'phone_number_lve' → 'phone'
+            "phone": _decode_if_bytes(self._phone_number),  # Use alias 'phone' that maps to phone_number field
             "medical_record_number": medical_record_number,  # Required for medical_record_number_lve property
             "ssn": ssn,  # Required for social_security_number_lve property
             "address": address_domain_obj,
