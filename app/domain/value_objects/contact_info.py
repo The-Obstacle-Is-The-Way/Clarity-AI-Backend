@@ -153,6 +153,15 @@ class ContactInfo:
             raise ValueError(f"Preferred contact method must be one of: {valid_methods}")
 
     @classmethod
+    def create(cls, **kwargs: Any) -> "ContactInfo":
+        """Factory method for creating ContactInfo instances."""
+        return cls(
+            email=kwargs.get("email"),
+            phone=kwargs.get("phone"),
+            preferred_contact_method=kwargs.get("preferred_contact_method"),
+        )
+
+    @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> "ContactInfo":
         """
         Create a ContactInfo instance from a dictionary.

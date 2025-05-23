@@ -55,7 +55,7 @@ class TestEmergencyContact:
         """Test validation of emergency contact data."""
         # Test with missing required fields
         with pytest.raises(ValueError, match="Name cannot be empty"):
-            EmergencyContact(
+            EmergencyContact.create(
                 name="",
                 relationship="Spouse",
                 phone="555-123-4567",
@@ -63,7 +63,7 @@ class TestEmergencyContact:
             )
 
         with pytest.raises(ValueError, match="Relationship cannot be empty"):
-            EmergencyContact(
+            EmergencyContact.create(
                 name="Jane Doe",
                 relationship="",
                 phone="555-123-4567",
@@ -72,7 +72,7 @@ class TestEmergencyContact:
 
         # Test with invalid phone number
         with pytest.raises(ValueError, match="Invalid phone number format"):
-            EmergencyContact(
+            EmergencyContact.create(
                 name="Jane Doe",
                 relationship="Spouse",
                 phone="invalid-phone",
@@ -81,7 +81,7 @@ class TestEmergencyContact:
 
         # Test with invalid email
         with pytest.raises(ValueError, match="Invalid email format"):
-            EmergencyContact(
+            EmergencyContact.create(
                 name="Jane Doe",
                 relationship="Spouse",
                 phone="555-123-4567",
@@ -95,7 +95,7 @@ class TestEmergencyContact:
         data.pop(
             "email",
         )
-        contact = EmergencyContact(**data)
+        contact = EmergencyContact.create(**data)
         assert contact.email is None
 
         # Test with missing address
@@ -103,15 +103,15 @@ class TestEmergencyContact:
         data.pop(
             "address",
         )
-        contact = EmergencyContact(**data)
+        contact = EmergencyContact.create(**data)
         assert contact.address is None
 
     def test_emergency_contact_equality(self, valid_contact_data):
         """Test equality comparison of emergency contacts."""
-        contact1 = EmergencyContact(
+        contact1 = EmergencyContact.create(
             **valid_contact_data,
         )
-        contact2 = EmergencyContact(**valid_contact_data)
+        contact2 = EmergencyContact.create(**valid_contact_data)
 
         # Same data should be equal
         assert contact1 == contact2
@@ -119,12 +119,12 @@ class TestEmergencyContact:
         # Different data should not be equal
         different_data = valid_contact_data.copy()
         different_data["name"] = "Different Name"
-        contact3 = EmergencyContact(**different_data)
+        contact3 = EmergencyContact.create(**different_data)
         assert contact1 != contact3
 
     def test_emergency_contact_repr(self, valid_contact_data):
         """Test string representation of emergency contact."""
-        contact = EmergencyContact(
+        contact = EmergencyContact.create(
             **valid_contact_data,
         )
         repr_str = repr(contact)
@@ -287,7 +287,7 @@ class TestAddressValueObject:
 
     def test_address_creation(self, valid_address_data):
         """Test successful creation of address."""
-        address = Address(**valid_address_data)
+        address = Address.create(**valid_address_data)
 
         # Verify all attributes
         assert address.street == valid_address_data["street"]
@@ -300,7 +300,7 @@ class TestAddressValueObject:
         """Test validation of address data."""
         # Test with missing required fields
         with pytest.raises(ValueError):
-            Address(
+            Address.create(
                 street="",  # Empty street
                 city="Boston",
                 state="MA",
@@ -309,7 +309,7 @@ class TestAddressValueObject:
             )
 
         with pytest.raises(ValueError):
-            Address(
+            Address.create(
                 street="123 Main St",
                 city="",  # Empty city
                 state="MA",
@@ -319,7 +319,7 @@ class TestAddressValueObject:
 
     def test_address_to_dict(self, valid_address_data):
         """Test conversion of address to dictionary."""
-        address = Address(
+        address = Address.create(
             **valid_address_data,
         )
         address_dict = address.to_dict()
@@ -342,7 +342,7 @@ class TestContactInfoValueObject:
 
     def test_contact_info_creation(self, valid_contact_info_data):
         """Test successful creation of contact info."""
-        contact_info = ContactInfo(**valid_contact_info_data)
+        contact_info = ContactInfo.create(**valid_contact_info_data)
 
         # Verify all attributes
         assert contact_info.email == valid_contact_info_data["email"]
@@ -356,7 +356,7 @@ class TestContactInfoValueObject:
         """Test validation of contact info data."""
         # Test with invalid email
         with pytest.raises(ValueError):
-            ContactInfo(
+            ContactInfo.create(
                 email="invalid-email",  # Invalid email
                 phone="555-123-4567",
                 preferred_contact_method="email",
@@ -364,7 +364,7 @@ class TestContactInfoValueObject:
 
         # Test with invalid phone
         with pytest.raises(ValueError):
-            ContactInfo(
+            ContactInfo.create(
                 email="patient@example.com",
                 phone="invalid-phone",  # Invalid phone
                 preferred_contact_method="phone",
@@ -372,7 +372,7 @@ class TestContactInfoValueObject:
 
         # Test with invalid preferred contact method
         with pytest.raises(ValueError):
-            ContactInfo(
+            ContactInfo.create(
                 email="patient@example.com",
                 phone="555-123-4567",
                 preferred_contact_method="invalid-method",  # Invalid method
@@ -385,7 +385,7 @@ class TestContactInfoValueObject:
         data.pop(
             "email",
         )
-        contact_info = ContactInfo(**data)
+        contact_info = ContactInfo.create(**data)
         assert contact_info.email is None
 
         # Test with missing phone
@@ -393,12 +393,12 @@ class TestContactInfoValueObject:
         data.pop(
             "phone",
         )
-        contact_info = ContactInfo(**data)
+        contact_info = ContactInfo.create(**data)
         assert contact_info.phone is None
 
     def test_contact_info_to_dict(self, valid_contact_info_data):
         """Test conversion of contact info to dictionary."""
-        contact_info = ContactInfo(
+        contact_info = ContactInfo.create(
             **valid_contact_info_data,
         )
         contact_info_dict = contact_info.to_dict()
