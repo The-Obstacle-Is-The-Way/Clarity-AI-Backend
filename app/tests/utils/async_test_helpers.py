@@ -16,14 +16,16 @@ class SafeAsyncMock(_AsyncMock):
     """
     Enhanced AsyncMock that enables proper assertion handling for async tests.
 
-    This class extends AsyncMock to add properly awaitable assertion methods,
+    This class extends AsyncMock to add async-specific assertion methods,
     preventing "coroutine was never awaited" warnings that happen when
     using standard assertion methods directly on AsyncMock objects.
+    
+    Note: We use different method names to avoid overriding synchronous methods.
     """
 
-    async def assert_called_with(self, *args: Any, **kwargs: Any) -> None:
+    async def async_assert_called_with(self, *args: Any, **kwargs: Any) -> None:
         """
-        Awaitable version of assert_called_with.
+        Async-safe version of assert_called_with.
 
         Args:
             *args: Positional arguments to check
@@ -31,9 +33,9 @@ class SafeAsyncMock(_AsyncMock):
         """
         super().assert_called_with(*args, **kwargs)
 
-    async def assert_called_once_with(self, *args: Any, **kwargs: Any) -> None:
+    async def async_assert_called_once_with(self, *args: Any, **kwargs: Any) -> None:
         """
-        Awaitable version of assert_called_once_with.
+        Async-safe version of assert_called_once_with.
 
         Args:
             *args: Positional arguments to check
@@ -41,39 +43,39 @@ class SafeAsyncMock(_AsyncMock):
         """
         super().assert_called_once_with(*args, **kwargs)
 
-    async def assert_called(self) -> None:
+    async def async_assert_called(self) -> None:
         """
-        Awaitable version of assert_called.
+        Async-safe version of assert_called.
         """
         super().assert_called()
 
-    async def assert_called_once(self) -> None:
+    async def async_assert_called_once(self) -> None:
         """
-        Awaitable version of assert_called_once.
+        Async-safe version of assert_called_once.
         """
         super().assert_called_once()
 
-    async def assert_not_called(self) -> None:
+    async def async_assert_not_called(self) -> None:
         """
-        Awaitable version of assert_not_called.
+        Async-safe version of assert_not_called.
         """
         super().assert_not_called()
 
-    async def assert_awaited(self) -> None:
+    async def async_assert_awaited(self) -> None:
         """
-        Awaitable version of assert_awaited.
+        Async-safe version of assert_awaited.
         """
         super().assert_awaited()
 
-    async def assert_awaited_once(self) -> None:
+    async def async_assert_awaited_once(self) -> None:
         """
-        Awaitable version of assert_awaited_once.
+        Async-safe version of assert_awaited_once.
         """
         super().assert_awaited_once()
 
-    async def assert_awaited_with(self, *args: Any, **kwargs: Any) -> None:
+    async def async_assert_awaited_with(self, *args: Any, **kwargs: Any) -> None:
         """
-        Awaitable version of assert_awaited_with.
+        Async-safe version of assert_awaited_with.
 
         Args:
             *args: Positional arguments to check
@@ -81,9 +83,9 @@ class SafeAsyncMock(_AsyncMock):
         """
         super().assert_awaited_with(*args, **kwargs)
 
-    async def assert_awaited_once_with(self, *args: Any, **kwargs: Any) -> None:
+    async def async_assert_awaited_once_with(self, *args: Any, **kwargs: Any) -> None:
         """
-        Awaitable version of assert_awaited_once_with.
+        Async-safe version of assert_awaited_once_with.
 
         Args:
             *args: Positional arguments to check
@@ -91,9 +93,9 @@ class SafeAsyncMock(_AsyncMock):
         """
         super().assert_awaited_once_with(*args, **kwargs)
 
-    async def assert_any_call(self, *args: Any, **kwargs: Any) -> None:
+    async def async_assert_any_call(self, *args: Any, **kwargs: Any) -> None:
         """
-        Awaitable version of assert_any_call.
+        Async-safe version of assert_any_call.
 
         Args:
             *args: Positional arguments to check

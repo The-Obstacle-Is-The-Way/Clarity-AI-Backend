@@ -5,7 +5,7 @@ This module provides implementations of the AWS service interfaces
 using the real boto3 library for production use.
 """
 
-from typing import Any
+from typing import Any, Dict, List, cast
 
 import boto3
 import botocore.exceptions
@@ -36,17 +36,20 @@ class RealDynamoDBService(DynamoDBServiceInterface):
     def scan_table(self, table_name: str) -> dict[str, list[dict[str, Any]]]:
         """Scan a DynamoDB table and return all items."""
         table = self._resource.Table(table_name)
-        return table.scan()
+        response = table.scan()
+        return cast(dict[str, list[dict[str, Any]]], response)
 
     def put_item(self, table_name: str, item: dict[str, Any]) -> dict[str, Any]:
         """Put an item into a DynamoDB table."""
         table = self._resource.Table(table_name)
-        return table.put_item(Item=item)
+        response = table.put_item(Item=item)
+        return cast(dict[str, Any], response)
 
     def get_item(self, table_name: str, key: dict[str, Any]) -> dict[str, Any]:
         """Get an item from a DynamoDB table."""
         table = self._resource.Table(table_name)
-        return table.get_item(Key=key)
+        response = table.get_item(Key=key)
+        return cast(dict[str, Any], response)
 
     def query(
         self,
@@ -56,10 +59,11 @@ class RealDynamoDBService(DynamoDBServiceInterface):
     ) -> dict[str, Any]:
         """Query items from a DynamoDB table."""
         table = self._resource.Table(table_name)
-        return table.query(
+        response = table.query(
             KeyConditionExpression=key_condition_expression,
             ExpressionAttributeValues=expression_attribute_values,
         )
+        return cast(dict[str, Any], response)
 
 
 class RealS3Service(S3ServiceInterface):
@@ -84,18 +88,21 @@ class RealS3Service(S3ServiceInterface):
 
     def put_object(self, bucket_name: str, key: str, body: bytes) -> dict[str, Any]:
         """Upload an object to S3."""
-        return self._client.put_object(Bucket=bucket_name, Key=key, Body=body)
+        response = self._client.put_object(Bucket=bucket_name, Key=key, Body=body)
+        return cast(dict[str, Any], response)
 
     def get_object(self, bucket_name: str, key: str) -> dict[str, Any]:
         """Get an object from S3."""
-        return self._client.get_object(Bucket=bucket_name, Key=key)
+        response = self._client.get_object(Bucket=bucket_name, Key=key)
+        return cast(dict[str, Any], response)
 
     def list_objects(self, bucket_name: str, prefix: str | None = None) -> dict[str, Any]:
         """List objects in an S3 bucket with optional prefix."""
         params = {"Bucket": bucket_name}
         if prefix is not None:
             params["Prefix"] = prefix
-        return self._client.list_objects_v2(**params)
+        response = self._client.list_objects_v2(**params)
+        return cast(dict[str, Any], response)
 
     def download_file(self, bucket_name: str, key: str, filename: str) -> None:
         """Download a file from S3 to local filesystem."""
@@ -113,11 +120,13 @@ class RealSageMakerService(SageMakerServiceInterface):
     def list_endpoints(self) -> list[dict[str, Any]]:
         """List all SageMaker endpoints."""
         response = self._client.list_endpoints()
-        return response.get("Endpoints", [])
+        endpoints = response.get("Endpoints", [])
+        return cast(list[dict[str, Any]], endpoints)
 
     def describe_endpoint(self, endpoint_name: str) -> dict[str, Any]:
         """Get information about a SageMaker endpoint."""
-        return self._client.describe_endpoint(EndpointName=endpoint_name)
+        response = self._client.describe_endpoint(EndpointName=endpoint_name)
+        return cast(dict[str, Any], response)
 
 
 class RealSageMakerRuntimeService(SageMakerRuntimeServiceInterface):
@@ -132,9 +141,10 @@ class RealSageMakerRuntimeService(SageMakerRuntimeServiceInterface):
         self, endpoint_name: str, content_type: str, body: bytes, **kwargs
     ) -> dict[str, Any]:
         """Invoke a SageMaker endpoint."""
-        return self._client.invoke_endpoint(
+        response = self._client.invoke_endpoint(
             EndpointName=endpoint_name, ContentType=content_type, Body=body, **kwargs
         )
+        return cast(dict[str, Any], response)
 
 
 class RealComprehendMedicalService(ComprehendMedicalServiceInterface):
@@ -147,15 +157,18 @@ class RealComprehendMedicalService(ComprehendMedicalServiceInterface):
 
     def detect_entities(self, text: str) -> dict[str, Any]:
         """Detect medical entities in text."""
-        return self._client.detect_entities_v2(Text=text)
+        response = self._client.detect_entities_v2(Text=text)
+        return cast(dict[str, Any], response)
 
     def detect_phi(self, text: str) -> dict[str, Any]:
         """Detect PHI (Protected Health Information) in text."""
-        return self._client.detect_phi(Text=text)
+        response = self._client.detect_phi(Text=text)
+        return cast(dict[str, Any], response)
 
     def infer_icd10_cm(self, text: str) -> dict[str, Any]:
         """Infer ICD-10-CM codes from medical text."""
-        return self._client.infer_icd10_cm(Text=text)
+        response = self._client.infer_icd10_cm(Text=text)
+        return cast(dict[str, Any], response)
 
 
 class RealBedrockService(BedrockServiceInterface):
@@ -168,7 +181,8 @@ class RealBedrockService(BedrockServiceInterface):
 
     def list_foundation_models(self) -> dict[str, Any]:
         """List available foundation models."""
-        return self._client.list_foundation_models()
+        response = self._client.list_foundation_models()
+        return cast(dict[str, Any], response)
 
     def invoke_model(self, model_id: str, body: dict[str, Any], **kwargs) -> dict[str, Any]:
         """Invoke a foundation model."""
@@ -176,7 +190,8 @@ class RealBedrockService(BedrockServiceInterface):
         if isinstance(body, dict):
             body = json_module.dumps(body).encode("utf-8")
 
-        return self._client.invoke_model(modelId=model_id, body=body, **kwargs)
+        response = self._client.invoke_model(modelId=model_id, body=body, **kwargs)
+        return cast(dict[str, Any], response)
 
 
 class RealBedrockRuntimeService(BedrockRuntimeServiceInterface):
@@ -208,7 +223,8 @@ class RealBedrockRuntimeService(BedrockRuntimeServiceInterface):
         if accept:
             params["accept"] = accept
 
-        return self._client.invoke_model(**params, **kwargs)
+        response = self._client.invoke_model(**params, **kwargs)
+        return cast(dict[str, Any], response)
 
     def invoke_model_with_response_stream(
         self,
@@ -231,7 +247,8 @@ class RealBedrockRuntimeService(BedrockRuntimeServiceInterface):
         if accept:
             params["accept"] = accept
 
-        return self._client.invoke_model_with_response_stream(**params, **kwargs)
+        response = self._client.invoke_model_with_response_stream(**params, **kwargs)
+        return cast(dict[str, Any], response)
 
 
 class RealAWSSessionService(AWSSessionServiceInterface):
@@ -245,11 +262,13 @@ class RealAWSSessionService(AWSSessionServiceInterface):
 
     def get_caller_identity(self) -> dict[str, Any]:
         """Get the AWS identity information for the caller."""
-        return self._sts_client.get_caller_identity()
+        response = self._sts_client.get_caller_identity()
+        return cast(dict[str, Any], response)
 
     def get_available_regions(self, service_name: str) -> list[str]:
         """Get available regions for a specific AWS service."""
-        return self._session.get_available_regions(service_name)
+        regions = self._session.get_available_regions(service_name)
+        return cast(list[str], regions)
 
     def get_current_region_name(self) -> str:
         """Get the current AWS region name."""
