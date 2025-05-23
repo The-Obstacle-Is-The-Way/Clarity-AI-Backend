@@ -449,6 +449,27 @@ class Patient:
         """Hash based on ID."""
         return hash(self.id) if self.id is not None else hash(None)
 
+    # LVE (Last Value Encrypted) Properties for PHI field compatibility
+    @property
+    def medical_record_number_lve(self) -> str | None:
+        """LVE accessor for medical record number - maps to medical_record_number field."""
+        return self.medical_record_number
+
+    @medical_record_number_lve.setter
+    def medical_record_number_lve(self, value: str | None) -> None:
+        """LVE setter for medical record number."""
+        self.medical_record_number = value
+
+    @property
+    def social_security_number_lve(self) -> str | None:
+        """LVE accessor for social security number - maps to ssn field."""
+        return self.ssn
+
+    @social_security_number_lve.setter
+    def social_security_number_lve(self, value: str | None) -> None:
+        """LVE setter for social security number."""
+        self.ssn = value
+
 
 # Attach the descriptor to the class after definition
 Patient.contact_info = PatientContactInfoDescriptor()

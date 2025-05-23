@@ -332,7 +332,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         model._first_name = getattr(patient, "first_name", None)
         model._last_name = getattr(patient, "last_name", None)
         model._email = getattr(patient, "email", None)
-        model._phone_number = getattr(patient, "phone_number", None)
+        model._phone_number = getattr(patient, "phone", None)
 
         # Fix gender handling - convert to proper enum instance for the database model
         gender_value = getattr(patient, "gender", None)
@@ -433,16 +433,18 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # EncryptedJSON fields can take the direct object if it's serializable or None.
         # For EncryptedText/EncryptedJSON that store serialized complex types, use json.dumps.
 
-        contact_info_vo = getattr(patient, "contact_info", None)
-        # Don't assign the Pydantic model directly - serialize it to dict first
-        if contact_info_vo is not None:
-            model._contact_info = (
-                contact_info_vo.model_dump()
-                if hasattr(contact_info_vo, "model_dump")
-                else contact_info_vo.to_dict()
-            )
-        else:
-            model._contact_info = None
+        # Create contact_info from individual email and phone fields
+        # This ensures contact_info is properly populated even when domain Patient
+        # uses individual fields rather than a contact_info object
+        patient_email = getattr(patient, "email", None)
+        patient_phone = getattr(patient, "phone", None)  # Domain Patient uses phone, not phone_number
+        
+        contact_info_dict = {
+            "email": patient_email,
+            "phone": patient_phone,
+            "email_secondary": None  # Default for now
+        }
+        model._contact_info = contact_info_dict
 
         address_vo_from_domain = getattr(patient, "address", None)
         # Serialize Address VO to dict for database storage
@@ -810,6 +812,8 @@ class Patient(Base, TimestampMixin, AuditMixin):
             "date_of_birth": date_of_birth,
             "email": _decode_if_bytes(self._email),
             "phone": _decode_if_bytes(self._phone_number),  # Map 'phone_number_lve' → 'phone'
+            "medical_record_number": medical_record_number,  # Required for medical_record_number_lve property
+            "ssn": ssn,  # Required for social_security_number_lve property
             "address": address_domain_obj,
             "emergency_contact": emergency_contact_domain_obj,
             "medical_history": _ensure_parsed_json(self._medical_history),

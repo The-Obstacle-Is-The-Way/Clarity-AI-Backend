@@ -250,7 +250,7 @@ class TestDBPHIProtection:
             last_name="SensitiveLastName",
             date_of_birth=date(1990, 5, 15),  # Use date object
             email="sensitive.email@example.com",
-            phone_number="555-010-0123",  # For contact_info sync
+            phone="555-010-0123",  # For contact_info sync
             # medical_record_number="MRN123_SENSITIVE", # This was original field name
             medical_record_number_lve="MRN123_SENSITIVE",  # Changed to _lve
             social_security_number_lve="999-00-1111",
@@ -317,7 +317,7 @@ class TestDBPHIProtection:
         assert retrieved_patient_domain.social_security_number_lve == "999-00-1111"
 
         assert retrieved_patient_domain.email == "sensitive.email@example.com"
-        assert retrieved_patient_domain.phone_number == "555-010-0123"
+        assert retrieved_patient_domain.phone == "555-010-0123"
 
         assert retrieved_patient_domain.address.street == "123 Main St"
         assert retrieved_patient_domain.emergency_contact.name == "Jane Emergency"
@@ -446,7 +446,7 @@ class TestDBPHIProtection:
             first_name="PatientOne",
             last_name="PatientOneLastName",
             email="patient1@example.com",
-            phone_number="555-0103",
+            phone="555-0103",
             date_of_birth="1990-01-01",
             medical_record_number_lve="MRN123_PatientOne",
             social_security_number_lve="123-45-6789",
@@ -456,7 +456,7 @@ class TestDBPHIProtection:
             first_name="PatientTwo",
             last_name="PatientTwoLastName",
             email="patient2@example.com",
-            phone_number="555-0104",
+            phone="555-0104",
             date_of_birth="1990-01-01",
             medical_record_number_lve="MRN123_PatientTwo",
             social_security_number_lve="123-45-6789",
@@ -592,7 +592,7 @@ class TestDBPHIProtection:
             last_name="Doe",
             email="john.doe@example.com",
             date_of_birth="1988-08-08",
-            phone_number="555-0106",
+            phone="555-0106",
             social_security_number_lve="123-45-6789",
         )
         async with uow:
