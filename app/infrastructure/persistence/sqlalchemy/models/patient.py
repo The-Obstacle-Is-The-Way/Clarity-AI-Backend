@@ -440,6 +440,13 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # Handle both phone and phone_number field names for compatibility
         patient_phone = getattr(patient, "phone", None) or getattr(patient, "phone_number", None)
         
+        # Debug: Check patient object state
+        print(f"[DEBUG from_domain] Patient object type: {type(patient)}")
+        print(f"[DEBUG from_domain] Patient.__dict__: {patient.__dict__}")
+        print(f"[DEBUG from_domain] hasattr(patient, 'phone'): {hasattr(patient, 'phone')}")
+        print(f"[DEBUG from_domain] getattr(patient, 'phone', 'NOT_FOUND'): {getattr(patient, 'phone', 'NOT_FOUND')}")
+        print(f"[DEBUG from_domain] patient_phone final value: {patient_phone}")
+        
         contact_info_dict = {
             "email": patient_email,
             "phone": patient_phone,
