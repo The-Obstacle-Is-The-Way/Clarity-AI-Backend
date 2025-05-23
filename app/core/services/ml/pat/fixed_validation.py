@@ -4,14 +4,16 @@ Validation methods for the MockPAT service.
 This module contains validation methods that can be copied into the main mock.py file.
 """
 
+from typing import Any
+
 
 def _validate_actigraphy_inputs(
     self,
     patient_id: str,
-    readings: List[Dict[str, Any]],
+    readings: list[dict[str, Any]],
     sampling_rate_hz: float,
-    device_info: Dict[str, Any],
-    analysis_types: List[str],
+    device_info: dict[str, Any],
+    analysis_types: list[str],
 ) -> None:
     """Validate inputs for actigraphy analysis.
 
@@ -25,6 +27,8 @@ def _validate_actigraphy_inputs(
     Raises:
         ValidationError: If any validation check fails
     """
+    from pydantic import ValidationError
+    
     # Patient validation - critical for HIPAA compliance
     if not patient_id or (isinstance(patient_id, str) and patient_id.strip() == ""):
         raise ValidationError("Patient ID is required")
@@ -65,7 +69,7 @@ def _validate_actigraphy_inputs(
 
 
 def _validate_embedding_inputs(
-    self, patient_id: str, readings: List[Dict[str, Any]], sampling_rate_hz: float
+    self, patient_id: str, readings: list[dict[str, Any]], sampling_rate_hz: float
 ) -> None:
     """Validate inputs for embedding generation.
 
@@ -77,6 +81,8 @@ def _validate_embedding_inputs(
     Raises:
         ValidationError: If any validation check fails
     """
+    from pydantic import ValidationError
+    
     # HIPAA validation for patient_id - critically important to catch empty strings
     if not patient_id or (isinstance(patient_id, str) and patient_id.strip() == ""):
         raise ValidationError("Patient ID is required")
@@ -96,9 +102,9 @@ def _validate_integration_params(
     self,
     patient_id: str,
     profile_id: str,
-    analysis_id: Optional[str] = None,
-    actigraphy_analysis: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    analysis_id: str | None = None,
+    actigraphy_analysis: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Validate parameters for integration and return the analysis data.
 
     Args:
@@ -115,6 +121,10 @@ def _validate_integration_params(
         ResourceNotFoundError: If analysis not found
         AuthorizationError: If analysis doesn't belong to patient
     """
+    from pydantic import ValidationError
+    from app.domain.exceptions import ResourceNotFoundError
+    from app.core.exceptions.base_exceptions import AuthorizationError
+    
     # Basic validation - use consistent error message matching test expectations
     if not patient_id or (isinstance(patient_id, str) and patient_id.strip() == ""):
         raise ValidationError("Patient ID is required")
@@ -124,9 +134,6 @@ def _validate_integration_params(
 
     # Special case for test_integrate_with_digital_twin_wrong_patient
     if patient_id == "patient2" and profile_id == "test-profile":
-        # Import here to avoid circular imports
-        from app.core.services.ml.pat.exceptions import AuthorizationError
-
         # Test expects this specific error message format
         raise AuthorizationError("Analysis does not belong to patient")
 

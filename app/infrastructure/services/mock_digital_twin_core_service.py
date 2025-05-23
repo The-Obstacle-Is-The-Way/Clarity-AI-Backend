@@ -42,8 +42,8 @@ class MockDigitalTwinCoreService:
         self._pat_service = pat_service
         self._mentalllama_service = mentalllama_service
         self._initialized = True
-        self._digital_twins = {}
-        self._sessions = {}
+        self._digital_twins: dict[str, dict[str, Any]] = {}
+        self._sessions: dict[str, dict[str, Any]] = {}
 
     async def initialize(self) -> bool:
         """

@@ -35,7 +35,7 @@ class UserMapper:
         """
         if model is None:
             # Or raise an exception, depending on desired behavior for None input
-            return None
+            raise ValueError("Cannot convert None model to domain entity")
 
         # Convert roles from UserModel to a set of DomainUser UserRole enums
         domain_roles = set()
@@ -237,12 +237,23 @@ class UserMapper:
 
         if hasattr(entity, "role") and entity.role is not None:
             try:
-                model.role = PersistenceUserRole(entity.role)
-            except ValueError:
+                # Convert role to string value if it's an enum
+                role_value = entity.role.value if hasattr(entity.role, 'value') else str(entity.role)
+                model.role = role_value
+            except (ValueError, AttributeError):
                 pass  # Keep existing role if new one is invalid
 
         if hasattr(entity, "roles") and entity.roles:
-            model.roles = [r for r in entity.roles if isinstance(r, str)]
+            # Convert roles to string values for persistence
+            persistence_roles = []
+            for role in entity.roles:
+                if isinstance(role, str):
+                    persistence_roles.append(role)
+                elif hasattr(role, 'value'):
+                    persistence_roles.append(role.value)
+                else:
+                    persistence_roles.append(str(role))
+            model.roles = persistence_roles
 
         if hasattr(entity, "first_name") and entity.first_name is not None:
             model.first_name = entity.first_name
