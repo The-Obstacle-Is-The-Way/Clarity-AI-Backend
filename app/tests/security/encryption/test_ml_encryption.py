@@ -632,10 +632,14 @@ class TestEncryptedTypes:
         assert isinstance(result_obj, dict)
         assert result_obj["id"] == 123
 
-        # Test with MagicMock (for testing)
+        # Test with MagicMock (for testing) - should handle non-JSON serializable objects
         mock = MagicMock()
         mock.__str__.return_value = "MockObject"
 
-        # Should not raise exception
+        # MagicMock should be converted to string representation for encryption
         bound_mock = encrypted_json.process_bind_param(mock, None)
         assert bound_mock.startswith("v1:")
+        
+        # The result should be the string representation since MagicMock isn't JSON serializable
+        result_mock = encrypted_json.process_result_value(bound_mock, None)
+        assert result_mock == "MockObject"

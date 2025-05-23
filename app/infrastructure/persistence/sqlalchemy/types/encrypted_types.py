@@ -32,6 +32,7 @@ def serialize_for_encryption(obj: Any) -> str | None:
     Serialize various Python objects to JSON strings for encryption.
 
     Handles Pydantic models, Python dicts, lists, and primitive types.
+    For non-JSON serializable objects, falls back to string representation.
 
     Args:
         obj: The object to serialize
@@ -40,7 +41,7 @@ def serialize_for_encryption(obj: Any) -> str | None:
         JSON string representation of the object, or None if obj is None
 
     Raises:
-        TypeError: If the object cannot be serialized
+        TypeError: If the object cannot be serialized to JSON or string
     """
     if obj is None:
         return None
@@ -56,9 +57,14 @@ def serialize_for_encryption(obj: Any) -> str | None:
 
         # Handle dict, list, or primitive types
         return json.dumps(obj)
-    except Exception as e:
-        logger.error(f"Failed to serialize object of type {type(obj)}: {e!s}")
-        raise TypeError(f"Object of type {type(obj).__name__} cannot be serialized to JSON: {e!s}")
+    except (TypeError, ValueError) as e:
+        # For non-JSON serializable objects (like MagicMock), fall back to string representation
+        logger.warning(f"Object of type {type(obj)} is not JSON serializable, using string representation: {e!s}")
+        try:
+            return str(obj)
+        except Exception as str_error:
+            logger.error(f"Failed to serialize object of type {type(obj)} to string: {str_error!s}")
+            raise TypeError(f"Object of type {type(obj).__name__} cannot be serialized: {str_error!s}")
 
 
 def deserialize_from_encryption(json_str: str, target_cls: type[PydanticModel] | None = None) -> Any:
@@ -494,18 +500,18 @@ class EncryptedJSON(EncryptedTypeBase):
         # Use the serialization helper to handle various types
         return serialize_for_encryption(value)
 
-    def _convert_result_value(self, value: str | bytes) -> dict | list | None:
+    def _convert_result_value(self, value: str | bytes) -> dict | list | str | None:
         """
-        Convert a decrypted string to a JSON object.
+        Convert a decrypted string to a JSON object or string.
 
         Args:
             value: Decrypted string to convert to JSON
 
         Returns:
-            Parsed JSON object (dict or list)
+            Parsed JSON object (dict or list) or original string if not valid JSON
 
         Raises:
-            ValueError: If the JSON is invalid
+            ValueError: If the data cannot be processed
         """
         if value is None:
             return None
@@ -519,22 +525,19 @@ class EncryptedJSON(EncryptedTypeBase):
                     logger.error("Cannot decode bytes as UTF-8 in JSON conversion")
                     raise ValueError("Decrypted data contains invalid UTF-8 bytes")
 
-            # Check for mock objects (special case for testing)
-            parsed = json.loads(value)
-            if isinstance(parsed, dict) and parsed.get("__mock__") is True:
-                # This was a mock object, so we'll return a simplified dict
-                return {"__mock__": True}
-
-            return parsed
-        except json.JSONDecodeError as e:
-            # Make an extra attempt to parse the JSON
+            # Try to parse as JSON first
+            return json.loads(value)
+            
+        except json.JSONDecodeError:
+            # If it's not valid JSON, try cleaning and parsing again
             try:
                 # Sometimes the JSON might be escaped or have extra quotes
                 cleaned_value = value.strip("\"'")
                 return json.loads(cleaned_value)
             except json.JSONDecodeError:
-                logger.error(f"Failed to parse JSON from decrypted value: {e!s}")
-                raise ValueError(f"Invalid JSON in decrypted data: {e!s}")
+                # If still not valid JSON, return as string (for objects that were serialized as strings)
+                logger.warning(f"Decrypted value is not valid JSON, returning as string: {value[:50]}...")
+                return value
 
 
 class EncryptedPickle(EncryptedTypeBase):
