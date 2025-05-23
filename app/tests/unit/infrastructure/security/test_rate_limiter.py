@@ -37,8 +37,8 @@ def in_memory_rate_limiter():
 
 @pytest.fixture
 def mock_redis():
-    """Create a mock Redis client."""
-    mock = MagicMock(spec=redis.Redis)  # Use spec for better mocking
+    """Create a mock Redis client using AsyncMock for proper async handling."""
+    mock = AsyncMock(spec=redis.Redis)  # Use AsyncMock instead of MagicMock
     # Set default return values for common methods used by RedisRateLimiter
     mock.zcard.return_value = 0
     mock.zadd.return_value = 1  # Typically returns number of elements added
@@ -47,6 +47,7 @@ def mock_redis():
     mock.setex.return_value = True
     mock.delete.return_value = 1  # Number of keys deleted
     mock.zcount.return_value = 0
+    mock.expire.return_value = True  # Add expire method
     return mock
 
 
@@ -295,16 +296,22 @@ class TestRateLimiterFactory:
 def mock_redis_client():
     """Fixture for mocking the Redis client."""
     client = AsyncMock()
-    client.pipeline = MagicMock()
-    # Configure pipeline to return self and support chaining
+    
+    # Configure pipeline to return an AsyncMock pipeline directly
     pipeline_mock = AsyncMock()
     pipeline_mock.incr.return_value = pipeline_mock
     pipeline_mock.expire.return_value = pipeline_mock
-    pipeline_mock.execute.return_value = [
+    pipeline_mock.zadd.return_value = pipeline_mock
+    pipeline_mock.zremrangebyscore.return_value = pipeline_mock
+    pipeline_mock.zcard.return_value = pipeline_mock
+    pipeline_mock.execute = AsyncMock(return_value=[
         1,
         True,
-    ]  # Example: Simulate INCR returning 1, EXPIRE returning True
-    client.pipeline.return_value.__aenter__.return_value = pipeline_mock  # For async with context
+    ])  # Example: Simulate INCR returning 1, EXPIRE returning True
+    
+    # Make pipeline() return the pipeline_mock directly (not context manager)
+    client.pipeline.return_value = pipeline_mock
+    
     client.ping = AsyncMock(return_value=True)
     client.exists = AsyncMock(return_value=0)  # Default to key not existing
     client.get = AsyncMock(return_value=None)
