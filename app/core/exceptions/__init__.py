@@ -4,30 +4,7 @@ Core exceptions package.
 This package contains all exceptions used throughout the application.
 """
 
-# Security errors from different modules
-from app.core.errors.security_exceptions import (
-    InsufficientPermissionsError,
-    InvalidCredentialsError,
-    RateLimitExceededError,
-    SecurityException,
-    SessionExpiredError,
-    TokenValidationError,
-)
-from app.core.errors.security_exceptions import TokenExpiredError as SecurityTokenExpiredError
-
-# Application specific errors and codes
-from app.core.exceptions.application_error import (
-    ApplicationError,
-    ErrorCode,
-)
-
-# Auth exceptions
-from app.core.exceptions.auth_exceptions import (
-    AuthenticationError,
-    AuthorizationError,
-    InvalidTokenError,
-    TokenExpiredError,
-)
+# Base exceptions - canonical definitions
 from app.core.exceptions.base_exceptions import (
     AnalysisError,
     AuthenticationException,
@@ -38,11 +15,13 @@ from app.core.exceptions.base_exceptions import (
     ConfigurationError,
     DatabaseException,
     EmbeddingError,
+    EntityNotFoundError,
     ExternalServiceException,
     HIPAAComplianceError,
     InitializationError,
     IntegrationError,
     InvalidConfigurationError,
+    ModelExecutionError,
     PersistenceError,
     ResourceNotFoundError,
     ResourceNotFoundException,
@@ -52,18 +31,43 @@ from app.core.exceptions.base_exceptions import (
     ValidationException,
 )
 
+# Application specific errors and codes
+from app.core.exceptions.application_error import (
+    ApplicationError,
+    ErrorCode,
+)
+
+# Auth exceptions - specific implementations
+from app.core.exceptions.auth_exceptions import (
+    AuthenticationError,
+)
+from app.core.exceptions.auth_exceptions import InvalidTokenError as AuthInvalidTokenError
+from app.core.exceptions.auth_exceptions import TokenExpiredError as AuthTokenExpiredError
+
+# JWT exceptions - specific implementations
+from app.core.exceptions.jwt_exceptions import (
+    JWTError,
+    MissingTokenError,
+)
+from app.core.exceptions.jwt_exceptions import InvalidTokenError as JWTInvalidTokenError
+from app.core.exceptions.jwt_exceptions import TokenExpiredError as JWTTokenExpiredError
+
 # Data privacy exceptions
-from app.core.exceptions.data_privacy import (  # PHIExposureRiskException,; EncryptionError,; DecryptionError,
+from app.core.exceptions.data_privacy import (
     DataPrivacyError,
 )
 
-# JWT exceptions
-from app.core.exceptions.jwt_exceptions import (
-    InvalidTokenError,
-    JWTError,
-    MissingTokenError,
-    TokenExpiredError,
+# Security errors - specific implementations
+from app.core.errors.security_exceptions import (
+    InsufficientPermissionsError,
+    InvalidCredentialsError,
+    RateLimitExceededError,
+    SessionExpiredError,
+    TokenValidationError,
 )
+from app.core.errors.security_exceptions import SecurityException as CoreSecurityException
+from app.core.errors.security_exceptions import TokenExpiredError as SecurityTokenExpiredError
+# ML exceptions
 from app.core.exceptions.ml_exceptions import (
     DigitalTwinError,
     InvalidRequestError,
@@ -77,9 +81,10 @@ from app.core.exceptions.ml_exceptions import (
     XGBoostServiceError,
 )
 
+# Unified exports with aliases resolved
 __all__ = [
+    # Base exceptions
     "AnalysisError",
-    "ApplicationError",
     "AuthenticationException",
     "AuthorizationError",
     "AuthorizationException",
@@ -87,7 +92,6 @@ __all__ = [
     "BusinessRuleException",
     "ConfigurationError",
     "DatabaseException",
-    "DigitalTwinError",
     "EmbeddingError",
     "EntityNotFoundError",
     "ExternalServiceException",
@@ -95,37 +99,51 @@ __all__ = [
     "InitializationError",
     "IntegrationError",
     "InvalidConfigurationError",
-    "InvalidRequestError",
-    "MLServiceError",
-    "MentalLLaMAInferenceError",
-    "MentalLLaMAServiceError",
-    "ModelNotFoundError",
-    "PHIDetectionError",
-    "PHISecurityError",
+    "ModelExecutionError",
     "PersistenceError",
     "ResourceNotFoundError",
     "ResourceNotFoundException",
     "SecurityException",
     "ServiceProviderError",
-    "ServiceUnavailableError",
     "ValidationError",
     "ValidationException",
-    "XGBoostServiceError",
+    
+    # Application errors
+    "ApplicationError",
     "ErrorCode",
-    "JWTError",
-    "TokenExpiredError",
-    "InvalidTokenError",
-    "MissingTokenError",
+    
+    # Auth exceptions
     "AuthenticationError",
-    "AuthorizationError",
+    "AuthInvalidTokenError",
+    "AuthTokenExpiredError",
+    
+    # JWT exceptions
+    "JWTError",
+    "MissingTokenError",
+    "JWTInvalidTokenError",
+    "JWTTokenExpiredError",
+    
+    # Data privacy
     "DataPrivacyError",
-    # "PHIExposureRiskException",
-    # "EncryptionError",
-    # "DecryptionError",
-    "InvalidCredentialsError",
-    "SecurityTokenExpiredError",
-    "TokenValidationError",
+    
+    # Security exceptions
     "InsufficientPermissionsError",
-    "SessionExpiredError",
+    "InvalidCredentialsError",
     "RateLimitExceededError",
+    "SessionExpiredError",
+    "TokenValidationError",
+    "CoreSecurityException",
+    "SecurityTokenExpiredError",
+    
+    # ML exceptions
+    "DigitalTwinError",
+    "InvalidRequestError",
+    "MentalLLaMAInferenceError",
+    "MentalLLaMAServiceError",
+    "MLServiceError",
+    "ModelNotFoundError",
+    "PHIDetectionError",
+    "PHISecurityError",
+    "ServiceUnavailableError",
+    "XGBoostServiceError",
 ]

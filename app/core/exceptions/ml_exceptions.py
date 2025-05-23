@@ -146,7 +146,7 @@ class InvalidRequestError(MLServiceError):
     def __init__(
         self,
         message: str = "Invalid request parameters",
-        parameter: str = None,
+        parameter: str | None = None,
         *args,
         **kwargs,
     ):
@@ -168,7 +168,7 @@ class InvalidRequestError(MLServiceError):
 class ModelNotFoundError(MLServiceError):
     """Exception raised when a requested ML model cannot be found."""
 
-    def __init__(self, model_id: str = None, *args, **kwargs):
+    def __init__(self, model_id: str | None = None, *args, **kwargs):
         """
         Initialize model not found error.
 
@@ -187,7 +187,7 @@ class ModelNotFoundError(MLServiceError):
 class ServiceUnavailableError(MLServiceError):
     """Exception raised when an ML service is unavailable or uninitialized."""
 
-    def __init__(self, service_name: str = None, reason: str = None, *args, **kwargs):
+    def __init__(self, service_name: str | None = None, reason: str | None = None, *args, **kwargs):
         """
         Initialize service unavailable error.
 
