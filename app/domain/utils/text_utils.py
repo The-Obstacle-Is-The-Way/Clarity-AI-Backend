@@ -1,6 +1,7 @@
 """
 Text utility functions for the Novamind platform.
 """
+import datetime
 
 
 def sanitize_name(name: str) -> str:
@@ -52,7 +53,7 @@ def truncate_text(text: str, max_length: int) -> str:
     return truncated
 
 
-def format_date_iso(date_obj) -> str:
+def format_date_iso(date_obj: datetime.date) -> str:
     """
     Format a date object into ISO format (YYYY-MM-DD).
 
@@ -65,7 +66,7 @@ def format_date_iso(date_obj) -> str:
     return date_obj.isoformat()
 
 
-def is_date_in_range(target_date, start_date, end_date) -> bool:
+def is_date_in_range(target_date: datetime.date, start_date: datetime.date, end_date: datetime.date) -> bool:
     """
     Check if a target date is within a range of dates (inclusive).
 

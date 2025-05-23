@@ -1,7 +1,7 @@
-# app/domain/value_objects/address.py
-"""Address value object."""
+"""Address value object for HIPAA-compliant patient information."""
 
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -9,63 +9,38 @@ class Address:
     """
     Immutable value object representing a physical address.
 
-    Follows HIPAA best practices for storing address information.
+    Contains PHI that must be handled according to HIPAA regulations.
+    Follows Domain-Driven Design principles for value objects.
     """
 
     street: str
     city: str
     state: str
     zip_code: str
-    country: str | None = "USA"
-
-    def __init__(
-        self,
-        *,
-        street: str | None = None,
-        line1: str | None = None,
-        line2: str | None = None,
-        city: str,
-        state: str,
-        zip_code: str | None = None,
-        postal_code: str | None = None,
-        country: str | None = "USA",
-    ):
-        """
-        Initialize Address, allowing either 'street' or 'line1', and 'zip_code' or 'postal_code'.
-        'line2' is optional and stored on the instance but not included in to_dict.
-        """
-        s = street if street is not None else line1
-        if not s:
-            raise ValueError("Street (street or line1) is required")
-        z = zip_code if zip_code is not None else postal_code
-        if not z:
-            raise ValueError("ZIP code (zip_code or postal_code) is required")
-        # Store street and alias line1 for compatibility
-        object.__setattr__(self, "street", s)
-        object.__setattr__(self, "line1", s)
-        object.__setattr__(self, "city", city)
-        object.__setattr__(self, "state", state)
-        object.__setattr__(self, "zip_code", z)
-        object.__setattr__(self, "country", country)
-        object.__setattr__(self, "line2", line2)
-        self.__post_init__()
+    country: str = "US"
 
     def __post_init__(self) -> None:
-        """Validate address after initialization."""
-        if not self.street:
-            raise ValueError("Street is required")
+        """Validate address components."""
+        if not self.street.strip():
+            raise ValueError("Street address cannot be empty")
 
-        if not self.city:
-            raise ValueError("City is required")
+        if not self.city.strip():
+            raise ValueError("City cannot be empty")
 
-        if not self.state:
-            raise ValueError("State is required")
+        if not self.state.strip():
+            raise ValueError("State cannot be empty")
 
-        if not self.zip_code:
-            raise ValueError("ZIP code is required")
+        if not self.zip_code.strip():
+            raise ValueError("ZIP code cannot be empty")
 
-    def to_dict(self) -> dict:
-        """Convert to dictionary."""
+        # Basic ZIP code validation (US format)
+        if self.country == "US":
+            zip_digits = "".join(filter(str.isdigit, self.zip_code))
+            if len(zip_digits) not in [5, 9]:  # 12345 or 123456789
+                raise ValueError("Invalid US ZIP code format")
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert address to dictionary representation."""
         return {
             "street": self.street,
             "city": self.city,
@@ -74,24 +49,69 @@ class Address:
             "country": self.country,
         }
 
-    def dict(self) -> dict:
-        """
-        Alias for to_dict() - for Pydantic v1 compatibility.
-
-        Returns:
-            Dictionary representation of the address
-        """
-        return self.to_dict()
-
-    def model_dump(self) -> dict:
-        """
-        Alias for to_dict() - for Pydantic v2 compatibility.
-
-        Returns:
-            Dictionary representation of the address
-        """
-        return self.to_dict()
-
     def __str__(self) -> str:
-        """Get string representation."""
-        return f"{self.street}, {self.city}, {self.state} {self.zip_code}"
+        """Return formatted address string."""
+        if self.country == "US":
+            return f"{self.street}, {self.city}, {self.state} {self.zip_code}"
+        else:
+            return f"{self.street}, {self.city}, {self.state} {self.zip_code}, {self.country}"
+
+    def get_display_format(self) -> str:
+        """Get display-friendly formatted address."""
+        return str(self)
+
+    def get_single_line(self) -> str:
+        """Get single-line address format."""
+        return str(self)
+
+    def is_us_address(self) -> bool:
+        """Check if this is a US address."""
+        return self.country.upper() == "US"
+
+    def get_state_abbreviation(self) -> str:
+        """Get state abbreviation (assumes already abbreviated for US addresses)."""
+        return self.state.upper()
+
+    def get_zip_code_base(self) -> str:
+        """Get base ZIP code (first 5 digits for US addresses)."""
+        if self.is_us_address():
+            digits = "".join(filter(str.isdigit, self.zip_code))
+            return digits[:5] if len(digits) >= 5 else digits
+        return self.zip_code
+
+    def get_zip_code_extension(self) -> str | None:
+        """Get ZIP+4 extension if available."""
+        if self.is_us_address():
+            digits = "".join(filter(str.isdigit, self.zip_code))
+            return digits[5:9] if len(digits) == 9 else None
+        return None
+
+    @classmethod
+    def create_from_dict(cls, data: dict[str, Any]) -> "Address":
+        """Create Address from dictionary data."""
+        return cls(
+            street=data["street"],
+            city=data["city"],
+            state=data["state"],
+            zip_code=data["zip_code"],
+            country=data.get("country", "US"),
+        )
+
+    def validate_completeness(self) -> bool:
+        """Validate that all required fields are present and non-empty."""
+        required_fields = [self.street, self.city, self.state, self.zip_code]
+        return all(field and field.strip() for field in required_fields)
+
+    def is_same_location(self, other: object) -> bool:
+        """Check if two addresses represent the same location."""
+        if not isinstance(other, Address):
+            return False
+
+        # Normalize for comparison
+        return (
+            self.street.lower().strip() == other.street.lower().strip()
+            and self.city.lower().strip() == other.city.lower().strip()
+            and self.state.lower().strip() == other.state.lower().strip()
+            and self.zip_code.strip() == other.zip_code.strip()
+            and self.country.lower().strip() == other.country.lower().strip()
+        )

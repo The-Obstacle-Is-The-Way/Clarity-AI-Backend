@@ -418,7 +418,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
             model._emergency_contact_details = (
                 emergency_contact_vo.model_dump()
                 if hasattr(emergency_contact_vo, "model_dump")
-                else emergency_contact_vo.dict()
+                else emergency_contact_vo.to_dict()
             )
         else:
             model._emergency_contact_name = None
@@ -436,7 +436,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
             model._contact_info = (
                 contact_info_vo.model_dump()
                 if hasattr(contact_info_vo, "model_dump")
-                else contact_info_vo.dict()
+                else contact_info_vo.to_dict()
             )
         else:
             model._contact_info = None
@@ -447,7 +447,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
             model._address_details = (
                 address_vo_from_domain.model_dump()
                 if hasattr(address_vo_from_domain, "model_dump")
-                else address_vo_from_domain.dict()
+                else address_vo_from_domain.to_dict()
             )
         else:
             model._address_details = None
