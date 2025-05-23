@@ -29,12 +29,7 @@ from sqlalchemy.ext.asyncio import (  # , async_sessionmaker, create_async_engin
 from app.core.config import settings
 
 # Import domain entities with clear namespace
-from app.core.domain.entities.patient import (
-    ContactInfo,
-)
-from app.core.domain.entities.patient import (
-    Patient as DomainPatient,  # Gender, Address, EmergencyContact will be added to DomainPatient
-)
+from app.domain.entities.patient import ContactInfo, Patient as DomainPatient
 from app.core.domain.entities.user import UserRole
 from app.core.domain.enums import Gender  # Corrected Gender import
 
