@@ -258,3 +258,13 @@ class Patient(BaseModel):
 
     def is_minor(self) -> bool:
         return self.get_age() < 18
+
+    @property
+    def phone(self) -> str | None:
+        """Alias property for phone_number to maintain backward compatibility."""
+        return self.phone_number
+
+    @phone.setter
+    def phone(self, value: str | None) -> None:
+        """Setter for phone property that updates phone_number."""
+        self.phone_number = value
