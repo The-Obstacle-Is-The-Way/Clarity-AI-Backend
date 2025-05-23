@@ -11,11 +11,11 @@ from app.domain.exceptions.token_exceptions import (
     InvalidTokenException,
     TokenExpiredException,
 )
-from app.infrastructure.security.jwt.jwt_service import (
-    JWTService,
+from app.infrastructure.security.jwt.jwt_service_impl import (
+    JWTServiceImpl,
     TokenPayload,
-    TokenType,
 )
+from app.domain.enums.token_type import TokenType
 
 
 @pytest.fixture
@@ -38,12 +38,12 @@ def mock_settings() -> MagicMock:
 
 
 @pytest.fixture
-def jwt_service(mock_settings: MagicMock) -> JWTService:
+def jwt_service(mock_settings: MagicMock) -> JWTServiceImpl:
     """Creates a JWTService instance with mock settings."""
     # Get the secret key from the mock settings
     secret_key = mock_settings.JWT_SECRET_KEY.get_secret_value()
 
-    return JWTService(
+    return JWTServiceImpl(
         secret_key=secret_key,
         algorithm=mock_settings.JWT_ALGORITHM,
         access_token_expire_minutes=mock_settings.ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -65,7 +65,7 @@ class TestJWTService:
     user_roles = ["patient"]
 
     @pytest.mark.asyncio
-    async def test_create_access_token_structure(self, jwt_service: JWTService):
+    async def test_create_access_token_structure(self, jwt_service: JWTServiceImpl):
         """Test structure and basic claims of a created access token."""
         user_data = {"sub": self.user_subject, "roles": self.user_roles}
         token = jwt_service.create_access_token(data=user_data)
@@ -93,7 +93,7 @@ class TestJWTService:
             ), f"Unexpected PHI field '{field}' found in token payload: {payload_dict}"
 
     @pytest.mark.asyncio
-    async def test_create_access_token_expiration(self, jwt_service: JWTService):
+    async def test_create_access_token_expiration(self, jwt_service: JWTServiceImpl):
         """Test that access tokens have correct expiration times based on settings."""
         user_data = {"sub": self.user_subject, "roles": self.user_roles}
         token = jwt_service.create_access_token(data=user_data)
@@ -110,7 +110,7 @@ class TestJWTService:
         ), f"Token lifetime ({actual_lifetime_seconds}s) differs significantly from expected ({expected_lifetime_seconds}s)"
 
     @pytest.mark.asyncio
-    async def test_decode_token_valid(self, jwt_service: JWTService):
+    async def test_decode_token_valid(self, jwt_service: JWTServiceImpl):
         """Test that valid tokens are properly decoded and validated."""
         user_data = {"sub": self.user_subject, "roles": self.user_roles}
         token = jwt_service.create_access_token(data=user_data)
@@ -123,7 +123,7 @@ class TestJWTService:
         assert payload.type == TokenType.ACCESS
 
     @pytest.mark.asyncio
-    async def test_decode_token_expired(self, jwt_service: JWTService):
+    async def test_decode_token_expired(self, jwt_service: JWTServiceImpl):
         """Test that expired tokens raise TokenExpiredException during decoding."""
         user_data = {"sub": self.user_subject, "roles": self.user_roles}
         # Create token that expired 1 minute ago
@@ -135,7 +135,7 @@ class TestJWTService:
             jwt_service.decode_token(expired_token)
 
     @pytest.mark.asyncio
-    async def test_decode_token_invalid_signature(self, jwt_service: JWTService):
+    async def test_decode_token_invalid_signature(self, jwt_service: JWTServiceImpl):
         """Test that tokens with invalid signatures raise InvalidTokenException."""
         user_data = {"sub": self.user_subject, "roles": self.user_roles}
         token = jwt_service.create_access_token(data=user_data)
@@ -152,7 +152,7 @@ class TestJWTService:
         assert "Signature verification failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_decode_token_invalid_format(self, jwt_service: JWTService):
+    async def test_decode_token_invalid_format(self, jwt_service: JWTServiceImpl):
         """Test that tokens with invalid format raise InvalidTokenException."""
         # Create a truly unparseable token - binary data will cause UTF-8 decode issues
         invalid_token = bytes([0x9E, 0x8F]) + b"invalid"

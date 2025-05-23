@@ -14,8 +14,8 @@ import pytest
 from app.domain.entities.user import User
 from app.domain.enums.role import Role
 from app.domain.exceptions import AuthenticationError
-from app.infrastructure.security.jwt.jwt_service import (
-    JWTService,
+from app.infrastructure.security.jwt.jwt_service_impl import (
+    JWTServiceImpl,
     TokenType,
 )
 
@@ -77,7 +77,7 @@ def mock_user_repository(test_user):
 def jwt_service():
     """Create a JWT service instance for testing."""
     settings = TestSettings()
-    return JWTService(
+    return JWTServiceImpl(
         secret_key=settings.JWT_SECRET_KEY,
         algorithm=settings.JWT_ALGORITHM,
         access_token_expire_minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -92,7 +92,7 @@ def jwt_service():
 def jwt_service_with_user_repo(mock_user_repository):
     """Create a JWT service with a user repository for testing."""
     settings = TestSettings()
-    return JWTService(
+    return JWTServiceImpl(
         secret_key=settings.JWT_SECRET_KEY,
         algorithm=settings.JWT_ALGORITHM,
         access_token_expire_minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -264,13 +264,13 @@ def test_token_with_phi_fields(jwt_service):
 def test_decode_invalid_token():
     """Test decoding an invalid token format raises the correct exception."""
     # Setup
-    from app.infrastructure.security.jwt.jwt_service import (
-        InvalidTokenException,
-        JWTService,
+    from app.infrastructure.security.jwt.jwt_service_impl import (
+        JWTServiceImpl,
     )
+    from app.domain.exceptions import InvalidTokenException
 
     # Using a fixture would be better, but for simplicity in this test
-    jwt_service = JWTService(secret_key="test-secret-key", algorithm="HS256")
+    jwt_service = JWTServiceImpl(secret_key="test-secret-key", algorithm="HS256")
 
     # Test with obviously invalid token formats
     # 1. Empty string
@@ -330,13 +330,13 @@ def test_verify_invalid_refresh_token_type():
     # Setup
     import uuid
 
-    from app.infrastructure.security.jwt.jwt_service import (
-        InvalidTokenException,
-        JWTService,
+    from app.infrastructure.security.jwt.jwt_service_impl import (
+        JWTServiceImpl,
     )
+    from app.domain.exceptions import InvalidTokenException
 
     # Using a fixture would be better, but for simplicity in this test
-    jwt_service = JWTService(
+    jwt_service = JWTServiceImpl(
         secret_key="test-secret-key-of-sufficient-length-for-tests",
         algorithm="HS256",
         access_token_expire_minutes=30,
