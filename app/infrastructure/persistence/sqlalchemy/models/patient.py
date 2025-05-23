@@ -437,7 +437,8 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # This ensures contact_info is properly populated even when domain Patient
         # uses individual fields rather than a contact_info object
         patient_email = getattr(patient, "email", None)
-        patient_phone = getattr(patient, "phone", None)  # Domain Patient uses phone, not phone_number
+        # Handle both phone and phone_number field names for compatibility
+        patient_phone = getattr(patient, "phone", None) or getattr(patient, "phone_number", None)
         
         contact_info_dict = {
             "email": patient_email,
