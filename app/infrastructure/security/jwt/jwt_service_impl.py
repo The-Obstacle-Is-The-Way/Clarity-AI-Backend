@@ -35,6 +35,7 @@ from app.domain.exceptions import (
     TokenExpiredError,
     TokenExpiredException,
 )
+from app.domain.exceptions.base_exceptions import AuthenticationError
 
 # Use domain exceptions for backward compatibility
 TokenBlacklistedError = TokenBlacklistedException
@@ -388,12 +389,10 @@ class JWTServiceImpl(IJwtService):
         elif expires_delta_minutes:
             expire = now + timedelta(minutes=expires_delta_minutes)
         else:
-            # When in testing mode, use a fixed 30-minute expiration
+            # When in testing mode, use a longer expiration to prevent immediate expiry
             if hasattr(self.settings, "TESTING") and self.settings.TESTING:
-                # For tests, use exactly 30 minutes (1800 seconds) which is expected by tests
-                # Fixed timestamps to match test expectations: from 1704110400 to 1704112200
-                now = datetime.fromtimestamp(1704110400, timezone.utc)  # 2024-01-01 12:00:00 UTC
-                expire = datetime.fromtimestamp(1704112200, timezone.utc)  # 2024-01-01 12:30:00 UTC
+                # For tests, use 24 hours to prevent expiration during test execution
+                expire = now + timedelta(hours=24)
             else:
                 expire = now + timedelta(minutes=self._access_token_expire_minutes)
 
@@ -528,12 +527,10 @@ class JWTServiceImpl(IJwtService):
         elif expires_delta_minutes:
             expire = now + timedelta(minutes=expires_delta_minutes)
         else:
-            # When in testing mode, use a fixed 7-day expiration
+            # When in testing mode, use a longer expiration to prevent immediate expiry
             if hasattr(self.settings, "TESTING") and self.settings.TESTING:
-                # For tests, use exactly 7 days as expected
-                now = datetime.fromtimestamp(1704110400, timezone.utc)  # 2024-01-01 12:00:00 UTC
-                # 7 days = 604800 seconds
-                expire = datetime.fromtimestamp(1704110400 + 604800, timezone.utc)
+                # For tests, use 30 days to prevent expiration during test execution
+                expire = now + timedelta(days=30)
             else:
                 expire = now + timedelta(minutes=self._refresh_token_expire_minutes)
 
@@ -749,7 +746,14 @@ class JWTServiceImpl(IJwtService):
                 return None
 
             # Get user from repository
-            return await self.user_repository.get_by_id(subject)
+            user = await self.user_repository.get_by_id(subject)
+            
+            # Always raise AuthenticationError if user not found for security
+            if user is None:
+                logger.warning(f"User not found for subject: {subject}")
+                raise AuthenticationError(f"User not found: {subject}")
+                
+            return user
         except Exception as e:
             logger.error(f"Error retrieving user from token: {e!s}")
             raise InvalidTokenException(str(e))
@@ -801,7 +805,7 @@ class JWTServiceImpl(IJwtService):
 
         except ExpiredSignatureError:
             logger.warning("Token verification failed - expired token")
-            raise ExpiredTokenException("Token has expired")
+            raise TokenExpiredException("Token has expired")
         except (JWTError, InvalidTokenException) as e:
             logger.warning(f"Token verification failed: {e!s}")
             raise InvalidTokenException(f"Invalid token: {e!s}")
@@ -825,17 +829,21 @@ class JWTServiceImpl(IJwtService):
             InvalidTokenException: If token is not a refresh token
         """
         try:
-            # Decode refresh token
-            payload = self.decode_token(refresh_token)
+            # First, decode token WITHOUT expiration validation to check token type
+            # This ensures we check token type before expiration (Single Responsibility Principle)
+            payload = self.decode_token(
+                refresh_token,
+                options={"verify_exp": False, "verify_aud": False, "verify_iss": False}
+            )
 
-            # Verify it's a refresh token
+            # Verify it's a refresh token FIRST before checking expiration
             if enforce_refresh_type:
+                is_refresh_token = False
+                
                 # Check for refresh flag or type field
                 if hasattr(payload, "refresh") and payload.refresh:
-                    return payload
-
-                # Check type field directly
-                if hasattr(payload, "type"):
+                    is_refresh_token = True
+                elif hasattr(payload, "type"):
                     token_type = payload.type
                     # Handle both string and enum values
                     if (
@@ -843,15 +851,18 @@ class JWTServiceImpl(IJwtService):
                         or token_type == "refresh"
                         or token_type == "REFRESH"
                     ):
-                        return payload
+                        is_refresh_token = True
 
-                # Not a refresh token
-                raise InvalidTokenException("Token is not a refresh token")
+                # If not a refresh token, raise error BEFORE checking expiration
+                if not is_refresh_token:
+                    raise InvalidTokenException("Token is not a refresh token")
 
+            # Now decode with full validation including expiration
+            payload = self.decode_token(refresh_token)
             return payload
 
         except InvalidTokenException:
-            # Re-raise specific exceptions
+            # Re-raise specific exceptions (including "Token is not a refresh token")
             raise
         except Exception as e:
             # Handle other errors
@@ -933,8 +944,19 @@ class JWTServiceImpl(IJwtService):
                 logger.error("Token has no JTI claim, cannot revoke")
                 return False
 
-            # Add to blacklist
-            return await self.blacklist_token(token)
+            jti = str(payload.jti)
+
+            # Try repository first, then fallback to in-memory blacklist (Strategy Pattern)
+            if self.token_blacklist_repository:
+                # Add to blacklist via repository
+                return await self.blacklist_token(token)
+            else:
+                # Fallback: Add to in-memory blacklist for testing (Dependency Inversion Principle)
+                logger.warning("Token blacklist repository not configured, using in-memory fallback")
+                self._token_blacklist[jti] = True
+                logger.info(f"Token {jti} added to in-memory blacklist")
+                return True
+                
         except Exception as e:
             logger.error(f"Error revoking token: {e!s}")
             return False
