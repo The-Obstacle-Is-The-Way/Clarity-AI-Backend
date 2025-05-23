@@ -32,7 +32,8 @@ class AlertBase(BaseModelConfig):
     data: dict[str, Any] | None = Field(default_factory=dict)
 
     @field_validator("timestamp")
-    def validate_timestamp(self, v):
+    @classmethod
+    def validate_timestamp(cls, v):
         """Ensure timestamp is not in the future."""
         if v > utcnow():
             raise ValueError("Timestamp cannot be in the future")
@@ -56,7 +57,8 @@ class AlertUpdateRequest(BaseModelConfig):
     resolution_notes: str | None = Field(None, min_length=1, max_length=1000)
 
     @field_validator("resolved_at")
-    def validate_resolved_at(self, v, info):
+    @classmethod
+    def validate_resolved_at(cls, v, info):
         """Ensure resolved_at is only set when status is RESOLVED."""
         # In v2, we need to access the data differently
         values = info.data
