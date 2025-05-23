@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from uuid import UUID, uuid4
+from typing import Any
 
 
 class EdgeType(Enum):
@@ -77,8 +78,8 @@ class KnowledgeGraphNode:
         cls,
         label: str,
         node_type: NodeType,
-        properties: dict = None,
-        source: str = None,
+        properties: dict[Any, Any] | None = None,
+        source: str | None = None,
         confidence: float = 1.0,
     ):
         """Factory method to create a new node."""
@@ -117,10 +118,10 @@ class KnowledgeGraphEdge:
         source_id: UUID,
         target_id: UUID,
         edge_type: EdgeType,
-        properties: dict = None,
-        source: str = None,
+        properties: dict[Any, Any] | None = None,
+        source: str | None = None,
         confidence: float = 1.0,
-        temporal_constraints: dict = None,
+        temporal_constraints: dict[Any, Any] | None = None,
     ):
         """Factory method to create a new edge."""
         return cls(
@@ -171,7 +172,7 @@ class TemporalKnowledgeGraph:
         if node_id not in self.nodes:
             raise ValueError(f"Node {node_id} not found in graph")
 
-        neighbors = {}
+        neighbors: dict[EdgeType, list[KnowledgeGraphNode]] = {}
 
         # Outgoing edges (source -> target)
         for edge in self.edges.values():
@@ -265,13 +266,13 @@ class TemporalKnowledgeGraph:
     def _extract_chains(self, edges: list[KnowledgeGraphEdge]) -> list[list[KnowledgeGraphEdge]]:
         """Helper method to extract chains of connected edges."""
         # Build an adjacency list representation
-        adjacency = {}
+        adjacency: dict[UUID, list[KnowledgeGraphEdge]] = {}
         for edge in edges:
             if edge.source_id not in adjacency:
                 adjacency[edge.source_id] = []
             adjacency[edge.source_id].append(edge)
 
-        chains = []
+        chains: list[list[KnowledgeGraphEdge]] = []
         for edge in edges:
             # Start a chain from each edge
             self._dfs_chain(edge, [], chains, adjacency)
@@ -312,7 +313,7 @@ class BayesianBeliefNetwork:
     conditional_probabilities: dict[str, dict] = field(
         default_factory=dict
     )  # Variable -> parent configurations -> probabilities
-    evidence: dict[str, float] = field(default_factory=dict)  # Current evidence (variable -> value)
+    evidence: dict[str, str | float] = field(default_factory=dict)  # Current evidence (variable -> value)
     last_updated: datetime = field(default_factory=datetime.now)
 
     def add_variable(self, name: str, states: list[str], description: str | None = None) -> None:
@@ -467,7 +468,7 @@ class BayesianBeliefNetwork:
         if not parents:
             return [{}]
 
-        configs = [{}]
+        configs: list[dict[str, str]] = [{}]
         for parent in parents:
             new_configs = []
             for config in configs:

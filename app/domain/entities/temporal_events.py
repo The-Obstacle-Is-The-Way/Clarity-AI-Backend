@@ -39,12 +39,12 @@ class TemporalEvent(Generic[T]):
 
     def __init__(
         self,
-        timestamp: datetime = None,
-        value: T = None,
+        timestamp: datetime | None = None,
+        value: T | None = None,
         event_id: UUID | None = None,
         patient_id: UUID | None = None,
         metadata: dict[str, Any] | None = None,
-        event_type: str = None,
+        event_type: str | None = None,
     ):
         """
         Initialize a new temporal event.
@@ -120,8 +120,8 @@ class CorrelatedEvent(TemporalEvent[T]):
 
     def __init__(
         self,
-        timestamp: datetime = None,
-        value: T = None,
+        timestamp: datetime | None = None,
+        value: T | None = None,
         event_id: UUID | None = None,
         patient_id: UUID | None = None,
         metadata: dict[str, Any] | None = None,
@@ -129,7 +129,7 @@ class CorrelatedEvent(TemporalEvent[T]):
         correlation_type: CorrelationType | None = None,
         correlation_strength: float = 0.0,
         correlated_events: set[UUID] | None = None,
-        event_type: str = None,
+        event_type: str | None = None,
         correlation_id: UUID | None = None,
         parent_event_id: UUID | None = None,
     ):

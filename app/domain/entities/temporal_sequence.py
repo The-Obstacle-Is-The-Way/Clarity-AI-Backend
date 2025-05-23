@@ -250,20 +250,17 @@ class TemporalSequence(Generic[T]):
 
         return X, y
 
-    def to_padded_tensor(self, max_length: int) -> dict[str, np.ndarray]:
+    def to_padded_tensor(self, max_length: int) -> dict[str, np.ndarray | int]:
         """
-        Convert to a padded tensor representation.
+        Convert sequence to padded numpy arrays with consistent length.
 
         Args:
-            max_length: Maximum sequence length to pad to
+            max_length: Maximum length to pad to
 
         Returns:
-            Dictionary with:
-                - values: Padded values array
-                - mask: Boolean mask indicating valid entries
-                - seq_len: Actual sequence length
+            Dictionary containing padded values, mask, and sequence length
         """
-        # Create the values array padded to max_length
+        # Initialize padded arrays
         padded_values = np.zeros((max_length, self.feature_dimension))
         mask = np.zeros(max_length, dtype=bool)
 

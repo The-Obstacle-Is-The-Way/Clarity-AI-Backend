@@ -1,21 +1,11 @@
 """
-Domain entity representing a clinical Appointment.
+Appointment entity for managing clinical appointments.
+Domain model representing scheduled meetings between patients and providers.
 """
-from __future__ import annotations
-
-# ---------------------------------------------------------------------------
-# Export *time* into builtins so test modules that naively call ``time.sleep``
-# without importing the module themselves still succeed.  This mirrors the
-# behaviour found in some legacy parts of the code‑base and keeps full
-# backwards‑compatibility with the existing test‑suite.
-# ---------------------------------------------------------------------------
 import builtins as _builtins
-import time as _time  # Make *time* available to external test modules
+import time as _time
 from dataclasses import InitVar, dataclass, field
 from datetime import UTC, datetime, timedelta
-
-if not hasattr(_builtins, "time"):
-    _builtins.time = _time
 from enum import Enum
 from uuid import UUID
 
@@ -137,9 +127,11 @@ class Appointment(BaseEntity):
         # 2. Ensure *created_at* and *last_updated* are timezone‑aware ISO‑8601
         #    datetime objects when supplied as strings (mirrors logic in the
         #    Patient entity).
-        def _ensure_datetime(value: datetime | str) -> datetime:
+        def _ensure_datetime(value: datetime | str | None) -> datetime:
             if isinstance(value, datetime):
                 return value
+            if value is None:
+                return datetime.now(UTC)
             # Parse ISO‑8601 (also handles the *Z* suffix) and fall back to a
             # plain date only string (YYYY‑MM‑DD) by assuming midnight.
             try:

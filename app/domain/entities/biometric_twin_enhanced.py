@@ -462,11 +462,12 @@ class BiometricTwin:
         Returns:
             Dictionary mapping biometric types to their latest data points
         """
-        return {
-            biometric_type: timeseries.get_latest_value()
-            for biometric_type, timeseries in self.timeseries_data.items()
-            if timeseries.get_latest_value() is not None
-        }
+        result: dict[BiometricType, BiometricDataPoint] = {}
+        for biometric_type, timeseries in self.timeseries_data.items():
+            latest_value = timeseries.get_latest_value()
+            if latest_value is not None:
+                result[biometric_type] = latest_value
+        return result
 
     def get_abnormal_values(self) -> dict[BiometricType, list[BiometricDataPoint]]:
         """

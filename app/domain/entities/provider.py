@@ -45,9 +45,9 @@ class Provider:
     def __init__(
         self,
         id: UUID | str | None = None,
-        first_name: str = None,
-        last_name: str = None,
-        provider_type: ProviderType | str = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        provider_type: ProviderType | str | None = None,
         specialties: list[str] | None = None,
         license_number: str | None = None,
         npi_number: str | None = None,
