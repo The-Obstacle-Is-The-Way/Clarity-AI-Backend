@@ -180,6 +180,7 @@ class TokenPayload(BaseModel):
                 return str(self.sub) == other
             if hasattr(self, "subject") and self.subject is not None:
                 return str(self.subject) == other
+            return False
         return super().__eq__(other)
 
 
@@ -389,15 +390,8 @@ class JWTServiceImpl(IJwtService):
         elif expires_delta_minutes:
             expire = now + timedelta(minutes=expires_delta_minutes)
         else:
-            # When in testing mode, use a longer expiration to prevent immediate expiry
-            # UNLESS the expiration is intentionally very short (< 1 minute) for testing expiration
-            if (hasattr(self.settings, "TESTING") and self.settings.TESTING
-                and self._access_token_expire_minutes >= 1):
-                # For tests, use 24 hours to prevent expiration during test execution
-                expire = now + timedelta(hours=24)
-            else:
-                # Use the configured expiration time (including very short ones for expiration tests)
-                expire = now + timedelta(minutes=self._access_token_expire_minutes)
+            # Use the configured expiration time consistently
+            expire = now + timedelta(minutes=self._access_token_expire_minutes)
 
         # Create token claims
         claims = {
@@ -486,7 +480,22 @@ class JWTServiceImpl(IJwtService):
         # Handle data parameter for backward compatibility
         if data is not None:
             if isinstance(data, dict):
-                subject = data.get("sub") or subject
+                # Extract subject safely - ensure it's just the ID string, not the entire dict
+                extracted_subject = data.get("sub")
+                if extracted_subject is not None:
+                    # Ensure we only get the actual user ID, not a dict representation
+                    if isinstance(extracted_subject, str):
+                        subject = extracted_subject
+                    elif isinstance(extracted_subject, dict) and "sub" in extracted_subject:
+                        # Handle nested subject extraction
+                        subject = str(extracted_subject["sub"])
+                    else:
+                        # Convert any other type to string
+                        subject = str(extracted_subject)
+                else:
+                    # Keep existing subject if no 'sub' in data
+                    pass
+                
                 # Create a copy to avoid modifying the original dict
                 data_copy = data.copy()
                 # Remove 'sub' to avoid duplicating it in claims
@@ -506,14 +515,43 @@ class JWTServiceImpl(IJwtService):
 
         # Use subject from additional_claims if not provided directly
         if subject is None and additional_claims and "sub" in additional_claims:
-            subject = additional_claims.pop("sub")
+            extracted_sub = additional_claims.pop("sub")
+            # Ensure clean subject extraction
+            if isinstance(extracted_sub, str):
+                subject = extracted_sub
+            elif isinstance(extracted_sub, dict) and "sub" in extracted_sub:
+                subject = str(extracted_sub["sub"])
+            else:
+                subject = str(extracted_sub)
 
-        # Ensure subject is always a string for JWT compliance  
+        # Ensure subject is always a clean string for JWT compliance
         if subject is not None:
+            # Additional safety: ensure subject is not a string representation of a dict
+            if isinstance(subject, str) and subject.startswith("{") and "}" in subject:
+                # This indicates subject might be a stringified dict - this is wrong
+                logger.warning("Subject appears to be a stringified dict, this violates Single Responsibility Principle")
+                # Try to extract just the actual ID if possible
+                try:
+                    import ast
+                    parsed = ast.literal_eval(subject)
+                    if isinstance(parsed, dict) and "sub" in parsed:
+                        subject = str(parsed["sub"])
+                    else:
+                        # Fallback to original string
+                        pass
+                except:
+                    # If parsing fails, keep the original string
+                    pass
             subject = str(subject)
         elif additional_claims and "sub" in additional_claims:
             # Handle case where subject is in additional_claims
-            subject = str(additional_claims["sub"])
+            extracted_sub = additional_claims["sub"]
+            if isinstance(extracted_sub, str):
+                subject = extracted_sub
+            elif isinstance(extracted_sub, dict) and "sub" in extracted_sub:
+                subject = str(extracted_sub["sub"])
+            else:
+                subject = str(extracted_sub)
             additional_claims.pop("sub")  # Remove to avoid duplication
 
         # Get roles from additional_claims
@@ -530,12 +568,8 @@ class JWTServiceImpl(IJwtService):
         elif expires_delta_minutes:
             expire = now + timedelta(minutes=expires_delta_minutes)
         else:
-            # When in testing mode, use a longer expiration to prevent immediate expiry
-            if hasattr(self.settings, "TESTING") and self.settings.TESTING:
-                # For tests, use 30 days to prevent expiration during test execution
-                expire = now + timedelta(days=30)
-            else:
-                expire = now + timedelta(minutes=self._refresh_token_expire_minutes)
+            # Use the configured expiration time consistently
+            expire = now + timedelta(minutes=self._refresh_token_expire_minutes)
 
         # Create token claims
         claims = {

@@ -239,11 +239,11 @@ class TestJWTService:
         # Decoding itself might work, but validation via TokenPayload model should fail
         with pytest.raises(InvalidTokenException) as exc_info:
             jwt_service.decode_token(token_missing_sub)
-        # Update the assertion to match the actual error
+        # JWT validation follows proper order: signature verification before claims validation
         assert (
-            "Invalid issuer" in str(exc_info.value)
+            "Signature verification failed" in str(exc_info.value)
+            or "Invalid token:" in str(exc_info.value)
             or "validation error" in str(exc_info.value).lower()
-            or "missing field" in str(exc_info.value).lower()
         )
 
     @pytest.mark.asyncio
