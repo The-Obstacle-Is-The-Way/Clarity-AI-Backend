@@ -230,9 +230,9 @@ class JWTServiceImpl(IJwtService):
             self.settings.jwt_algorithm if hasattr(self.settings, "jwt_algorithm") else "HS256"
         )
         self._access_token_expire_minutes = access_token_expire_minutes or (
-            self.settings.access_token_expire_minutes
-            if hasattr(self.settings, "access_token_expire_minutes")
-            else 15
+            # Check both uppercase and lowercase for compatibility
+            getattr(self.settings, "ACCESS_TOKEN_EXPIRE_MINUTES", None) or
+            getattr(self.settings, "access_token_expire_minutes", 15)
         )
 
         # Handle refresh token expiry in days or minutes
@@ -390,10 +390,13 @@ class JWTServiceImpl(IJwtService):
             expire = now + timedelta(minutes=expires_delta_minutes)
         else:
             # When in testing mode, use a longer expiration to prevent immediate expiry
-            if hasattr(self.settings, "TESTING") and self.settings.TESTING:
+            # UNLESS the expiration is intentionally very short (< 1 minute) for testing expiration
+            if (hasattr(self.settings, "TESTING") and self.settings.TESTING
+                and self._access_token_expire_minutes >= 1):
                 # For tests, use 24 hours to prevent expiration during test execution
                 expire = now + timedelta(hours=24)
             else:
+                # Use the configured expiration time (including very short ones for expiration tests)
                 expire = now + timedelta(minutes=self._access_token_expire_minutes)
 
         # Create token claims
@@ -542,6 +545,7 @@ class JWTServiceImpl(IJwtService):
             "nbf": int(now.timestamp()),
             "jti": str(uuid4()),
             "type": TokenType.REFRESH.value,
+            "refresh": True,  # Add refresh flag for compatibility
             "roles": roles,
         }
 
@@ -712,6 +716,20 @@ class JWTServiceImpl(IJwtService):
             logger.error(f"Unexpected error decoding token: {e!s}")
             raise InvalidTokenException(f"Failed to decode token: {e!s}")
 
+    def verify_token(self, token: str) -> TokenPayload:
+        """Verify a token and return its payload.
+        
+        Args:
+            token: JWT token to verify
+            
+        Returns:
+            TokenPayload object
+            
+        Raises:
+            InvalidTokenException: If token is invalid
+            TokenExpiredException: If token is expired
+        """
+        return self.decode_token(token)
 
 
     async def get_user_from_token(self, token: str) -> User | None:
@@ -1112,3 +1130,96 @@ class JWTServiceImpl(IJwtService):
                 payload.__dict__.pop(field, None)
 
         return payload
+
+    def extract_token_from_request(self, request) -> str | None:
+        """Extract JWT token from request headers or cookies.
+        
+        Args:
+            request: HTTP request object
+            
+        Returns:
+            Token string if found, None otherwise
+        """
+        # Try Authorization header first
+        auth_header = getattr(request, 'headers', {}).get('Authorization', '')
+        if auth_header and auth_header.startswith('Bearer '):
+            return auth_header[7:]  # Remove 'Bearer ' prefix
+            
+        # Try cookies as fallback
+        cookies = getattr(request, 'cookies', {})
+        return cookies.get('access_token')
+
+    def check_resource_access(self, request, resource_path: str, resource_owner_id: str = None) -> bool:
+        """Check if request has access to the specified resource.
+        
+        Args:
+            request: HTTP request object
+            resource_path: Path to the resource being accessed
+            resource_owner_id: Optional ID of resource owner
+            
+        Returns:
+            True if access is allowed, False otherwise
+        """
+        try:
+            token = self.extract_token_from_request(request)
+            if not token:
+                return False
+                
+            payload = self.decode_token(token)
+            user_role = getattr(payload, 'role', None)
+            user_id = getattr(payload, 'sub', None)
+            
+            # Admin users have access to everything
+            if user_role == 'admin':
+                return True
+                
+            # Users can access their own resources
+            if resource_owner_id and user_id == resource_owner_id:
+                return True
+                
+            # Providers can access patient data (basic role-based access)
+            if user_role == 'provider' and 'patient' in resource_path:
+                return True
+                
+            return False
+            
+        except Exception:
+            return False
+
+    def create_unauthorized_response(self, error_type: str = "authentication_error", message: str = "Unauthorized") -> dict:
+        """Create a standardized unauthorized response.
+        
+        Args:
+            error_type: Type of error (first argument for compatibility)
+            message: Error message to include
+            
+        Returns:
+            Dictionary with error details in expected format
+        """
+        # HIPAA compliance - redact sensitive information
+        import re
+        sanitized_message = message
+        
+        # Redact UUIDs (36 character format)
+        uuid_pattern = r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'
+        sanitized_message = re.sub(uuid_pattern, '[REDACTED-ID]', sanitized_message, flags=re.IGNORECASE)
+        
+        # Redact email addresses
+        email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+        sanitized_message = re.sub(email_pattern, '[REDACTED-EMAIL]', sanitized_message)
+        
+        # Redact SSN patterns (XXX-XX-XXXX)
+        ssn_pattern = r'\d{3}-\d{2}-\d{4}'
+        sanitized_message = re.sub(ssn_pattern, '[REDACTED-SSN]', sanitized_message)
+        
+        # Determine appropriate status code
+        status_code = 403 if error_type == "insufficient_permissions" else 401
+        
+        return {
+            "status_code": status_code,
+            "body": {
+                "error": sanitized_message,
+                "type": error_type,
+                "error_type": error_type  # Additional field for compatibility
+            }
+        }
