@@ -478,10 +478,13 @@ class JWTServiceImpl(IJwtService):
             Encoded JWT refresh token
         """
         # Handle data parameter for backward compatibility
+        # Handle data parameter for backward compatibility
+        
         if data is not None:
             if isinstance(data, dict):
                 # Extract subject safely - ensure it's just the ID string, not the entire dict
                 extracted_subject = data.get("sub")
+                
                 if extracted_subject is not None:
                     # Ensure we only get the actual user ID, not a dict representation
                     if isinstance(extracted_subject, str):
@@ -492,9 +495,6 @@ class JWTServiceImpl(IJwtService):
                     else:
                         # Convert any other type to string
                         subject = str(extracted_subject)
-                else:
-                    # Keep existing subject if no 'sub' in data
-                    pass
                 
                 # Create a copy to avoid modifying the original dict
                 data_copy = data.copy()
@@ -509,7 +509,7 @@ class JWTServiceImpl(IJwtService):
                 subject = str(data.id)
                 if hasattr(data, "roles") and not additional_claims:
                     additional_claims = {"roles": data.roles}
-
+        
         if subject is None and (not additional_claims or "sub" not in additional_claims):
             raise ValueError("Subject is required for token creation")
 
@@ -528,18 +528,13 @@ class JWTServiceImpl(IJwtService):
         if subject is not None:
             # Additional safety: ensure subject is not a string representation of a dict
             if isinstance(subject, str) and subject.startswith("{") and "}" in subject:
-                # This indicates subject might be a stringified dict - this is wrong
-                logger.warning("Subject appears to be a stringified dict, this violates Single Responsibility Principle")
-                # Try to extract just the actual ID if possible
+                # This indicates subject might be a stringified dict - fix it
                 try:
                     import ast
                     parsed = ast.literal_eval(subject)
                     if isinstance(parsed, dict) and "sub" in parsed:
                         subject = str(parsed["sub"])
-                    else:
-                        # Fallback to original string
-                        pass
-                except:
+                except Exception:
                     # If parsing fails, keep the original string
                     pass
             subject = str(subject)
@@ -583,6 +578,11 @@ class JWTServiceImpl(IJwtService):
             "roles": roles,
         }
 
+        # Debug logging to identify the issue
+        logger.info(f"DEBUG: subject value before claims creation: {repr(subject)}")
+        logger.info(f"DEBUG: subject type: {type(subject)}")
+        logger.info(f"DEBUG: initial claims['sub']: {repr(claims['sub'])}")
+
         # Add the issuer and audience if specified
         if self._token_issuer:
             claims["iss"] = self._token_issuer
@@ -602,6 +602,10 @@ class JWTServiceImpl(IJwtService):
                     claims[key] = value
                 elif key in phi_fields:
                     logger.warning(f"Excluding PHI field '{key}' from refresh token for HIPAA compliance")
+
+        # Final debug check before token creation
+        logger.info(f"DEBUG: final claims['sub'] before jwt_encode: {repr(claims['sub'])}")
+        logger.info(f"DEBUG: final claims dict: {repr(claims)}")
 
         # Create token
         token = jwt_encode(claims, self._secret_key, algorithm=self._algorithm)

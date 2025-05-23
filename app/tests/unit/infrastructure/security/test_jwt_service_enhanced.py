@@ -168,9 +168,12 @@ class TestJWTService:
     @pytest.mark.asyncio
     async def test_create_refresh_token(self, jwt_service: JWTServiceInterface):
         """Test creation of refresh tokens."""
-        # Create a refresh token
-        data = {"sub": "user123", "role": "patient", "refresh": True}
-        token = jwt_service.create_refresh_token(data)
+        # Create a refresh token using proper Interface Segregation Principle
+        # Pass subject as string and additional data as named parameter
+        token = jwt_service.create_refresh_token(
+            subject="user123",
+            additional_claims={"role": "patient", "refresh": True}
+        )
 
         # Verify token is a string
         assert isinstance(token, str)
