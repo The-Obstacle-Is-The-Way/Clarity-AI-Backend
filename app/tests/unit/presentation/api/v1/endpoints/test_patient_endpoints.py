@@ -59,7 +59,7 @@ from app.factory import create_application
 # FIXED JWT imports
 from app.presentation.api.dependencies.auth import (  # FIXED: Import get_jwt_service from auth.py
     get_current_user,
-    get_jwt_service,
+    get_jwt_service_from_request,
 )
 
 # Import the dependency to override for read tests
@@ -107,7 +107,7 @@ async def client(
     app_instance = create_application(settings_override=test_settings, skip_auth_middleware=True)
 
     # Override the JWT service dependency to use our global mock
-    app_instance.dependency_overrides[get_jwt_service] = lambda: global_mock_jwt_service
+    app_instance.dependency_overrides[get_jwt_service_from_request] = lambda: global_mock_jwt_service
 
     # Override the authentication dependency to always return our authenticated user
     app_instance.dependency_overrides[get_current_user] = lambda: authenticated_user

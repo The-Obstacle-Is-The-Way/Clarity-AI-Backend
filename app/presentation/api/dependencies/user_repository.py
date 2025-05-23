@@ -8,21 +8,27 @@ used throughout the application for user-related operations.
 from typing import Annotated
 
 from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.infrastructure.repositories.sqla.user_repository import SQLAlchemyUserRepository
 from app.presentation.api.dependencies.database import get_db
 
 
-def get_user_repository():
+async def get_user_repository(
+    db_session: AsyncSession = Depends(get_db)
+) -> IUserRepository:
     """
     Provides a user repository implementation.
 
     Creates and returns a SQLAlchemy-based user repository for accessing user data.
 
+    Args:
+        db_session: Database session injected by FastAPI
+
     Returns:
         An implementation of the IUserRepository interface
     """
-    db_session = next(get_db())
     return SQLAlchemyUserRepository(db_session)
 
 

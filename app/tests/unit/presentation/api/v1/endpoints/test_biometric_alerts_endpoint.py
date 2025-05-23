@@ -50,12 +50,11 @@ from app.domain.services.biometric_event_processor import (  # ClinicalRuleEngin
 from app.domain.services.clinical_rule_engine import ClinicalRuleEngine  # type: ignore
 from app.factory import create_application
 from app.infrastructure.di.container import reset_container
-from app.presentation.api.dependencies.auth import get_auth_service as get_auth_service_dependency
+from app.presentation.api.dependencies.auth import get_jwt_service_from_request as get_jwt_service_dependency
 from app.presentation.api.dependencies.auth import (
-    get_current_active_user,
-    get_current_user,
+    get_auth_service as get_auth_service_dependency,
 )
-from app.presentation.api.dependencies.auth import get_jwt_service as get_jwt_service_dependency
+from app.presentation.api.dependencies.auth import get_current_active_user, get_current_user
 from app.presentation.api.dependencies.biometric_alert import (
     get_alert_repository,
     get_event_processor,
@@ -64,8 +63,6 @@ from app.presentation.api.dependencies.biometric_alert import (
 )
 from app.presentation.api.v1.dependencies.biometric import (
     get_alert_service as get_alert_service_dependency,
-)
-from app.presentation.api.v1.dependencies.biometric import (
     get_biometric_rule_repository,
 )
 
@@ -520,6 +517,7 @@ class TestBiometricAlertsEndpoints:
             "name": "High Heart Rate Alert",
             "description": "Detects abnormally high heart rate",
             "patient_id": str(sample_patient_id),
+            "priority": "high",
             "conditions": [
                 {
                     "metric_name": "heart_rate",
@@ -527,7 +525,7 @@ class TestBiometricAlertsEndpoints:
                     "threshold_value": 110.0,
                 }
             ],
-            "priority": "high",
+            "logical_operator": "and",
             "is_active": True,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
@@ -625,9 +623,7 @@ class TestBiometricAlertsEndpoints:
         rule_service_mock.create_rule = AsyncMock(return_value=expected_result)
 
         # Override dependencies
-        from app.presentation.api.v1.endpoints.biometric_alert_rules import (
-            get_rule_service,
-        )
+        from app.presentation.api.v1.endpoints.biometric_alert_rules import get_rule_service
 
         app.dependency_overrides[get_rule_service] = lambda: rule_service_mock
 

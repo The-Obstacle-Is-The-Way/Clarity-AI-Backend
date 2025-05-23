@@ -25,6 +25,7 @@ from app.core.interfaces.services.audit_logger_interface import (
     IAuditLogger,
 )
 from app.core.interfaces.services.authentication_service import IAuthenticationService
+from app.core.interfaces.services.jwt_service import IJwtService
 from app.core.models.token_models import TokenPayload
 from app.core.services.ml.interface import MentaLLaMAInterface
 from app.domain.entities.user import User
@@ -36,6 +37,7 @@ from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.presentation.api.dependencies.auth import (
     get_current_active_user,
     get_current_user,
+    get_jwt_service_from_request,
 )
 from app.presentation.api.v1.dependencies.digital_twin import get_mentallama_service
 
@@ -429,7 +431,7 @@ async def mentallama_test_client(
     logging.info(f"MENTALLAMA_TEST_CLIENT: Overrode MentaLLaMAInterface on app {id(app)}")
 
     # Override JWT service
-    app.dependency_overrides[get_jwt_service] = lambda: global_mock_jwt_service
+    app.dependency_overrides[get_jwt_service_from_request] = lambda: global_mock_jwt_service
     logging.info(
         f"MENTALLAMA_TEST_CLIENT: Overrode IJwtService on app {id(app)} with global_mock_jwt_service ID: {id(global_mock_jwt_service)}"
     )
