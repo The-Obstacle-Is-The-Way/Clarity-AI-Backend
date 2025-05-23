@@ -307,17 +307,26 @@ class JWTServiceImpl(IJwtService):
         """
         additional_claims = additional_claims or {}
 
-        # Handle data parameter for backward compatibility
+        # Handle data parameter for backward compatibility (with PHI filtering)
         if data is not None:
             if isinstance(data, dict):
-                # Use subject from data if not provided directly
+                # Use subject from data if not provided directly (ensure it's just the ID)
                 if subject is None and "sub" in data:
-                    subject = data.get("sub")
+                    subject = str(data.get("sub"))  # Ensure subject is just the ID string
 
-                # Copy all data fields to additional_claims (except sub)
+                # Define PHI fields to exclude
+                phi_fields = [
+                    "name", "email", "dob", "ssn", "address", "phone_number",
+                    "birth_date", "social_security", "medical_record_number",
+                    "first_name", "last_name", "date_of_birth"
+                ]
+
+                # Copy only non-PHI data fields to additional_claims
                 for key, value in data.items():
-                    if key != "sub" and key not in additional_claims:
+                    if key != "sub" and key not in additional_claims and key not in phi_fields:
                         additional_claims[key] = value
+                    elif key in phi_fields:
+                        logger.warning(f"Excluding PHI field '{key}' from token data for HIPAA compliance")
             elif hasattr(data, "id"):
                 # Handle User object or similar with id attribute
                 subject = str(data.id)
@@ -395,10 +404,19 @@ class JWTServiceImpl(IJwtService):
         if self._audience:
             claims["aud"] = self._audience
 
-        # Add any additional claims
+        # Add any additional claims (excluding PHI for HIPAA compliance)
         if additional_claims:
+            phi_fields = [
+                "name", "email", "dob", "ssn", "address", "phone_number",
+                "birth_date", "social_security", "medical_record_number",
+                "first_name", "last_name", "date_of_birth"
+            ]
             for key, value in additional_claims.items():
-                claims[key] = value
+                # Skip PHI fields for HIPAA compliance
+                if key not in phi_fields:
+                    claims[key] = value
+                else:
+                    logger.warning(f"Excluding PHI field '{key}' from token for HIPAA compliance")
 
         # Create token
         token = jwt_encode(claims, self._secret_key, algorithm=self._algorithm)
@@ -512,11 +530,18 @@ class JWTServiceImpl(IJwtService):
         if self._token_audience:
             claims["aud"] = self._token_audience
 
-        # Add any additional claims
+        # Add any additional claims (excluding PHI for HIPAA compliance)
         if additional_claims:
+            phi_fields = [
+                "name", "email", "dob", "ssn", "address", "phone_number",
+                "birth_date", "social_security", "medical_record_number",
+                "first_name", "last_name", "date_of_birth"
+            ]
             for key, value in additional_claims.items():
-                if key not in claims:
+                if key not in claims and key not in phi_fields:
                     claims[key] = value
+                elif key in phi_fields:
+                    logger.warning(f"Excluding PHI field '{key}' from refresh token for HIPAA compliance")
 
         # Create token
         token = jwt_encode(claims, self._secret_key, algorithm=self._algorithm)
@@ -998,7 +1023,7 @@ class JWTServiceImpl(IJwtService):
     def _sanitize_phi_in_payload(self, payload: TokenPayload) -> TokenPayload:
         """Sanitize PHI from payload for HIPAA compliance.
 
-        This ensures no PHI fields are included in the token string representations,
+        This ensures no PHI fields are included anywhere in the token payload,
         which is essential for HIPAA compliance.
 
         Args:
@@ -1018,18 +1043,25 @@ class JWTServiceImpl(IJwtService):
             "birth_date",
             "social_security",
             "medical_record_number",
+            "first_name",
+            "last_name",
+            "date_of_birth",
         ]
 
         # Remove PHI fields from custom_fields
         if hasattr(payload, "custom_fields") and payload.custom_fields:
             for field in phi_fields:
-                if field in payload.custom_fields:
-                    payload.custom_fields.pop(field, None)
+                payload.custom_fields.pop(field, None)
 
-        # Also check for direct attributes (for backward compatibility)
+        # Remove PHI fields from direct attributes
         for field in phi_fields:
             if hasattr(payload, field):
-                # Set to None to keep the attribute but remove the value
-                setattr(payload, field, None)
+                # Completely remove the attribute
+                delattr(payload, field)
+
+        # Also remove PHI from payload.__dict__ directly as a safety measure
+        if hasattr(payload, "__dict__"):
+            for field in phi_fields:
+                payload.__dict__.pop(field, None)
 
         return payload
