@@ -8,7 +8,7 @@ testing, production) in a secure and consistent way, supporting HIPAA compliance
 import json  # Ensure json is imported for the validator
 import os
 from functools import lru_cache
-from typing import Any
+from typing import Any, Self
 
 from pydantic import (
     ConfigDict,
@@ -342,12 +342,12 @@ class Settings(BaseSettings):
     DATABASE_SSL_CA: str | None = Field(default=None, json_schema_extra={"env": "DATABASE_SSL_CA"})
 
     @model_validator(mode="after")
-    def _set_debug_env(self, values):  # type: ignore
+    def _set_debug_env(self) -> Self:
         """Set DEBUG env var for testing environment."""
         try:
             # Don't change the environment value when running tests
             # Only set DEBUG environment variable
-            if values.TESTING or os.getenv("TESTING") == "1":
+            if self.TESTING or os.getenv("TESTING") == "1":
                 os.environ["DEBUG"] = "1"
         except Exception:
             if os.getenv("TESTING") == "1":
@@ -362,11 +362,11 @@ class Settings(BaseSettings):
                     parsed = json.loads(cors_env)
                 else:
                     parsed = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
-                values.BACKEND_CORS_ORIGINS = parsed
+                self.BACKEND_CORS_ORIGINS = parsed
             except Exception:
                 # leave default if parse fails
                 pass
-        return values
+        return self
 
     @property
     def CORS_ORIGINS(self) -> list[str]:
