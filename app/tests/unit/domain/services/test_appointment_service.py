@@ -44,7 +44,8 @@ def appointment_repository():
 def patient_repository():
     """Fixture for patient repository."""
     repository = MagicMock()
-    repository.get_by_id.return_value = {"id": "patient123", "name": "John Doe"}
+    patient_id = uuid.uuid4()
+    repository.get_by_id.return_value = {"id": patient_id, "name": "John Doe"}
     return repository
 
 
@@ -52,7 +53,8 @@ def patient_repository():
 def provider_repository():
     """Fixture for provider repository."""
     repository = MagicMock()
-    repository.get_by_id.return_value = {"id": "provider456", "name": "Dr. Smith"}
+    provider_id = uuid.uuid4()
+    repository.get_by_id.return_value = {"id": provider_id, "name": "Dr. Smith"}
     return repository
 
 
@@ -75,11 +77,11 @@ def appointment_service(appointment_repository, patient_repository, provider_rep
 
 @pytest.fixture
 def valid_appointment_data(future_datetime):
-    """Fixture for valid appointment data (used only by valid_appointment fixture)"""
+    """Fixture for valid appointment data dict."""
     return {
-        "id": str(uuid.uuid4()),  # Keep id for direct use in valid_appointment
-        "patient_id": "patient123",
-        "provider_id": "provider456",
+        "id": str(uuid.uuid4()),  # Convert to string as expected by the test
+        "patient_id": uuid.uuid4(),
+        "provider_id": uuid.uuid4(),
         "start_time": future_datetime,
         "end_time": future_datetime + timedelta(hours=1),
         "appointment_type": AppointmentType.INITIAL_CONSULTATION,
@@ -137,8 +139,8 @@ class TestAppointmentService:
         # Set up the repository to return a conflicting appointment
         appointment_repository.get_by_provider_id.return_value = [
             Appointment(
-                patient_id="patient789",  # Need required fields
-                provider_id="provider456",
+                patient_id=uuid.uuid4(),  # Need required fields
+                provider_id=uuid.uuid4(),
                 start_time=future_datetime - timedelta(minutes=30),
                 end_time=future_datetime + timedelta(minutes=30),
                 appointment_type=AppointmentType.FOLLOW_UP,
@@ -148,9 +150,11 @@ class TestAppointmentService:
         ]
 
         with pytest.raises(AppointmentConflictError):
+            patient_id = uuid.uuid4()
+            provider_id = uuid.uuid4()
             appointment_service.create_appointment(
-                patient_id="patient123",
-                provider_id="provider456",
+                patient_id=patient_id,
+                provider_id=provider_id,
                 start_time=future_datetime,
                 end_time=future_datetime + timedelta(hours=1)
                 # Assuming priority is gone
@@ -164,10 +168,11 @@ class TestAppointmentService:
         from app.domain.entities.appointment import Appointment
 
         # Set up the repository to return a list of appointments at the limit
+        provider_id = uuid.uuid4()
         appointments = [
             Appointment(
-                patient_id=f"patient{i}",
-                provider_id="provider456",
+                patient_id=uuid.uuid4(),
+                provider_id=provider_id,
                 start_time=future_datetime + timedelta(hours=i),
                 end_time=future_datetime + timedelta(hours=i + 1),
                 appointment_type=AppointmentType.FOLLOW_UP,
@@ -179,8 +184,8 @@ class TestAppointmentService:
 
         with pytest.raises(AppointmentConflictError):  # Change to AppointmentConflictError
             appointment_service.create_appointment(
-                patient_id="patient_new",
-                provider_id="provider456",
+                patient_id=uuid.uuid4(),
+                provider_id=provider_id,
                 start_time=future_datetime + timedelta(hours=9),
                 end_time=future_datetime + timedelta(hours=10),
             )
