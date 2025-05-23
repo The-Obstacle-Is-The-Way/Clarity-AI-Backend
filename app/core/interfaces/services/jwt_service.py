@@ -6,10 +6,9 @@ validation, and management according to HIPAA security standards.
 
 from abc import ABC, abstractmethod
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    from app.domain.entities.user import User
+from app.domain.entities.user import User
 
 
 class IJwtService(ABC):

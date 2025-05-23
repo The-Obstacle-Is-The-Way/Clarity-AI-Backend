@@ -1,11 +1,9 @@
 """Interface definition for Biometric Alert Repository."""
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
 from uuid import UUID
 
-if TYPE_CHECKING:
-    from app.domain.entities.biometric_alert import BiometricAlert
+from app.domain.entities.biometric_alert import BiometricAlert
 
 
 class IBiometricAlertRepository(ABC):
