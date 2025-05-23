@@ -465,7 +465,7 @@ def app_instance(
         }
 
     # Add a test endpoint that raises a 500 error
-    @app.get("/api/v1/test/error")
+    @app.get("/api/v1/test/error", response_model=None)
     async def test_error_endpoint() -> NoReturn:
         """Test endpoint that intentionally raises a 500 error."""
         raise Exception("This is an intentional test error")
@@ -1306,7 +1306,7 @@ def middleware_patch(test_settings):
                                 user_roles.append(UserRole(role))
                             else:
                                 user_roles.append(UserRole.PATIENT)
-                        except (ValueError, TypeError):
+                        except ValueError:
                             # Default to PATIENT if role string doesn't match enum
                             user_roles.append(UserRole.PATIENT)
 
