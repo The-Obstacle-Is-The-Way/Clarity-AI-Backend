@@ -120,7 +120,7 @@ class MockPatientRepository(IPatientRepository):
         patient.update(patient_data)
         patient["updated_at"] = "2025-05-14T15:05:00Z"
 
-        return patient
+        return cast(dict[str, Any], patient)
 
     async def delete_patient(self, patient_id: str | UUID) -> bool:
         """

@@ -5,7 +5,7 @@ This module provides a mock implementation of the Digital Twin repository
 for testing purposes. It follows clean architecture principles.
 """
 
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 from app.core.interfaces.repositories.digital_twin_repository_interface import (
@@ -103,7 +103,8 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
             Digital twin data if found, None otherwise
         """
         twin_id_str = str(twin_id)
-        return self._digital_twins.get(twin_id_str)
+        result = self._digital_twins.get(twin_id_str)
+        return cast(dict[str, Any], result) if result is not None else None
 
     async def update_digital_twin(
         self, twin_id: str | UUID, twin_data: dict[str, Any]
@@ -128,7 +129,7 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
         digital_twin.update(twin_data)
         digital_twin["updated_at"] = "2025-05-14T15:05:00Z"
 
-        return digital_twin
+        return cast(dict[str, Any], digital_twin)
 
     async def delete_digital_twin(self, twin_id: str | UUID) -> bool:
         """
@@ -215,7 +216,8 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
             Session data if found, None otherwise
         """
         session_id_str = str(session_id)
-        return self._sessions.get(session_id_str)
+        result = self._sessions.get(session_id_str)
+        return cast(dict[str, Any], result) if result is not None else None
 
     async def update_session(
         self, session_id: str | UUID, session_data: dict[str, Any]
@@ -240,7 +242,7 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
         session.update(session_data)
         session["updated_at"] = "2025-05-14T15:05:00Z"
 
-        return session
+        return cast(dict[str, Any], session)
 
     async def add_message_to_session(
         self, session_id: str | UUID, message: dict[str, Any]
@@ -267,7 +269,7 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
         session["messages"].append(message)
         session["updated_at"] = "2025-05-14T15:05:00Z"
 
-        return session
+        return cast(dict[str, Any], session)
 
     async def end_session(self, session_id: str | UUID) -> dict[str, Any] | None:
         """
@@ -289,4 +291,4 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
         session["status"] = "ended"
         session["ended_at"] = "2025-05-14T15:10:00Z"
 
-        return session
+        return cast(dict[str, Any], session)
