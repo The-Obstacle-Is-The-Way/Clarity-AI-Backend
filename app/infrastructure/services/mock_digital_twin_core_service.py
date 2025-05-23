@@ -76,7 +76,7 @@ class MockDigitalTwinCoreService:
         state_id = uuid4()
 
         # Example state structure that matches what the test expects
-        state = type(
+        state: Any = type(  # type: ignore[misc]
             "DigitalTwinState",
             (),
             {
@@ -292,7 +292,7 @@ class MockDigitalTwinCoreService:
 
         # Create a new state with incremented version
         state_id = uuid4()
-        new_state = type(
+        new_state: Any = type(  # type: ignore[misc]
             "DigitalTwinState",
             (),
             {

@@ -92,7 +92,10 @@ class MockPatientRepository(IPatientRepository):
         """
         patient_id_str = str(patient_id)
         result = self._patients.get(patient_id_str)
-        return cast(dict[str, Any], result) if result is not None else None
+        if result is not None:
+            # Ensure we return the correct type by casting the known dict
+            return cast(dict[str, Any], result)
+        return None
 
     async def update_patient(
         self, patient_id: str | UUID, patient_data: dict[str, Any]

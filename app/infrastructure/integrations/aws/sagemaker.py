@@ -190,7 +190,7 @@ class SageMakerEndpoint:
                 return {}
 
             parsed_response: Dict[str, Any] = json.loads(body)
-            return cast(Dict[str, Any], parsed_response)
+            return parsed_response
 
         except (json.JSONDecodeError, UnicodeDecodeError) as e:
             raise SerializationError(
