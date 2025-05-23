@@ -258,10 +258,9 @@ class TestPatientEncryptionIntegration:
             "last_name": "EncrLastName",
             "email": "encrypted.patient@example.com",
             "date_of_birth": date(1990, 1, 1),
-            "phone_number": "555-123-4567",
-            "contact_info": ContactInfo(
-                phone="555-0100", email_secondary="secondary@example.com"
-            ),  # Pydantic ContactInfo
+            "phone": "555-123-4567",  # Use 'phone' not 'phone_number' for domain compatibility
+            # NOTE: Removed contact_info parameter to avoid conflicts
+            # Domain Patient's ContactInfo descriptor will create ContactInfo from email/phone fields
             "gender": Gender.FEMALE,
             "address": Address(
                 line1="123 Encrypt Lane",
