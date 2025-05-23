@@ -77,16 +77,18 @@ def mock_infrastructure_dependencies(monkeypatch):
     """Mock infrastructure dependencies for analytics endpoints without SQLAlchemy coupling."""
     # Patch SQLAlchemy configuration to prevent mapper initialization during test imports
     monkeypatch.setattr("sqlalchemy.orm.configure_mappers", MagicMock())
-    
+
     # Mock database connections to prevent actual database usage
     mock_session = MagicMock()
     mock_engine = MagicMock()
-    
+
     monkeypatch.setattr("sqlalchemy.orm.sessionmaker", lambda **kwargs: lambda: mock_session)
     monkeypatch.setattr("sqlalchemy.ext.asyncio.AsyncSession", MagicMock())
     monkeypatch.setattr("sqlalchemy.create_engine", lambda *args, **kwargs: mock_engine)
-    monkeypatch.setattr("sqlalchemy.ext.asyncio.create_async_engine", lambda *args, **kwargs: mock_engine)
-    
+    monkeypatch.setattr(
+        "sqlalchemy.ext.asyncio.create_async_engine", lambda *args, **kwargs: mock_engine
+    )
+
     return mock_session
 
 

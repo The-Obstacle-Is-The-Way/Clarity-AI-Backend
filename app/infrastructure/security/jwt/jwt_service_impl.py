@@ -8,7 +8,7 @@ and handling JWT token creation, validation, and management for HIPAA compliance
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError, JWTError
 from jose.jwt import decode as jwt_decode
@@ -82,15 +82,24 @@ class TokenPayload(BaseModel):
         """Initialize with special handling for subject/sub and PHI filtering."""
         # Define PHI fields that should never be in tokens
         phi_fields = [
-            "name", "email", "dob", "ssn", "address", "phone_number",
-            "birth_date", "social_security", "medical_record_number",
-            "first_name", "last_name", "date_of_birth"
+            "name",
+            "email",
+            "dob",
+            "ssn",
+            "address",
+            "phone_number",
+            "birth_date",
+            "social_security",
+            "medical_record_number",
+            "first_name",
+            "last_name",
+            "date_of_birth",
         ]
-        
+
         # Remove PHI fields from incoming data immediately
         for field in phi_fields:
             data.pop(field, None)
-        
+
         # Handle sub/subject conversion - ensure they are simple strings
         if "sub" in data and data["sub"] is not None:
             sub_value = data["sub"]
@@ -168,7 +177,7 @@ class TokenPayload(BaseModel):
             safe_fields.append(f"exp={self.exp}")
         if hasattr(self, "roles") and self.roles:
             safe_fields.append(f"roles={len(self.roles)} roles")
-        
+
         fields_str = ", ".join(safe_fields) if safe_fields else "anonymous"
         return f"TokenPayload({fields_str})"
 
@@ -232,8 +241,8 @@ class JWTServiceImpl(IJwtService):
         )
         self._access_token_expire_minutes = access_token_expire_minutes or (
             # Check both uppercase and lowercase for compatibility
-            getattr(self.settings, "ACCESS_TOKEN_EXPIRE_MINUTES", None) or
-            getattr(self.settings, "access_token_expire_minutes", 15)
+            getattr(self.settings, "ACCESS_TOKEN_EXPIRE_MINUTES", None)
+            or getattr(self.settings, "access_token_expire_minutes", 15)
         )
 
         # Handle refresh token expiry in days or minutes
@@ -257,7 +266,7 @@ class JWTServiceImpl(IJwtService):
         # Store as private attributes for property access
         self._token_issuer = self._issuer
         self._token_audience = self._audience
-        
+
         # Keep old attribute names for backward compatibility in existing code
         self.audience = self._audience
         self.issuer = self._issuer
@@ -273,32 +282,36 @@ class JWTServiceImpl(IJwtService):
     def secret_key(self) -> str:
         """JWT signing secret key."""
         return self._secret_key
-    
+
     @property
     def algorithm(self) -> str:
         """JWT signing algorithm."""
         return self._algorithm
-    
+
     @property
     def access_token_expire_minutes(self) -> int:
         """Access token expiration time in minutes."""
         return self._access_token_expire_minutes
-    
+
     @property
     def refresh_token_expire_minutes(self) -> int:
         """Refresh token expiration time in minutes."""
         return self._refresh_token_expire_minutes
-    
+
     @property
     def refresh_token_expire_days(self) -> int:
         """Refresh token expiration time in days."""
-        return self._refresh_token_expire_minutes // (24 * 60) if self._refresh_token_expire_minutes else 7
-    
+        return (
+            self._refresh_token_expire_minutes // (24 * 60)
+            if self._refresh_token_expire_minutes
+            else 7
+        )
+
     @property
     def token_issuer(self) -> str | None:
         """JWT token issuer."""
         return self._token_issuer
-    
+
     @property
     def token_audience(self) -> str | None:
         """JWT token audience."""
@@ -343,17 +356,32 @@ class JWTServiceImpl(IJwtService):
 
                 # Define PHI fields to exclude
                 phi_fields = [
-                    "name", "email", "dob", "ssn", "address", "phone_number",
-                    "birth_date", "social_security", "medical_record_number",
-                    "first_name", "last_name", "date_of_birth"
+                    "name",
+                    "email",
+                    "dob",
+                    "ssn",
+                    "address",
+                    "phone_number",
+                    "birth_date",
+                    "social_security",
+                    "medical_record_number",
+                    "first_name",
+                    "last_name",
+                    "date_of_birth",
                 ]
 
                 # Copy only non-PHI data fields to additional_claims
                 for key, value in data.items():
-                    if key not in ["sub", "id", "user_id", "subject"] and key not in additional_claims and key not in phi_fields:
+                    if (
+                        key not in ["sub", "id", "user_id", "subject"]
+                        and key not in additional_claims
+                        and key not in phi_fields
+                    ):
                         additional_claims[key] = value
                     elif key in phi_fields:
-                        logger.warning(f"Excluding PHI field '{key}' from token data for HIPAA compliance")
+                        logger.warning(
+                            f"Excluding PHI field '{key}' from token data for HIPAA compliance"
+                        )
             elif hasattr(data, "id"):
                 # Handle User object or similar with id attribute
                 subject = str(data.id)
@@ -428,9 +456,18 @@ class JWTServiceImpl(IJwtService):
         # Add any additional claims (excluding PHI for HIPAA compliance)
         if additional_claims:
             phi_fields = [
-                "name", "email", "dob", "ssn", "address", "phone_number",
-                "birth_date", "social_security", "medical_record_number",
-                "first_name", "last_name", "date_of_birth"
+                "name",
+                "email",
+                "dob",
+                "ssn",
+                "address",
+                "phone_number",
+                "birth_date",
+                "social_security",
+                "medical_record_number",
+                "first_name",
+                "last_name",
+                "date_of_birth",
             ]
             for key, value in additional_claims.items():
                 # Skip PHI fields for HIPAA compliance and prevent overwriting existing claims
@@ -439,7 +476,9 @@ class JWTServiceImpl(IJwtService):
                 elif key in claims:
                     logger.debug(f"Skipping existing claim '{key}' to preserve JWT standard fields")
                 else:
-                    logger.warning(f"Excluding PHI field '{key}' from refresh token for HIPAA compliance")
+                    logger.warning(
+                        f"Excluding PHI field '{key}' from refresh token for HIPAA compliance"
+                    )
 
         # Create token
         token = jwt_encode(claims, self._secret_key, algorithm=self._algorithm)
@@ -481,12 +520,12 @@ class JWTServiceImpl(IJwtService):
         """
         # Handle data parameter for backward compatibility
         # Handle data parameter for backward compatibility
-        
+
         if data is not None:
             if isinstance(data, dict):
                 # Extract subject safely - ensure it's just the ID string, not the entire dict
                 extracted_subject = data.get("sub")
-                
+
                 if extracted_subject is not None:
                     # Ensure we only get the actual user ID, not a dict representation
                     if isinstance(extracted_subject, str):
@@ -497,7 +536,7 @@ class JWTServiceImpl(IJwtService):
                     else:
                         # Convert any other type to string
                         subject = str(extracted_subject)
-                
+
                 # Create a copy to avoid modifying the original dict
                 data_copy = data.copy()
                 # Remove 'sub' to avoid duplicating it in claims
@@ -511,7 +550,7 @@ class JWTServiceImpl(IJwtService):
                 subject = str(data.id)
                 if hasattr(data, "roles") and not additional_claims:
                     additional_claims = {"roles": data.roles}
-        
+
         if subject is None and (not additional_claims or "sub" not in additional_claims):
             raise ValueError("Subject is required for token creation")
 
@@ -533,6 +572,7 @@ class JWTServiceImpl(IJwtService):
                 # This indicates subject might be a stringified dict - fix it
                 try:
                     import ast
+
                     parsed = ast.literal_eval(subject)
                     if isinstance(parsed, dict) and "sub" in parsed:
                         subject = str(parsed["sub"])
@@ -581,9 +621,9 @@ class JWTServiceImpl(IJwtService):
         }
 
         # Debug logging to identify the issue
-        logger.info(f"DEBUG: subject value before claims creation: {repr(subject)}")
+        logger.info(f"DEBUG: subject value before claims creation: {subject!r}")
         logger.info(f"DEBUG: subject type: {type(subject)}")
-        logger.info(f"DEBUG: initial claims['sub']: {repr(claims['sub'])}")
+        logger.info(f"DEBUG: initial claims['sub']: {claims['sub']!r}")
 
         # Add the issuer and audience if specified
         if self._token_issuer:
@@ -595,19 +635,30 @@ class JWTServiceImpl(IJwtService):
         # Add any additional claims (excluding PHI for HIPAA compliance)
         if additional_claims:
             phi_fields = [
-                "name", "email", "dob", "ssn", "address", "phone_number",
-                "birth_date", "social_security", "medical_record_number",
-                "first_name", "last_name", "date_of_birth"
+                "name",
+                "email",
+                "dob",
+                "ssn",
+                "address",
+                "phone_number",
+                "birth_date",
+                "social_security",
+                "medical_record_number",
+                "first_name",
+                "last_name",
+                "date_of_birth",
             ]
             for key, value in additional_claims.items():
                 if key not in claims and key not in phi_fields:
                     claims[key] = value
                 elif key in phi_fields:
-                    logger.warning(f"Excluding PHI field '{key}' from refresh token for HIPAA compliance")
+                    logger.warning(
+                        f"Excluding PHI field '{key}' from refresh token for HIPAA compliance"
+                    )
 
         # Final debug check before token creation
-        logger.info(f"DEBUG: final claims['sub'] before jwt_encode: {repr(claims['sub'])}")
-        logger.info(f"DEBUG: final claims dict: {repr(claims)}")
+        logger.info(f"DEBUG: final claims['sub'] before jwt_encode: {claims['sub']!r}")
+        logger.info(f"DEBUG: final claims dict: {claims!r}")
 
         # Create token
         token = jwt_encode(claims, self._secret_key, algorithm=self._algorithm)
@@ -758,19 +809,18 @@ class JWTServiceImpl(IJwtService):
 
     def verify_token(self, token: str) -> TokenPayload:
         """Verify a token and return its payload.
-        
+
         Args:
             token: JWT token to verify
-            
+
         Returns:
             TokenPayload object
-            
+
         Raises:
             InvalidTokenException: If token is invalid
             TokenExpiredException: If token is expired
         """
         return self.decode_token(token)
-
 
     async def get_user_from_token(self, token: str) -> User | None:
         """Get user from a token.
@@ -790,7 +840,7 @@ class JWTServiceImpl(IJwtService):
             payload = self.decode_token(
                 token, options={"verify_exp": False, "verify_iss": False, "verify_aud": False}
             )
-            
+
             # Handle both TokenPayload object and dict for robustness
             if isinstance(payload, TokenPayload):
                 subject = payload.sub
@@ -798,19 +848,19 @@ class JWTServiceImpl(IJwtService):
                 subject = payload.get("sub")
             else:
                 subject = str(payload) if payload else None
-                
+
             if not subject:
                 logger.warning("No subject found in token payload")
                 return None
 
             # Get user from repository
             user = await self.user_repository.get_by_id(subject)
-            
+
             # Always raise AuthenticationError if user not found for security
             if user is None:
                 logger.warning(f"User not found for subject: {subject}")
                 raise AuthenticationError(f"User not found: {subject}")
-                
+
             return user
         except Exception as e:
             logger.error(f"Error retrieving user from token: {e!s}")
@@ -891,13 +941,13 @@ class JWTServiceImpl(IJwtService):
             # This ensures we check token type before expiration (Single Responsibility Principle)
             payload = self.decode_token(
                 refresh_token,
-                options={"verify_exp": False, "verify_aud": False, "verify_iss": False}
+                options={"verify_exp": False, "verify_aud": False, "verify_iss": False},
             )
 
             # Verify it's a refresh token FIRST before checking expiration
             if enforce_refresh_type:
                 is_refresh_token = False
-                
+
                 # Check for refresh flag or type field
                 if hasattr(payload, "refresh") and payload.refresh:
                     is_refresh_token = True
@@ -1010,11 +1060,13 @@ class JWTServiceImpl(IJwtService):
                 return await self.blacklist_token(token)
             else:
                 # Fallback: Add to in-memory blacklist for testing (Dependency Inversion Principle)
-                logger.warning("Token blacklist repository not configured, using in-memory fallback")
+                logger.warning(
+                    "Token blacklist repository not configured, using in-memory fallback"
+                )
                 self._token_blacklist[jti] = True
                 logger.info(f"Token {jti} added to in-memory blacklist")
                 return True
-                
+
         except Exception as e:
             logger.error(f"Error revoking token: {e!s}")
             return False
@@ -1173,30 +1225,32 @@ class JWTServiceImpl(IJwtService):
 
     def extract_token_from_request(self, request) -> str | None:
         """Extract JWT token from request headers or cookies.
-        
+
         Args:
             request: HTTP request object
-            
+
         Returns:
             Token string if found, None otherwise
         """
         # Try Authorization header first
-        auth_header = getattr(request, 'headers', {}).get('Authorization', '')
-        if auth_header and auth_header.startswith('Bearer '):
+        auth_header = getattr(request, "headers", {}).get("Authorization", "")
+        if auth_header and auth_header.startswith("Bearer "):
             return auth_header[7:]  # Remove 'Bearer ' prefix
-            
-        # Try cookies as fallback
-        cookies = getattr(request, 'cookies', {})
-        return cookies.get('access_token')
 
-    def check_resource_access(self, request, resource_path: str, resource_owner_id: str = None) -> bool:
+        # Try cookies as fallback
+        cookies = getattr(request, "cookies", {})
+        return cookies.get("access_token")
+
+    def check_resource_access(
+        self, request, resource_path: str, resource_owner_id: str = None
+    ) -> bool:
         """Check if request has access to the specified resource.
-        
+
         Args:
             request: HTTP request object
             resource_path: Path to the resource being accessed
             resource_owner_id: Optional ID of resource owner
-            
+
         Returns:
             True if access is allowed, False otherwise
         """
@@ -1204,62 +1258,67 @@ class JWTServiceImpl(IJwtService):
             token = self.extract_token_from_request(request)
             if not token:
                 return False
-                
+
             payload = self.decode_token(token)
-            user_role = getattr(payload, 'role', None)
-            user_id = getattr(payload, 'sub', None)
-            
+            user_role = getattr(payload, "role", None)
+            user_id = getattr(payload, "sub", None)
+
             # Admin users have access to everything
-            if user_role == 'admin':
+            if user_role == "admin":
                 return True
-                
+
             # Users can access their own resources
             if resource_owner_id and user_id == resource_owner_id:
                 return True
-                
+
             # Providers can access patient data (basic role-based access)
-            if user_role == 'provider' and 'patient' in resource_path:
+            if user_role == "provider" and "patient" in resource_path:
                 return True
-                
+
             return False
-            
+
         except Exception:
             return False
 
-    def create_unauthorized_response(self, error_type: str = "authentication_error", message: str = "Unauthorized") -> dict:
+    def create_unauthorized_response(
+        self, error_type: str = "authentication_error", message: str = "Unauthorized"
+    ) -> dict:
         """Create a standardized unauthorized response.
-        
+
         Args:
             error_type: Type of error (first argument for compatibility)
             message: Error message to include
-            
+
         Returns:
             Dictionary with error details in expected format
         """
         # HIPAA compliance - redact sensitive information
         import re
+
         sanitized_message = message
-        
+
         # Redact UUIDs (36 character format)
-        uuid_pattern = r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'
-        sanitized_message = re.sub(uuid_pattern, '[REDACTED-ID]', sanitized_message, flags=re.IGNORECASE)
-        
+        uuid_pattern = r"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+        sanitized_message = re.sub(
+            uuid_pattern, "[REDACTED-ID]", sanitized_message, flags=re.IGNORECASE
+        )
+
         # Redact email addresses
-        email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-        sanitized_message = re.sub(email_pattern, '[REDACTED-EMAIL]', sanitized_message)
-        
+        email_pattern = r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+        sanitized_message = re.sub(email_pattern, "[REDACTED-EMAIL]", sanitized_message)
+
         # Redact SSN patterns (XXX-XX-XXXX)
-        ssn_pattern = r'\d{3}-\d{2}-\d{4}'
-        sanitized_message = re.sub(ssn_pattern, '[REDACTED-SSN]', sanitized_message)
-        
+        ssn_pattern = r"\d{3}-\d{2}-\d{4}"
+        sanitized_message = re.sub(ssn_pattern, "[REDACTED-SSN]", sanitized_message)
+
         # Determine appropriate status code
         status_code = 403 if error_type == "insufficient_permissions" else 401
-        
+
         return {
             "status_code": status_code,
             "body": {
                 "error": sanitized_message,
                 "type": error_type,
-                "error_type": error_type  # Additional field for compatibility
-            }
+                "error_type": error_type,  # Additional field for compatibility
+            },
         }

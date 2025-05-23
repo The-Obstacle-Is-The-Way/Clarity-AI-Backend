@@ -200,7 +200,9 @@ class TestRedisRateLimiter:
     # Remove tests for internal methods (_add_request, _clean_old_requests, etc.)
 
     @pytest.mark.asyncio
-    async def test_check_rate_limit(self, redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock):
+    async def test_check_rate_limit(
+        self, redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock
+    ):
         """Test check_rate_limit with Redis (under limit)."""
         config = RateLimitConfig(requests=5, window_seconds=60)
         key = "test-key-redis-check"
@@ -296,7 +298,7 @@ class TestRateLimiterFactory:
 def mock_redis_client():
     """Fixture for mocking the Redis client."""
     client = AsyncMock()
-    
+
     # Configure pipeline to return a MagicMock (not AsyncMock) for pipeline operations
     pipeline_mock = MagicMock()
     pipeline_mock.incr.return_value = pipeline_mock
@@ -305,16 +307,18 @@ def mock_redis_client():
     pipeline_mock.zremrangebyscore.return_value = pipeline_mock
     pipeline_mock.zcard.return_value = pipeline_mock
     # Only execute() should be async
-    pipeline_mock.execute = AsyncMock(return_value=[
-        1,  # zadd result
-        0,  # zremrangebyscore result
-        1,  # zcard result
-        True,  # expire result
-    ])
-    
+    pipeline_mock.execute = AsyncMock(
+        return_value=[
+            1,  # zadd result
+            0,  # zremrangebyscore result
+            1,  # zcard result
+            True,  # expire result
+        ]
+    )
+
     # Make pipeline() return the pipeline_mock directly (sync method, sync return)
     client.pipeline = MagicMock(return_value=pipeline_mock)
-    
+
     client.ping = AsyncMock(return_value=True)
     client.exists = AsyncMock(return_value=0)  # Default to key not existing
     client.get = AsyncMock(return_value=None)

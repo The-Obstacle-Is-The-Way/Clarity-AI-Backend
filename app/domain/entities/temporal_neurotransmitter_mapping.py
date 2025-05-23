@@ -30,7 +30,7 @@ from app.domain.entities.temporal_events import (
     EventChain,
     TemporalEvent,
 )
-from app.domain.entities.temporal_sequence import TemporalSequence, ExtendedTemporalSequence
+from app.domain.entities.temporal_sequence import ExtendedTemporalSequence, TemporalSequence
 
 
 class EventType(Enum):
@@ -1249,10 +1249,9 @@ def _simulate_cascade_effects(self, sequence_name, simulation_duration_hours, ti
     if seq is None:
         return None
     connections = getattr(self, "neurotransmitter_connections", []) or []
-    
+
     # Import ExtendedTemporalSequence here to avoid circular imports
-    from app.domain.entities.temporal_sequence import ExtendedTemporalSequence
-    
+
     result_seq = ExtendedTemporalSequence(
         name=f"cascade_{sequence_name}",
         description=f"Cascade simulation for {sequence_name}",

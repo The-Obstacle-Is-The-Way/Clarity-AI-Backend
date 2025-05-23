@@ -5,9 +5,7 @@ for testing, avoiding the need for a real Redis instance.
 Implements the IRedisService interface with full LSP compliance.
 """
 
-import json
 import logging
-from collections.abc import Set as AbcSet
 from typing import Any
 
 from app.core.interfaces.services.redis_service_interface import IRedisService
@@ -46,11 +44,11 @@ class MockRedisService(IRedisService):
         if value is None:
             return None
         if isinstance(value, str):
-            return value.encode('utf-8')
+            return value.encode("utf-8")
         elif isinstance(value, bytes):
             return value
         else:
-            return str(value).encode('utf-8')
+            return str(value).encode("utf-8")
 
     async def set(
         self,
@@ -75,24 +73,26 @@ class MockRedisService(IRedisService):
         Returns:
             True if operation was successful
         """
-        value_str = value.decode('utf-8') if isinstance(value, bytes) else str(value)
-        logger.debug(f"MockRedisService.set({key}, {value_str}, ex={ex}, px={px}, nx={nx}, xx={xx})")
-        
+        value_str = value.decode("utf-8") if isinstance(value, bytes) else str(value)
+        logger.debug(
+            f"MockRedisService.set({key}, {value_str}, ex={ex}, px={px}, nx={nx}, xx={xx})"
+        )
+
         # Handle nx and xx conditions
         key_exists = key in self._data
         if nx and key_exists:
             return False
         if xx and not key_exists:
             return False
-        
+
         self._data[key] = value
-        
+
         # Handle expiration
         if ex is not None:
             self._expiry[key] = ex
         elif px is not None:
             self._expiry[key] = px // 1000  # Convert milliseconds to seconds
-        
+
         return True
 
     async def delete(self, *keys: str) -> int:
@@ -172,10 +172,11 @@ class MockRedisService(IRedisService):
         """
         logger.debug(f"MockRedisService.keys({pattern})")
         import fnmatch
+
         matching_keys = []
         for key in self._data.keys():
             if fnmatch.fnmatch(key, pattern):
-                matching_keys.append(key.encode('utf-8'))
+                matching_keys.append(key.encode("utf-8"))
         return matching_keys
 
     async def hget(self, name: str, key: str) -> bytes | None:
@@ -196,11 +197,11 @@ class MockRedisService(IRedisService):
         if value is None:
             return None
         if isinstance(value, str):
-            return value.encode('utf-8')
+            return value.encode("utf-8")
         elif isinstance(value, bytes):
             return value
         else:
-            return str(value).encode('utf-8')
+            return str(value).encode("utf-8")
 
     async def hset(self, name: str, key: str, value: str | bytes | int | float) -> int:
         """
@@ -214,11 +215,11 @@ class MockRedisService(IRedisService):
         Returns:
             1 if field was new, 0 if field was updated
         """
-        value_str = value.decode('utf-8') if isinstance(value, bytes) else str(value)
+        value_str = value.decode("utf-8") if isinstance(value, bytes) else str(value)
         logger.debug(f"MockRedisService.hset({name}, {key}, {value_str})")
         if name not in self._hashes:
             self._hashes[name] = {}
-        
+
         is_new = key not in self._hashes[name]
         self._hashes[name][key] = value
         return 1 if is_new else 0
@@ -237,7 +238,7 @@ class MockRedisService(IRedisService):
         logger.debug(f"MockRedisService.hdel({name}, {keys})")
         if name not in self._hashes:
             return 0
-        
+
         deleted_count = 0
         for key in keys:
             if key in self._hashes[name]:
@@ -258,16 +259,16 @@ class MockRedisService(IRedisService):
         logger.debug(f"MockRedisService.hgetall({name})")
         if name not in self._hashes:
             return {}
-        
+
         result = {}
         for key, value in self._hashes[name].items():
-            key_bytes = key.encode('utf-8') if isinstance(key, str) else key
+            key_bytes = key.encode("utf-8") if isinstance(key, str) else key
             if isinstance(value, str):
-                value_bytes = value.encode('utf-8')
+                value_bytes = value.encode("utf-8")
             elif isinstance(value, bytes):
                 value_bytes = value
             else:
-                value_bytes = str(value).encode('utf-8')
+                value_bytes = str(value).encode("utf-8")
             result[key_bytes] = value_bytes
         return result
 

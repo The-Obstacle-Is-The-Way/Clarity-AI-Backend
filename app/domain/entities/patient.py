@@ -164,15 +164,16 @@ class Patient:
         # Convert string id to UUID if necessary
         if isinstance(self.id, str):
             from uuid import UUID
+
             try:
                 # Only attempt conversion if it looks like a valid UUID
-                if len(self.id) == 36 and self.id.count('-') == 4:
+                if len(self.id) == 36 and self.id.count("-") == 4:
                     self.id = UUID(self.id)
                 # If it's not a valid UUID format, leave it as a string
             except ValueError:
                 # If conversion fails, leave as string (maintains backward compatibility)
                 pass
-        
+
         # Handle contact_info parameter if provided
         if hasattr(self, "_contact_info") and self._contact_info is not None:
             self._process_contact_info(self._contact_info)

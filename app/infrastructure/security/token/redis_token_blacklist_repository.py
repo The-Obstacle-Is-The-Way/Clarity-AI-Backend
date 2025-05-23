@@ -8,6 +8,7 @@ user session management and token invalidation.
 
 import hashlib
 from datetime import datetime, timedelta, timezone
+
 from app.core.interfaces.repositories.token_blacklist_repository_interface import (
     ITokenBlacklistRepository,
 )
@@ -55,9 +56,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         """
         return hashlib.sha256(token.encode()).hexdigest()
 
-    async def add_to_blacklist(
-        self, token_jti: str, expires_at: datetime
-    ) -> None:
+    async def add_to_blacklist(self, token_jti: str, expires_at: datetime) -> None:
         """
         Add a token to the blacklist.
 
@@ -67,20 +66,18 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         """
         # Create a hash of the JTI for storage
         hashed_jti = self._hash_token(token_jti)
-        
+
         # Calculate TTL in seconds from now until expiration
         current_time = datetime.now(timezone.utc)
         if expires_at <= current_time:
             # Token is already expired, no need to blacklist
             return
-            
+
         ttl_seconds = int((expires_at - current_time).total_seconds())
-        
+
         # Store in Redis with TTL
         await self.redis_service.set(
-            f"{self._jti_prefix}{hashed_jti}",
-            "blacklisted",
-            expire=ttl_seconds
+            f"{self._jti_prefix}{hashed_jti}", "blacklisted", expire=ttl_seconds
         )
         logger.info(f"Token {hashed_jti} blacklisted until {expires_at.isoformat()}")
 
@@ -229,10 +226,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
                 if jti_data and isinstance(jti_data, dict) and "expires_at" in jti_data:
                     try:
                         expires_at = datetime.fromisoformat(jti_data["expires_at"])
-                        result.append({
-                            "jti": jti,
-                            "expires_at": expires_at
-                        })
+                        result.append({"jti": jti, "expires_at": expires_at})
                     except (ValueError, TypeError):
                         logger.warning(f"Invalid expires_at format for JTI {jti}")
                         continue

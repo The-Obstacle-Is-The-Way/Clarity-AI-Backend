@@ -63,11 +63,11 @@ class MockRedisService(IRedisService):
 
         # Convert value to bytes
         if isinstance(value, str):
-            self._data[key] = value.encode('utf-8')
+            self._data[key] = value.encode("utf-8")
         elif isinstance(value, bytes):
             self._data[key] = value
         else:
-            self._data[key] = str(value).encode('utf-8')
+            self._data[key] = str(value).encode("utf-8")
 
         # Handle expiration
         if ex is not None:
@@ -126,10 +126,11 @@ class MockRedisService(IRedisService):
     async def keys(self, pattern: str) -> list[bytes]:
         """Get keys matching a pattern."""
         import fnmatch
+
         matching_keys = []
         for key in self._data.keys():
             if fnmatch.fnmatch(key, pattern):
-                matching_keys.append(key.encode('utf-8'))
+                matching_keys.append(key.encode("utf-8"))
         return matching_keys
 
     async def hget(self, name: str, key: str) -> bytes | None:
@@ -142,14 +143,14 @@ class MockRedisService(IRedisService):
         """Set a key in a hash."""
         if name not in self._hashes:
             self._hashes[name] = {}
-        
+
         # Convert value to bytes
         if isinstance(value, str):
-            bytes_value = value.encode('utf-8')
+            bytes_value = value.encode("utf-8")
         elif isinstance(value, bytes):
             bytes_value = value
         else:
-            bytes_value = str(value).encode('utf-8')
+            bytes_value = str(value).encode("utf-8")
 
         was_new = key not in self._hashes[name]
         self._hashes[name][key] = bytes_value
@@ -159,39 +160,39 @@ class MockRedisService(IRedisService):
         """Delete keys from a hash."""
         if name not in self._hashes:
             return 0
-        
+
         count = 0
         for key in keys:
             if key in self._hashes[name]:
                 del self._hashes[name][key]
                 count += 1
-        
+
         # Clean up empty hash
         if not self._hashes[name]:
             del self._hashes[name]
-        
+
         return count
 
     async def hgetall(self, name: str) -> dict[bytes, bytes]:
         """Get all fields and values from a hash."""
         if name not in self._hashes:
             return {}
-        
+
         result = {}
         for key, value in self._hashes[name].items():
-            result[key.encode('utf-8')] = value
+            result[key.encode("utf-8")] = value
         return result
 
     async def incr(self, key: str, amount: int = 1) -> int:
         """Increment a key by an amount."""
-        current_value = self._data.get(key, b'0')
+        current_value = self._data.get(key, b"0")
         try:
-            current_int = int(current_value.decode('utf-8'))
+            current_int = int(current_value.decode("utf-8"))
         except (ValueError, UnicodeDecodeError):
             current_int = 0
-        
+
         new_value = current_int + amount
-        self._data[key] = str(new_value).encode('utf-8')
+        self._data[key] = str(new_value).encode("utf-8")
         return new_value
 
     async def ping(self) -> bool:

@@ -171,8 +171,7 @@ class TestJWTService:
         # Create a refresh token using proper Interface Segregation Principle
         # Pass subject as string and additional data as named parameter
         token = jwt_service.create_refresh_token(
-            subject="user123",
-            additional_claims={"role": "patient", "refresh": True}
+            subject="user123", additional_claims={"role": "patient", "refresh": True}
         )
 
         # Verify token is a string

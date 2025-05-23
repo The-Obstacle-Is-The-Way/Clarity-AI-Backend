@@ -201,13 +201,13 @@ async def get_current_user(
             else:
                 # Fallback to standard decode without options
                 payload = jwt_service.decode_token(token)
-                
+
             # Handle async mock that returns coroutines
-            if hasattr(payload, '__await__'):
+            if hasattr(payload, "__await__"):
                 logger.debug("JWT service returned a coroutine - awaiting it")
                 # For async mocks, we need to await the coroutine
                 payload = await payload
-                
+
         except Exception as decode_error:
             logger.warning(f"JWT decode failed: {decode_error}")
             # Check for specific error types
@@ -341,12 +341,12 @@ async def get_current_user(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Account is inactive",
-                headers={"WWW-Authenticate": "Bearer"}
+                headers={"WWW-Authenticate": "Bearer"},
             )
 
         logger.info(f"get_current_user: User {user.username} authenticated successfully.")
         return user
-        
+
     except HTTPException:
         # Re-raise HTTP exceptions directly
         raise

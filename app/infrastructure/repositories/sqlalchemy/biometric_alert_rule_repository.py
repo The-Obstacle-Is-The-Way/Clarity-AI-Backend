@@ -133,14 +133,16 @@ class SQLAlchemyBiometricAlertRuleRepository(BiometricAlertRuleRepository):
 
 def _convert_biometric_rule_to_alert_rule(rule: BiometricRule) -> BiometricAlertRule:
     """Convert BiometricRule to BiometricAlertRule."""
+    from app.domain.entities.biometric_alert_rule import AlertPriority as AlertRulePriority
     from app.domain.entities.biometric_alert_rule import (
-        RuleCondition as AlertRuleCondition,
-        ComparatorOperator,
-        RuleLogicalOperator,
-        AlertPriority as AlertRulePriority,
         BiometricMetricType,
+        ComparatorOperator,
     )
-    
+    from app.domain.entities.biometric_alert_rule import RuleCondition as AlertRuleCondition
+    from app.domain.entities.biometric_alert_rule import (
+        RuleLogicalOperator,
+    )
+
     # Convert conditions
     alert_conditions = []
     for condition in rule.conditions:
@@ -153,31 +155,35 @@ def _convert_biometric_rule_to_alert_rule(rule: BiometricRule) -> BiometricAlert
             "LESS_THAN_OR_EQUAL": ComparatorOperator.LESS_THAN_OR_EQUAL,
             "NOT_EQUAL": ComparatorOperator.NOT_EQUAL,
         }
-        
-        operator_name = condition.operator.name if hasattr(condition.operator, 'name') else str(condition.operator)
+
+        operator_name = (
+            condition.operator.name
+            if hasattr(condition.operator, "name")
+            else str(condition.operator)
+        )
         mapped_operator = operator_mapping.get(operator_name, ComparatorOperator.GREATER_THAN)
-        
+
         # Convert metric name to BiometricMetricType
         metric_type = BiometricMetricType.HEART_RATE  # default
-        if hasattr(condition, 'metric_name') and condition.metric_name:
+        if hasattr(condition, "metric_name") and condition.metric_name:
             try:
                 metric_type = BiometricMetricType(condition.metric_name.lower())
             except ValueError:
                 pass  # use default
-        
+
         alert_condition = AlertRuleCondition(
             metric_type=metric_type,
             operator=mapped_operator,
             threshold_value=float(condition.threshold_value),
         )
         alert_conditions.append(alert_condition)
-    
+
     # Map logical operator
     logical_op = RuleLogicalOperator.AND  # default
-    if hasattr(rule, 'logical_operator'):
-        if str(rule.logical_operator).lower() == 'or':
+    if hasattr(rule, "logical_operator"):
+        if str(rule.logical_operator).lower() == "or":
             logical_op = RuleLogicalOperator.OR
-    
+
     # Map priority
     priority_mapping = {
         "LOW": AlertRulePriority.LOW,
@@ -186,16 +192,16 @@ def _convert_biometric_rule_to_alert_rule(rule: BiometricRule) -> BiometricAlert
         "CRITICAL": AlertRulePriority.CRITICAL,
         "INFO": AlertRulePriority.INFO,
     }
-    
-    priority_name = rule.priority.name if hasattr(rule.priority, 'name') else str(rule.priority)
+
+    priority_name = rule.priority.name if hasattr(rule.priority, "name") else str(rule.priority)
     mapped_priority = priority_mapping.get(priority_name, AlertRulePriority.MEDIUM)
-    
+
     # Handle missing patient_id - BiometricAlertRule requires it
     if rule.patient_id is None:
         patient_id = uuid4()  # Create a placeholder UUID
     else:
         patient_id = rule.patient_id
-    
+
     return BiometricAlertRule(
         id=rule.id,
         name=rule.name,
@@ -207,19 +213,19 @@ def _convert_biometric_rule_to_alert_rule(rule: BiometricRule) -> BiometricAlert
         priority=mapped_priority,
         is_active=rule.is_active,
         created_at=rule.created_at,
-        updated_at=getattr(rule, 'updated_at', None),
+        updated_at=getattr(rule, "updated_at", None),
     )
 
 
 def _convert_alert_rule_to_biometric_rule(rule: BiometricAlertRule) -> BiometricRule:
     """Convert BiometricAlertRule to BiometricRule."""
     from app.domain.entities.biometric_rule import (
+        AlertPriority,
+        LogicalOperator,
         RuleCondition,
         RuleOperator,
-        LogicalOperator,
-        AlertPriority,
     )
-    
+
     # Convert conditions
     biometric_conditions = []
     for condition in rule.conditions:
@@ -232,9 +238,9 @@ def _convert_alert_rule_to_biometric_rule(rule: BiometricAlertRule) -> Biometric
             "<=": RuleOperator.LESS_THAN_OR_EQUAL,
             "!=": RuleOperator.NOT_EQUAL,
         }
-        
+
         mapped_operator = operator_mapping.get(condition.operator.value, RuleOperator.GREATER_THAN)
-        
+
         biometric_condition = RuleCondition(
             metric_name=condition.metric_type.value,
             operator=mapped_operator,
@@ -242,12 +248,12 @@ def _convert_alert_rule_to_biometric_rule(rule: BiometricAlertRule) -> Biometric
             data_type="float",  # default data type
         )
         biometric_conditions.append(biometric_condition)
-    
+
     # Map logical operator
     logical_op = LogicalOperator.AND  # default
     if rule.logical_operator == "or":
         logical_op = LogicalOperator.OR
-    
+
     # Map priority
     priority_mapping = {
         "low": AlertPriority.LOW,
@@ -256,9 +262,9 @@ def _convert_alert_rule_to_biometric_rule(rule: BiometricAlertRule) -> Biometric
         "critical": AlertPriority.CRITICAL,
         "info": AlertPriority.INFO,
     }
-    
+
     mapped_priority = priority_mapping.get(rule.priority.value, AlertPriority.MEDIUM)
-    
+
     return BiometricRule(
         id=rule.id,
         name=rule.name,

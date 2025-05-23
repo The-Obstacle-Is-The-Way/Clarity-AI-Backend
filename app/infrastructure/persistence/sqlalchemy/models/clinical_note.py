@@ -112,7 +112,7 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
         Returns:
             ClinicalNote: Domain entity instance
         """
-        from app.domain.entities.clinical_note import ClinicalNote, NoteType, NoteStatus
+        from app.domain.entities.clinical_note import ClinicalNote, NoteStatus, NoteType
 
         # Convert tags from JSON dict to set of strings, handling None
         domain_tags = set()

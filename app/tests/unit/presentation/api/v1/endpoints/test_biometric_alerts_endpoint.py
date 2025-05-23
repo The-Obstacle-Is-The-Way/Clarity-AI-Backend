@@ -50,11 +50,14 @@ from app.domain.services.biometric_event_processor import (  # ClinicalRuleEngin
 from app.domain.services.clinical_rule_engine import ClinicalRuleEngine  # type: ignore
 from app.factory import create_application
 from app.infrastructure.di.container import reset_container
-from app.presentation.api.dependencies.auth import get_jwt_service_from_request as get_jwt_service_dependency
+from app.presentation.api.dependencies.auth import get_auth_service as get_auth_service_dependency
 from app.presentation.api.dependencies.auth import (
-    get_auth_service as get_auth_service_dependency,
+    get_current_active_user,
+    get_current_user,
 )
-from app.presentation.api.dependencies.auth import get_current_active_user, get_current_user
+from app.presentation.api.dependencies.auth import (
+    get_jwt_service_from_request as get_jwt_service_dependency,
+)
 from app.presentation.api.dependencies.biometric_alert import (
     get_alert_repository,
     get_event_processor,
@@ -63,6 +66,8 @@ from app.presentation.api.dependencies.biometric_alert import (
 )
 from app.presentation.api.v1.dependencies.biometric import (
     get_alert_service as get_alert_service_dependency,
+)
+from app.presentation.api.v1.dependencies.biometric import (
     get_biometric_rule_repository,
 )
 

@@ -27,9 +27,6 @@ from sqlalchemy.ext.asyncio import (  # , async_sessionmaker, create_async_engin
 
 # from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import EncryptedString, EncryptedText, EncryptedJSON # Not directly used in test logic
 from app.core.config import settings
-
-# Import domain entities with clear namespace
-from app.domain.entities.patient import ContactInfo, Patient as DomainPatient
 from app.core.domain.entities.user import UserRole
 from app.core.domain.enums import Gender  # Corrected Gender import
 
@@ -40,6 +37,9 @@ from app.core.domain.enums import Gender  # Corrected Gender import
 # However, ensuring the global instance is correctly configured for tests IS crucial.
 # import app.infrastructure.persistence.sqlalchemy.models.patient as patient_module_for_esi # Keep for now if other parts rely on it, but aim to remove dependency on this patching.
 from app.core.exceptions.base_exceptions import PersistenceError  # Corrected import
+
+# Import domain entities with clear namespace
+from app.domain.entities.patient import Patient as DomainPatient
 from app.domain.value_objects.address import (  # Assuming this is the canonical Pydantic/dataclass VO
     Address,
 )

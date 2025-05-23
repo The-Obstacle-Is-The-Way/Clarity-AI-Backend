@@ -5,7 +5,7 @@ This module provides implementations of the AWS service interfaces
 using the real boto3 library for production use.
 """
 
-from typing import Any, Dict, List, cast
+from typing import Any, cast
 
 import boto3
 import botocore.exceptions

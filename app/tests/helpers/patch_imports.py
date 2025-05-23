@@ -7,8 +7,9 @@ to work around FastAPI response model validation issues.
 import builtins
 import sys
 import types
+from collections.abc import Callable
 from contextlib import contextmanager
-from typing import Any, Callable
+from typing import Any
 
 
 @contextmanager

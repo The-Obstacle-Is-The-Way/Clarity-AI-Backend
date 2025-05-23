@@ -67,9 +67,7 @@ class JWTTokenService(ITokenService):
                 "sub": str(user.id),
                 "email": user.email,
                 # Only include role if it exists on the user entity
-                **({
-                    "role": getattr(user, 'role', 'user')
-                } if hasattr(user, 'role') else {}),
+                **({"role": getattr(user, "role", "user")} if hasattr(user, "role") else {}),
                 "exp": access_token_expires,
                 "type": "access",
             }
@@ -253,7 +251,7 @@ class JWTTokenService(ITokenService):
             "id": payload.get("sub"),
             "email": payload.get("email"),
         }
-        
+
         # Only include role if present in token
         if "role" in payload:
             user_info["role"] = payload["role"]

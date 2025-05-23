@@ -7,6 +7,7 @@ import pytest
 from pydantic import SecretStr  # Import SecretStr
 
 from app.config.settings import Settings  # Import Settings
+from app.domain.enums.token_type import TokenType
 from app.domain.exceptions.token_exceptions import (
     InvalidTokenException,
     TokenExpiredException,
@@ -15,7 +16,6 @@ from app.infrastructure.security.jwt.jwt_service_impl import (
     JWTServiceImpl,
     TokenPayload,
 )
-from app.domain.enums.token_type import TokenType
 
 
 @pytest.fixture

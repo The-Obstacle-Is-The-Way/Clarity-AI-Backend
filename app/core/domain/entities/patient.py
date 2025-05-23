@@ -67,7 +67,9 @@ class Patient(BaseModel):
 
     # Contact Information
     email: EmailStr | None = Field(None, description="Patient's primary email address")
-    phone_number: str | None = Field(None, alias="phone", description="Patient's primary phone number")
+    phone_number: str | None = Field(
+        None, alias="phone", description="Patient's primary phone number"
+    )
     address: Address | None = Field(None, description="Patient's primary address")
     contact_info: ContactInfo = Field(
         default_factory=lambda: ContactInfo(), description="Detailed contact information object"

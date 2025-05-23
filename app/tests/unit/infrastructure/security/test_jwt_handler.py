@@ -11,12 +11,12 @@ from uuid import uuid4
 import pytest
 
 from app.config.settings import Settings
+from app.domain.enums.token_type import TokenType
 from app.domain.exceptions.token_exceptions import (
     InvalidTokenException,
     TokenExpiredException,
 )
 from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
-from app.domain.enums.token_type import TokenType
 
 # Define UTC if not imported elsewhere (Python 3.11+)
 try:
@@ -143,7 +143,9 @@ class TestJWTService:
 
     # --- Token Decoding and Validation ---
     @pytest.mark.asyncio
-    async def test_decode_valid_access_token(self, jwt_service: JWTServiceImpl, sample_user_data: dict):
+    async def test_decode_valid_access_token(
+        self, jwt_service: JWTServiceImpl, sample_user_data: dict
+    ):
         """Test decoding a valid access token returns correct payload."""
         # Store the user_id for later use
         user_id = sample_user_data["sub"]
@@ -247,7 +249,9 @@ class TestJWTService:
         )
 
     @pytest.mark.asyncio
-    async def test_decode_token_wrong_type(self, jwt_service: JWTServiceImpl, sample_user_data: dict):
+    async def test_decode_token_wrong_type(
+        self, jwt_service: JWTServiceImpl, sample_user_data: dict
+    ):
         """Test decoding works regardless of scope, but scope is preserved."""
         # Create an access token
         access_token = jwt_service.create_access_token(data=sample_user_data)

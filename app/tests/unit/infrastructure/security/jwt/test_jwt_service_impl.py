@@ -208,8 +208,8 @@ class TestJWTServiceImpl:
         """Test verification of an expired token."""
         # Create a token that's already expired using expires_delta_minutes
         token = jwt_service_impl.create_access_token(
-            subject=user_claims["sub"], 
-            expires_delta_minutes=-15  # Negative value to ensure expiration
+            subject=user_claims["sub"],
+            expires_delta_minutes=-15,  # Negative value to ensure expiration
         )
 
         # Verification should raise TokenExpiredError

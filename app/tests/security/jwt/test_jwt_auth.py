@@ -26,16 +26,16 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from pydantic import BaseModel, SecretStr
 
+from app.domain.enums.token_type import TokenType
 from app.domain.exceptions.token_exceptions import (
     InvalidTokenException,
     TokenExpiredException,
 )
 from app.domain.models.user import User, UserRole
+from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl as JWTService
 from app.infrastructure.security.jwt.jwt_service_impl import (
-    JWTServiceImpl as JWTService,
     TokenPayload,
 )
-from app.domain.enums.token_type import TokenType
 
 # Mock data for testing
 TEST_USERS = {

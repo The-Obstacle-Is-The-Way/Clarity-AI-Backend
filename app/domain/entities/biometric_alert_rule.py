@@ -7,7 +7,7 @@ Following proper domain-driven design principles.
 """
 from datetime import datetime
 from enum import Enum
-from typing import Any, Union
+from typing import Union
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -66,7 +66,7 @@ class BiometricMetricType(str, Enum):
             cls.STRESS_LEVEL: "Stress Level",
             cls.MOOD: "Mood",
         }
-        
+
         # Handle both enum and string inputs
         # Check for enum instances first (since BiometricMetricType inherits from str)
         if isinstance(value, cls):
@@ -95,16 +95,16 @@ class ComparatorOperator(str, Enum):
     def __str__(self) -> str:
         return self.value
 
-    def evaluate(self, left: Union[float, int], right: Union[float, int]) -> bool:
+    def evaluate(self, left: float | int, right: float | int) -> bool:
         """Evaluate the comparison between two numeric values.
-        
+
         Args:
             left: Left operand (numeric value)
             right: Right operand (numeric value)
-            
+
         Returns:
             bool: Result of the comparison operation
-            
+
         Raises:
             ValueError: If operator is unknown
         """

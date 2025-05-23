@@ -19,7 +19,7 @@ class SafeAsyncMock(_AsyncMock):
     This class extends AsyncMock to add async-specific assertion methods,
     preventing "coroutine was never awaited" warnings that happen when
     using standard assertion methods directly on AsyncMock objects.
-    
+
     Note: We use different method names to avoid overriding synchronous methods.
     """
 

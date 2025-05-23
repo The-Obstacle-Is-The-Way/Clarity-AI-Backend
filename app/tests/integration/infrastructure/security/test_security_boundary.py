@@ -21,7 +21,8 @@ from app.domain.exceptions.token_exceptions import (
 )
 
 # Fixed import to use the JWT service's TokenType instead of domain enum
-from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl as JWTService, TokenType
+from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl as JWTService
+from app.infrastructure.security.jwt.jwt_service_impl import TokenType
 from app.infrastructure.security.password.password_handler import PasswordHandler
 
 # Try importing from domain enums as a fallback
@@ -241,7 +242,8 @@ class TestSecurityBoundary:
     async def test_token_generation_and_validation(self, mock_settings):
         """Test the complete token generation and validation flow."""
         # Create a JWT service
-        from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl as JWTService, TokenType
+        from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl as JWTService
+        from app.infrastructure.security.jwt.jwt_service_impl import TokenType
 
         jwt_service = JWTService(
             secret_key=mock_settings.JWT_SECRET_KEY,

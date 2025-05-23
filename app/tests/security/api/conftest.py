@@ -1002,20 +1002,20 @@ def global_mock_jwt_service() -> JWTServiceInterface:
             # Always treat tokens as test tokens in the test environment
             # This ensures all JWT tokens created during tests are properly handled
             logger.debug(f"Decoded test token with sub: {unverified_payload.get('sub', 'unknown')}")
-            
+
             # Store the token for future reference
             mock_service.token_store[token] = unverified_payload
             # Set a default expiration far in the future for test tokens
             mock_service.token_exp_store[token] = datetime.now(timezone.utc) + timedelta(days=7)
-            
+
             # Now check expiration if requested
             if not skip_exp_verification:
-                exp_timestamp = unverified_payload.get('exp')
+                exp_timestamp = unverified_payload.get("exp")
                 if exp_timestamp:
                     exp_datetime = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
                     if exp_datetime < datetime.now(timezone.utc):
                         raise TokenExpiredException("Token has expired")
-            
+
             return unverified_payload
         except jose_jwt.JWTError as e:
             # If JWT decoding fails, raise appropriate exception

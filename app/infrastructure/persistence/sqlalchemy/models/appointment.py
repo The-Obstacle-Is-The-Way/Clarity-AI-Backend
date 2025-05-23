@@ -113,8 +113,8 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
         """
         from app.domain.entities.appointment import (
             Appointment,
-            AppointmentType,
             AppointmentStatus,
+            AppointmentType,
         )
 
         return Appointment(

@@ -5,8 +5,8 @@ Pure domain models with no external dependencies.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from uuid import UUID, uuid4
 from typing import Any
+from uuid import UUID, uuid4
 
 
 class EdgeType(Enum):
@@ -313,7 +313,9 @@ class BayesianBeliefNetwork:
     conditional_probabilities: dict[str, dict] = field(
         default_factory=dict
     )  # Variable -> parent configurations -> probabilities
-    evidence: dict[str, str | float] = field(default_factory=dict)  # Current evidence (variable -> value)
+    evidence: dict[str, str | float] = field(
+        default_factory=dict
+    )  # Current evidence (variable -> value)
     last_updated: datetime = field(default_factory=datetime.now)
 
     def add_variable(self, name: str, states: list[str], description: str | None = None) -> None:

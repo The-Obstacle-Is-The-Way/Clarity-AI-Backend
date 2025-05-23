@@ -9,7 +9,6 @@ import logging
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Optional, Union
 from unittest.mock import AsyncMock
 
 import redis
@@ -47,7 +46,7 @@ class RateLimitConfig(BaseModel):
 
     requests: int
     window_seconds: int
-    block_seconds: Optional[int] = None
+    block_seconds: int | None = None
 
     @property
     def requests_per_period(self) -> int:
@@ -62,10 +61,11 @@ class RateLimitConfig(BaseModel):
 
 class RateLimitResult(BaseModel):
     """Result of a rate limit check."""
+
     allowed: bool
-    limit: Optional[int] = None
-    remaining: Optional[int] = None
-    reset_at: Optional[datetime] = None
+    limit: int | None = None
+    remaining: int | None = None
+    reset_at: datetime | None = None
 
 
 class RateLimiter(ABC):
@@ -79,9 +79,9 @@ class RateLimiter(ABC):
     def check_rate_limit(
         self,
         key: str,
-        config: Optional[Union[RateLimitConfig, RateLimitType]] = None,
-        user_id: Optional[str] = None
-    ) -> Union[bool, RateLimitResult]:
+        config: RateLimitConfig | RateLimitType | None = None,
+        user_id: str | None = None,
+    ) -> bool | RateLimitResult:
         """
         Check if a request should be rate limited.
 
@@ -110,7 +110,7 @@ class RateLimiter(ABC):
 class AsyncRateLimiter(ABC):
     """
     Abstract base class for async rate limiters.
-    
+
     Supports async operations for distributed rate limiting.
     """
 
@@ -118,9 +118,9 @@ class AsyncRateLimiter(ABC):
     async def check_rate_limit(
         self,
         key: str,
-        config: Optional[Union[RateLimitConfig, RateLimitType]] = None,
-        user_id: Optional[str] = None
-    ) -> Union[bool, RateLimitResult, tuple[bool, dict]]:
+        config: RateLimitConfig | RateLimitType | None = None,
+        user_id: str | None = None,
+    ) -> bool | RateLimitResult | tuple[bool, dict]:
         """
         Async check if a request should be rate limited.
 
@@ -176,10 +176,10 @@ class InMemoryRateLimiter(RateLimiter):
         self._request_logs[key] = [t for t in self._request_logs[key] if t >= cutoff]
 
     def check_rate_limit(
-        self, 
-        key: str, 
-        config: Optional[Union[RateLimitConfig, RateLimitType]] = None, 
-        user_id: Optional[str] = None
+        self,
+        key: str,
+        config: RateLimitConfig | RateLimitType | None = None,
+        user_id: str | None = None,
     ) -> bool:
         """
         Check if a request should be rate limited.
@@ -246,7 +246,7 @@ class RedisRateLimiter(AsyncRateLimiter):
     Suitable for production, multi-instance deployments.
     """
 
-    def __init__(self, redis_client: Optional[redis.Redis] = None):
+    def __init__(self, redis_client: redis.Redis | None = None):
         """
         Initialize the Redis rate limiter.
 
@@ -287,9 +287,9 @@ class RedisRateLimiter(AsyncRateLimiter):
     async def check_rate_limit(
         self,
         key: str,
-        config: Optional[Union[RateLimitConfig, RateLimitType]] = None,
-        user_id: Optional[str] = None
-    ) -> Union[bool, RateLimitResult, tuple[bool, dict]]:
+        config: RateLimitConfig | RateLimitType | None = None,
+        user_id: str | None = None,
+    ) -> bool | RateLimitResult | tuple[bool, dict]:
         """
         Check if a request should be rate limited.
 
@@ -305,12 +305,11 @@ class RedisRateLimiter(AsyncRateLimiter):
         if isinstance(config, RateLimitType) and user_id is not None:
             # Return detailed result for pipeline usage
             result = await self._check_rate_limit_pipeline_async(key, config, user_id)
-            return (not result.allowed, {
-                "limit": result.limit,
-                "remaining": result.remaining,
-                "reset_at": result.reset_at
-            })
-        
+            return (
+                not result.allowed,
+                {"limit": result.limit, "remaining": result.remaining, "reset_at": result.reset_at},
+            )
+
         # Standard usage: convert config to RateLimitConfig
         if isinstance(config, RateLimitType):
             rate_config = self.configs.get(config, RateLimitConfig(requests=10, window_seconds=60))
@@ -327,7 +326,7 @@ class RedisRateLimiter(AsyncRateLimiter):
         if isinstance(self._redis, AsyncMock):
             # For testing with AsyncMock, execute proper mock calls
             return await self._check_rate_limit_async_mock(key, rate_config)
-        
+
         # Default to synchronous Redis client (wrapped in async)
         return await self._check_rate_limit_async(key, rate_config)
 
@@ -338,26 +337,26 @@ class RedisRateLimiter(AsyncRateLimiter):
         try:
             if not self._redis:
                 return True
-            
+
             now = datetime.now().timestamp()
             blocked_key = self._get_blocked_key(key)
             counter_key = self._get_counter_key(key)
-            
+
             # Check if the key is blocked
             if self._redis.exists(blocked_key):
                 return False
-            
+
             # Clean up old requests
             expired_cutoff = now - config.window_seconds
             self._redis.zremrangebyscore(counter_key, 0, expired_cutoff)
-            
+
             # Check if over the limit
             request_count = self._redis.zcard(counter_key)
             if request_count is not None and request_count >= config.requests:
                 if config.block_seconds:
                     self._redis.setex(blocked_key, config.block_seconds, 1)
                 return False
-            
+
             # Add this request to the log
             self._redis.zadd(counter_key, {str(now): now})
             # Set expiration on the sorted set
@@ -374,13 +373,14 @@ class RedisRateLimiter(AsyncRateLimiter):
         try:
             if not self._redis:
                 return True
-                
+
             # For AsyncMock (testing), execute mock calls and return result
             if isinstance(self._redis, AsyncMock):
                 return await self._check_rate_limit_async_mock(key, config)
-            
+
             # For sync Redis client, wrap in async
             import asyncio
+
             return await asyncio.get_event_loop().run_in_executor(
                 None, self._check_rate_limit_sync, key, config
             )
@@ -391,7 +391,7 @@ class RedisRateLimiter(AsyncRateLimiter):
     async def _check_rate_limit_async_mock(self, key: str, config: RateLimitConfig) -> bool:
         """
         Async rate limit check using AsyncMock for testing.
-        
+
         This method executes the same Redis calls as the real implementation
         but uses the mocked Redis client for testing verification.
         """
@@ -399,23 +399,23 @@ class RedisRateLimiter(AsyncRateLimiter):
             now = datetime.now().timestamp()
             blocked_key = self._get_blocked_key(key)
             counter_key = self._get_counter_key(key)
-            
+
             # Check if the key is blocked
             blocked_exists = await self._redis.exists(blocked_key)
             if blocked_exists:
                 return False
-            
+
             # Clean up old requests
             expired_cutoff = now - config.window_seconds
             await self._redis.zremrangebyscore(counter_key, 0, expired_cutoff)
-            
+
             # Check if over the limit
             request_count = await self._redis.zcard(counter_key)
             if request_count is not None and request_count >= config.requests:
                 if config.block_seconds:
                     await self._redis.setex(blocked_key, config.block_seconds, 1)
                 return False
-            
+
             # Add this request to the log
             await self._redis.zadd(counter_key, {str(now): now})
             # Set expiration on the sorted set
@@ -430,12 +430,12 @@ class RedisRateLimiter(AsyncRateLimiter):
     ) -> RateLimitResult:
         """
         Async pipeline-based rate limit check with detailed results.
-        
+
         Args:
             identifier: Rate limit identifier
             limit_type: Type of rate limit
             user_id: User identifier for scoping
-            
+
         Returns:
             RateLimitResult with detailed information
         """
@@ -443,20 +443,23 @@ class RedisRateLimiter(AsyncRateLimiter):
         config = self.configs.get(limit_type)
         if not config:
             return RateLimitResult(allowed=True)
-            
+
         # Determine combined key for user and identifier
         combined_key = f"{limit_type.value}:{user_id}:{identifier}"
-        
+
         try:
             if not self._redis:
                 return RateLimitResult(allowed=True)
-            
+
             # For AsyncMock (testing), execute mock pipeline calls
             if isinstance(self._redis, AsyncMock):
-                return await self._check_rate_limit_pipeline_async_mock(identifier, limit_type, user_id)
-                
+                return await self._check_rate_limit_pipeline_async_mock(
+                    identifier, limit_type, user_id
+                )
+
             # For sync Redis client, wrap pipeline in async
             import asyncio
+
             return await asyncio.get_event_loop().run_in_executor(
                 None, self._check_rate_limit_pipeline_sync, identifier, limit_type, user_id
             )
@@ -470,7 +473,7 @@ class RedisRateLimiter(AsyncRateLimiter):
     ) -> RateLimitResult:
         """
         Async pipeline-based rate limit check with AsyncMock for testing.
-        
+
         This method executes the same pipeline calls as the real implementation
         but uses the mocked Redis client for testing verification.
         """
@@ -478,60 +481,55 @@ class RedisRateLimiter(AsyncRateLimiter):
         config = self.configs.get(limit_type)
         if not config:
             return RateLimitResult(allowed=True)
-            
+
         # Determine combined key for user and identifier
         combined_key = f"{limit_type.value}:{user_id}:{identifier}"
-        
+
         now = datetime.now().timestamp()
-        
+
         # Execute pipeline operations using the mock
         pipeline = self._redis.pipeline()
-        
+
         # Remove expired entries - pipeline methods are sync, don't await them
         expired_cutoff = now - config.period_seconds
         pipeline.zremrangebyscore(combined_key, 0, expired_cutoff)
-        
+
         # Add current request - sync method, returns pipeline
         pipeline.zadd(combined_key, {str(now): now})
-        
+
         # Count total requests - sync method, returns pipeline
         pipeline.zcard(combined_key)
-        
+
         # Set expiration - sync method, returns pipeline
         pipeline.expire(combined_key, config.period_seconds * 2)
-        
+
         # Execute pipeline - this is the only async call
         results = await pipeline.execute()
-        
+
         # Extract count from results (mock will return default values)
         count = 1  # Simulate count after adding current request
-        
+
         # Determine limit and remaining
         limit = config.requests_per_period
         remaining = max(limit - count, 0)
         allowed = count <= limit
-        
+
         # Compute reset time
         reset_at = datetime.now() + timedelta(seconds=config.period_seconds)
-        
-        return RateLimitResult(
-            allowed=allowed,
-            limit=limit,
-            remaining=remaining,
-            reset_at=reset_at
-        )
+
+        return RateLimitResult(allowed=allowed, limit=limit, remaining=remaining, reset_at=reset_at)
 
     def _check_rate_limit_pipeline_sync(
         self, identifier: str, limit_type: RateLimitType, user_id: str
     ) -> RateLimitResult:
         """
         Synchronous pipeline-based rate limit check with detailed results.
-        
+
         Args:
             identifier: Rate limit identifier
             limit_type: Type of rate limit
             user_id: User identifier for scoping
-            
+
         Returns:
             RateLimitResult with detailed information
         """
@@ -539,51 +537,48 @@ class RedisRateLimiter(AsyncRateLimiter):
         config = self.configs.get(limit_type)
         if not config:
             return RateLimitResult(allowed=True)
-            
+
         # Determine combined key for user and identifier
         combined_key = f"{limit_type.value}:{user_id}:{identifier}"
-        
+
         try:
             if not self._redis:
                 return RateLimitResult(allowed=True)
-                
+
             now = datetime.now().timestamp()
-            
+
             # For synchronous Redis, use pipeline differently
             pipe = self._redis.pipeline()
-            
+
             # Remove expired entries
             expired_cutoff = now - config.period_seconds
             pipe.zremrangebyscore(combined_key, 0, expired_cutoff)
-            
+
             # Add current request
             pipe.zadd(combined_key, {str(now): now})
-            
+
             # Count total requests
             pipe.zcard(combined_key)
-            
+
             # Set expiration
             pipe.expire(combined_key, config.period_seconds * 2)
-            
+
             # Execute pipeline
             results = pipe.execute()
-            
+
             # Extract count from results
             count = results[2] if len(results) > 2 else 0
-            
+
             # Determine limit and remaining
             limit = config.requests_per_period
             remaining = max(limit - count, 0)
             allowed = count <= limit
-            
+
             # Compute reset time
             reset_at = datetime.now() + timedelta(seconds=config.period_seconds)
-            
+
             return RateLimitResult(
-                allowed=allowed,
-                limit=limit,
-                remaining=remaining,
-                reset_at=reset_at
+                allowed=allowed, limit=limit, remaining=remaining, reset_at=reset_at
             )
         except redis.RedisError as e:
             logger.error(f"Redis error in pipeline rate limiter: {e}")
@@ -613,6 +608,7 @@ class RedisRateLimiter(AsyncRateLimiter):
 
             # For sync Redis client, wrap in async
             import asyncio
+
             await asyncio.get_event_loop().run_in_executor(
                 None, self._redis.delete, blocked_key, counter_key
             )
@@ -631,8 +627,7 @@ class RateLimiterFactory:
 
     @staticmethod
     def create_rate_limiter(
-        limiter_type: Optional[str] = None, 
-        redis_client: Optional[redis.Redis] = None
+        limiter_type: str | None = None, redis_client: redis.Redis | None = None
     ) -> RateLimiter:
         """
         Create a rate limiter based on configuration or explicit parameters.
@@ -654,13 +649,14 @@ class RateLimiterFactory:
                     app_settings = get_settings()
                     # Parse Redis URL to get connection parameters
                     import urllib.parse
+
                     parsed = urllib.parse.urlparse(app_settings.REDIS_URL)
-                    
+
                     redis_client = redis.Redis(
                         host=parsed.hostname or "localhost",
                         port=parsed.port or 6379,
                         password=parsed.password,
-                        db=int(parsed.path.lstrip('/')) if parsed.path.lstrip('/') else 0,
+                        db=int(parsed.path.lstrip("/")) if parsed.path.lstrip("/") else 0,
                         socket_timeout=5,
                         decode_responses=True,
                         ssl=app_settings.REDIS_SSL,

@@ -264,10 +264,10 @@ def test_token_with_phi_fields(jwt_service):
 def test_decode_invalid_token():
     """Test decoding an invalid token format raises the correct exception."""
     # Setup
+    from app.domain.exceptions import InvalidTokenException
     from app.infrastructure.security.jwt.jwt_service_impl import (
         JWTServiceImpl,
     )
-    from app.domain.exceptions import InvalidTokenException
 
     # Using a fixture would be better, but for simplicity in this test
     jwt_service = JWTServiceImpl(secret_key="test-secret-key", algorithm="HS256")
@@ -330,10 +330,10 @@ def test_verify_invalid_refresh_token_type():
     # Setup
     import uuid
 
+    from app.domain.exceptions import InvalidTokenException
     from app.infrastructure.security.jwt.jwt_service_impl import (
         JWTServiceImpl,
     )
-    from app.domain.exceptions import InvalidTokenException
 
     # Using a fixture would be better, but for simplicity in this test
     jwt_service = JWTServiceImpl(

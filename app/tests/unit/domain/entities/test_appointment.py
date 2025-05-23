@@ -2,10 +2,9 @@
 Tests for the Appointment entity.
 """
 
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
-import time
-from typing import Any
 
 import pytest
 
@@ -27,7 +26,6 @@ def future_datetime():
     """Fixture for a future datetime."""
     # Ensure timezone-aware datetime if needed, otherwise naive
     # Using timezone.utc for consistency if BaseEntity uses it
-    from datetime import timezone  # Import timezone
 
     return datetime.now(timezone.utc) + timedelta(days=1)  # Make timezone-aware
     # return datetime.now() + timedelta(days=1)

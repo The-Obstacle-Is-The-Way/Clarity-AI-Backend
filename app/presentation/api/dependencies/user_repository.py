@@ -15,9 +15,7 @@ from app.infrastructure.repositories.sqla.user_repository import SQLAlchemyUserR
 from app.presentation.api.dependencies.database import get_db
 
 
-async def get_user_repository(
-    db_session: AsyncSession = Depends(get_db)
-) -> IUserRepository:
+async def get_user_repository(db_session: AsyncSession = Depends(get_db)) -> IUserRepository:
     """
     Provides a user repository implementation.
 

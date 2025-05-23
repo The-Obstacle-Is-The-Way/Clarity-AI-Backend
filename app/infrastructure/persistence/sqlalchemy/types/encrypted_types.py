@@ -7,7 +7,6 @@ using the application's configured encryption service.
 """
 
 import base64
-import dataclasses
 import json
 import logging
 from typing import Any, TypeVar
@@ -59,15 +58,21 @@ def serialize_for_encryption(obj: Any) -> str | None:
         return json.dumps(obj)
     except (TypeError, ValueError) as e:
         # For non-JSON serializable objects (like MagicMock), fall back to string representation
-        logger.warning(f"Object of type {type(obj)} is not JSON serializable, using string representation: {e!s}")
+        logger.warning(
+            f"Object of type {type(obj)} is not JSON serializable, using string representation: {e!s}"
+        )
         try:
             return str(obj)
         except Exception as str_error:
             logger.error(f"Failed to serialize object of type {type(obj)} to string: {str_error!s}")
-            raise TypeError(f"Object of type {type(obj).__name__} cannot be serialized: {str_error!s}")
+            raise TypeError(
+                f"Object of type {type(obj).__name__} cannot be serialized: {str_error!s}"
+            )
 
 
-def deserialize_from_encryption(json_str: str, target_cls: type[PydanticModel] | None = None) -> Any:
+def deserialize_from_encryption(
+    json_str: str, target_cls: type[PydanticModel] | None = None
+) -> Any:
     """
     Deserialize JSON strings back to Python objects after decryption.
 
@@ -99,7 +104,9 @@ def deserialize_from_encryption(json_str: str, target_cls: type[PydanticModel] |
                     # Not a Pydantic model, just return the data
                     return data
             except Exception as e:
-                logger.warning(f"Failed to instantiate {target_cls.__name__}: {e!s}, returning raw data")
+                logger.warning(
+                    f"Failed to instantiate {target_cls.__name__}: {e!s}, returning raw data"
+                )
                 return data
         else:
             return data
@@ -527,7 +534,7 @@ class EncryptedJSON(EncryptedTypeBase):
 
             # Try to parse as JSON first
             return json.loads(value)
-            
+
         except json.JSONDecodeError:
             # If it's not valid JSON, try cleaning and parsing again
             try:
@@ -536,7 +543,9 @@ class EncryptedJSON(EncryptedTypeBase):
                 return json.loads(cleaned_value)
             except json.JSONDecodeError:
                 # If still not valid JSON, return as string (for objects that were serialized as strings)
-                logger.warning(f"Decrypted value is not valid JSON, returning as string: {value[:50]}...")
+                logger.warning(
+                    f"Decrypted value is not valid JSON, returning as string: {value[:50]}..."
+                )
                 return value
 
 

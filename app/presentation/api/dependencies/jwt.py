@@ -24,7 +24,7 @@ def get_jwt_service_from_request(request: Request) -> IJwtService:
 
     This function collects all necessary dependencies for the JWT service,
     including settings, repositories, and logging components.
-    
+
     For testing, it checks if there's a JWT service override in the app state.
 
     Args:
@@ -34,9 +34,9 @@ def get_jwt_service_from_request(request: Request) -> IJwtService:
         An implementation of the IJwtService interface
     """
     # Check for test override first
-    if hasattr(request.app.state, 'jwt_service') and request.app.state.jwt_service:
+    if hasattr(request.app.state, "jwt_service") and request.app.state.jwt_service:
         return request.app.state.jwt_service
-    
+
     # Normal production path
     settings = get_settings()
     user_repository = get_user_repository()

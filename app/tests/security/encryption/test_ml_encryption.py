@@ -639,7 +639,7 @@ class TestEncryptedTypes:
         # MagicMock should be converted to string representation for encryption
         bound_mock = encrypted_json.process_bind_param(mock, None)
         assert bound_mock.startswith("v1:")
-        
+
         # The result should be the string representation since MagicMock isn't JSON serializable
         result_mock = encrypted_json.process_result_value(bound_mock, None)
         assert result_mock == "MockObject"

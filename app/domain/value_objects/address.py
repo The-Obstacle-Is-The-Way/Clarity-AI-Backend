@@ -19,27 +19,35 @@ class Address:
     zip_code: str
     country: str = "US"
 
-    def __init__(self, street: str | None = None, city: str | None = None, state: str | None = None, 
-                 zip_code: str | None = None, country: str = "US", line1: str | None = None, **kwargs):
+    def __init__(
+        self,
+        street: str | None = None,
+        city: str | None = None,
+        state: str | None = None,
+        zip_code: str | None = None,
+        country: str = "US",
+        line1: str | None = None,
+        **kwargs,
+    ):
         """Initialize Address with backward compatibility for 'line1' parameter."""
         # Handle legacy 'line1' parameter
         if line1 is not None and street is None:
             street = line1
-        
+
         # Convert None values to empty strings to satisfy type requirements
         # Validation will happen in __post_init__
         street = street or ""
         city = city or ""
         state = state or ""
         zip_code = zip_code or ""
-        
+
         # Use object.__setattr__ because dataclass is frozen
-        object.__setattr__(self, 'street', street)
-        object.__setattr__(self, 'city', city)
-        object.__setattr__(self, 'state', state)
-        object.__setattr__(self, 'zip_code', zip_code)
-        object.__setattr__(self, 'country', country)
-        
+        object.__setattr__(self, "street", street)
+        object.__setattr__(self, "city", city)
+        object.__setattr__(self, "state", state)
+        object.__setattr__(self, "zip_code", zip_code)
+        object.__setattr__(self, "country", country)
+
         # Call post_init manually since we're overriding __init__
         self.__post_init__()
 

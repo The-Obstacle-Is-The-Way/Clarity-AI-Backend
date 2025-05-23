@@ -6,12 +6,11 @@ Encryption/decryption is handled by the repository layer.
 """
 
 # from app.tests.standalone.domain.test_standalone_patient import Gender # TEMPORARY: Gender enum location # This line will be removed
-import inspect
 import json
 import logging
 import uuid
 from datetime import date, datetime, timezone
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from dateutil import parser
 from pydantic import ValidationError
@@ -25,7 +24,6 @@ from sqlalchemy import (
     ForeignKey,
     String,
 )
-from sqlalchemy import inspect as sql_inspect
 from sqlalchemy.orm import relationship
 
 from app.domain.entities.digital_twin_enums import Gender  # Corrected Gender import
@@ -121,7 +119,9 @@ class Patient(Base, TimestampMixin, AuditMixin):
     _country = Column("country", EncryptedString, nullable=True)
     _emergency_contact_name = Column("emergency_contact_name", EncryptedString, nullable=True)
     _emergency_contact_phone = Column("emergency_contact_phone", EncryptedString, nullable=True)
-    _emergency_contact_relationship = Column("emergency_contact_relationship", EncryptedString, nullable=True)
+    _emergency_contact_relationship = Column(
+        "emergency_contact_relationship", EncryptedString, nullable=True
+    )
 
     # Complex data fields (JSON/JSONB in PostgreSQL, stored as encrypted blobs)
     _contact_info = Column("contact_info", EncryptedJSON, nullable=True)
@@ -400,7 +400,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 model._contact_info = {
                     "email": getattr(existing_contact_info, "email", None),
                     "phone": getattr(existing_contact_info, "phone", None),
-                    "email_secondary": getattr(existing_contact_info, "email_secondary", None)
+                    "email_secondary": getattr(existing_contact_info, "email_secondary", None),
                 }
         else:
             # Create contact_info from individual email and phone fields as fallback
@@ -411,11 +411,11 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 patient_phone = getattr(patient, "phone_number", None)
             elif hasattr(patient, "phone"):
                 patient_phone = getattr(patient, "phone", None)
-            
+
             contact_info_dict = {
                 "email": patient_email,
                 "phone": patient_phone,
-                "email_secondary": None  # Default for now
+                "email_secondary": None,  # Default for now
             }
             model._contact_info = contact_info_dict
 
@@ -462,7 +462,6 @@ class Patient(Base, TimestampMixin, AuditMixin):
         model._extra_data = getattr(
             patient, "extra_data", None
         )  # EncryptedJSON handles dict serialization
-
 
         logger.debug(f"[from_domain] Completed conversion for patient model ID: {model.id}")
         return model
@@ -714,7 +713,9 @@ class Patient(Base, TimestampMixin, AuditMixin):
             "gender": gender,
             "date_of_birth": date_of_birth,
             "email": _decode_if_bytes(self._email),
-            "phone": _decode_if_bytes(self._phone_number),  # Use alias 'phone' that maps to phone_number field
+            "phone": _decode_if_bytes(
+                self._phone_number
+            ),  # Use alias 'phone' that maps to phone_number field
             "medical_record_number": medical_record_number,  # Required for medical_record_number_lve property
             "ssn": ssn,  # Required for social_security_number_lve property
             "address": address_domain_obj,
