@@ -7,7 +7,7 @@ Following proper domain-driven design principles.
 """
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Union
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -50,7 +50,7 @@ class BiometricMetricType(str, Enum):
         return self.value
 
     @classmethod
-    def get_display_name(cls, value: str) -> str:
+    def get_display_name(cls, value: Union["BiometricMetricType", str]) -> str:
         """Get a human-readable display name for a metric type."""
         display_names = {
             cls.HEART_RATE: "Heart Rate",
@@ -66,7 +66,20 @@ class BiometricMetricType(str, Enum):
             cls.STRESS_LEVEL: "Stress Level",
             cls.MOOD: "Mood",
         }
-        return display_names.get(value, value)
+        
+        # Handle both enum and string inputs
+        # Check for enum instances first (since BiometricMetricType inherits from str)
+        if isinstance(value, cls):
+            # Direct enum access
+            return display_names.get(value, str(value))
+        else:
+            # Handle string inputs
+            try:
+                enum_value = cls(value)
+                return display_names.get(enum_value, value)
+            except ValueError:
+                # If string doesn't match any enum value, return as-is
+                return value
 
 
 class ComparatorOperator(str, Enum):
@@ -82,8 +95,19 @@ class ComparatorOperator(str, Enum):
     def __str__(self) -> str:
         return self.value
 
-    def evaluate(self, left: Any, right: Any) -> bool:
-        """Evaluate the comparison between two values."""
+    def evaluate(self, left: Union[float, int], right: Union[float, int]) -> bool:
+        """Evaluate the comparison between two numeric values.
+        
+        Args:
+            left: Left operand (numeric value)
+            right: Right operand (numeric value)
+            
+        Returns:
+            bool: Result of the comparison operation
+            
+        Raises:
+            ValueError: If operator is unknown
+        """
         if self == ComparatorOperator.GREATER_THAN:
             return left > right
         elif self == ComparatorOperator.LESS_THAN:
