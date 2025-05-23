@@ -246,88 +246,34 @@ class TestPatientEncryptionIntegration:
         # For now, it's an aspiration for what DomainPatient should hold.
         # Fallback to basic DomainPatient if fields are not yet available.
 
-        patient_data = {
-            "id": patient_id,
-            "user_id": user_id,  # Assuming DomainPatient will have user_id
-            "first_name": "EncrFirstName",
-            "last_name": "EncrLastName",
-            "email": "encrypted.patient@example.com",
-            "date_of_birth": date(1990, 1, 1),
-            "phone": "555-123-4567",  # Use 'phone' not 'phone_number' for domain compatibility
-            # NOTE: Removed contact_info parameter to avoid conflicts
-            # Domain Patient's ContactInfo descriptor will create ContactInfo from email/phone fields
-            "gender": Gender.FEMALE,
-            "address": Address(
+        # Create patient with only fields that domain Patient accepts
+        return DomainPatient(
+            id=patient_id,
+            first_name="EncrFirstName",
+            last_name="EncrLastName",
+            email="encrypted.patient@example.com",
+            date_of_birth=date(1990, 1, 1),
+            phone="555-123-4567",
+            gender=Gender.FEMALE.value,  # Convert enum to string
+            address=Address(
                 line1="123 Encrypt Lane",
                 city="SecureVille",
                 state="SS",
                 zip_code="00000",
                 country="US",
             ),
-            "emergency_contact": EmergencyContact(
+            emergency_contact=EmergencyContact(
                 name="EC Name", phone="555-555-0199", relationship="Sibling"
             ),
-            "medical_history": ["Condition A", "Condition B"],
-            "medications": [{"name": "MedX", "dosage": "10mg"}],
-            "allergies": ["Peanuts"],
-            "social_security_number_lve": "000-00-0000",
-            "middle_name": "EncrMid",
-            "sex_at_birth": "Female",
-            "pronouns": "they/them",
-            "ethnicity": "Test Ethnicity",
-            "race": "Test Race",
-            "preferred_language": "Klingon",
-            "religion_spirituality": "Jedi",
-            "occupation": "Cipherpunk",
-            "education_level": "PhD",
-            "marital_status": "Single",
-            "medical_record_number_lve": "MRNENC123",
-            "drivers_license_number_lve": "DLENC123",
-            "insurance_policy_number_lve": "POLENC123",
-            "insurance_group_number_lve": "GRPENC123",
-            "living_arrangement": "Alone",
-            "allergies_sensitivities": "Sulfa",
-            "problem_list": "Chronic Debugging",
-            "primary_care_physician": "Dr. Encrypto",
-            "pharmacy_information": "Secure Pharmacy",
-            "care_team_contact_info": "Team Secure",
-            "treatment_history_notes": "Long history of secure treatments.",
-            "current_medications_lve": "Aspirin, Vitamins",
-            "confidential_information_lve": "Truly secret stuff.",
-            "additional_notes_lve": "More notes here.",
-            "contact_details_json": {
-                "home_phone": "555-0001",
-                "work_email": "work@enc.com",
-            },  # Renamed for clarity, assuming it maps to a JSON field
-            "preferences_json": {
-                "communication": "encrypted_email",
-                "theme": "dark_mode",
-            },  # Renamed for clarity
-            "notes": "Encrypted notes here.",
-            "custom_fields": {"custom_key": "encrypted_custom_value"},
-            "is_active": True,
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
-        }
-
-        # Simplified creation for now, assuming DomainPatient can take these directly
-        # or has a constructor/factory that can handle them.
-        # This might require DomainPatient to be more flexible or use **patient_data
-        try:
-            return DomainPatient(**patient_data)
-        except TypeError as e:
-            logger.error(f"Error creating DomainPatient with provided data: {e}")
-            # Fallback to a more basic instantiation if the full one fails due to missing fields
-            # This is a temporary measure until DomainPatient is fully aligned.
-            return DomainPatient(
-                id=patient_id,
-                user_id=user_id,
-                first_name="EncrFirstName",
-                last_name="EncrLastName",
-                email="encrypted.patient@example.com",
-                date_of_birth=date(1990, 1, 1),
-                # Add other core fields that DomainPatient expects
-            )
+            medical_history=["Condition A", "Condition B"],
+            medications=["MedX 10mg"],  # Simplified format
+            allergies=["Peanuts"],
+            ssn="000-00-0000",  # Use ssn field instead of social_security_number_lve
+            medical_record_number="MRNENC123",  # Use standard field
+            active=True,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
 
     @pytest.mark.asyncio
     async def test_phi_encrypted_in_database(
