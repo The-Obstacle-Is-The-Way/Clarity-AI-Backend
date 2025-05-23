@@ -10,7 +10,7 @@ from typing import Annotated
 from fastapi import Depends
 
 from app.infrastructure.repositories.sqla.user_repository import SQLAlchemyUserRepository
-from app.presentation.api.dependencies.db_session import get_db_session
+from app.presentation.api.dependencies.database import get_db
 
 
 def get_user_repository():
@@ -22,7 +22,7 @@ def get_user_repository():
     Returns:
         An implementation of the IUserRepository interface
     """
-    db_session = next(get_db_session())
+    db_session = next(get_db())
     return SQLAlchemyUserRepository(db_session)
 
 

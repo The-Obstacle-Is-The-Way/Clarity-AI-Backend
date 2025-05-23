@@ -10,7 +10,7 @@ from typing import Annotated
 from fastapi import Depends, Request
 
 from app.core.config.settings import get_settings
-from app.core.interfaces.security.jwt_service_interface import IJWTService
+from app.core.interfaces.security.jwt_service_interface import IJwtService
 from app.infrastructure.security.jwt import get_jwt_service
 from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
 from app.presentation.api.dependencies.audit_logger import get_audit_logger
@@ -18,7 +18,7 @@ from app.presentation.api.dependencies.token_blacklist import get_token_blacklis
 from app.presentation.api.dependencies.user_repository import get_user_repository
 
 
-def get_jwt_service_from_request(request: Request) -> IJWTService:
+def get_jwt_service_from_request(request: Request) -> IJwtService:
     """
     Provides a fully configured JWT service with all required dependencies.
 
