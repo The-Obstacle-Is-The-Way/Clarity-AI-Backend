@@ -40,6 +40,9 @@ else:
     # Attach our _class_registry to the mapper_registry for consistency
     mapper_registry._class_registry = _class_registry
 
+# Ensure _class_registry is accessible at module level for test compatibility
+globals()["_class_registry"] = _class_registry
+
 
 def register_model(model_class: type[Any]) -> type[Any]:
     """
@@ -129,3 +132,7 @@ def ensure_all_models_registered() -> None:
     except Exception as e:
         logger.error(f"Error ensuring models are registered: {e!s}")
         # Don't raise the exception to allow for graceful degradation
+
+# Ensure _class_registry is always available at module level for test compatibility
+globals()['_class_registry'] = _class_registry
+
