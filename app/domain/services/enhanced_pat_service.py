@@ -4,6 +4,7 @@ Pure domain interface with no infrastructure dependencies.
 """
 from abc import ABC, abstractmethod
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from app.domain.entities.digital_twin_enums import (  # Corrected import path
@@ -25,10 +26,10 @@ class EnhancedPATService(ABC):
     async def fuse_multi_device_data(
         self,
         patient_id: UUID,
-        device_data: dict[str, dict],  # device_type -> device_data
+        device_data: dict[str, dict[str, Any]],  # device_type -> device_data
         time_range: tuple[datetime, datetime],
         interpolation_method: str = "linear",  # "linear", "cubic", "nearest"
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Harmonize and fuse data from multiple wearable devices.
 
