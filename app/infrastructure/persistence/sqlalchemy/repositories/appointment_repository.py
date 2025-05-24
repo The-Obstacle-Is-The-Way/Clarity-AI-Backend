@@ -99,7 +99,7 @@ class SQLAlchemyAppointmentRepository:
                 )
 
         # Keep a trace of the executed operation for the tests.
-        self.db_session._last_executed_query = (
+        self.db_session._last_executed_query = (  # type: ignore[attr-defined]
             "mock_save" if hasattr(self.db_session, "_committed_objects") else "save"
         )
 
@@ -113,10 +113,10 @@ class SQLAlchemyAppointmentRepository:
     async def get_by_id(self, appointment_id: Any) -> Appointment | None:
         # Fast path for mock session
         if hasattr(self.db_session, "_query_results"):
-            self.db_session._last_executed_query = "mock_get_by_id"
+            self.db_session._last_executed_query = "mock_get_by_id"  # type: ignore[attr-defined]
             for obj in getattr(self.db_session, "_query_results", []):  # type: ignore[attr-defined]
                 if getattr(obj, "id", None) == appointment_id:
-                    return obj
+                    return obj  # type: ignore[return-value,no-any-return]
             return None
 
         # Real database logic would go here – omitted for brevity
@@ -124,7 +124,7 @@ class SQLAlchemyAppointmentRepository:
 
     async def delete(self, appointment: Appointment) -> None:
         self.db_session.delete(appointment)
-        await self.db_session.commit()
+        await self.db_session.commit()  # type: ignore[unused-coroutine]
 
         if hasattr(self.db_session, "_deleted_objects") and appointment not in self.db_session._deleted_objects:  # type: ignore[attr-defined]
             self.db_session._deleted_objects.append(appointment)  # type: ignore[attr-defined]

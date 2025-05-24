@@ -40,9 +40,9 @@ class MentaLLaMA(MentaLLaMAInterface):
         """
         self._initialized = False
         self._config = config or {}
-        self._models = {}
+        self._models: dict[str, dict[str, Any]] = {}
         self._healthy = True
-        self._digital_twin_sessions = {}
+        self._digital_twin_sessions: dict[str, dict[str, Any]] = {}
 
     def initialize(self, config: dict[str, Any]) -> None:
         """
