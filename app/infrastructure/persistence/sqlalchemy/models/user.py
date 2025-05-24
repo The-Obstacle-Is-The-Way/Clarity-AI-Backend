@@ -15,13 +15,12 @@ import enum
 import json
 import logging
 import uuid
-from datetime import timedelta
-from typing import Any
+from datetime import datetime, timedelta
+from typing import Any, Optional
 
 from sqlalchemy import (
     JSON,
     Boolean,
-    Column,
     DateTime,
     Enum,
     Integer,
@@ -29,7 +28,7 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import declared_attr, relationship
+from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship
 from sqlalchemy.types import TEXT, TypeDecorator
 
 from app.domain.utils.datetime_utils import now_utc
@@ -120,7 +119,7 @@ class User(Base, TimestampMixin, AuditMixin):
     )
 
     # --- Core Identification and Metadata ---
-    id = Column(
+    id: Mapped[uuid.UUID] = mapped_column(
         GUID(),
         primary_key=True,
         index=True,
@@ -128,20 +127,33 @@ class User(Base, TimestampMixin, AuditMixin):
         default=uuid.uuid4,
         comment="Unique user identifier - HIPAA compliance: Not PHI, used only for internal references",
     )
-    username = Column(String(64), unique=True, nullable=False, comment="Username for login")
-    email = Column(
+    username: Mapped[str] = mapped_column(
+        String(64), 
+        unique=True, 
+        nullable=False, 
+        comment="Username for login"
+    )
+    email: Mapped[str] = mapped_column(
         String(255),
         unique=True,
         nullable=False,
         index=True,
         comment="Email address for user contact",
     )
-    first_name = Column(String(100), nullable=True, comment="User's first name")
-    last_name = Column(String(100), nullable=True, comment="User's last name")
+    first_name: Mapped[Optional[str]] = mapped_column(
+        String(100), 
+        nullable=True, 
+        comment="User's first name"
+    )
+    last_name: Mapped[Optional[str]] = mapped_column(
+        String(100), 
+        nullable=True, 
+        comment="User's last name"
+    )
 
     @declared_attr
     def phone_number(self):
-        return Column(
+        return mapped_column(
             String(20),
             nullable=True,
             unique=True,
@@ -149,42 +161,87 @@ class User(Base, TimestampMixin, AuditMixin):
             comment="User's phone number",
         )
 
-    password_hash = Column(String(255), nullable=False, comment="Securely hashed password")
-    is_active = Column(Boolean, default=True, nullable=False, comment="Whether account is active")
-    is_verified = Column(
-        Boolean, default=False, nullable=False, comment="Whether account is verified"
+    password_hash: Mapped[str] = mapped_column(
+        String(255), 
+        nullable=False, 
+        comment="Securely hashed password"
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, 
+        default=True, 
+        nullable=False, 
+        comment="Whether account is active"
+    )
+    is_verified: Mapped[bool] = mapped_column(
+        Boolean, 
+        default=False, 
+        nullable=False, 
+        comment="Whether account is verified"
     )
 
     @declared_attr
     def email_verified(self):
-        return Column(
+        return mapped_column(
             Boolean,
             default=False,
             nullable=False,
             comment="Whether email address is verified",
         )
 
-    role = Column(
+    role: Mapped[UserRole] = mapped_column(
         Enum(UserRole),
         nullable=False,
         default=UserRole.PATIENT,
         comment="Primary user role",
     )
-    roles = Column(JSONEncodedDict, default=list, nullable=False, comment="List of all user roles")
-    last_login = Column(DateTime, nullable=True, comment="When user last logged in")
-    failed_login_attempts = Column(
+    roles: Mapped[Optional[dict]] = mapped_column(
+        JSONEncodedDict, 
+        default=list, 
+        nullable=False, 
+        comment="List of all user roles"
+    )
+    last_login: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, 
+        nullable=True, 
+        comment="When user last logged in"
+    )
+    failed_login_attempts: Mapped[int] = mapped_column(
         Integer,
         default=0,
         nullable=False,
         comment="Number of consecutive failed login attempts",
     )
-    account_locked_until = Column(DateTime, nullable=True, comment="When account lockout expires")
-    reset_token = Column(String(255), nullable=True, comment="Password reset token")
-    reset_token_expires_at = Column(DateTime, nullable=True, comment="When reset token expires")
-    verification_token = Column(String(255), nullable=True, comment="Account verification token")
-    bio = Column(Text, nullable=True, comment="Short bio for clinical staff")
-    preferences = Column(JSON, nullable=True, comment="User UI and system preferences")
-    password_changed_at = Column(
+    account_locked_until: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, 
+        nullable=True, 
+        comment="When account lockout expires"
+    )
+    reset_token: Mapped[Optional[str]] = mapped_column(
+        String(255), 
+        nullable=True, 
+        comment="Password reset token"
+    )
+    reset_token_expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, 
+        nullable=True, 
+        comment="When reset token expires"
+    )
+    verification_token: Mapped[Optional[str]] = mapped_column(
+        String(255), 
+        nullable=True, 
+        comment="Account verification token"
+    )
+    bio: Mapped[Optional[str]] = mapped_column(
+        Text, 
+        nullable=True, 
+        comment="Short bio for clinical staff"
+    )
+    preferences: Mapped[Optional[dict]] = mapped_column(
+        JSON, 
+        nullable=True, 
+        comment="User UI and system preferences"
+    )
+    password_changed_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime,
         nullable=True,
         comment="Timestamp when user last changed their password",
@@ -211,7 +268,11 @@ class User(Base, TimestampMixin, AuditMixin):
     )
 
     # Audit logging
-    access_logs = Column(JSON, nullable=True)  # Stores recent access logs
+    access_logs: Mapped[Optional[dict]] = mapped_column(
+        JSON, 
+        nullable=True,
+        comment="Stores recent access logs"
+    )
 
     # Add property aliases for field name compatibility across layers
     @property
