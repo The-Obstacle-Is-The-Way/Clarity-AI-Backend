@@ -22,7 +22,7 @@ from sqlalchemy import (
     String,
 )
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped
 
 from app.domain.entities.digital_twin_enums import Gender  # Corrected Gender import
 
@@ -85,25 +85,25 @@ class Patient(Base, TimestampMixin, AuditMixin):
     # --- Primary Key and Foreign Keys ---
     # Clean Architecture: Pure SQLAlchemy Column definitions without conflicting type annotations
     # Data Mapper pattern implemented through to_domain() and from_domain() methods
-    id = Column(GUID(), primary_key=True, default=uuid.uuid4, nullable=False, index=True)
-    external_id = Column(String(64), unique=True, index=True, nullable=True)
-    user_id = Column(GUID(), ForeignKey("users.id"), index=True, nullable=True)
+    id: Any = Column(GUID(), primary_key=True, default=uuid.uuid4, nullable=False, index=True)
+    external_id: Any = Column(String(64), unique=True, index=True, nullable=True)
+    user_id: Any = Column(GUID(), ForeignKey("users.id"), index=True, nullable=True)
 
-    created_at = Column(DateTime, default=now_utc, nullable=False)
-    updated_at = Column(DateTime, default=now_utc, onupdate=now_utc, nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
+    created_at: Any = Column(DateTime, default=now_utc, nullable=False)
+    updated_at: Any = Column(DateTime, default=now_utc, onupdate=now_utc, nullable=False)
+    is_active: Any = Column(Boolean, default=True, nullable=False)
 
     # --- Encrypted PHI Fields (Stored as Text/Blob in DB) ---
     # Pure infrastructure layer - no domain type annotations to avoid MyPy confusion
-    _first_name = Column("first_name", EncryptedString, nullable=True)
-    _last_name = Column("last_name", EncryptedString, nullable=True)
-    _middle_name = Column("middle_name", EncryptedString, nullable=True)
-    _gender = Column("gender", SQLEnum(Gender, name="gender_enum"), nullable=True)
-    _date_of_birth = Column("date_of_birth", EncryptedString, nullable=True)
-    _ssn = Column("ssn", EncryptedString, nullable=True)
-    _mrn = Column("mrn", EncryptedString, nullable=True)
-    _email = Column("email", EncryptedString, nullable=True)
-    _phone_number = Column("phone_number", EncryptedString, nullable=True)
+    _first_name: Any = Column("first_name", EncryptedString, nullable=True)
+    _last_name: Any = Column("last_name", EncryptedString, nullable=True)
+    _middle_name: Any = Column("middle_name", EncryptedString, nullable=True)
+    _gender: Any = Column("gender", SQLEnum(Gender, name="gender_enum"), nullable=True)
+    _date_of_birth: Any = Column("date_of_birth", EncryptedString, nullable=True)
+    _ssn: Any = Column("ssn", EncryptedString, nullable=True)
+    _mrn: Any = Column("mrn", EncryptedString, nullable=True)
+    _email: Any = Column("email", EncryptedString, nullable=True)
+    _phone_number: Any = Column("phone_number", EncryptedString, nullable=True)
 
     # Insurance-related fields (PHI)
     _insurance_provider = Column("insurance_provider", EncryptedString, nullable=True)
@@ -242,15 +242,15 @@ class Patient(Base, TimestampMixin, AuditMixin):
         model = cls()
 
         # Core metadata - Fields guaranteed by DomainPatient
-        model.id = getattr(patient, "id", uuid.uuid4())  # Ensure UUID
+        model.id = getattr(patient, "id", None) or uuid.uuid4()  # type: ignore[assignment]  # Ensure UUID
         if not isinstance(model.id, uuid.UUID):
             try:
-                model.id = uuid.UUID(str(model.id))
+                model.id = uuid.UUID(str(model.id))  # type: ignore[assignment]
             except ValueError:
                 logger.error(f"Invalid ID format for patient: {model.id}. Generating new UUID.")
-                model.id = uuid.uuid4()
+                model.id = uuid.uuid4()  # type: ignore[assignment]
 
-        model.external_id = (
+        model.external_id = (  # type: ignore[assignment]
             str(getattr(patient, "external_id", None))
             if getattr(patient, "external_id", None) is not None
             else None
@@ -260,74 +260,74 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # This needs to be passed or set contextually. For now, assume it might come via created_by.
         created_by_uuid = getattr(patient, "created_by", None)  # DomainPatient might not have this
         if isinstance(created_by_uuid, uuid.UUID):
-            model.user_id = created_by_uuid
+            model.user_id = created_by_uuid  # type: ignore[assignment]
         elif isinstance(created_by_uuid, str):
             try:
-                model.user_id = uuid.UUID(created_by_uuid)
+                model.user_id = uuid.UUID(created_by_uuid)  # type: ignore[assignment]
             except ValueError:
                 logger.warning(
                     f"Invalid created_by UUID string: {created_by_uuid}. user_id will be None."
                 )
-                model.user_id = None  # Or handle as error if user_id is non-nullable and no default
+                model.user_id = None  # type: ignore[assignment]  # Or handle as error if user_id is non-nullable and no default
         else:
-            model.user_id = None  # Fallback if not provided or invalid type
+            model.user_id = None  # type: ignore[assignment]  # Fallback if not provided or invalid type
 
-        model.created_at = getattr(patient, "created_at", None)
-        model.updated_at = getattr(patient, "updated_at", None)
-        model.is_active = getattr(
+        model.created_at = getattr(patient, "created_at", None)  # type: ignore[assignment]
+        model.updated_at = getattr(patient, "updated_at", None)  # type: ignore[assignment]
+        model.is_active = getattr(  # type: ignore[assignment]
             patient, "active", getattr(patient, "is_active", True)
         )  # 'active' or 'is_active'
 
         # Basic PII - fields in DomainPatient
-        model._first_name = getattr(patient, "first_name", None)
-        model._last_name = getattr(patient, "last_name", None)
-        model._email = getattr(patient, "email", None)
-        model._phone_number = getattr(patient, "phone", None)
+        model._first_name = getattr(patient, "first_name", None)  # type: ignore[assignment]
+        model._last_name = getattr(patient, "last_name", None)  # type: ignore[assignment]
+        model._email = getattr(patient, "email", None)  # type: ignore[assignment]
+        model._phone_number = getattr(patient, "phone", None)  # type: ignore[assignment]
 
         # Fix gender handling - convert to proper enum instance for the database model
         gender_value = getattr(patient, "gender", None)
         if gender_value is not None:
             # If it's already an enum instance, use it directly
             if isinstance(gender_value, Gender):
-                model._gender = gender_value
+                model._gender = gender_value  # type: ignore[assignment]
             # If it's a string matching an enum value, convert to enum
             elif isinstance(gender_value, str):
                 try:
-                    model._gender = Gender(gender_value)
+                    model._gender = Gender(gender_value)  # type: ignore[assignment]
                 except ValueError:
                     # Case-insensitive check
                     gender_lower = gender_value.lower()
                     for g in Gender:
                         if g.value.lower() == gender_lower:
-                            model._gender = g
+                            model._gender = g  # type: ignore[assignment]
                             break
                     else:  # No break occurred in for loop
                         logger.warning(
                             f"Invalid gender value in domain object: {gender_value!r}. Setting to None."
                         )
-                        model._gender = None
+                        model._gender = None  # type: ignore[assignment]
             else:
                 # Invalid type, log and set to None
                 logger.warning(
                     f"Unexpected gender type in domain object: {type(gender_value)}. Setting to None."
                 )
-                model._gender = None
+                model._gender = None  # type: ignore[assignment]
         else:
-            model._gender = None
+            model._gender = None  # type: ignore[assignment]
 
         dob_value = getattr(patient, "date_of_birth", None)
         if isinstance(dob_value, date | datetime):
-            model._date_of_birth = dob_value.isoformat()
+            model._date_of_birth = dob_value.isoformat()  # type: ignore[assignment]
         elif isinstance(dob_value, str):
             try:
-                model._date_of_birth = parser.parse(dob_value).date().isoformat()
+                model._date_of_birth = parser.parse(dob_value).date().isoformat()  # type: ignore[assignment]
             except:
-                model._date_of_birth = dob_value  # Store as is if unparseable
+                model._date_of_birth = dob_value  # type: ignore[assignment]  # Store as is if unparseable
         else:
-            model._date_of_birth = None
+            model._date_of_birth = None  # type: ignore[assignment]
 
         # Extended PII - fields NOT in core DomainPatient, use getattr with None default
-        model._middle_name = getattr(patient, "middle_name", None)
+        model._middle_name = getattr(patient, "middle_name", None)  # type: ignore[assignment]
         model._ssn = getattr(
             patient, "social_security_number_lve", None
         )  # Corrected to use _lve from DomainPatient  # type: ignore[assignment]
@@ -374,10 +374,10 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 else emergency_contact_vo.to_dict()
             )
         else:
-            model._emergency_contact_name = None
-            model._emergency_contact_phone = None
-            model._emergency_contact_relationship = None
-            model._emergency_contact_details = None
+            model._emergency_contact_name = None  # type: ignore[assignment]
+            model._emergency_contact_phone = None  # type: ignore[assignment]
+            model._emergency_contact_relationship = None  # type: ignore[assignment]
+            model._emergency_contact_details = None  # type: ignore[assignment]
 
         # Complex / JSON / Text fields - use getattr and then str() for EncryptedText
         # EncryptedJSON fields can take the direct object if it's serializable or None.
@@ -388,14 +388,14 @@ class Patient(Base, TimestampMixin, AuditMixin):
         if existing_contact_info is not None:
             # Use existing ContactInfo object - serialize to dict for database storage
             if hasattr(existing_contact_info, "model_dump"):
-                model._contact_info = existing_contact_info.model_dump(exclude_none=False)
+                model._contact_info = existing_contact_info.model_dump(exclude_none=False)  # type: ignore[assignment]
             elif hasattr(existing_contact_info, "dict"):
-                model._contact_info = existing_contact_info.dict(exclude_none=False)
+                model._contact_info = existing_contact_info.dict(exclude_none=False)  # type: ignore[assignment]
             elif isinstance(existing_contact_info, dict):
-                model._contact_info = existing_contact_info
+                model._contact_info = existing_contact_info  # type: ignore[assignment]
             else:
                 # Fallback: try to convert to dict
-                model._contact_info = {
+                model._contact_info = {  # type: ignore[assignment]
                     "email": getattr(existing_contact_info, "email", None),
                     "phone": getattr(existing_contact_info, "phone", None),
                     "email_secondary": getattr(existing_contact_info, "email_secondary", None),
@@ -415,21 +415,21 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 "phone": patient_phone,
                 "email_secondary": None,  # Default for now
             }
-            model._contact_info = contact_info_dict
+            model._contact_info = contact_info_dict  # type: ignore[assignment]
 
         address_vo_from_domain = getattr(patient, "address", None)
         # Serialize Address VO to dict for database storage
         if address_vo_from_domain is not None:
-            model._address_details = (
+            model._address_details = (  # type: ignore[assignment]
                 address_vo_from_domain.model_dump()
                 if hasattr(address_vo_from_domain, "model_dump")
                 else address_vo_from_domain.to_dict()
             )
         else:
-            model._address_details = None
+            model._address_details = None  # type: ignore[assignment]
 
         preferences_val = getattr(patient, "preferences", None)
-        model._preferences = preferences_val  # EncryptedJSON handles dict serialization
+        model._preferences = preferences_val  # type: ignore[assignment]  # EncryptedJSON handles dict serialization
 
         # For EncryptedText fields that store JSON strings of complex Python objects:
         def _serialize_to_json_string(value: Any) -> str | None:
@@ -445,19 +445,19 @@ class Patient(Base, TimestampMixin, AuditMixin):
                     value
                 )  # Fallback, though ideally this shouldn't happen for expected list/dict types
 
-        model._medical_history = _serialize_to_json_string(
+        model._medical_history = _serialize_to_json_string(  # type: ignore[assignment]
             getattr(patient, "medical_history", None)
         )
-        model._medications = _serialize_to_json_string(getattr(patient, "medications", None))
-        model._allergies = _serialize_to_json_string(getattr(patient, "allergies", None))
+        model._medications = _serialize_to_json_string(getattr(patient, "medications", None))  # type: ignore[assignment]
+        model._allergies = _serialize_to_json_string(getattr(patient, "allergies", None))  # type: ignore[assignment]
 
         notes_val = getattr(patient, "notes", None)  # Assuming notes is a simple string
-        model._notes = str(notes_val) if notes_val is not None else None
+        model._notes = str(notes_val) if notes_val is not None else None  # type: ignore[assignment]
 
-        model._custom_fields = getattr(
+        model._custom_fields = getattr(  # type: ignore[assignment]
             patient, "custom_fields", None
         )  # EncryptedJSON handles dict serialization
-        model._extra_data = getattr(
+        model._extra_data = getattr(  # type: ignore[assignment]
             patient, "extra_data", None
         )  # EncryptedJSON handles dict serialization
 

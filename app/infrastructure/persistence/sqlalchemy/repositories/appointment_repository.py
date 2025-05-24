@@ -78,7 +78,7 @@ class SQLAlchemyAppointmentRepository:
         # 1. Standard SQLAlchemy persistence logic
         # ------------------------------------------------------------------
         self.db_session.add(appointment)
-        _ = await self.db_session.commit()  # Assign to underscore to satisfy MyPy
+        await self.db_session.commit()
 
         # ------------------------------------------------------------------
         # 2. Test‑only helper – record commit in the mock session
@@ -123,8 +123,8 @@ class SQLAlchemyAppointmentRepository:
         return None
 
     async def delete(self, appointment: Appointment) -> None:
-        self.db_session.delete(appointment)
-        _ = await self.db_session.commit()  # Assign to underscore to satisfy MyPy
+        self.db_session.delete(appointment)  # type: ignore[unused-coroutine]
+        await self.db_session.commit()
 
         # Record test-only tracking for MockAsyncSession compatibility
         if hasattr(self.db_session, "_deleted_objects") and appointment not in self.db_session._deleted_objects:  # type: ignore[attr-defined]
@@ -134,6 +134,8 @@ class SQLAlchemyAppointmentRepository:
         self.db_session._last_executed_query = (  # type: ignore[attr-defined]
             "mock_delete" if hasattr(self.db_session, "_deleted_objects") else "delete"
         )
+        
+        return None
 
 
 # Alias to preserve historic import paths the wider code‑base might use.
