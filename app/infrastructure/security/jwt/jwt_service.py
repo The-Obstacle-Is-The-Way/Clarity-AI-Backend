@@ -30,6 +30,10 @@ from app.core.interfaces.services.audit_logger_interface import (
     AuditSeverity,
 )
 from app.core.interfaces.services.jwt_service import IJwtService
+
+# Import domain types for proper type safety
+from app.core.domain.types.jwt_payload import RefreshTokenPayload, AccessTokenPayload, JWTPayload
+
 from app.domain.enums.token_type import TokenType
 from app.domain.exceptions import (
     AuthenticationError,
