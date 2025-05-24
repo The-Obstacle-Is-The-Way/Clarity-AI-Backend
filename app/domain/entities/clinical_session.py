@@ -18,17 +18,20 @@ class SessionType(str, Enum):
     CASE_MANAGEMENT = "case_management"
 
 
-@dataclass
+@dataclass(kw_only=True)
 class ClinicalSession(BaseEntity):
     """Clinical Session entity."""
-
-    id: UUID = field(default_factory=uuid4)
+    
+    # Required fields (no defaults) must come first
     patient_id: UUID
     provider_id: UUID
-    appointment_id: UUID | None = None  # Link to appointment if scheduled
     session_datetime: datetime  # Actual time the session occurred
     duration_minutes: int
     session_type: SessionType
+    
+    # Optional/defaulted fields come after required fields
+    id: UUID = field(default_factory=uuid4)
+    appointment_id: UUID | None = None  # Link to appointment if scheduled
     summary: str | None = None  # Clinician's summary of the session
     subjective_notes: str | None = None  # Patient's report (SOAP note S)
     objective_notes: str | None = None  # Clinician's observations (SOAP note O)
@@ -40,10 +43,10 @@ class ClinicalSession(BaseEntity):
     created_at: datetime = field(default_factory=now_utc)
     last_updated: datetime = field(default_factory=now_utc)
 
-    def __post_init__(self):
-        # Call BaseEntity's post_init if it exists
-        if hasattr(super(), "__post_init__"):
-            super().__post_init__()
+    def __post_init__(self) -> None:
+        """Initialize the clinical session entity."""
+        # BaseEntity doesn't define __post_init__, so no super() call needed
+        pass
 
     def touch(self) -> None:
         """Update the last_updated timestamp."""
