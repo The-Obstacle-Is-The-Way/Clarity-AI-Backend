@@ -8,21 +8,11 @@ Alerts are critical for clinical monitoring and intervention triggers.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from enum import Enum
 from typing import Any
 from uuid import UUID
 
+from app.core.domain.entities.alert import Alert, AlertPriority
 from app.domain.entities.biometric_alert_rule import BiometricAlertRule
-
-
-class AlertSeverity(str, Enum):
-    """Alert severity levels for clinical alerts."""
-
-    CRITICAL = "critical"
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
-    INFORMATIONAL = "informational"
 
 
 class AlertServiceInterface(ABC):
@@ -32,25 +22,27 @@ class AlertServiceInterface(ABC):
     This interface defines the contract for operations related to generating,
     managing, and resolving clinical alerts, allowing for different implementations
     while maintaining a consistent interface throughout the application.
+    
+    Follows SOLID principles with domain-driven design.
     """
 
     @abstractmethod
     async def create_alert(
         self,
-        patient_id: str | UUID,
+        patient_id: str,
         alert_type: str,
-        severity: AlertSeverity,
+        severity: AlertPriority,
         description: str,
         source_data: dict[str, Any] | None = None,
         metadata: dict[str, Any] | None = None,
-    ) -> tuple[bool, str | None, str | None]:
+    ) -> tuple[bool, str, str | None]:
         """
         Create a new clinical alert for a patient.
 
         Args:
             patient_id: Unique identifier for the patient
             alert_type: Type of alert (e.g., 'biometric_threshold', 'medication_interaction')
-            severity: Severity level of the alert
+            severity: Priority level of the alert (using domain AlertPriority)
             description: Human-readable description of the alert
             source_data: Optional data that triggered the alert
             metadata: Optional additional metadata about the alert
@@ -63,24 +55,22 @@ class AlertServiceInterface(ABC):
     @abstractmethod
     async def get_alerts(
         self,
-        patient_id: str | UUID | None = None,
-        provider_id: str | UUID | None = None,
+        patient_id: str | None = None,
         alert_type: str | None = None,
-        severity: AlertSeverity | None = None,
+        severity: AlertPriority | None = None,
         status: str | None = None,
         start_time: datetime | None = None,
         end_time: datetime | None = None,
         limit: int = 100,
         skip: int = 0,
-    ) -> list[dict[str, Any]]:
+    ) -> list[Alert]:
         """
         Retrieve alerts with optional filtering.
 
         Args:
             patient_id: Optional patient identifier to filter by
-            provider_id: Optional provider identifier to filter by
             alert_type: Optional alert type to filter by
-            severity: Optional severity level to filter by
+            severity: Optional severity level to filter by (using domain AlertPriority)
             status: Optional alert status to filter by
             start_time: Optional start of time range
             end_time: Optional end of time range
@@ -88,17 +78,17 @@ class AlertServiceInterface(ABC):
             skip: Number of alerts to skip
 
         Returns:
-            List of alert records
+            List of Alert domain entities
         """
         raise NotImplementedError
 
     @abstractmethod
     async def update_alert_status(
         self,
-        alert_id: str | UUID,
+        alert_id: str,
         status: str,
         resolution_notes: str | None = None,
-        resolved_by: str | UUID | None = None,
+        resolved_by: str | None = None,
     ) -> tuple[bool, str | None]:
         """
         Update the status of an alert.
@@ -138,7 +128,7 @@ class AlertServiceInterface(ABC):
 
     @abstractmethod
     async def get_alert_summary(
-        self, patient_id: str | UUID, start_time: datetime, end_time: datetime
+        self, patient_id: str, start_time: datetime, end_time: datetime
     ) -> dict[str, Any]:
         """
         Get a summary of alerts for a patient within a time range.
@@ -193,16 +183,16 @@ class AlertServiceInterface(ABC):
         pass
 
     @abstractmethod
-    async def get_alert_by_id(self, alert_id: str, user_id: str) -> dict[str, Any] | None:
+    async def get_alert_by_id(self, alert_id: str, user_id: str | None = None) -> Alert | None:
         """
         Get a specific alert by ID with access validation.
         
         Args:
             alert_id: Unique identifier for the alert
-            user_id: ID of the user requesting the alert
+            user_id: Optional ID of the user requesting the alert
             
         Returns:
-            Alert data if found and accessible, None otherwise
+            Alert domain entity if found and accessible, None otherwise
             
         Raises:
             PermissionError: If user doesn't have access to this alert
