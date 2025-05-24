@@ -1,9 +1,9 @@
 """
 SQLAlchemy Model Registry
 
-This module provides a central registry for all SQLAlchemy models to ensure
-proper metadata and mapper configuration. It addresses the UnmappedColumnError
-issues by creating a single source of truth for model registration.
+This module provides the CANONICAL registry for all SQLAlchemy models following
+SQLAlchemy 2.0 patterns. It ensures proper metadata and mapper configuration
+and addresses UnmappedColumnError issues by creating a single source of truth.
 
 This follows clean architecture principles by centralizing infrastructure concerns
 and ensuring proper dependency management.
@@ -13,7 +13,7 @@ import logging
 from typing import Any
 
 from sqlalchemy import MetaData
-from sqlalchemy.orm import registry as sa_registry
+from sqlalchemy.orm import registry
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -21,12 +21,27 @@ logger = logging.getLogger(__name__)
 # Create a single metadata instance that all models will share
 metadata = MetaData()
 
-# Create a single mapper registry that will be used for all models
-registry = sa_registry(metadata=metadata)
+# Create the canonical SQLAlchemy 2.0 registry
+mapper_registry = registry(metadata=metadata)
 
 # Keep track of all registered models for validation and debugging
 _registered_models: set[type[Any]] = set()
 _registered_tables: set[str] = set()
+
+# Add backward compatibility for SQLAlchemy 1.x style _class_registry
+# This is accessed by some tests that expect the old registry interface
+_class_registry: dict[str, type[Any]] = {}
+
+# Expose the mapper_registry's _class_registry if it exists, otherwise use our own
+# This ensures compatibility with different SQLAlchemy access patterns
+if hasattr(mapper_registry, "_class_registry"):
+    _class_registry = mapper_registry._class_registry
+else:
+    # Attach our _class_registry to the mapper_registry for consistency
+    mapper_registry._class_registry = _class_registry
+
+# Ensure _class_registry is accessible at module level for test compatibility
+globals()["_class_registry"] = _class_registry
 
 
 def register_model(model_class: type[Any]) -> type[Any]:
@@ -117,3 +132,7 @@ def ensure_all_models_registered() -> None:
     except Exception as e:
         logger.error(f"Error ensuring models are registered: {e!s}")
         # Don't raise the exception to allow for graceful degradation
+
+
+# Ensure _class_registry is always available at module level for test compatibility
+globals()["_class_registry"] = _class_registry

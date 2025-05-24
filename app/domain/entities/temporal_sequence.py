@@ -250,20 +250,17 @@ class TemporalSequence(Generic[T]):
 
         return X, y
 
-    def to_padded_tensor(self, max_length: int) -> dict[str, np.ndarray]:
+    def to_padded_tensor(self, max_length: int) -> dict[str, np.ndarray | int]:
         """
-        Convert to a padded tensor representation.
+        Convert sequence to padded numpy arrays with consistent length.
 
         Args:
-            max_length: Maximum sequence length to pad to
+            max_length: Maximum length to pad to
 
         Returns:
-            Dictionary with:
-                - values: Padded values array
-                - mask: Boolean mask indicating valid entries
-                - seq_len: Actual sequence length
+            Dictionary containing padded values, mask, and sequence length
         """
-        # Create the values array padded to max_length
+        # Initialize padded arrays
         padded_values = np.zeros((max_length, self.feature_dimension))
         mask = np.zeros(max_length, dtype=bool)
 
@@ -317,7 +314,7 @@ class TemporalSequence(Generic[T]):
         # Check for exact match
         for i, ts in enumerate(self._timestamps):
             if ts == timestamp:
-                return self._values[i][feature_index]
+                return float(self._values[i][feature_index])
 
         # Return None if no data or interpolation is NONE
         if not self._timestamps or interpolation == InterpolationMethod.NONE:
@@ -337,8 +334,8 @@ class TemporalSequence(Generic[T]):
         # Get timestamps and values
         before_ts = self._timestamps[before_idx]
         after_ts = self._timestamps[after_idx]
-        before_value = self._values[before_idx][feature_index]
-        after_value = self._values[after_idx][feature_index]
+        before_value = float(self._values[before_idx][feature_index])
+        after_value = float(self._values[after_idx][feature_index])
 
         # Interpolate based on method
         if interpolation == InterpolationMethod.NEAREST:
@@ -431,7 +428,7 @@ class TemporalSequence(Generic[T]):
             change = (values[i] - values[i - 1]) / values[i - 1]
             changes.append(change)
 
-        volatility = 0
+        volatility: float = 0.0
         if changes:
             mean = sum(changes) / len(changes)
             variance = sum((x - mean) ** 2 for x in changes) / len(changes)
@@ -494,7 +491,7 @@ class TimePoint:
         self.data = data
 
 
-class TemporalSequence(_GenericTemporalSequence):
+class ExtendedTemporalSequence(_GenericTemporalSequence):
     """TemporalSequence supporting both generic and simplified usages."""
 
     def __init__(self, *args, **kwargs):
@@ -502,9 +499,9 @@ class TemporalSequence(_GenericTemporalSequence):
         if {"name", "description", "time_unit"}.issubset(
             kwargs.keys()
         ) and "timestamps" not in kwargs:
-            self.name = kwargs.get("name")
-            self.description = kwargs.get("description")
-            self.time_unit = kwargs.get("time_unit")
+            self.name = kwargs.get("name", "")
+            self.description = kwargs.get("description", "")
+            self.time_unit = kwargs.get("time_unit", "")
             self.time_points: list[TimePoint] = []
             self.metadata = {}
             self.sequence_metadata = self.metadata
@@ -524,7 +521,7 @@ class TemporalSequence(_GenericTemporalSequence):
             # Generic initialization for repository or service usages
             _GenericTemporalSequence.__init__(self, *args, **kwargs)
 
-    def add_time_point(self, time_value, data):
+    def add_time_point(self, time_value, data) -> None:
         """Add a time point with associated data."""
         point = TimePoint(time_value, data)
         self.time_points.append(point)

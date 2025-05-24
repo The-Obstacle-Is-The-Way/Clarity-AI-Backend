@@ -245,7 +245,7 @@ class AlertRuleCreateSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     @model_validator(mode="before")
-    def validate_creation_method(cls, data):
+    def validate_creation_method(self, data):
         """Validate that either template_id or (name, description, conditions) are provided."""
         if isinstance(data, dict):
             if data.get("template_id") is None:

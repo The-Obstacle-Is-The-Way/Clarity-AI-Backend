@@ -144,8 +144,8 @@ class BiometricAlertService(AlertServiceInterface):
         alert_type: str,
         severity: AlertPriority,
         description: str,
-        source_data: dict[str, Any] = None,
-        metadata: dict[str, Any] = None,
+        source_data: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> tuple[bool, str, str | None]:
         """
         Create a new alert.

@@ -84,7 +84,7 @@ def processor():
 class TestAlertRule:
     """Tests for the AlertRule class."""
 
-    def test_init_valid(self, sample_clinician_id):
+    def test_init_valid(self, sample_clinician_id) -> None:
         """Test initializing an AlertRule with valid parameters."""
         rule = AlertRule(
             rule_id="test-rule-1",
@@ -104,7 +104,7 @@ class TestAlertRule:
         assert rule.condition["threshold"] == 100.0
         assert rule.created_by == sample_clinician_id
 
-    def test_init_invalid_condition(self, sample_clinician_id):
+    def test_init_invalid_condition(self, sample_clinician_id) -> None:
         """Test initializing an AlertRule with an invalid condition."""
         with pytest.raises(ValidationError):
             AlertRule(
@@ -120,20 +120,20 @@ class TestAlertRule:
                 created_by=sample_clinician_id,
             )
 
-    def test_evaluate_true(self, sample_data_point, sample_rule):
+    def test_evaluate_true(self, sample_data_point, sample_rule) -> None:
         """Test evaluating a rule that should return True."""
         # The sample data point has heart_rate=120, which is > 100
         result = sample_rule.evaluate(sample_data_point)
         assert result is True
 
-    def test_evaluate_false(self, sample_data_point, sample_rule):
+    def test_evaluate_false(self, sample_data_point, sample_rule) -> None:
         """Test evaluating a rule that should return False."""
         # Modify the data point to have a heart rate below the threshold
         sample_data_point.value = 90.0
         result = sample_rule.evaluate(sample_data_point)
         assert result is False
 
-    def test_evaluate_different_data_type(self, sample_data_point, sample_rule):
+    def test_evaluate_different_data_type(self, sample_data_point, sample_rule) -> None:
         """Test evaluating a rule with a different data type."""
         # Modify the data point to have a different data type
         sample_data_point.data_type = "blood_pressure"
@@ -144,13 +144,13 @@ class TestAlertRule:
 class TestBiometricEventProcessor:
     """Tests for the BiometricEventProcessor class."""
 
-    def test_initialize(self, processor):
+    def test_initialize(self, processor) -> None:
         """Test initialization of the BiometricEventProcessor."""
         # In the actual implementation, rules is a dictionary, not a list
         assert isinstance(processor.rules, dict)
         assert len(processor.rules) == 0
 
-    def test_add_rule(self, processor, sample_rule):
+    def test_add_rule(self, processor, sample_rule) -> None:
         """Test adding a rule to the processor using add_rule method."""
         rule1 = sample_rule
         rule2 = AlertRule(
@@ -171,13 +171,13 @@ class TestBiometricEventProcessor:
         assert processor.rules[rule1.rule_id] == rule1
         assert processor.rules[rule2.rule_id] == rule2
 
-    def test_register_rule(self, processor, sample_rule):
+    def test_register_rule(self, processor, sample_rule) -> None:
         """Test registering a rule with the processor."""
         processor.register_rule(sample_rule)
         assert sample_rule.rule_id in processor.rules
         assert processor.rules[sample_rule.rule_id] == sample_rule
 
-    def test_register_observer(self, processor, mock_observer):
+    def test_register_observer(self, processor, mock_observer) -> None:
         """Test registering an observer with the processor."""
         processor.register_observer(mock_observer)
         # Assert observer is in all priorities since no specific priorities were specified
@@ -185,7 +185,7 @@ class TestBiometricEventProcessor:
         assert mock_observer in processor.observers[AlertPriority.WARNING]
         assert mock_observer in processor.observers[AlertPriority.INFORMATIONAL]
 
-    def test_process_data_point_no_alert(self, processor, sample_data_point, sample_rule):
+    def test_process_data_point_no_alert(self, processor, sample_data_point, sample_rule) -> None:
         """Test processing a data point that doesn't trigger an alert."""
         # Modify the data point to have a heart rate below the threshold
         sample_data_point.value = 90.0
@@ -199,7 +199,7 @@ class TestBiometricEventProcessor:
 
     def test_process_data_point_with_alert(
         self, processor, sample_data_point, sample_rule, mock_observer
-    ):
+    ) -> None:
         """Test processing a data point that triggers an alert."""
         processor.register_observer(mock_observer)
         processor.register_rule(sample_rule)
@@ -221,7 +221,7 @@ class TestBiometricEventProcessor:
 class TestAlertObservers:
     """Tests for the various AlertObserver implementations."""
 
-    def test_in_app_observer(self, sample_data_point, sample_rule):
+    def test_in_app_observer(self, sample_data_point, sample_rule) -> None:
         """Test the InAppAlertObserver."""
         mock_notification_service = MagicMock()
         observer = InAppAlertObserver(notification_service=mock_notification_service)
@@ -241,7 +241,7 @@ class TestAlertObservers:
             observer.notify(alert)
             mock_send.assert_called_once_with(alert)
 
-    def test_email_observer(self, sample_data_point, sample_rule):
+    def test_email_observer(self, sample_data_point, sample_rule) -> None:
         """Test the EmailAlertObserver."""
         mock_email_service = MagicMock()
         observer = EmailAlertObserver(email_service=mock_email_service)
@@ -261,7 +261,7 @@ class TestAlertObservers:
             observer.notify(urgent_alert)
             mock_send.assert_called_once_with(urgent_alert)
 
-    def test_sms_observer(self, sample_data_point, sample_rule):
+    def test_sms_observer(self, sample_data_point, sample_rule) -> None:
         """Test the SMSAlertObserver."""
         mock_sms_service = MagicMock()
         observer = SMSAlertObserver(sms_service=mock_sms_service)
@@ -285,7 +285,7 @@ class TestAlertObservers:
 class TestClinicalRuleEngine:
     """Tests for the ClinicalRuleEngine class."""
 
-    def test_register_rule_template(self):
+    def test_register_rule_template(self) -> None:
         """Test registering a rule template."""
         engine = ClinicalRuleEngine()
         template_id = "high-heart-rate"
@@ -305,7 +305,7 @@ class TestClinicalRuleEngine:
         assert template_id in engine.rule_templates
         assert engine.rule_templates[template_id] == template
 
-    def test_create_rule_from_template(self, sample_clinician_id):
+    def test_create_rule_from_template(self, sample_clinician_id) -> None:
         """Test creating a rule from a template."""
         engine = ClinicalRuleEngine()
         template_id = "high-heart-rate"
@@ -342,7 +342,7 @@ class TestClinicalRuleEngine:
         assert rule.condition["threshold"] == parameters["threshold"]  # Overridden
         assert rule.created_by == sample_clinician_id
 
-    def test_create_rule_from_nonexistent_template(self, sample_clinician_id):
+    def test_create_rule_from_nonexistent_template(self, sample_clinician_id) -> None:
         """Test creating a rule from a nonexistent template."""
         engine = ClinicalRuleEngine()
         with pytest.raises(ValueError):

@@ -9,13 +9,15 @@ from typing import Any
 from botocore.exceptions import ClientError
 from dateutil.parser import parse
 
-from app.core.exceptions import (
+# Import core exceptions - these are the ones we should use
+from app.core.exceptions.base_exceptions import (
+    ConfigurationError,
     DatabaseException,
-    InitializationError,
     InvalidConfigurationError,
-    ResourceNotFoundError,
-    ValidationError,
 )
+from app.core.exceptions.base_exceptions import InitializationError as CoreInitializationError
+from app.core.exceptions.base_exceptions import ResourceNotFoundError as CoreResourceNotFoundError
+from app.core.exceptions.base_exceptions import ValidationError as CoreValidationError
 from app.core.interfaces.aws_service_interface import (
     AWSServiceFactory,
     AWSSessionServiceInterface,
@@ -24,11 +26,11 @@ from app.core.interfaces.aws_service_interface import (
     DynamoDBServiceInterface,
     S3ServiceInterface,
 )
+
+# These are more specific PAT service exceptions that extend the core ones
 from app.core.services.ml.pat.exceptions import (
     AnalysisError,
-    InitializationError,
-    ResourceNotFoundError,
-    ValidationError,
+    StorageError,
 )
 from app.core.services.ml.pat.pat_interface import PATInterface
 from app.domain.entities.digital_twin import DigitalTwin
@@ -62,7 +64,7 @@ class BedrockPAT(PATInterface):
                 self._aws_factory = get_aws_service_factory()
             except Exception as e:
                 logger.error(f"Failed to get default AWS service factory: {e}")
-                raise InitializationError(
+                raise CoreInitializationError(
                     "Failed to initialize BedrockPAT due to AWS service factory issue."
                 ) from e
         else:
@@ -229,7 +231,7 @@ class BedrockPAT(PATInterface):
                 raise
             error_msg = f"Failed to initialize BedrockPAT service: {e!s}"
             logger.error(error_msg)
-            raise InitializationError(error_msg) from e
+            raise CoreInitializationError(error_msg) from e
 
     def _ensure_initialized(self) -> None:
         """
@@ -244,7 +246,7 @@ class BedrockPAT(PATInterface):
             self._initialized = True
 
         if not self._initialized:
-            raise InitializationError(
+            raise CoreInitializationError(
                 "BedrockPAT service is not initialized. Call initialize() first."
             )
 
@@ -316,7 +318,7 @@ class BedrockPAT(PATInterface):
         except Exception as e:
             error_msg = f"Failed to store analysis: {e!s}"
             logger.error(error_msg)
-            raise StorageError(error_msg)
+            raise StorageError(error_msg) from e
 
     def _validate_actigraphy_request(
         self,
@@ -341,22 +343,22 @@ class BedrockPAT(PATInterface):
         """
         # Check required fields
         if not patient_id:
-            raise ValidationError("Patient ID is required")
+            raise CoreValidationError("Patient ID is required")
 
         if not readings:
-            raise ValidationError("Actigraphy readings are required")
+            raise CoreValidationError("Actigraphy readings are required")
 
         if len(readings) < 2:
-            raise ValidationError("At least 2 readings required for analysis")
+            raise CoreValidationError("At least 2 readings required for analysis")
 
         if not start_time:
-            raise ValidationError("Start time is required")
+            raise CoreValidationError("Start time is required")
 
         if not end_time:
-            raise ValidationError("End time is required")
+            raise CoreValidationError("End time is required")
 
         if not sampling_rate_hz or sampling_rate_hz <= 0:
-            raise ValidationError("Sampling rate must be positive")
+            raise CoreValidationError("Sampling rate must be positive")
 
         # Validate timestamps
         try:
@@ -364,22 +366,24 @@ class BedrockPAT(PATInterface):
             end_dt = parse(end_time)
 
             if end_dt <= start_dt:
-                raise ValidationError("End time must be after start time")
+                raise CoreValidationError("End time must be after start time")
 
         except Exception as e:
-            raise ValidationError(f"Invalid time format: {e!s}")
+            # Log a sanitized version of the error without PHI
+            logger.error(f"Failed to validate text: {e!s}")
+            raise CoreValidationError(f"Text validation failed: {e!s}") from e
 
         # Validate readings format
         for i, reading in enumerate(readings):
             if not isinstance(reading, dict):
-                raise ValidationError(f"Reading {i} must be a dictionary")
+                raise CoreValidationError(f"Reading {i} must be a dictionary")
 
             # Check required fields in each reading
             if "timestamp" not in reading:
-                raise ValidationError(f"Reading {i} missing timestamp")
+                raise CoreValidationError(f"Reading {i} missing timestamp")
 
             if "x" not in reading and "y" not in reading and "z" not in reading:
-                raise ValidationError(f"Reading {i} missing acceleration data")
+                raise CoreValidationError(f"Reading {i} missing acceleration data")
 
     async def analyze_actigraphy(
         self,
@@ -390,7 +394,7 @@ class BedrockPAT(PATInterface):
         sampling_rate_hz: float,
         device_info: dict[str, Any] | None = None,
         analysis_types: list[str] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> AnalysisResult:
         """
         Analyze actigraphy data using Bedrock models.
@@ -536,7 +540,7 @@ class BedrockPAT(PATInterface):
 
             return result
 
-        except ValidationError as e:
+        except CoreValidationError as e:
             # Re-raise validation errors
             patient_hash = self._hash_identifier(patient_id)
             self._record_audit_log(
@@ -586,6 +590,9 @@ class BedrockPAT(PATInterface):
             )
             item = response.get("Item")
             if not item:
+                # Use PAT-specific exception instead of core exception
+                from app.core.services.ml.pat.exceptions import ResourceNotFoundError
+
                 raise ResourceNotFoundError(f"Analysis with ID {analysis_id} not found")
 
             # Parse the DynamoDB item using the helper function
@@ -601,23 +608,30 @@ class BedrockPAT(PATInterface):
             logging.error(error_msg)
             raise DatabaseException(error_msg) from e
         except (
-            ValidationError,
+            CoreValidationError,
             KeyError,
         ) as e:  # Removed JSONDecodeError, ValueError as nested JSON is no longer expected
-            # Log specific parsing/validation errors but raise a generic ResourceNotFound
+            # Log specific parsing/validation errors but raise a PAT-specific ResourceNotFoundError
             error_msg = f"Failed to retrieve analysis: {e}"
             logging.error(error_msg)
+            from app.core.services.ml.pat.exceptions import ResourceNotFoundError
+
             raise ResourceNotFoundError(
                 f"Analysis with ID {analysis_id} could not be parsed: {e}"
             ) from e
             # Second raise statement removed - unreachable code
-        except ResourceNotFoundError as e:  # Catch specific not found error
+        except (CoreResourceNotFoundError, ResourceNotFoundError) as e:  # Catch both error types
             logging.warning(f"Analysis {analysis_id} not found.")
-            raise e  # Re-raise not found error
+            # Ensure we raise the PAT-specific ResourceNotFoundError
+            if isinstance(e, CoreResourceNotFoundError):
+                from app.core.services.ml.pat.exceptions import ResourceNotFoundError
+
+                raise ResourceNotFoundError(str(e)) from e
+            raise e  # Re-raise PAT-specific not found error
         except Exception as e:
             error_msg = f"Failed to retrieve analysis: {e!s}"
             logger.error(error_msg)
-            raise ResourceNotFoundError(error_msg)
+            raise DatabaseException(f"Error accessing analysis data: {e!s}") from e
 
     async def get_patient_analyses(
         self,
@@ -627,7 +641,7 @@ class BedrockPAT(PATInterface):
         analysis_type: str | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> list[AnalysisResult]:
         """
         Retrieve analyses for a patient.
@@ -669,7 +683,12 @@ class BedrockPAT(PATInterface):
             # Check if any results were found
             items = query_response.get("Items", [])
             if not items:
-                raise ResourceNotFoundError(f"No analyses found for patient {patient_hash}")
+                # Use PAT-specific exception instead of core exception
+                from app.core.services.ml.pat.exceptions import ResourceNotFoundError
+
+                raise ResourceNotFoundError(
+                    f"No analyses found for patient {patient_hash} not found"
+                )
 
             # Extract analysis IDs based on response format
             # Important: Support both DynamoDB standard format and test mock format
@@ -756,15 +775,24 @@ class BedrockPAT(PATInterface):
             if not analyses:
                 error_msg = f"Could not retrieve any valid analyses for patient {patient_hash}"
                 logger.error(error_msg)
+                from app.core.services.ml.pat.exceptions import ResourceNotFoundError
+
                 raise ResourceNotFoundError(error_msg)
 
             return analyses
 
-        except ResourceNotFoundError:
-            raise
+        except (CoreResourceNotFoundError, ResourceNotFoundError) as e:
+            # Ensure we raise the PAT-specific ResourceNotFoundError
+            if isinstance(e, CoreResourceNotFoundError):
+                from app.core.services.ml.pat.exceptions import ResourceNotFoundError
+
+                raise ResourceNotFoundError(str(e)) from e
+            raise e
         except Exception as e:
             error_msg = f"Error retrieving analyses for patient {patient_hash}: {e}"
             logger.error(error_msg)
+            from app.core.services.ml.pat.exceptions import ResourceNotFoundError
+
             raise ResourceNotFoundError(error_msg) from e
 
     async def integrate_with_digital_twin(

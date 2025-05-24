@@ -108,16 +108,11 @@ class MLServiceFactory:
 
     def shutdown(self) -> None:
         """Shutdown all service instances and release resources."""
-        # Shutdown MentaLLaMA services
-        for service in self._mental_llama_instances.values():
-            service.shutdown()
-
         # Shutdown PHI detection services
         for service in self._phi_detection_instances.values():
             service.shutdown()
 
         # Clear instances
-        self._mental_llama_instances.clear()
         self._phi_detection_instances.clear()
 
         logger.info("ML service factory shut down")

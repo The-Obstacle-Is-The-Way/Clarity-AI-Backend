@@ -49,7 +49,7 @@ def phi_detection_service():
     service._original_anonymize_phi = service.anonymize_phi
 
     # For tests that expect specific behavior, mock the contains_phi method
-    def mock_contains_phi(text):
+    def mock_contains_phi(text) -> bool:
         if not text:
             return False
         if (
@@ -172,7 +172,7 @@ def phi_detection_service():
 class TestPHIDetectionService:
     """Test suite for PHI detection service."""
 
-    def test_initialization(self, phi_detection_service):
+    def test_initialization(self, phi_detection_service) -> None:
         """Test that the service initializes correctly with mocked patterns."""
         assert phi_detection_service.initialized is True
         # Check based on the mocked patterns provided in the fixture
@@ -180,7 +180,7 @@ class TestPHIDetectionService:
         assert any(p.name == "US Phone Number" for p in phi_detection_service.patterns)
         assert any(p.name == "Full Name" for p in phi_detection_service.patterns)
 
-    def test_pattern_loading_error_falls_back_to_defaults(self):
+    def test_pattern_loading_error_falls_back_to_defaults(self) -> None:
         """Test that service falls back to default patterns when loading fails."""
         # Mock default patterns to check if they are loaded
         default_pattern_mock = PHIPattern(
@@ -206,7 +206,7 @@ class TestPHIDetectionService:
                 assert len(service.patterns) == 1
                 assert service.patterns[0].name == "DefaultTest"
 
-    def test_ensure_initialized_calls_initialize_once(self):
+    def test_ensure_initialized_calls_initialize_once(self) -> None:
         """Test that ensure_initialized calls initialize only if not already initialized."""
         service = PHIDetectionService()
         assert not service._initialized
@@ -222,7 +222,7 @@ class TestPHIDetectionService:
             service.ensure_initialized()
             mock_init_again.assert_not_called()
 
-    def test_phi_pattern_creation(self):
+    def test_phi_pattern_creation(self) -> None:
         """Test creating a PHIPattern instance."""
         pattern = PHIPattern(
             name="Test Pattern",
@@ -239,13 +239,13 @@ class TestPHIDetectionService:
         assert pattern.risk_level == "high"
         assert pattern.category == "test"
 
-    def test_detect_phi_empty_text(self, phi_detection_service):
+    def test_detect_phi_empty_text(self, phi_detection_service) -> None:
         """Test that detect_phi returns empty list for empty text."""
         results = phi_detection_service.detect_phi("")
         assert isinstance(results, list)
         assert len(results) == 0
 
-    def test_contains_phi_empty_text(self, phi_detection_service):
+    def test_contains_phi_empty_text(self, phi_detection_service) -> None:
         """Test that contains_phi returns False for empty text."""
         assert not phi_detection_service.contains_phi("")
 
@@ -260,7 +260,7 @@ class TestPHIDetectionService:
             ("The patient's MRN is MRN12345", False),  # MRN pattern not in mock
         ],
     )
-    def test_contains_phi(self, phi_detection_service, text, expected):
+    def test_contains_phi(self, phi_detection_service, text, expected) -> None:
         """Test contains_phi with various texts using mocked patterns."""
         assert phi_detection_service.contains_phi(text) == expected
 
@@ -277,7 +277,7 @@ class TestPHIDetectionService:
             # ("Patient is 95 years old", "Age over 90"), # Not in mock
         ],
     )
-    def test_detect_phi_finds_different_types(self, phi_detection_service, text, phi_type):
+    def test_detect_phi_finds_different_types(self, phi_detection_service, text, phi_type) -> None:
         """Test that detect_phi finds different types of PHI based on mocked patterns."""
         results = phi_detection_service.detect_phi(text)
 
@@ -285,7 +285,7 @@ class TestPHIDetectionService:
         assert isinstance(results, list)
         assert any(r["type"] == phi_type for r in results)
 
-    def test_detect_phi_results_format(self, phi_detection_service):
+    def test_detect_phi_results_format(self, phi_detection_service) -> None:
         """Test that detect_phi returns correctly formatted results."""
         text = "Call John Smith at (555) 123-4567"
         results = phi_detection_service.detect_phi(text)
@@ -330,18 +330,18 @@ class TestPHIDetectionService:
             ("No PHI here", "[REDACTED]", "No PHI here"),
         ],
     )
-    def test_redact_phi(self, phi_detection_service, text, replacement, expected):
+    def test_redact_phi(self, phi_detection_service, text, replacement, expected) -> None:
         """Test redacting PHI with different replacement strings using mocked patterns."""
         redacted = phi_detection_service.redact_phi(text, replacement)
         assert redacted == expected
 
-    def test_redact_phi_empty_text(self, phi_detection_service):
+    def test_redact_phi_empty_text(self, phi_detection_service) -> None:
         """Test that redact_phi handles empty text gracefully."""
         assert phi_detection_service.redact_phi("") == ""
         # Test with custom replacement too
         assert phi_detection_service.redact_phi("", replacement="[CUSTOM]") == ""
 
-    def test_redact_phi_overlapping_matches(self, phi_detection_service):
+    def test_redact_phi_overlapping_matches(self, phi_detection_service) -> None:
         """Test that redact_phi correctly handles potentially overlapping PHI based on mock."""
         # Using mock patterns: "Full Name" and "US Phone Number"
         text = "Patient John Smith called from (555) 123-4567"
@@ -358,7 +358,7 @@ class TestPHIDetectionService:
         assert "John Smith" not in custom_redacted
         assert "(555) 123-4567" not in custom_redacted
 
-    def test_get_phi_types(self, phi_detection_service):
+    def test_get_phi_types(self, phi_detection_service) -> None:
         """Test getting the list of PHI types based on mocked patterns."""
         phi_types = phi_detection_service.get_phi_types()
 
@@ -367,7 +367,7 @@ class TestPHIDetectionService:
         assert "US Phone Number" in phi_types
         assert "Full Name" in phi_types
 
-    def test_get_statistics(self, phi_detection_service):
+    def test_get_statistics(self, phi_detection_service) -> None:
         """Test getting statistics about PHI patterns based on mocked patterns."""
         stats = phi_detection_service.get_statistics()
 
@@ -382,7 +382,7 @@ class TestPHIDetectionService:
         assert "high" in stats["risk_levels"]
         assert stats["risk_levels"]["high"] == 2  # Both mock patterns are high risk
 
-    def test_error_handling(self):
+    def test_error_handling(self) -> None:
         """Test that PHIDetectionError is properly handled."""
         # Create a new service instance
         service = PHIDetectionService()

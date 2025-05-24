@@ -33,13 +33,13 @@ class TestEncryptionService:
             ):
                 return EncryptionService()
 
-    def test_initialization(self):
+    def test_initialization(self) -> None:
         """Test encryption service initialization."""
         with patch.dict(os.environ, {"ENCRYPTION_KEY": "test_key_for_encryption_abracadabra"}):
             service = EncryptionService()
             assert service.cipher is not None
 
-    def test_initialization_with_missing_key(self, monkeypatch):
+    def test_initialization_with_missing_key(self, monkeypatch) -> None:
         """Test initialization with missing key raises error."""
 
         # Monkeypatch get_encryption_key at module level to completely block any fallbacks
@@ -65,7 +65,7 @@ class TestEncryptionService:
         # Verify the error message
         assert "Primary encryption key is unavailable" in str(excinfo.value)
 
-    def test_encrypt_decrypt_string(self, encryption_service):
+    def test_encrypt_decrypt_string(self, encryption_service) -> None:
         """Test encrypting and decrypting a string using encrypt_string/decrypt_string."""
         plaintext = "This is sensitive patient information"
 
@@ -82,7 +82,7 @@ class TestEncryptionService:
         # Verify the decrypted text matches the original
         assert decrypted == plaintext
 
-    def test_encrypt_decrypt_empty_string(self, encryption_service):
+    def test_encrypt_decrypt_empty_string(self, encryption_service) -> None:
         """Test encrypting and decrypting an empty string using encrypt_string/decrypt_string."""
         plaintext = ""
 
@@ -100,14 +100,14 @@ class TestEncryptionService:
         decrypted = encryption_service.decrypt_string(encrypted)
         assert decrypted == plaintext  # Should decrypt back to empty string
 
-    def test_decrypt_invalid_string(self, encryption_service):
+    def test_decrypt_invalid_string(self, encryption_service) -> None:
         """Test decrypting an invalid string with decrypt_string raises error."""
         with pytest.raises(ValueError) as excinfo:
             # Using a string that is not valid Fernet token
             encryption_service.decrypt_string("invalid_fernet_token_string")
         assert "Decryption failed" in str(excinfo.value)
 
-    def test_generate_verify_hash(self, encryption_service):
+    def test_generate_verify_hash(self, encryption_service) -> None:
         """Test generating and verifying a hash."""
         data = "sensitive_data"
 
@@ -126,7 +126,7 @@ class TestEncryptionService:
         is_valid = encryption_service.verify_hash("wrong_data", salt_hex, hash_value)
         assert is_valid is False
 
-    def test_generate_verify_hmac(self, encryption_service):
+    def test_generate_verify_hmac(self, encryption_service) -> None:
         """Test generating and verifying an HMAC."""
         data = "data_to_verify_integrity"
 

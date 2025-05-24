@@ -63,7 +63,7 @@ class MockEncryptionService(BaseEncryptionService):
         """Get the previous cipher for key rotation."""
         return self._previous_cipher
 
-    def encrypt(self, value):
+    def encrypt(self, value) -> str | None:
         """Encrypt a value using the cipher."""
         if value is None:
             return None
@@ -223,7 +223,7 @@ class RoleBasedAccessControl:
         self.check_access = MagicMock(return_value=True)
         self.filter_data = MagicMock(return_value={"filtered_data": "mocked"})
 
-    def add_role(self, role: str):
+    def add_role(self, role: str) -> None:
         if role not in self._roles:
             self._roles[role] = set()
 
@@ -278,15 +278,15 @@ class MockPHIAuditor:
         self.findings = {"code_phi": [], "api_security": [], "configuration_issues": []}
         self.allowed_phi = []
 
-    def audit_code_for_phi(self):
+    def audit_code_for_phi(self) -> None:
         """Mock method for auditing code for PHI."""
         pass
 
-    def audit_api_endpoints(self):
+    def audit_api_endpoints(self) -> None:
         """Mock method for auditing API endpoints."""
         pass
 
-    def audit_configuration(self):
+    def audit_configuration(self) -> None:
         """Mock method for auditing configuration files."""
         pass
 
@@ -298,10 +298,9 @@ class MockPHIAuditor:
             allowed_phi=self.allowed_phi,
         )
 
-    def _audit_passed(self):
+    def _audit_passed(self) -> bool:
         """Check if the audit passes based on findings."""
         # Test helper: If the path is not in clean_app, strict_mode was set, and there are findings, fail the audit
-        in_clean_app = "clean_app" in self.app_dir
         has_findings = any(len(findings) > 0 for findings in self.findings.values())
 
         # Simulate proper behavior for strict_mode test
@@ -316,7 +315,7 @@ class MockPHIAuditor:
         # Normal directories fail if any issues are found
         return not has_findings
 
-    def is_phi_test_file(self, filepath, content):
+    def is_phi_test_file(self, filepath, content) -> bool:
         """Check if a file is a PHI test file."""
         # Test special pattern for the audit file detection test
         base_filename = os.path.basename(filepath)
@@ -433,7 +432,7 @@ class PHIRedactionService:
             return sanitized
 
         # List/tuple/set sanitization
-        elif isinstance(data, (list, tuple, set)):
+        elif isinstance(data, list | tuple | set):
             sanitized = [self._sanitize(item, sensitivity, replacement) for item in data]
             if isinstance(data, tuple):
                 return tuple(sanitized)

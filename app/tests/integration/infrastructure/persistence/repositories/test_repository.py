@@ -40,7 +40,7 @@ class TestPatientRepository:
     """
 
     @pytest.fixture(autouse=True)
-    async def setup(self, db_session: AsyncSession, encryption_service: BaseEncryptionService):
+    async def setup(self, db_session: AsyncSession, encryption_service: BaseEncryptionService) -> None:
         """Initialize the repository with required dependencies."""
         self.db_session = db_session
         self.encryption_service = encryption_service
@@ -341,7 +341,7 @@ class TestPatientRepositoryIntegration:
 
     async def test_create_patient(
         self, db_session: AsyncSession, mock_encryption_service: BaseEncryptionService
-    ):
+    ) -> None:
         """
         Test creating a new patient using the real repository.
 
@@ -356,7 +356,7 @@ class TestPatientRepositoryIntegration:
         logger.info(f"Test patient creation skipped for ID: {patient_id} (stubbed test)")
 
     @pytest.mark.asyncio
-    async def test_stub_to_fix_linter(self):
+    async def test_stub_to_fix_linter(self) -> None:
         """Stub function to fix linter error with decorator."""
         # This is a placeholder test to fix the decorator linter error
         # The actual test implementation is temporary disabled due to DB issues

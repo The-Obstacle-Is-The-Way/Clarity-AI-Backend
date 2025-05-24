@@ -25,9 +25,7 @@ def run_phi_audit_tests():
     try:
         # Import the module dynamically
         fix_module_path = os.path.join(os.getcwd(), "ultimate_phi_fix.py")
-        spec = importlib.util.spec_from_file_location(
-            "ultimate_phi_fix", fix_module_path
-        )
+        spec = importlib.util.spec_from_file_location("ultimate_phi_fix", fix_module_path)
         fix_module = importlib.util.module_from_spec(spec)
         sys.modules["ultimate_phi_fix"] = fix_module
         spec.loader.exec_module(fix_module)
@@ -123,16 +121,12 @@ markers =
 
             return True
         else:
-            print(
-                f"❌ {failed_count} PHI audit tests FAILED after {test_duration:.2f} seconds"
-            )
+            print(f"❌ {failed_count} PHI audit tests FAILED after {test_duration:.2f} seconds")
             print(f"✅ {passed_count} tests passed")
             print("=" * 80)
 
             # Keep temporary files for debugging if tests failed
-            print(
-                f"ℹ️ Temporary pytest configuration retained for debugging: {pytest_ini}"
-            )
+            print(f"ℹ️ Temporary pytest configuration retained for debugging: {pytest_ini}")
 
             # Analyze failures and provide troubleshooting steps
             print("\n🔍 Analyzing test failures...")
@@ -150,13 +144,8 @@ markers =
                 print(
                     "- Report generation needs a 'summary' field. Check the generate_report method."
                 )
-            if (
-                "test_save_to_json_method" in test_result.stdout
-                and "FAILED" in test_result.stdout
-            ):
-                print(
-                    "- JSON report needs a 'summary' field. Check the save_to_json method."
-                )
+            if "test_save_to_json_method" in test_result.stdout and "FAILED" in test_result.stdout:
+                print("- JSON report needs a 'summary' field. Check the save_to_json method.")
 
             print("\n💡 To fix these issues:")
             print("1. Update ultimate_phi_fix.py with more specific fixes")

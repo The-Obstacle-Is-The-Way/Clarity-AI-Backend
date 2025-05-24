@@ -8,7 +8,7 @@ simplify AWS service integration while maintaining testability.
 
 import json
 import logging
-from typing import Any
+from typing import Any, Dict, cast
 
 import boto3
 from botocore.config import Config
@@ -138,10 +138,10 @@ def format_bedrock_response(response_body: dict[str, Any], analysis_type: str) -
 
             # Extract the results for the specific analysis type
             if analysis_type in completion:
-                return completion[analysis_type]
+                return cast(Dict[str, Any], completion[analysis_type])
 
             # If the specific analysis type is not found, return the whole completion
-            return completion
+            return cast(Dict[str, Any], completion)
 
         # Some models may use a different response format
         if "predictions" in response_body:
@@ -154,10 +154,10 @@ def format_bedrock_response(response_body: dict[str, Any], analysis_type: str) -
 
                 # Look for the analysis type in the prediction
                 if analysis_type in prediction:
-                    return prediction[analysis_type]
+                    return cast(Dict[str, Any], prediction[analysis_type])
 
                 # If the specific analysis type is not found, return the whole prediction
-                return prediction
+                return cast(Dict[str, Any], prediction)
 
             # If predictions is not a list or is empty, return an empty dict
             return {}

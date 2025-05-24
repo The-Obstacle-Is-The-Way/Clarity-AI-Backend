@@ -147,7 +147,7 @@ async def simulate_treatment(
         simulation_days=request.simulation_days,
     )
     return {
-        "sequence_ids": {k: v for k, v in sequence_ids.items()}
+        "sequence_ids": dict(sequence_ids.items())
         if isinstance(sequence_ids, dict)
         else sequence_ids,
         "patient_id": request.patient_id,

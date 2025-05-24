@@ -57,12 +57,12 @@ class TestBiometricAlertAuditService:
         return UUID("87654321-8765-4321-8765-432187654321")
 
     @pytest.fixture
-    def sample_rule_id(self):
+    def sample_rule_id(self) -> str:
         """Create a sample rule ID."""
         return "rule-001"
 
     @pytest.fixture
-    def sample_rule_name(self):
+    def sample_rule_name(self) -> str:
         return "Sample Rule Name"
 
     @pytest.fixture
@@ -104,7 +104,7 @@ class TestBiometricAlertAuditService:
     @pytest.mark.asyncio
     async def test_notify_alert_creates_audit_record(
         self, audit_service, mock_audit_logger, sample_alert
-    ):
+    ) -> None:
         """Test that notify_alert creates an audit record for a new alert."""
         # Execute
         await audit_service.notify_alert(sample_alert)
@@ -141,7 +141,7 @@ class TestBiometricAlertAuditService:
         sample_alert,
         sample_alert_id,
         sample_provider_id,
-    ):
+    ) -> None:
         """Test that record_alert_acknowledgment logs the event correctly."""
         # Setup: The service now fetches the alert for context
         # Simulate the alert exists and is *already* acknowledged in the object passed
@@ -176,7 +176,7 @@ class TestBiometricAlertAuditService:
     @pytest.mark.asyncio
     async def test_create_alert_audit_record_sanitizes_phi(
         self, audit_service, mock_audit_logger, sample_alert, sample_provider_id
-    ):
+    ) -> None:
         """Test that _create_alert_audit_record properly sanitizes PHI and uses correct fields."""
         # Execute
         await audit_service._create_alert_audit_record(
@@ -226,7 +226,7 @@ class TestBiometricAlertAuditService:
         sample_patient_id,
         sample_alert_id,
         sample_provider_id,
-    ):
+    ) -> None:
         """Test that search_audit_trail correctly builds search criteria."""
         # Setup
         mock_audit_logger.search_events.return_value = []
@@ -269,7 +269,7 @@ class TestBiometricAlertAuditService:
         mock_audit_logger,
         sample_alert_id,
         sample_provider_id,
-    ):
+    ) -> None:
         """Test that no audit record is created when acknowledging a nonexistent alert."""
         # Setup
         mock_alert_repository.get_by_id.return_value = None

@@ -44,9 +44,7 @@ class TestRepairTool:
         print(f"Found {len(test_files)} test files")
         return test_files
 
-    def check_syntax(
-        self, file_path: Path
-    ) -> tuple[bool, str | None, str | None]:
+    def check_syntax(self, file_path: Path) -> tuple[bool, str | None, str | None]:
         """Check if file has syntax errors.
 
         Args:
@@ -184,8 +182,7 @@ class TestRepairTool:
 
             # Check for blocks that decrease indentation
             if any(
-                stripped.startswith(kw)
-                for kw in ["return", "break", "continue", "raise", "pass"]
+                stripped.startswith(kw) for kw in ["return", "break", "continue", "raise", "pass"]
             ):
                 indentation_level = max(0, indentation_level - 1)
 
@@ -304,9 +301,7 @@ class TestRepairTool:
             fixed_content = self.fix_missing_colons(fixed_content)
 
             # Write fixed content to a temporary file
-            with tempfile.NamedTemporaryFile(
-                suffix=".py", mode="w", delete=False
-            ) as temp:
+            with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as temp:
                 temp.write(fixed_content)
                 temp_path = temp.name
 
@@ -417,9 +412,7 @@ def main():
         current_dir = Path.cwd()
         if "backend" in str(current_dir):
             project_root = (
-                str(current_dir.parents[0])
-                if "backend" == current_dir.name
-                else str(current_dir)
+                str(current_dir.parents[0]) if "backend" == current_dir.name else str(current_dir)
             )
         else:
             project_root = str(current_dir)

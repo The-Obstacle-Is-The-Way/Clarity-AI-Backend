@@ -39,7 +39,7 @@ class MedicationDosage:
     frequency_per_day: float
     max_daily_value: float | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate the dosage values"""
         if self.value <= 0:
             raise ValueError("Dosage value must be positive")

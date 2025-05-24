@@ -38,7 +38,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         Args:
             redis_service: Redis service for storage operations
         """
-        self._redis = redis_service
+        self.redis_service = redis_service
         self._token_prefix = "blacklist:token:"
         self._jti_prefix = "blacklist:jti:"
         self._session_prefix = "blacklist:session:"
@@ -56,52 +56,30 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         """
         return hashlib.sha256(token.encode()).hexdigest()
 
-    async def add_to_blacklist(
-        self, token: str, jti: str, expires_at: datetime, reason: str | None = None
-    ) -> None:
+    async def add_to_blacklist(self, token_jti: str, expires_at: datetime) -> None:
         """
         Add a token to the blacklist.
 
         Args:
-            token: The token to blacklist (typically a hash of the token)
-            jti: JWT ID - unique identifier for the token
-            expires_at: When the token expires
-            reason: Reason for blacklisting
-
-        Raises:
-            RepositoryException: If blacklisting fails
+            token_jti: The unique JWT ID of the token to blacklist
+            expires_at: When the token would normally expire
         """
-        try:
-            # Calculate remaining seconds until expiration
-            now = datetime.now(timezone.utc)
-            if expires_at <= now:
-                # Token already expired, no need to blacklist
-                logger.debug(f"Token {jti} already expired, skipping blacklist")
-                return
+        # Create a hash of the JTI for storage
+        hashed_jti = self._hash_token(token_jti)
 
-            seconds_until_expiry = int((expires_at - now).total_seconds())
-            # Add a small buffer (1 hour) to ensure token remains blacklisted
-            # even in case of clock skew between servers
-            expiry_buffer = 3600  # 1 hour in seconds
-            ttl = seconds_until_expiry + expiry_buffer
+        # Calculate TTL in seconds from now until expiration
+        current_time = datetime.now(timezone.utc)
+        if expires_at <= current_time:
+            # Token is already expired, no need to blacklist
+            return
 
-            # Store token hash
-            token_hash = self._hash_token(token)
-            token_key = f"{self._token_prefix}{token_hash}"
-            await self._redis.set(token_key, jti, ttl=ttl)
+        ttl_seconds = int((expires_at - current_time).total_seconds())
 
-            # Store JTI reference
-            jti_key = f"{self._jti_prefix}{jti}"
-            jti_data = {
-                "expires_at": expires_at.isoformat(),
-                "reason": reason or "manual_blacklist",
-            }
-            await self._redis.set(jti_key, jti_data, ttl=ttl)
-
-            logger.info(f"Token {jti} blacklisted until {expires_at.isoformat()}, reason: {reason}")
-        except Exception as e:
-            logger.error(f"Failed to blacklist token: {e!s}")
-            raise RepositoryException(f"Failed to blacklist token: {e!s}") from e
+        # Store in Redis with TTL
+        await self.redis_service.set(
+            f"{self._jti_prefix}{hashed_jti}", "blacklisted", expire=ttl_seconds
+        )
+        logger.info(f"Token {hashed_jti} blacklisted until {expires_at.isoformat()}")
 
     async def is_blacklisted(self, token: str) -> bool:
         """
@@ -119,7 +97,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         try:
             token_hash = self._hash_token(token)
             token_key = f"{self._token_prefix}{token_hash}"
-            result = await self._redis.get(token_key)
+            result = await self.redis_service.get(token_key)
             return result is not None
         except Exception as e:
             logger.error(f"Failed to check token blacklist: {e!s}")
@@ -141,7 +119,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         """
         try:
             jti_key = f"{self._jti_prefix}{jti}"
-            result = await self._redis.get(jti_key)
+            result = await self.redis_service.get(jti_key)
             return result is not None
         except Exception as e:
             logger.error(f"Failed to check JTI blacklist: {e!s}")
@@ -161,7 +139,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         try:
             # Get all JTIs for this session
             session_key = f"{self._session_prefix}{session_id}"
-            session_jti_list = await self._redis.get(session_key) or []
+            session_jti_list = await self.redis_service.get(session_key) or []
 
             if not session_jti_list:
                 logger.info(f"No tokens found for session {session_id}")
@@ -187,11 +165,11 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
                     # Use a pipeline for atomic operations
                     if token:
                         token_key = f"{self._token_prefix}{token}"
-                        await self._redis.set(
+                        await self.redis_service.set(
                             token_key, jti, ttl=int(timedelta(days=365).total_seconds())
                         )
 
-                    await self._redis.set(
+                    await self.redis_service.set(
                         jti_key, jti_data, ttl=int(timedelta(days=365).total_seconds())
                     )
 
@@ -225,3 +203,87 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         """
         logger.debug("Redis handles TTL automatically; clear_expired_tokens is a no-op.")
         return 0
+
+    async def get_all_blacklisted(self) -> list[dict]:
+        """
+        Get all blacklisted tokens.
+
+        Returns:
+            List[dict]: List of dictionaries containing token_jti and expires_at
+        """
+        try:
+            # Get all keys matching the JTI pattern
+            redis_client = await self.redis_service._get_redis()
+            jti_keys = await redis_client.keys(f"{self._jti_prefix}*")
+
+            result = []
+            for key in jti_keys:
+                # Extract JTI from key
+                jti = key.replace(self._jti_prefix, "")
+
+                # Get the expiration timestamp
+                jti_data = await self.redis_service.get(key)
+                if jti_data and isinstance(jti_data, dict) and "expires_at" in jti_data:
+                    try:
+                        expires_at = datetime.fromisoformat(jti_data["expires_at"])
+                        result.append({"jti": jti, "expires_at": expires_at})
+                    except (ValueError, TypeError):
+                        logger.warning(f"Invalid expires_at format for JTI {jti}")
+                        continue
+
+            return result
+        except Exception as e:
+            logger.error(f"Failed to list blacklisted tokens: {e!s}")
+            raise RepositoryException(f"Failed to list blacklisted tokens: {e!s}") from e
+
+    async def remove_expired(self) -> int:
+        """
+        Remove expired tokens from the blacklist to maintain performance.
+
+        Redis handles TTL automatically, so this is mostly a no-op,
+        but implemented for interface compliance.
+
+        Returns:
+            int: Number of expired tokens removed from blacklist (always 0 for Redis)
+        """
+        logger.debug("Redis handles TTL automatically; remove_expired is a no-op.")
+        return 0
+
+    async def remove_from_blacklist(self, token_jti: str) -> bool:
+        """
+        Remove a specific token from the blacklist.
+
+        Args:
+            token_jti: The unique JWT ID to remove
+
+        Returns:
+            bool: True if token was removed, False if not found
+        """
+        try:
+            # Check if JTI exists in blacklist
+            jti_key = f"{self._jti_prefix}{token_jti}"
+            exists = await self.redis_service.exists(jti_key)
+
+            if not exists:
+                return False
+
+            # Remove the JTI entry
+            await self.redis_service.delete(jti_key)
+
+            # Also try to remove any token entry if it exists
+            # Note: This is a best-effort approach since we may not have the original token
+            redis_client = await self.redis_service._get_redis()
+            token_keys = await redis_client.keys(f"{self._token_prefix}*")
+
+            for key in token_keys:
+                # Check if this token entry corresponds to our JTI
+                stored_jti = await self.redis_service.get(key)
+                if stored_jti == token_jti:
+                    await self.redis_service.delete(key)
+                    break
+
+            logger.info(f"Removed token with JTI {token_jti} from blacklist")
+            return True
+        except Exception as e:
+            logger.error(f"Error removing token from blacklist: {e!s}")
+            raise RepositoryException(f"Failed to remove token from blacklist: {e!s}") from e

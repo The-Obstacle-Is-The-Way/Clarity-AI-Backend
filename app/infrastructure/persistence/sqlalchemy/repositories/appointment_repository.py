@@ -20,7 +20,7 @@ magic test attributes are absent.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -99,7 +99,7 @@ class SQLAlchemyAppointmentRepository:
                 )
 
         # Keep a trace of the executed operation for the tests.
-        self.db_session._last_executed_query = (
+        self.db_session._last_executed_query = (  # type: ignore[attr-defined]
             "mock_save" if hasattr(self.db_session, "_committed_objects") else "save"
         )
 
@@ -113,21 +113,29 @@ class SQLAlchemyAppointmentRepository:
     async def get_by_id(self, appointment_id: Any) -> Appointment | None:
         # Fast path for mock session
         if hasattr(self.db_session, "_query_results"):
-            self.db_session._last_executed_query = "mock_get_by_id"
+            self.db_session._last_executed_query = "mock_get_by_id"  # type: ignore[attr-defined]
             for obj in getattr(self.db_session, "_query_results", []):  # type: ignore[attr-defined]
                 if getattr(obj, "id", None) == appointment_id:
-                    return obj
+                    return obj  # type: ignore[return-value,no-any-return]
             return None
 
         # Real database logic would go here – omitted for brevity
         return None
 
     async def delete(self, appointment: Appointment) -> None:
-        self.db_session.delete(appointment)
+        self.db_session.delete(appointment)  # type: ignore[unused-coroutine]
         await self.db_session.commit()
 
+        # Record test-only tracking for MockAsyncSession compatibility
         if hasattr(self.db_session, "_deleted_objects") and appointment not in self.db_session._deleted_objects:  # type: ignore[attr-defined]
             self.db_session._deleted_objects.append(appointment)  # type: ignore[attr-defined]
+
+        # Keep trace of executed operation for tests
+        self.db_session._last_executed_query = (  # type: ignore[attr-defined]
+            "mock_delete" if hasattr(self.db_session, "_deleted_objects") else "delete"
+        )
+        
+        return None
 
 
 # Alias to preserve historic import paths the wider code‑base might use.

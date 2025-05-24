@@ -471,7 +471,7 @@ class TestAuthorization:
         global_mock_jwt_service: MagicMock,
         user_role: UserRole,
         expected_status_code: int,
-    ):
+    ) -> None:
         """Test access to an admin-only endpoint based on user role."""
         client, _ = client_app_tuple_func_scoped
 
@@ -578,7 +578,7 @@ class TestSecureHeaders:
     @pytest.mark.asyncio
     async def test_required_security_headers_present(
         self, client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI]
-    ):
+    ) -> None:
         """Test that all required security headers are present in responses."""
         # Get client
         client, _ = client_app_tuple_func_scoped
@@ -669,7 +669,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_internal_server_error_fixed(
         self, client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI]
-    ):
+    ) -> None:
         """
         Test that internal server errors do not expose sensitive information.
 
@@ -705,7 +705,7 @@ async def test_access_patient_phi_data_success_provider(
     client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI],
     get_valid_provider_auth_headers: dict[str, str],
     global_mock_jwt_service: MagicMock,  # Corrected
-):
+) -> None:
     """A provider can access PHI of a patient they are authorized for."""
     client, _ = client_app_tuple_func_scoped
     target_patient_id = uuid.UUID(TEST_PATIENT_ID)
@@ -728,7 +728,7 @@ async def test_access_patient_phi_data_success_provider(
 async def test_access_patient_phi_data_unauthorized_patient(
     client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI],
     global_mock_jwt_service: MagicMock,  # Corrected
-):
+) -> None:
     """A patient cannot access PHI data of another patient."""
     client, _ = client_app_tuple_func_scoped
     patient_a_id = uuid.uuid4()
@@ -758,7 +758,7 @@ async def test_access_patient_phi_data_unauthorized_patient(
 async def test_access_patient_phi_data_patient_not_found(
     client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI],
     get_valid_provider_auth_headers: dict[str, str],
-):
+) -> None:
     """Accessing PHI for a non-existent patient still works with direct test endpoint."""
     client, _ = client_app_tuple_func_scoped
     non_existent_patient_id = uuid.uuid4()

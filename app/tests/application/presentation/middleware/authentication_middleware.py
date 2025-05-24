@@ -145,7 +145,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
         return False
 
-    async def _ensure_services_initialized(self):
+    async def _ensure_services_initialized(self) -> None:
         """Lazy-load services ONCE per middleware instance, prioritizing injected services."""
         # Reverted to logic that prefers injected, falls back if necessary
 

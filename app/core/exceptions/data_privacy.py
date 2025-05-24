@@ -19,15 +19,15 @@ class DataPrivacyError(BaseException):
     def __init__(
         self,
         message: str = "Protected Health Information (PHI) detected in request data",
-        details: dict[str, Any] | None = None,
+        detail: dict[str, Any] | None = None,
     ):
         """
         Initialize a DataPrivacyError exception.
 
         Args:
             message: Human-readable message describing the privacy violation
-            details: Optional dictionary with additional context about the violation
+            detail: Optional dictionary with additional context about the violation
         """
-        super().__init__(message=message, details=details)
+        super().__init__(message=message, detail=detail)
         self.code = "PHI_DETECTED"
         self.status_code = 400  # Bad Request

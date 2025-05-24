@@ -58,7 +58,7 @@ def mock_cache_service():
             )
         return None
 
-    async def set_mock(key, value, ttl=None):
+    async def set_mock(key, value, ttl=None) -> bool:
         return True
 
     cache.get = AsyncMock(side_effect=get_mock)
@@ -97,7 +97,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
     """Test suite for the RetrieveAggregatedAnalyticsUseCase."""
 
     @pytest.mark.asyncio
-    async def test_execute_with_basic_parameters(self, use_case, mock_analytics_repository):
+    async def test_execute_with_basic_parameters(self, use_case, mock_analytics_repository) -> None:
         """
         Test retrieving aggregates with basic parameters.
         """
@@ -132,7 +132,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
     @pytest.mark.asyncio
     async def test_execute_with_filters_and_time_range(
         self, use_case, mock_analytics_repository, sample_time_range
-    ):
+    ) -> None:
         """
         Test retrieving aggregates with filters and time range.
         """
@@ -174,7 +174,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
     @pytest.mark.asyncio
     async def test_time_range_string_handling(
         self, use_case, mock_analytics_repository, sample_time_range
-    ):
+    ) -> None:
         """
         Test handling of string time ranges.
         """
@@ -196,7 +196,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         assert mock_analytics_repository.get_aggregates.called
 
     @pytest.mark.asyncio
-    async def test_invalid_time_range_handling(self, use_case, sample_time_range):
+    async def test_invalid_time_range_handling(self, use_case, sample_time_range) -> None:
         """
         Test handling of invalid time ranges (end before start).
         """
@@ -218,7 +218,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
             )
 
     @pytest.mark.asyncio
-    async def test_dimension_sanitization(self, use_case, mock_analytics_repository):
+    async def test_dimension_sanitization(self, use_case, mock_analytics_repository) -> None:
         """
         Test sanitization of dimension parameters.
         """
@@ -226,7 +226,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         dimensions = ["event_type", "invalid_dimension", "user_role"]
 
         # Act
-        result = await use_case.execute(aggregate_type="count", dimensions=dimensions)
+        await use_case.execute(aggregate_type="count", dimensions=dimensions)
 
         # Assert - should filter out invalid dimensions
         call_args = mock_analytics_repository.get_aggregates.call_args[1]
@@ -235,7 +235,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         assert "invalid_dimension" not in call_args["dimensions"]
 
     @pytest.mark.asyncio
-    async def test_filter_sanitization(self, use_case, mock_analytics_repository):
+    async def test_filter_sanitization(self, use_case, mock_analytics_repository) -> None:
         """
         Test sanitization of filter parameters.
         """
@@ -248,7 +248,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         }
 
         # Act
-        result = await use_case.execute(
+        await use_case.execute(
             aggregate_type="count", dimensions=["event_type"], filters=filters
         )
 
@@ -261,7 +261,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         assert isinstance(call_args["filters"]["platform"], str)
 
     @pytest.mark.asyncio
-    async def test_caching_behavior(self, use_case, mock_analytics_repository, mock_cache_service):
+    async def test_caching_behavior(self, use_case, mock_analytics_repository, mock_cache_service) -> None:
         """
         Test that results are cached and cache is used on subsequent requests.
         """
@@ -280,7 +280,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         mock_cache_service.set = AsyncMock(return_value=True)
 
         # First call should hit repository
-        result1 = await use_case.execute(aggregate_type=aggregate_type, dimensions=dimensions)
+        await use_case.execute(aggregate_type=aggregate_type, dimensions=dimensions)
 
         # Verify repository was called
         assert mock_analytics_repository.get_aggregates.called
@@ -309,7 +309,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         assert result2[0].metrics["count"] == 99
 
     @pytest.mark.asyncio
-    async def test_cache_ttl_determination(self, use_case):
+    async def test_cache_ttl_determination(self, use_case) -> None:
         """
         Test that cache TTL is determined correctly based on query time range.
         """
@@ -332,7 +332,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         assert realtime_ttl == 30  # 30 seconds for real-time data
 
     @pytest.mark.asyncio
-    async def test_cache_key_generation(self, use_case):
+    async def test_cache_key_generation(self, use_case) -> None:
         """
         Test generation of cache keys from parameters.
         """
@@ -372,7 +372,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         assert key != key2
 
     @pytest.mark.asyncio
-    async def test_empty_dimensions_default(self, use_case, mock_analytics_repository):
+    async def test_empty_dimensions_default(self, use_case, mock_analytics_repository) -> None:
         """
         Test default dimension when empty list provided.
         """
@@ -380,14 +380,14 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         dimensions = []
 
         # Act
-        result = await use_case.execute(aggregate_type="count", dimensions=dimensions)
+        await use_case.execute(aggregate_type="count", dimensions=dimensions)
 
         # Assert - should default to ["event_type"]
         call_args = mock_analytics_repository.get_aggregates.call_args[1]
         assert call_args["dimensions"] == ["event_type"]
 
     @pytest.mark.asyncio
-    async def test_very_large_time_range_limit(self, use_case, mock_analytics_repository):
+    async def test_very_large_time_range_limit(self, use_case, mock_analytics_repository) -> None:
         """
         Test limiting of very large time ranges.
         """
@@ -397,7 +397,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         time_range = {"start": start, "end": now}
 
         # Act
-        result = await use_case.execute(
+        await use_case.execute(
             aggregate_type="count", dimensions=["event_type"], time_range=time_range
         )
 

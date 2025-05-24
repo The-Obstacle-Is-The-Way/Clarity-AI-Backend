@@ -217,7 +217,7 @@ class AuthenticationService:
                 token_data["username"] = user.username
 
             # Create token using JWT service
-            token = await self.jwt_service.create_access_token(
+            token = self.jwt_service.create_access_token(
                 subject=token_data["sub"], additional_claims=token_data
             )
             return token
@@ -242,7 +242,7 @@ class AuthenticationService:
             }
 
             # Create token using JWT service
-            token = await self.jwt_service.create_refresh_token(subject=token_data["sub"])
+            token = self.jwt_service.create_refresh_token(subject=token_data["sub"])
             return token
         except Exception as e:
             logger.error(f"Error creating refresh token: {e}", exc_info=True)
@@ -496,40 +496,16 @@ class AuthenticationService:
             if isinstance(tokens, str):
                 tokens = [tokens]
 
-            results = []
+            # Revoke all tokens
+            revoked_count = 0
             for token in tokens:
-                try:
-                    # Decode token to get claims for audit logging
-                    try:
-                        payload = self.jwt_service.decode_token(token)
-                        user_id = payload.sub
-                        session_id = getattr(payload, "session_id", None)
-                        jti = payload.jti
-                    except Exception:
-                        # If token is invalid/expired, still try to revoke it
-                        # but we won't have user_id for logging
-                        user_id = "unknown"
-                        session_id = None
-                        jti = "unknown"
+                success = await self.jwt_service.logout(token)
+                if success:
+                    revoked_count += 1
 
-                    # Revoke the token
-                    success = await self.revoke_token(token)
-                    results.append(success)
-
-                    # Log the logout attempt
-                    if success:
-                        logger.info(f"User {user_id} logged out, token {jti} revoked")
-                    else:
-                        logger.warning(f"Failed to revoke token {jti} for user {user_id}")
-                except Exception as e:
-                    # Log error but continue with other tokens
-                    logger.error(f"Error processing token during logout: {e!s}")
-                    results.append(False)
-
-            # Return True only if all tokens were successfully revoked
-            return all(results) and len(results) > 0
+            return revoked_count == len(tokens)
         except Exception as e:
-            logger.error(f"Error during logout: {e!s}", exc_info=True)
+            logger.error(f"Error during logout: {e}", exc_info=True)
             return False
 
     async def logout_session(self, session_id: str) -> bool:
@@ -543,10 +519,14 @@ class AuthenticationService:
             bool: True if session was invalidated successfully
         """
         try:
-            # Use JWTService to blacklist the session
-            await self.jwt_service.blacklist_session(session_id)
-            logger.info(f"Session {session_id} invalidated")
-            return True
+            # Parse the session ID
+            session_id = str(session_id).strip()
+            if not session_id:
+                logger.warning("Empty session ID provided to logout_session")
+                return False
+
+            # Use the JWT service to blacklist the session
+            return await self.jwt_service.blacklist_session(session_id)
         except Exception as e:
-            logger.error(f"Error invalidating session {session_id}: {e!s}")
+            logger.error(f"Error during session logout: {e}", exc_info=True)
             return False

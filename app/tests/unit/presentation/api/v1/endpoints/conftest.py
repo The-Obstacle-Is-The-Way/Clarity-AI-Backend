@@ -43,7 +43,7 @@ def global_mock_jwt_service() -> MagicMock:
     mock_service.verify_token = AsyncMock(return_value=True)
 
     # Customize create_access_token to use provided data
-    async def custom_create_token(data=None, expires_delta=None, **kwargs):
+    async def custom_create_token(data=None, expires_delta=None, **kwargs) -> str:
         # Generate a fake token with some identifiable structure
         if not data:
             return "mocked.access.token.no.data"

@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import Self
 
 # Third-Party Imports
-from pydantic import ConfigDict, Field, SecretStr, field_validator, model_validator
-from pydantic_settings import BaseSettings
+from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     UVICORN_WORKERS: int = 4  # Number of worker processes for production
 
     # Security Settings
-    JWT_SECRET_KEY: SecretStr = Field(default_factory=lambda: secrets.token_urlsafe(64))
+    JWT_SECRET_KEY: SecretStr = Field(default_factory=lambda: SecretStr(secrets.token_urlsafe(64)))
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -152,13 +152,14 @@ class Settings(BaseSettings):
         json_schema_extra={"description": "Secondary test key for encryption error testing"},
     )
 
-    model_config = ConfigDict(
+    model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,
         extra="allow",  # Allow extra fields to support legacy code
     )
 
     @field_validator("LOG_LEVEL")
+    @classmethod
     def validate_log_level(cls, v: str) -> str:
         """Validate that log level is one of the valid levels."""
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
@@ -244,7 +245,9 @@ def get_settings() -> Settings:
         settings.AUDIT_LOG_FILE = "logs/audit_test.log"  # Test-specific audit log
         # Ensure JWT_SECRET_KEY is set for tests, even if default_factory had issues
         if not hasattr(settings, "JWT_SECRET_KEY") or not settings.JWT_SECRET_KEY:
-            settings.JWT_SECRET_KEY = "test_jwt_secret_for_test_environment_only_1234567890_abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ_01234567890_abcdefghijklmnopqrstuvwxyz"
+            settings.JWT_SECRET_KEY = SecretStr(
+                "test_jwt_secret_for_test_environment_only_1234567890_abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ_01234567890_abcdefghijklmnopqrstuvwxyz"
+            )
             logger.warning("JWT_SECRET_KEY was not set for test environment, fallback applied.")
 
         return settings  # Return the modified global instance

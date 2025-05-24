@@ -48,7 +48,7 @@ class EnhancedPATService(ABC):
         self,
         patient_id: UUID,
         oura_data: dict,
-        analysis_types: list[str] = ["sleep", "hrv", "temperature", "activity"],
+        analysis_types: list[str] | None = None,
     ) -> dict:
         """
         Process Oura Ring data to extract sleep architecture and other patterns.

@@ -41,7 +41,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         self,
         app: ASGIApp,
         audit_logger: IAuditLogger,
-        skip_paths: list[str] = None,
+        skip_paths: list[str] | None = None,
         disable_audit_middleware: bool = False,
     ):
         """

@@ -45,7 +45,8 @@ def with_query_params(
 
         # Handle awaitable results
         if inspect.isawaitable(result):
-            return await result
+            awaited_result = await result
+            return cast(T, awaited_result)
         return cast(T, result)
 
     return wrapper
@@ -53,7 +54,7 @@ def with_query_params(
 
 def create_query_param_wrapper(
     params: dict[str, Any] | None = None
-) -> Callable[[Callable[..., T]], Callable[..., T]]:
+) -> Callable[[Callable[..., T | Awaitable[T]]], Callable[..., T | Awaitable[T]]]:
     """
     Creates a wrapper for route handlers that adds required query parameters.
 
@@ -68,7 +69,7 @@ def create_query_param_wrapper(
     """
     params = params or {"args": None, "kwargs": None}
 
-    def decorator(handler: Callable[..., T]) -> Callable[..., T]:
+    def decorator(handler: Callable[..., T | Awaitable[T]]) -> Callable[..., T | Awaitable[T]]:
         async def wrapper(*args: Any, **kwargs: Any) -> T:
             # Add the specified query parameters if they're not already present
             for name, value in params.items():
@@ -76,7 +77,13 @@ def create_query_param_wrapper(
                     kwargs[name] = value
 
             # Call the original handler
-            return await handler(*args, **kwargs)
+            result = handler(*args, **kwargs)
+            
+            # Handle awaitable results
+            if inspect.isawaitable(result):
+                awaited_result = await result
+                return cast(T, awaited_result)
+            return cast(T, result)
 
         return wrapper
 

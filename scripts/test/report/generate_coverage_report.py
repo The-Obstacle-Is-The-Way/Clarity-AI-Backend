@@ -29,9 +29,7 @@ def generate_coverage_report():
             coverage_file = potential_files[0]
             print(f"Found .coverage file at: {coverage_file}")
         else:
-            print(
-                "No .coverage file found. Running a quick test to generate coverage data..."
-            )
+            print("No .coverage file found. Running a quick test to generate coverage data...")
             # Run a quick test to generate coverage data
             subprocess.run(
                 [

@@ -27,45 +27,32 @@ class MockTokenBlacklistRepository(ITokenBlacklistRepository):
         self._jti_blacklist: dict[str, Any] = {}  # jti -> expiry_info
 
     async def add_to_blacklist(
-        self, token: str, jti: str, expires_at: datetime, reason: str | None = None
+        self, token_jti: str, expires_at: datetime
     ) -> None:
         """
         Add a token to the blacklist.
 
         Args:
-            token: The token to blacklist
-            jti: JWT ID - unique identifier for the token
+            token_jti: JWT ID - unique identifier for the token
             expires_at: When the token expires
-            reason: Reason for blacklisting (optional)
         """
-        self._token_blacklist[token] = jti
-        self._jti_blacklist[jti] = {"expires_at": expires_at, "reason": reason or "test_blacklist"}
+        self._jti_blacklist[token_jti] = {"expires_at": expires_at, "reason": "test_blacklist"}
 
-    async def is_blacklisted(self, token: str) -> bool:
+    async def is_blacklisted(self, token_jti: str) -> bool:
         """
         Check if a token is blacklisted.
 
         Args:
-            token: The token to check
+            token_jti: The token JTI to check
 
         Returns:
             True if the token is blacklisted, False otherwise
         """
-        return token in self._token_blacklist
+        return token_jti in self._jti_blacklist
 
-    async def is_jti_blacklisted(self, token_id: str) -> bool:
-        """
-        Check if a token ID (JTI) is blacklisted.
 
-        Args:
-            token_id: The token ID (JTI) to check
 
-        Returns:
-            True if the token ID is blacklisted, False otherwise
-        """
-        return token_id in self._jti_blacklist
-
-    async def clear_expired_tokens(self) -> int:
+    async def remove_expired(self) -> int:
         """
         Remove expired tokens from the blacklist.
 
@@ -75,3 +62,30 @@ class MockTokenBlacklistRepository(ITokenBlacklistRepository):
         # In the mock implementation, we'll just return 0
         # as this is mainly for testing
         return 0
+
+    async def get_all_blacklisted(self) -> list[dict]:
+        """
+        Get all blacklisted tokens.
+
+        Returns:
+            List of dictionaries containing token_jti and expires_at
+        """
+        return [
+            {"token_jti": jti, "expires_at": data["expires_at"]}
+            for jti, data in self._jti_blacklist.items()
+        ]
+
+    async def remove_from_blacklist(self, token_jti: str) -> bool:
+        """
+        Remove a specific token from the blacklist.
+
+        Args:
+            token_jti: The unique JWT ID to remove
+
+        Returns:
+            True if token was removed, False if not found
+        """
+        if token_jti in self._jti_blacklist:
+            del self._jti_blacklist[token_jti]
+            return True
+        return False

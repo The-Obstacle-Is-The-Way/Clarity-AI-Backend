@@ -23,7 +23,7 @@ from app.infrastructure.factories.mock_digital_twin_factory import (
 @pytest.mark.asyncio()
 @pytest.mark.db_required()
 @pytest.mark.asyncio
-async def test_digital_twin_complete_workflow():
+async def test_digital_twin_complete_workflow() -> None:
     """
     Test a complete Digital Twin workflow from patient creation to treatment recommendations.
     This test demonstrates how all components work together in a typical scenario.

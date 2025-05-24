@@ -14,9 +14,7 @@ import re
 from pathlib import Path
 
 # Define patterns for transformation with mathematical precision
-UTC_IMPORT_PATTERN = re.compile(
-    r"from\s+datetime\s+import\s+(.*?)(UTC)(.*?)$", re.MULTILINE
-)
+UTC_IMPORT_PATTERN = re.compile(r"from\s+datetime\s+import\s+(.*?)(UTC)(.*?)$", re.MULTILINE)
 DATETIME_UTILS_IMPORT = "from app.domain.utils.datetime_utils import UTC"
 REPLACEMENT_TEMPLATE = f"from datetime import \\1\\3\n{DATETIME_UTILS_IMPORT}"
 

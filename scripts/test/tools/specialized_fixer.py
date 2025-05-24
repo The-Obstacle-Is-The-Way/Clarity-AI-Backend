@@ -195,12 +195,8 @@ def main():
     # Parse command-line arguments
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Fix specific syntax errors in Python test files"
-    )
-    parser.add_argument(
-        "--file", help="Path to specific file to fix (relative to backend dir)"
-    )
+    parser = argparse.ArgumentParser(description="Fix specific syntax errors in Python test files")
+    parser.add_argument("--file", help="Path to specific file to fix (relative to backend dir)")
     args = parser.parse_args()
 
     if args.file:

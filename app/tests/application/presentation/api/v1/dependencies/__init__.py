@@ -137,7 +137,7 @@ def get_pat_service():
     except ModuleNotFoundError:
 
         class StubPATService:
-            async def initialize(self, *args, **kwargs):
+            async def initialize(self, *args, **kwargs) -> None:
                 pass
 
             async def analyze_actigraphy(self, *args, **kwargs):
@@ -221,7 +221,7 @@ def get_biometric_alert_rule_service():
                     return {"id": "stub_rule_id", "name": "Updated Stub Rule"}
                 return None  # Or raise appropriate not found error stub
 
-            async def delete_rule(self, rule_id: str, *args, **kwargs):
+            async def delete_rule(self, rule_id: str, *args, **kwargs) -> bool:
                 if rule_id == "stub_rule_id":
                     return True
                 return False  # Or raise appropriate not found error stub
@@ -264,7 +264,7 @@ def get_patient_repository():
     except ModuleNotFoundError:
 
         class StubRepo:  # pragma: no cover – fallback
-            async def get_by_id(self, *_, **__):
+            async def get_by_id(self, *_, **__) -> None:
                 return None
 
         return StubRepo()

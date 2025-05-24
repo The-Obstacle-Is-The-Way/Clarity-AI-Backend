@@ -92,8 +92,8 @@ class AIAssistantService:
             )
 
         # Get patient history for context
-        patient_notes = await self._note_repo.list_by_patient(patient_id)
-        patient_medications = await self._medication_repo.list_by_patient(patient_id)
+        await self._note_repo.list_by_patient(patient_id)
+        await self._medication_repo.list_by_patient(patient_id)
 
         # In a real implementation, this would call an AI service
         # For now, we'll return a placeholder result
@@ -149,7 +149,7 @@ class AIAssistantService:
             )
 
         # Get current medications
-        current_medications = await self._medication_repo.list_by_patient(patient_id)
+        await self._medication_repo.list_by_patient(patient_id)
 
         # In a real implementation, this would call an AI service
         # For now, we'll return a placeholder result
@@ -223,8 +223,8 @@ class AIAssistantService:
             )
 
         # Get patient history for context
-        patient_notes = await self._note_repo.list_by_patient(patient_id)
-        patient_medications = await self._medication_repo.list_by_patient(patient_id)
+        await self._note_repo.list_by_patient(patient_id)
+        await self._medication_repo.list_by_patient(patient_id)
 
         # In a real implementation, this would call an AI service
         # For now, we'll return a placeholder result

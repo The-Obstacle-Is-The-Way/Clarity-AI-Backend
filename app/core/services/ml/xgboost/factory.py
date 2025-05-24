@@ -67,7 +67,7 @@ def create_xgboost_service(
     # Get the implementation class
     if implementation_name == "mock":
         # Lazy import to avoid circular dependencies
-        from app.infrastructure.services.mocks.mock_xgboost_service import (
+        from app.infrastructure.services.mock_xgboost_service import (
             MockXGBoostService,
         )
 

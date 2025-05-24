@@ -26,7 +26,7 @@ class MockXGBoostService:
         self.config = config or {}
         self._initialized = True
         self._model_id = "mock-xgboost-model-1"
-        self._predictions = {}
+        self._predictions: dict[str, Any] = {}
 
     async def initialize(self) -> bool:
         """

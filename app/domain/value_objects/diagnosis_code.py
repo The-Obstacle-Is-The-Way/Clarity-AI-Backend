@@ -5,6 +5,7 @@ This module contains the DiagnosisCode value object, which represents
 a standardized diagnosis code (ICD-10 or DSM-5) with validation.
 """
 
+import re
 from dataclasses import dataclass
 from enum import Enum
 
@@ -26,12 +27,15 @@ class DiagnosisCode:
     psychiatric diagnosis codes from standard coding systems.
     """
 
+    # Regex pattern for general diagnosis code validation
+    CODE_PATTERN = re.compile(r"^[A-Z][0-9]+(\.[0-9]+)?$|^DSM-5-.+$|^[2-9][0-9.]+$")
+
     code: str
     system: CodeSystem
     description: str
     category: str | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate the diagnosis code format"""
         if not self.code:
             raise ValueError("Diagnosis code cannot be empty")

@@ -13,7 +13,7 @@ class PersistenceError(BaseApplicationError):
     def __init__(
         self,
         message: str = "Persistence operation failed",
-        original_exception: Exception = None,
+        original_exception: Exception | None = None,
         *args,
         **kwargs,
     ):
@@ -26,9 +26,9 @@ class EntityNotFoundError(PersistenceError):
 
     def __init__(
         self,
-        entity_type: str = None,
-        entity_id: str = None,
-        message: str = None,
+        entity_type: str | None = None,
+        entity_id: str | None = None,
+        message: str | None = None,
         *args,
         **kwargs,
     ):
@@ -50,8 +50,8 @@ class RepositoryError(PersistenceError):
     def __init__(
         self,
         message: str = "Repository operation failed",
-        repository: str = None,
-        operation: str = None,
+        repository: str | None = None,
+        operation: str | None = None,
         *args,
         **kwargs,
     ):

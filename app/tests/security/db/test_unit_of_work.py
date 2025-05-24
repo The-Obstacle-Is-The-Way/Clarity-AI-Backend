@@ -5,6 +5,7 @@ Tests for the SQLAlchemy Unit of Work implementation to ensure HIPAA-compliant
 data integrity and proper transaction management for PHI operations.
 """
 
+from typing import NoReturn
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -43,7 +44,7 @@ class TestSQLAlchemyUnitOfWork:
 
         return uow
 
-    def test_successful_transaction(self, unit_of_work, mock_session_factory):
+    def test_successful_transaction(self, unit_of_work, mock_session_factory) -> None:
         """Test a successful transaction commit."""
         factory, mock_session = mock_session_factory
 
@@ -59,7 +60,7 @@ class TestSQLAlchemyUnitOfWork:
         mock_session.rollback.assert_not_called()
         mock_session.close.assert_called_once()  # Close happens at end of top-level context
 
-    def test_transaction_rollback_on_exception(self, unit_of_work, mock_session_factory):
+    def test_transaction_rollback_on_exception(self, unit_of_work, mock_session_factory) -> NoReturn:
         """Test that an exception inside the transaction triggers rollback."""
         factory, mock_session = mock_session_factory
 
@@ -75,7 +76,7 @@ class TestSQLAlchemyUnitOfWork:
         mock_session.commit.assert_not_called()
         mock_session.close.assert_called_once()
 
-    def test_transaction_rollback_without_commit(self, unit_of_work, mock_session_factory):
+    def test_transaction_rollback_without_commit(self, unit_of_work, mock_session_factory) -> None:
         """Test that the transaction rolls back if commit is not called."""
         factory, mock_session = mock_session_factory
 
@@ -91,7 +92,7 @@ class TestSQLAlchemyUnitOfWork:
         mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()
 
-    def test_nested_transaction_support_commit(self, unit_of_work, mock_session_factory):
+    def test_nested_transaction_support_commit(self, unit_of_work, mock_session_factory) -> None:
         """Test nested transaction (savepoint) support with commit."""
         factory, mock_session = mock_session_factory
 
@@ -113,13 +114,13 @@ class TestSQLAlchemyUnitOfWork:
         mock_session.rollback.assert_not_called()
         mock_session.close.assert_called_once()
 
-    def test_nested_transaction_support_rollback_inner(self, unit_of_work, mock_session_factory):
+    def test_nested_transaction_support_rollback_inner(self, unit_of_work, mock_session_factory) -> None:
         """Test nested transaction (savepoint) rollback on inner level."""
         factory, mock_session = mock_session_factory
 
         with unit_of_work as uow:  # Outer: begin()
             mock_session.begin.assert_called_once()
-            with uow.nested() as nested_uow:  # Inner: begin_nested()
+            with uow.nested():  # Inner: begin_nested()
                 mock_session.begin_nested.assert_called_once()
                 # Simulate nested operation
                 pass  # No commit in nested block
@@ -137,7 +138,7 @@ class TestSQLAlchemyUnitOfWork:
         mock_session.rollback.assert_called_once()  # Only called for the nested part
         mock_session.close.assert_called_once()
 
-    def test_nested_transaction_support_rollback_outer(self, unit_of_work, mock_session_factory):
+    def test_nested_transaction_support_rollback_outer(self, unit_of_work, mock_session_factory) -> NoReturn:
         """Test nested transaction (savepoint) rollback on outer level."""
         factory, mock_session = mock_session_factory
         exc_message = "Outer rollback"
@@ -155,7 +156,7 @@ class TestSQLAlchemyUnitOfWork:
         assert mock_session.commit.call_count == 1  # Only inner commit/release happened
         mock_session.close.assert_called_once()
 
-    def test_read_only_transaction(self, unit_of_work, mock_session_factory):
+    def test_read_only_transaction(self, unit_of_work, mock_session_factory) -> None:
         """Test read-only transaction support for safer PHI access."""
         factory, mock_session = mock_session_factory
 
@@ -170,7 +171,7 @@ class TestSQLAlchemyUnitOfWork:
         mock_session.commit.assert_not_called()
         mock_session.close.assert_called_once()
 
-    def test_read_only_transaction_prevents_commits(self, unit_of_work, mock_session_factory):
+    def test_read_only_transaction_prevents_commits(self, unit_of_work, mock_session_factory) -> None:
         """Test that read-only transactions cannot commit changes."""
         factory, mock_session = mock_session_factory
 
@@ -185,7 +186,7 @@ class TestSQLAlchemyUnitOfWork:
         mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()
 
-    def test_nested_read_only_transaction(self, unit_of_work, mock_session_factory):
+    def test_nested_read_only_transaction(self, unit_of_work, mock_session_factory) -> None:
         """Test nested read-only transactions."""
         factory, mock_session = mock_session_factory
 
@@ -216,7 +217,7 @@ class TestSQLAlchemyUnitOfWork:
         assert mock_session.rollback.call_count >= 1
         mock_session.close.assert_called_once()
 
-    def test_transaction_metadata_for_audit(self, unit_of_work, mock_session_factory, caplog):
+    def test_transaction_metadata_for_audit(self, unit_of_work, mock_session_factory, caplog) -> None:
         """Test that transaction metadata is captured for audit logging."""
         _, mock_session = mock_session_factory
 
@@ -250,7 +251,7 @@ class TestSQLAlchemyUnitOfWork:
             # Verify that the metadata was used correctly
             assert unit_of_work._metadata == {}  # Metadata is cleared after transaction
 
-    def test_transaction_failure_audit(self, unit_of_work, mock_session_factory, caplog):
+    def test_transaction_failure_audit(self, unit_of_work, mock_session_factory, caplog) -> NoReturn:
         """Test that failed transactions are properly audited."""
         _, mock_session = mock_session_factory
 
@@ -287,7 +288,7 @@ class TestSQLAlchemyUnitOfWork:
             # Metadata should be cleared after transaction
             assert unit_of_work._metadata == {}
 
-    def test_user_context_tracking(self, unit_of_work, mock_session_factory):
+    def test_user_context_tracking(self, unit_of_work, mock_session_factory) -> None:
         """Test the user context tracking functionality."""
         _, mock_session = mock_session_factory
 

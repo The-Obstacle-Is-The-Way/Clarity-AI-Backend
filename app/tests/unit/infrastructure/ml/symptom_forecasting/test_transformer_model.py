@@ -31,10 +31,10 @@ class TestTransformerTimeSeriesModel:
         with patch(
             "app.infrastructure.ml.symptom_forecasting.transformer_model.torch",
             autospec=True,
-        ) as mock_torch, patch(
+        ), patch(
             "app.infrastructure.ml.symptom_forecasting.transformer_model.TransformerModel",
             autospec=True,
-        ) as mock_transformer_cls:
+        ):
             model = SymptomTransformerModel(
                 model_path="test_model_path",
                 device="cpu",
@@ -69,7 +69,7 @@ class TestTransformerTimeSeriesModel:
         return pd.DataFrame(data)
 
     @pytest.mark.asyncio
-    async def test_initialize_loads_model(self):
+    async def test_initialize_loads_model(self) -> None:
         """Test that initialize loads the model correctly."""
         # Setup with correct nested patching
         with patch(
@@ -78,7 +78,7 @@ class TestTransformerTimeSeriesModel:
         ) as mock_torch, patch(
             "app.infrastructure.ml.symptom_forecasting.transformer_model.TransformerModel",
             autospec=True,
-        ) as mock_transformer_cls, patch(
+        ), patch(
             "app.infrastructure.ml.symptom_forecasting.transformer_model.os.path.exists",
             return_value=True,
         ):
@@ -98,7 +98,7 @@ class TestTransformerTimeSeriesModel:
             assert model._model is mock_loaded_model
 
     @pytest.mark.asyncio
-    async def test_initialize_handles_missing_model(self):
+    async def test_initialize_handles_missing_model(self) -> None:
         """Test that initialize handles missing model files gracefully."""
         # Correct indentation for the with block
         with patch(
@@ -119,7 +119,7 @@ class TestTransformerTimeSeriesModel:
             assert model._model is not None
 
     @pytest.mark.asyncio
-    async def test_predict_returns_forecast(self, model, sample_input_data):
+    async def test_predict_returns_forecast(self, model, sample_input_data) -> None:
         """Test that predict returns a forecast with the expected structure."""
         result = await model.predict(sample_input_data, horizon=4)
         assert "predictions" in result
@@ -131,7 +131,7 @@ class TestTransformerTimeSeriesModel:
         assert "rmse" in result["model_metrics"]
 
     @pytest.mark.asyncio
-    async def test_predict_with_quantiles(self, model, sample_input_data):
+    async def test_predict_with_quantiles(self, model, sample_input_data) -> None:
         """Test that predict handles quantile predictions correctly."""
         quantiles = [0.1, 0.5, 0.9]
         mock_predict_output = (
@@ -153,14 +153,14 @@ class TestTransformerTimeSeriesModel:
             assert len(result["quantile_predictions"][q_str]) == 4
 
     @pytest.mark.asyncio
-    async def test_predict_handles_empty_data(self, model):
+    async def test_predict_handles_empty_data(self, model) -> None:
         """Test that predict handles empty input data gracefully."""
         empty_df = pd.DataFrame()
         with pytest.raises(ValueError, match="Empty input data"):
             await model.predict(empty_df, horizon=4)
 
     @pytest.mark.asyncio
-    async def test_predict_handles_missing_columns(self, model):
+    async def test_predict_handles_missing_columns(self, model) -> None:
         """Test that predict handles input data with missing required columns."""
         incomplete_df = pd.DataFrame(
             {
@@ -174,7 +174,7 @@ class TestTransformerTimeSeriesModel:
             await model.predict(incomplete_df, horizon=4)
 
     @pytest.mark.asyncio
-    async def test_preprocess_input_data(self, model, sample_input_data):
+    async def test_preprocess_input_data(self, model, sample_input_data) -> None:
         """Test that _preprocess_input_data correctly transforms the input data."""
         with patch.object(
             model, "_preprocess_input_data", wraps=model._preprocess_input_data
@@ -187,7 +187,7 @@ class TestTransformerTimeSeriesModel:
             assert processed_data.shape[0] == len(sample_input_data)
 
     @pytest.mark.asyncio
-    async def test_postprocess_predictions(self, model, sample_input_data):
+    async def test_postprocess_predictions(self, model, sample_input_data) -> None:
         """Test that _postprocess_predictions correctly transforms the model output."""
         # Setup
         raw_predictions = np.array([4.2, 4.0, 3.8, 3.5])
@@ -213,7 +213,7 @@ class TestTransformerTimeSeriesModel:
             np.testing.assert_array_equal(postprocessed_result["std"], raw_std)
 
     @pytest.mark.asyncio
-    async def test_get_model_info(self, model):
+    async def test_get_model_info(self, model) -> None:
         """Test that get_model_info returns information about the model."""
         # Execute
         info = await model.get_model_info()

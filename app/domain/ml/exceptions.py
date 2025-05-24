@@ -150,7 +150,8 @@ class MentalLLaMAQuotaExceededError(MentalLLaMABaseException):
         # Store quota information
         self.quota_limit = quota_limit
         self.quota_used = quota_used
-        # Compute remaining quota
+        # Compute remaining quota - explicitly type as int | None
+        self.quota_remaining: int | None
         if quota_limit is not None and quota_used is not None:
             self.quota_remaining = max(0, quota_limit - quota_used)
         else:

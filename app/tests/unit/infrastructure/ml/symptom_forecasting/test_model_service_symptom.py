@@ -120,7 +120,7 @@ class TestSymptomForecastingModelService:
         }
 
     @pytest.mark.asyncio
-    async def test_preprocess_patient_data_success(self, service, sample_patient_data):
+    async def test_preprocess_patient_data_success(self, service, sample_patient_data) -> None:
         """Test that preprocess_patient_data correctly processes valid patient data."""
         # Execute
         patient_id = UUID(sample_patient_data["patient_id"])
@@ -135,7 +135,7 @@ class TestSymptomForecastingModelService:
         assert metadata["symptom_type"] == "anxiety"
 
     @pytest.mark.asyncio
-    async def test_preprocess_patient_data_missing_data(self, service):
+    async def test_preprocess_patient_data_missing_data(self, service) -> None:
         """Test handling of missing data during preprocessing."""
         # Setup
         incomplete_data = {
@@ -151,7 +151,7 @@ class TestSymptomForecastingModelService:
             await service.preprocess_patient_data(patient_id, incomplete_data)
 
     @pytest.mark.asyncio
-    async def test_predict_symptom_progression(self, service, sample_patient_data):
+    async def test_predict_symptom_progression(self, service, sample_patient_data) -> None:
         """Test prediction of symptom progression."""
         # Setup
         patient_id = UUID(sample_patient_data["patient_id"])
@@ -191,7 +191,7 @@ class TestSymptomForecastingModelService:
             assert "confidence_intervals" in result["forecast"]
 
     @pytest.mark.asyncio
-    async def test_predict_symptom_progression_invalid_days(self, service, sample_patient_data):
+    async def test_predict_symptom_progression_invalid_days(self, service, sample_patient_data) -> None:
         """Test prediction with invalid forecast days."""
         # Setup
         patient_id = UUID(sample_patient_data["patient_id"])
@@ -212,7 +212,7 @@ class TestSymptomForecastingModelService:
             )
 
     @pytest.mark.asyncio
-    async def test_predict_symptom_with_interventions(self, service, sample_patient_data):
+    async def test_predict_symptom_with_interventions(self, service, sample_patient_data) -> None:
         """Test prediction with interventions."""
         # Setup
         patient_id = UUID(sample_patient_data["patient_id"])
@@ -253,7 +253,7 @@ class TestSymptomForecastingModelService:
             assert result["forecast"] != result["baseline_forecast"]
 
     @pytest.mark.asyncio
-    async def test_forecast_symptoms(self, service):
+    async def test_forecast_symptoms(self, service) -> None:
         """Test the forecast_symptoms method."""
         # Setup
         mock_transformer = MagicMock()
@@ -286,7 +286,7 @@ class TestSymptomForecastingModelService:
         mock_xgboost.predict.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_forecast_symptoms_with_interventions(self, service):
+    async def test_forecast_symptoms_with_interventions(self, service) -> None:
         """Test the forecast_symptoms method with interventions."""
         # Setup
         mock_transformer = MagicMock()

@@ -26,9 +26,7 @@ DIR_MAPPING = {
     REFACTORED_DIR / "entities/temporal": DOMAIN_DIR / "entities/temporal",
     REFACTORED_DIR / "repositories": DOMAIN_DIR / "repositories",
     REFACTORED_DIR / "services": APP_DIR / "application/services",
-    REFACTORED_DIR
-    / "services/trinity_stack": APP_DIR
-    / "application/services/trinity_stack",
+    REFACTORED_DIR / "services/trinity_stack": APP_DIR / "application/services/trinity_stack",
     REFACTORED_DIR / "tests": APP_DIR / "tests/domain",
     REFACTORED_DIR / "tests/integration": APP_DIR / "tests/integration",
     REFACTORED_DIR / "exceptions": DOMAIN_DIR / "exceptions",
@@ -87,9 +85,7 @@ def find_target_dir(src_path):
                 if match_len > max_match_len:
                     max_match_len = match_len
                     rel_path_str = str(rel_path) if rel_path != Path() else ""
-                    best_match = (
-                        target_dir / rel_path_str if rel_path_str else target_dir
-                    )
+                    best_match = target_dir / rel_path_str if rel_path_str else target_dir
         except ValueError:
             # Path is not relative to this source directory
             continue

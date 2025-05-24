@@ -47,7 +47,7 @@ SALT_SIZE = 16  # 128 bits for salt
 # --- Helper Functions --- #
 
 
-def encrypt_value(value: str, key: str = None) -> str:
+def encrypt_value(value: str, key: str | None = None) -> str:
     """Encrypt a single value using the encryption service.
 
     Args:
@@ -63,7 +63,7 @@ def encrypt_value(value: str, key: str = None) -> str:
     return service.encrypt(value)
 
 
-def decrypt_value(encrypted_value: str, key: str = None) -> str:
+def decrypt_value(encrypted_value: str, key: str | None = None) -> str:
     """Decrypt a single value using the encryption service.
 
     Args:
@@ -367,7 +367,7 @@ class BaseEncryptionService:
 
         try:
             # Convert any non-string value to string
-            if not isinstance(value, (str, bytes)):
+            if not isinstance(value, str | bytes):
                 try:
                     # Try to convert to JSON if possible (e.g., for Pydantic models)
                     if hasattr(value, "model_dump"):

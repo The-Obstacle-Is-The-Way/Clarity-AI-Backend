@@ -17,7 +17,7 @@ from app.infrastructure.security.encryption.field_encryptor import FieldEncrypto
 # from app.domain.entities.address import Address
 
 
-def test_address_field_encryption():
+def test_address_field_encryption() -> None:
     """Test address field encryption"""
     # Create a field encryption service
     encryption_service = BaseEncryptionService(direct_key="test_key_for_address_encryption")

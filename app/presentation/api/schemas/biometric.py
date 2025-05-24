@@ -28,7 +28,7 @@ class BiometricBase(BaseModelConfig):
     metadata: dict[str, Any] | None = Field(default_factory=dict)
 
     @validator("timestamp")
-    def validate_timestamp(cls, v):
+    def validate_timestamp(self, v):
         """Ensure timestamp is not in the future."""
         if v > utcnow():
             raise ValueError("Timestamp cannot be in the future")

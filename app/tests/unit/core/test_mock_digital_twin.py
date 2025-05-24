@@ -55,7 +55,7 @@ class MockDigitalTwinService(DigitalTwinService):
         self._simulations = {}
         self._states = {}
 
-    def initialize(self, config):
+    def initialize(self, config) -> bool:
         """Initialize the service with configuration."""
         if config is None:
             raise InvalidConfigurationError("Configuration cannot be None")
@@ -66,7 +66,7 @@ class MockDigitalTwinService(DigitalTwinService):
         """Check if the service is healthy."""
         return self._healthy
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """Shut down the service."""
         self._healthy = False
 
@@ -133,7 +133,7 @@ class MockDigitalTwinService(DigitalTwinService):
             return None
         return self._twins[twin_id]
 
-    def update_digital_twin(self, twin_id, updates):
+    def update_digital_twin(self, twin_id, updates) -> bool:
         """Update a digital twin."""
         if twin_id not in self._twins:
             return False
@@ -146,7 +146,7 @@ class MockDigitalTwinService(DigitalTwinService):
         twin["updated_at"] = datetime.now().isoformat()
         return True
 
-    def delete_digital_twin(self, twin_id):
+    def delete_digital_twin(self, twin_id) -> bool:
         """Delete a digital twin."""
         if twin_id not in self._twins:
             return False
@@ -200,7 +200,7 @@ class MockDigitalTwinService(DigitalTwinService):
             "results": simulation["results"],
         }
 
-    def complete_simulation(self, simulation_id, results):
+    def complete_simulation(self, simulation_id, results) -> bool:
         """Complete a simulation with results."""
         if simulation_id not in self._simulations:
             return False
@@ -253,7 +253,7 @@ class TestMockDigitalTwinService:
         return service
 
     @pytest.mark.standalone()
-    def test_initialize(self, service):
+    def test_initialize(self, service) -> None:
         """Test initializing the service."""
         assert service.is_healthy() is False
 
@@ -263,13 +263,13 @@ class TestMockDigitalTwinService:
         assert service.is_healthy() is True
 
     @pytest.mark.standalone()
-    def test_initialize_with_invalid_config(self, service):
+    def test_initialize_with_invalid_config(self, service) -> None:
         """Test initializing with invalid configuration."""
         with pytest.raises(InvalidConfigurationError):
             service.initialize(None)
 
     @pytest.mark.standalone()
-    def test_shutdown(self, initialized_service):
+    def test_shutdown(self, initialized_service) -> None:
         """Test shutting down the service."""
         assert initialized_service.is_healthy() is True
 
@@ -278,7 +278,7 @@ class TestMockDigitalTwinService:
         assert initialized_service.is_healthy() is False
 
     @pytest.mark.standalone()
-    def test_create_session(self, initialized_service):
+    def test_create_session(self, initialized_service) -> None:
         """Test creating a session."""
         patient_id = "patient-123"
         context = {"medical_history": "Test history"}
@@ -295,13 +295,13 @@ class TestMockDigitalTwinService:
         assert len(session["messages"]) == 0
 
     @pytest.mark.standalone()
-    def test_get_session_not_found(self, initialized_service):
+    def test_get_session_not_found(self, initialized_service) -> None:
         """Test getting a non-existent session."""
         with pytest.raises(SessionNotFoundError):
             initialized_service.get_session("nonexistent-session")
 
     @pytest.mark.standalone()
-    def test_send_message(self, initialized_service):
+    def test_send_message(self, initialized_service) -> None:
         """Test sending a message to a session."""
         patient_id = "patient-123"
         session_result = initialized_service.create_session(patient_id, {})
@@ -321,13 +321,13 @@ class TestMockDigitalTwinService:
         assert session["messages"][1]["role"] == "assistant"
 
     @pytest.mark.standalone()
-    def test_send_message_session_not_found(self, initialized_service):
+    def test_send_message_session_not_found(self, initialized_service) -> None:
         """Test sending a message to a non-existent session."""
         with pytest.raises(SessionNotFoundError):
             initialized_service.send_message("nonexistent-session", "Test message")
 
     @pytest.mark.standalone()
-    def test_create_digital_twin(self, initialized_service):
+    def test_create_digital_twin(self, initialized_service) -> None:
         """Test creating a digital twin."""
         patient_id = "patient-123"
         twin_data = {
@@ -357,7 +357,7 @@ class TestMockDigitalTwinService:
         assert twin["state"] == DigitalTwinState.ACTIVE.value
 
     @pytest.mark.standalone()
-    def test_update_digital_twin(self, initialized_service):
+    def test_update_digital_twin(self, initialized_service) -> None:
         """Test updating a digital twin."""
         patient_id = "patient-123"
         twin_data = {"age": 35, "gender": "female"}
@@ -376,7 +376,7 @@ class TestMockDigitalTwinService:
         assert updated_twin["data"]["gender"] == "female"
 
     @pytest.mark.standalone()
-    def test_delete_digital_twin(self, initialized_service):
+    def test_delete_digital_twin(self, initialized_service) -> None:
         """Test deleting a digital twin."""
         patient_id = "patient-123"
         twin_data = {"age": 35}
@@ -393,7 +393,7 @@ class TestMockDigitalTwinService:
         assert twin is None
 
     @pytest.mark.standalone()
-    def test_simulation_workflow(self, initialized_service):
+    def test_simulation_workflow(self, initialized_service) -> None:
         """Test the complete simulation workflow."""
         # Create twin
         patient_id = "patient-123"
@@ -429,7 +429,7 @@ class TestMockDigitalTwinService:
         assert final_results["results"] == results
 
     @pytest.mark.standalone()
-    def test_twin_states(self, initialized_service):
+    def test_twin_states(self, initialized_service) -> None:
         """Test creating and retrieving digital twin states."""
         # Create twin
         patient_id = "patient-123"
@@ -442,7 +442,7 @@ class TestMockDigitalTwinService:
         state1_result = initialized_service.create_twin_state(twin_id, state1_data)
 
         state2_data = {"anxiety_level": "medium", "timestamp": "2023-01-15T12:00:00Z"}
-        state2_result = initialized_service.create_twin_state(twin_id, state2_data)
+        initialized_service.create_twin_state(twin_id, state2_data)
 
         # Get state
         state1 = initialized_service.get_twin_state(state1_result["state_id"])

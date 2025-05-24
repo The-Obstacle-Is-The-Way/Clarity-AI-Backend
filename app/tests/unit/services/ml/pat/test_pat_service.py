@@ -85,7 +85,7 @@ class TestBedrockPAT:
         assert service._dynamodb_table == "test-table"
 
     @pytest.mark.asyncio
-    async def test_analyze_actigraphy(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture):
+    async def test_analyze_actigraphy(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture) -> None:
         """Test analyzing actigraphy data."""
         service = bedrock_pat_service
         patient_id = f"patient-{uuid.uuid4()}"
@@ -303,7 +303,7 @@ class TestBedrockPAT:
     @pytest.mark.asyncio
     async def test_get_patient_analyses(
         self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture
-    ):
+    ) -> None:
         """Test retrieving analysis results for a specific patient."""
         service = bedrock_pat_service
         patient_id = f"patient-{uuid.uuid4()}"
@@ -404,7 +404,7 @@ class TestBedrockPAT:
     @pytest.mark.asyncio
     async def test_get_patient_analyses_not_found(
         self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture
-    ):
+    ) -> None:
         """Test retrieving analysis results for a patient with no results."""
         service = bedrock_pat_service
         patient_id = "patient-without-analyses-222"

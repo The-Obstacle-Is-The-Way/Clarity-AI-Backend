@@ -107,7 +107,7 @@ def secure_messaging_service(encryption_service):
 class TestSecureMessagingService:
     """Tests for the SecureMessagingService class."""
 
-    def test_generate_key_pair(self, secure_messaging_service):
+    def test_generate_key_pair(self, secure_messaging_service) -> None:
         """Test generating a key pair."""
         private_key, public_key = secure_messaging_service.generate_key_pair()
 
@@ -121,7 +121,7 @@ class TestSecureMessagingService:
         assert public_key.startswith(b"-----BEGIN PUBLIC KEY-----")
         assert public_key.endswith(b"-----END PUBLIC KEY-----\n")
 
-    def test_encrypt_decrypt_symmetric_key(self, secure_messaging_service, key_pair):  # Added colon
+    def test_encrypt_decrypt_symmetric_key(self, secure_messaging_service, key_pair) -> None:  # Added colon
         """Test encrypting and decrypting a symmetric key."""
         private_key_bytes, public_key_bytes = key_pair
 
@@ -141,7 +141,7 @@ class TestSecureMessagingService:
         # Check that the decrypted key matches the original
         assert decrypted_key == symmetric_key
 
-    def test_encrypt_decrypt_message(self, secure_messaging_service):
+    def test_encrypt_decrypt_message(self, secure_messaging_service) -> None:
         """Test encrypting and decrypting a message."""
         # Generate a symmetric key
         symmetric_key = Fernet.generate_key()
@@ -162,7 +162,7 @@ class TestSecureMessagingService:
         # Check that the decrypted message matches the original
         assert decrypted_message == original_message
 
-    def test_encrypt_message_for_recipient(self, secure_messaging_service, key_pair):  # Added colon
+    def test_encrypt_message_for_recipient(self, secure_messaging_service, key_pair) -> None:  # Added colon
         """Test encrypting a message for a recipient."""
         _, public_key_bytes = key_pair
 
@@ -186,7 +186,7 @@ class TestSecureMessagingService:
         assert message_package["expires_at"] > current_time
         assert message_package["expires_at"] == message_package["timestamp"] + 86400
 
-    def test_decrypt_message(self, secure_messaging_service, key_pair):
+    def test_decrypt_message(self, secure_messaging_service, key_pair) -> None:
         """Test decrypting a message."""
         private_key_bytes, public_key_bytes = key_pair
 
@@ -206,7 +206,7 @@ class TestSecureMessagingService:
         # Check that the decrypted message matches the original
         assert decrypted_message == original_message
 
-    def test_decrypt_expired_message(self, secure_messaging_service, key_pair):  # Added colon
+    def test_decrypt_expired_message(self, secure_messaging_service, key_pair) -> None:  # Added colon
         """Test decrypting an expired message."""
         private_key_bytes, public_key_bytes = key_pair
 
@@ -229,7 +229,7 @@ class TestSecureMessagingService:
 
     def test_create_message(
         self, secure_messaging_service, key_pair, encryption_service
-    ):  # Added colon
+    ) -> None:  # Added colon
         """Test creating a message."""
         _, public_key_bytes = key_pair
 
@@ -273,7 +273,7 @@ class TestSecureMessagingService:
 
     def test_create_message_with_attachments(
         self, secure_messaging_service, key_pair
-    ):  # Added colon
+    ) -> None:  # Added colon
         """Test creating a message with attachments."""
         _, public_key_bytes = key_pair
 
@@ -310,7 +310,7 @@ class TestSecureMessagingService:
     @pytest.mark.asyncio
     async def test_send_message(
         self, secure_messaging_service, key_pair, message_repository
-    ):  # Added colon
+    ) -> None:  # Added colon
         """Test sending a message."""
         _, public_key_bytes = key_pair
 
@@ -339,7 +339,7 @@ class TestSecureMessagingService:
     @pytest.mark.asyncio
     async def test_mark_as_delivered(
         self, secure_messaging_service, message_repository
-    ):  # Added colon
+    ) -> None:  # Added colon
         """Test marking a message as delivered."""
         # Create a mock message
         message_id = str(uuid.uuid4())  # Removed extra comma
@@ -369,7 +369,7 @@ class TestSecureMessagingService:
     @pytest.mark.asyncio
     async def test_mark_as_delivered_not_found(
         self, secure_messaging_service, message_repository
-    ):  # Added colon
+    ) -> None:  # Added colon
         """Test marking a non-existent message as delivered."""
         # Set up the repository to return None
         message_repository.get_by_id.return_value = None
@@ -381,7 +381,7 @@ class TestSecureMessagingService:
             )
 
     @pytest.mark.asyncio
-    async def test_mark_as_read(self, secure_messaging_service, message_repository):  # Added colon
+    async def test_mark_as_read(self, secure_messaging_service, message_repository) -> None:  # Added colon
         """Test marking a message as read."""
         # Create a mock message
         message_id = str(uuid.uuid4())  # Removed extra comma
@@ -411,7 +411,7 @@ class TestSecureMessagingService:
     @pytest.mark.asyncio
     async def test_mark_as_read_not_found(
         self, secure_messaging_service, message_repository
-    ):  # Added colon
+    ) -> None:  # Added colon
         """Test marking a non-existent message as read."""
         # Set up the repository to return None
         message_repository.get_by_id.return_value = None
@@ -425,7 +425,7 @@ class TestSecureMessagingService:
     @pytest.mark.asyncio
     async def test_delete_message(
         self, secure_messaging_service, message_repository
-    ):  # Added colon
+    ) -> None:  # Added colon
         """Test deleting a message."""
         # Create a mock message
         sender_id = "sender123"
@@ -462,7 +462,7 @@ class TestSecureMessagingService:
     @pytest.mark.asyncio
     async def test_delete_message_not_found(
         self, secure_messaging_service, message_repository
-    ):  # Added colon
+    ) -> None:  # Added colon
         """Test deleting a non-existent message."""
         # Set up the repository to return None
         message_repository.get_by_id.return_value = None
@@ -478,7 +478,7 @@ class TestSecureMessagingService:
     @pytest.mark.asyncio
     async def test_delete_message_unauthorized(
         self, secure_messaging_service, message_repository
-    ):  # Added colon
+    ) -> None:  # Added colon
         """Test deleting a message by an unauthorized user."""
         # Create a mock message
         sender_id = "sender123"

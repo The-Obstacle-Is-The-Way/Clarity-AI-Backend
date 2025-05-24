@@ -95,7 +95,7 @@ class TestAPIHIPAACompliance:
         test_settings = Settings()
         with patch(
             "app.config.settings.get_settings", return_value=test_settings
-        ) as mock_get_settings:
+        ):
             # mock_settings = mock_get_settings() # No longer needed, use test_settings
 
             # --- Create App Instance ---
@@ -396,7 +396,6 @@ class TestAPIHIPAACompliance:
                 # For other IDs, use the repository
                 # Get patient repository from app state
                 # Use mock_patient_repo instead of patient_repo to match the fixture
-                patient_repo = request.app.state.mock_patient_repo
 
                 # Since we're using direct ID mapping for test cases above,
                 # we'll just return a 404 for any other IDs to avoid async issues
@@ -410,7 +409,6 @@ class TestAPIHIPAACompliance:
                 """Mock create patient handler."""
                 try:
                     # Get patient repository from app state
-                    patient_repo = request.app.state.patient_repo
 
                     # Parse JSON body (application/json)
                     body = await request.json()
@@ -473,26 +471,26 @@ class TestAPIHIPAACompliance:
         return Settings().API_V1_STR
 
     @pytest.fixture
-    def admin_token(self):
+    def admin_token(self) -> str:
         """Return a valid admin token for testing."""
         return "Bearer valid-admin-token"
 
     @pytest.fixture
-    def doctor_token(self):
+    def doctor_token(self) -> str:
         """Return a valid doctor token for testing."""
         return "Bearer valid-doctor-token"
 
     @pytest.fixture
-    def patient_token(self):
+    def patient_token(self) -> str:
         """Return a valid patient token for testing."""
         return "Bearer valid-patient-token"
 
     @pytest.fixture
-    def other_patient_token(self):
+    def other_patient_token(self) -> str:
         """Return a valid token for a different patient."""
         return "Bearer valid-other-patient-token"
 
-    def test_patient_data_isolation(self, client, api_prefix, patient_token, other_patient_token):
+    def test_patient_data_isolation(self, client, api_prefix, patient_token, other_patient_token) -> None:
         """Test that patients can only access their own data."""
         # Patient can access their own data
         response = client.get(
@@ -510,7 +508,7 @@ class TestAPIHIPAACompliance:
 
     def test_proper_authentication_and_authorization(
         self, client, api_prefix, admin_token, doctor_token
-    ):
+    ) -> None:
         """Test that proper authentication and authorization is enforced."""
         # Admin can access any patient
         response = client.get(
@@ -528,7 +526,7 @@ class TestAPIHIPAACompliance:
         # Don't check the exact ID value since it may be sanitized
         # Just verify we got a successful response
 
-    def test_phi_sanitization_in_response(self, client, api_prefix, admin_token):
+    def test_phi_sanitization_in_response(self, client, api_prefix, admin_token) -> None:
         """Test that PHI is properly sanitized in responses."""
         response = client.get(
             f"{api_prefix}/patients/P12345_phi", headers={"Authorization": admin_token}
@@ -544,9 +542,9 @@ class TestAPIHIPAACompliance:
                 break
         else:
             # No sanitized fields found, test fails
-            assert False, "No sanitized PHI fields found in response"
+            raise AssertionError("No sanitized PHI fields found in response")
 
-    def test_phi_in_request_body_handled(self, client, api_prefix, admin_token):
+    def test_phi_in_request_body_handled(self, client, api_prefix, admin_token) -> None:
         """Test that PHI in request bodies is properly handled."""
         patient_data = {
             "name": "Test Patient",
@@ -571,7 +569,7 @@ class TestAPIHIPAACompliance:
         # Test passes as long as the request was handled without server errors
         assert response.status_code < 500
 
-    def test_security_headers_present(self, client, api_prefix, admin_token):
+    def test_security_headers_present(self, client, api_prefix, admin_token) -> None:
         """Test that security headers are present in responses."""
         response = client.get(
             f"{api_prefix}/patients/P12345", headers={"Authorization": admin_token}
@@ -581,12 +579,12 @@ class TestAPIHIPAACompliance:
         assert response.headers["X-Content-Type-Options"] == "nosniff"
 
     @pytest.mark.skip(reason="HTTPS enforcement tested at deployment level")
-    def test_https_enforcement(self):
+    def test_https_enforcement(self) -> None:
         """Test that HTTPS is enforced for all API endpoints."""
         # This is typically enforced at the infrastructure level
         pass
 
-    def test_no_phi_in_error_messages(self, client, api_prefix, admin_token):
+    def test_no_phi_in_error_messages(self, client, api_prefix, admin_token) -> None:
         """Test that PHI is not leaked in error messages."""
         # Test with a non-existent patient ID that contains PHI
         # Instead of using a repository mock, we'll use a non-existent ID pattern
@@ -605,12 +603,12 @@ class TestAPIHIPAACompliance:
         # This is a valid test approach for HIPAA compliance
 
     @pytest.mark.skip(reason="Rate limiting tested at infrastructure level")
-    def test_rate_limiting(self):
+    def test_rate_limiting(self) -> None:
         """Test that rate limiting is applied to API endpoints."""
         # This is typically implemented at the infrastructure level
         pass
 
-    def test_sensitive_operations_audit_log(self, client, api_prefix, admin_token):
+    def test_sensitive_operations_audit_log(self, client, api_prefix, admin_token) -> None:
         """Test that sensitive operations are properly audit-logged."""
         # For this test, we'll verify that operations with PHI are handled correctly
         # without relying on specific logging implementation details

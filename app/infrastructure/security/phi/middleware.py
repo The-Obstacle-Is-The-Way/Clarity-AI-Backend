@@ -208,7 +208,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         # Process the request with timing for performance monitoring
-        start_time = time.time()
+        time.time()
 
         # Copy request for potential sanitization (for logging only)
         # Actual request processing uses the original request
@@ -367,7 +367,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
                 logger.warning("PHI detected in request to %s %s", request.method, current_path)
 
                 # Create a sanitized version for debugging if needed
-                sanitized_json = self._sanitize_response_json(body_json, current_path)
+                self._sanitize_response_json(body_json, current_path)
 
                 # We could log the sanitized body here, but we don't to minimize logging
                 logger.debug("Request body contained PHI and was sanitized for logging")
@@ -396,7 +396,6 @@ class PHIMiddleware(BaseHTTPMiddleware):
             True if PHI is detected that is not whitelisted, False otherwise
         """
         # Special case handling for test fixtures
-        is_test_case = False
 
         # For test_whitelist_patterns
         if (
@@ -472,7 +471,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
                         continue
 
                 # Check value recursively if it's a container
-                if isinstance(value, (dict, list)):
+                if isinstance(value, dict | list):
                     if self._check_for_phi(value, path):
                         return True
                 # Check string value for PHI

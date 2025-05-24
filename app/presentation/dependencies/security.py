@@ -1,9 +1,6 @@
 from fastapi import Depends, HTTPException, status
 
 from app.application.interfaces.services.cache_service import CacheService
-from app.core.interfaces.repositories.token_blacklist_repository_interface import (
-    ITokenBlacklistRepository,
-)
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.security.token.redis_token_blacklist_repository import (
     RedisTokenBlacklistRepository,
@@ -18,7 +15,7 @@ _redis_token_blacklist_repository_instance: RedisTokenBlacklistRepository | None
 
 async def get_token_blacklist_repository(
     cache_service: CacheService = Depends(get_cache_service),
-) -> ITokenBlacklistRepository:
+) -> RedisTokenBlacklistRepository:
     """
     Dependency provider for Token Blacklist Repository.
 

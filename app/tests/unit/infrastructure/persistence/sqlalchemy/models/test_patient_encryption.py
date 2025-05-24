@@ -157,7 +157,7 @@ class TestPatientModelEncryptionAndTypes:
     )
     async def test_encrypted_string_process_bind_param(
         self, mock_esi: MagicMock, mock_encryption_service_for_model_tests: MagicMock
-    ):
+    ) -> None:
         """Test EncryptedString.process_bind_param calls encrypt_string."""
         # Set up the mock to handle the encrypt_string call, not just encrypt
         mock_esi.encrypt_string = mock_encryption_service_for_model_tests.encrypt_string
@@ -179,7 +179,7 @@ class TestPatientModelEncryptionAndTypes:
     )
     async def test_encrypted_string_process_result_value(
         self, mock_esi: MagicMock, mock_encryption_service_for_model_tests: MagicMock
-    ):
+    ) -> None:
         """Test EncryptedString.process_result_value calls decrypt_string."""
         # Set up the mock for decrypt_string, not just decrypt
         mock_esi.decrypt_string = mock_encryption_service_for_model_tests.decrypt_string
@@ -203,7 +203,7 @@ class TestPatientModelEncryptionAndTypes:
     )
     async def test_encrypted_json_process_bind_param(
         self, mock_esi: MagicMock, mock_encryption_service_for_model_tests: MagicMock
-    ):
+    ) -> None:
         """Test EncryptedJSON.process_bind_param calls json.dumps and encrypt_string."""
         # Set up the mock for encrypt_string, not just encrypt
         mock_esi.encrypt_string = mock_encryption_service_for_model_tests.encrypt_string
@@ -225,7 +225,7 @@ class TestPatientModelEncryptionAndTypes:
     @pytest.mark.asyncio
     async def test_encrypted_json_process_result_value(
         self, mock_esi: MagicMock, mock_encryption_service_for_model_tests: MagicMock
-    ):
+    ) -> None:
         """Test EncryptedJSON._convert_result_value properly handles JSON parsing."""
         # Create a decorator instance
         decorator = EncryptedJSON()
@@ -249,7 +249,7 @@ class TestPatientModelEncryptionAndTypes:
     @pytest.mark.asyncio
     async def test_encrypted_json_process_result_value_handles_none(
         self, mock_esi: MagicMock, mock_encryption_service_for_model_tests: MagicMock
-    ):
+    ) -> None:
         """Test EncryptedJSON.process_result_value handles None input gracefully."""
         mock_esi.decrypt = mock_encryption_service_for_model_tests.decrypt
         decorator = EncryptedJSON()
@@ -261,7 +261,7 @@ class TestPatientModelEncryptionAndTypes:
     @pytest.mark.asyncio
     async def test_encrypted_json_process_bind_param_handles_none(
         self, mock_esi: MagicMock, mock_encryption_service_for_model_tests: MagicMock
-    ):
+    ) -> None:
         """Test EncryptedJSON.process_bind_param handles None input gracefully."""
         mock_esi.encrypt = mock_encryption_service_for_model_tests.encrypt
         decorator = EncryptedJSON()
@@ -276,7 +276,7 @@ class TestPatientModelEncryptionAndTypes:
         mock_esi: MagicMock,  # This is the ESI for TypeDecorators
         sample_domain_patient_data: dict,
         mock_encryption_service_for_model_tests: MagicMock,  # Separate mock for direct model use if any
-    ):
+    ) -> None:
         """Test converting a PatientModel with encrypted fields to a PatientEntity,
         ensuring precise decryption via mocked ESI for TypeDecorators.
         """
@@ -352,7 +352,7 @@ class TestPatientModelEncryptionAndTypes:
         mock_esi: MagicMock,
         mock_encryption_service_for_model_tests: MagicMock,
         sample_domain_patient_data: dict,
-    ):
+    ) -> None:
         """Test PatientModel.from_domain sets attributes correctly.
         Encryption itself is handled by TypeDecorator on flush, not by from_domain.
         """

@@ -8,11 +8,13 @@ and other shared SQLAlchemy-related functionality.
 
 from sqlalchemy import Column, DateTime, Integer
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.orm import declarative_base  # Updated import path for SQLAlchemy 2.0
 from sqlalchemy.sql import func
 
-# Create declarative base with async attributes support
-Base = declarative_base(cls=AsyncAttrs)
+# Import the canonical Base from the registry module
+from app.infrastructure.persistence.sqlalchemy.registry import mapper_registry
+
+# Create declarative base with async attributes support using canonical registry
+Base = mapper_registry.generate_base(cls=AsyncAttrs)
 
 
 class TimestampMixin:

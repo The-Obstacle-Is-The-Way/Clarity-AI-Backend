@@ -161,6 +161,19 @@ class Patient:
 
     def __post_init__(self):
         """Initialize the object after dataclass initialization."""
+        # Convert string id to UUID if necessary
+        if isinstance(self.id, str):
+            from uuid import UUID
+
+            try:
+                # Only attempt conversion if it looks like a valid UUID
+                if len(self.id) == 36 and self.id.count("-") == 4:
+                    self.id = UUID(self.id)
+                # If it's not a valid UUID format, leave it as a string
+            except ValueError:
+                # If conversion fails, leave as string (maintains backward compatibility)
+                pass
+
         # Handle contact_info parameter if provided
         if hasattr(self, "_contact_info") and self._contact_info is not None:
             self._process_contact_info(self._contact_info)
@@ -222,7 +235,7 @@ class Patient:
                 self._encryption_service = None
         return self._encryption_service
 
-    def _process_contact_info(self, contact_info):
+    def _process_contact_info(self, contact_info) -> None:
         """Process the contact_info parameter."""
         if contact_info is ContactInfo:
             # This is the class itself, not an instance
@@ -241,7 +254,7 @@ class Patient:
             if self.phone is None:
                 self.phone = contact_info.phone
 
-    def _harmonize_names(self):
+    def _harmonize_names(self) -> None:
         """Harmonize first_name, last_name, and name fields."""
         if self.name and not (self.first_name or self.last_name):
             parts = self.name.split()
@@ -253,14 +266,14 @@ class Patient:
         if not self.name and (self.first_name or self.last_name):
             self.name = " ".join(p for p in (self.first_name, self.last_name) if p)
 
-    def _initialize_timestamps(self):
+    def _initialize_timestamps(self) -> None:
         """Initialize created_at and updated_at timestamps if not provided."""
         if self.created_at is None:
             self.created_at = datetime.now()
         if self.updated_at is None:
             self.updated_at = datetime.now()
 
-    def _parse_date_fields(self):
+    def _parse_date_fields(self) -> None:
         """Parse date fields from strings if necessary."""
         self.date_of_birth = self._ensure_datetime(self.date_of_birth)
         self.created_at = self._ensure_datetime(self.created_at)
@@ -268,7 +281,7 @@ class Patient:
 
     def _ensure_datetime(self, value):
         """Convert string dates to datetime objects."""
-        if value is None or isinstance(value, (datetime, date)):
+        if value is None or isinstance(value, datetime | date):
             return value
         if isinstance(value, str):
             try:
@@ -323,7 +336,7 @@ class Patient:
         self.treatment_notes.append(entry)
         self.updated_at = datetime.now()
 
-    def model_copy(self, *, update: dict = None, deep: bool = False, **kwargs) -> Patient:
+    def model_copy(self, *, update: dict | None = None, deep: bool = False, **kwargs) -> Patient:
         """Compatibility method similar to Pydantic v1's copy() but for dataclasses."""
         from copy import copy, deepcopy
 
@@ -448,6 +461,27 @@ class Patient:
     def __hash__(self) -> int:
         """Hash based on ID."""
         return hash(self.id) if self.id is not None else hash(None)
+
+    # LVE (Last Value Encrypted) Properties for PHI field compatibility
+    @property
+    def medical_record_number_lve(self) -> str | None:
+        """LVE accessor for medical record number - maps to medical_record_number field."""
+        return self.medical_record_number
+
+    @medical_record_number_lve.setter
+    def medical_record_number_lve(self, value: str | None) -> None:
+        """LVE setter for medical record number."""
+        self.medical_record_number = value
+
+    @property
+    def social_security_number_lve(self) -> str | None:
+        """LVE accessor for social security number - maps to ssn field."""
+        return self.ssn
+
+    @social_security_number_lve.setter
+    def social_security_number_lve(self, value: str | None) -> None:
+        """LVE setter for social security number."""
+        self.ssn = value
 
 
 # Attach the descriptor to the class after definition

@@ -3,7 +3,7 @@ Patch for MFAService to fix backup code generation.
 """
 
 
-def get_backup_codes_patch(self, count: int = 10) -> List[str]:
+def get_backup_codes_patch(self, count: int = 10) -> list[str]:
     """
     Generate a specified number of secure backup codes.
 

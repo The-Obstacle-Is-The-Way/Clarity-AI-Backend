@@ -124,7 +124,7 @@ class TestBiometricAlertNotificationService:
     @pytest.mark.asyncio
     async def test_notify_alert_urgent_priority(
         self, notification_service, mock_notification_service, sample_urgent_alert
-    ):
+    ) -> None:
         """Test that notify_alert sends notifications through all channels for urgent alerts."""
         # Execute
         await notification_service.notify_alert(sample_urgent_alert)
@@ -145,7 +145,7 @@ class TestBiometricAlertNotificationService:
     @pytest.mark.asyncio
     async def test_notify_alert_warning_priority(
         self, notification_service, mock_notification_service, sample_warning_alert
-    ):
+    ) -> None:
         """Test that notify_alert sends notifications through appropriate channels for warning alerts."""
         # Execute
         await notification_service.notify_alert(sample_warning_alert)
@@ -159,7 +159,7 @@ class TestBiometricAlertNotificationService:
     @pytest.mark.asyncio
     async def test_notify_alert_info_priority(
         self, notification_service, mock_notification_service, sample_info_alert
-    ):
+    ) -> None:
         """Test that notify_alert sends notifications through in-app only for informational alerts."""
         # Execute
         await notification_service.notify_alert(sample_info_alert)
@@ -173,7 +173,7 @@ class TestBiometricAlertNotificationService:
     @pytest.mark.asyncio
     async def test_hipaa_compliant_message_creation(
         self, notification_service, sample_urgent_alert
-    ):
+    ) -> None:
         """Test that HIPAA-compliant messages are created correctly."""
         # Execute
         sms_message = notification_service._create_hipaa_compliant_message(
@@ -201,7 +201,7 @@ class TestBiometricAlertNotificationService:
         assert patient_id_str not in email_message
 
     @pytest.mark.asyncio
-    async def test_get_channels_for_priority(self, notification_service):
+    async def test_get_channels_for_priority(self, notification_service) -> None:
         """Test that appropriate channels are selected based on alert priority."""
         # Execute
         urgent_channels = notification_service._get_channels_for_priority(AlertPriority.URGENT)
@@ -225,7 +225,7 @@ class TestBiometricAlertNotificationService:
         assert info_channels[0] == NotificationChannel.IN_APP
 
     @pytest.mark.asyncio
-    async def test_get_alert_recipients(self, notification_service, sample_urgent_alert):
+    async def test_get_alert_recipients(self, notification_service, sample_urgent_alert) -> None:
         """Test that alert recipients are correctly determined."""
         # Execute
         recipients = await notification_service._get_alert_recipients(sample_urgent_alert)
@@ -241,7 +241,7 @@ class TestBiometricAlertNotificationService:
     @pytest.mark.asyncio
     async def test_send_notification_filters_recipients(
         self, notification_service, mock_notification_service, sample_urgent_alert
-    ):
+    ) -> None:
         """Test that send_notification filters recipients based on their preferences."""
         # Setup
         recipients = [

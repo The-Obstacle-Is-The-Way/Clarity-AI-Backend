@@ -38,7 +38,7 @@ class MockBiometricAlertService(AlertServiceInterface):
         """Get alerts with optional filtering."""
         filtered_alerts = []
 
-        for alert_id, alert in self.alerts.items():
+        for _alert_id, alert in self.alerts.items():
             # Apply filters
             if patient_id and alert.get("patient_id") != patient_id:
                 continue

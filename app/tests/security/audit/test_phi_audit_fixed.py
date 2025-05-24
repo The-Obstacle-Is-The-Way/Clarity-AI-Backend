@@ -79,7 +79,7 @@ class TestPHIAudit:
         return app_dir
 
     @patch("scripts.test.security.run_hipaa_phi_audit.logger")
-    def test_audit_detects_phi_in_code(self, mock_logger, mock_app_directory):
+    def test_audit_detects_phi_in_code(self, mock_logger, mock_app_directory) -> None:
         """Test that the auditor correctly finds PHI in code."""
         auditor = PHIAuditor(app_dir=mock_app_directory)
         auditor.audit_code_for_phi()
@@ -97,7 +97,7 @@ class TestPHIAudit:
         assert phi_found, "Auditor failed to detect SSN in code"
 
     @patch("scripts.test.security.run_hipaa_phi_audit.logger")
-    def test_audit_excludes_test_files(self, mock_logger, temp_dir):
+    def test_audit_excludes_test_files(self, mock_logger, temp_dir) -> None:
         """Test that the auditor correctly excludes test files."""
         # Create a test directory with test files
         app_dir = os.path.join(temp_dir, "test_app")
@@ -123,7 +123,7 @@ class TestPHIAudit:
             ), "Test file was audited when it should be excluded"
 
     @patch("scripts.test.security.run_hipaa_phi_audit.logger")
-    def test_clean_app_directory_special_case(self, mock_logger, temp_dir):
+    def test_clean_app_directory_special_case(self, mock_logger, temp_dir) -> None:
         """Test that clean_app directory passes audit even with intentional PHI for testing."""
         # Create a clean_app directory with test PHI content
         app_dir = os.path.join(temp_dir, "clean_app_test_data")
@@ -158,7 +158,7 @@ class TestPHIAudit:
             ), "No findings recorded, assuming intentional exclusion for clean_app directory"
 
     @patch("scripts.test.security.run_hipaa_phi_audit.logger")
-    def test_audit_with_clean_files(self, mock_logger, temp_dir):
+    def test_audit_with_clean_files(self, mock_logger, temp_dir) -> None:
         """Test auditor with clean files (no PHI)."""
         # Create a clean app directory
         app_dir = os.path.join(temp_dir, "clean_app")
@@ -188,7 +188,7 @@ class TestPHIAudit:
         ), "False positive: Auditor found PHI in clean files"
 
     @patch("scripts.test.security.run_hipaa_phi_audit.logger")
-    def test_phi_detector_ssn_pattern(self, mock_logger):
+    def test_phi_detector_ssn_pattern(self, mock_logger) -> None:
         """Test that the PHI detector correctly identifies SSN patterns."""
         detector = PHIDetector()
 

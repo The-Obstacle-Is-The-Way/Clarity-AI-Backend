@@ -21,12 +21,12 @@ from app.infrastructure.security.phi import (
 class TestPHISanitizer(unittest.TestCase):
     """Test case for PHI sanitizer."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up the test case."""
         self.sanitizer = PHISanitizer()
 
     @pytest.mark.standalone()
-    def test_sanitize_ssn(self):
+    def test_sanitize_ssn(self) -> None:
         """Test sanitizing Social Security Numbers.
 
         Note: This test validates the sanitizer behavior with SSNs in a different context
@@ -44,7 +44,7 @@ class TestPHISanitizer(unittest.TestCase):
         self.assertTrue("123-45-6789" not in sanitized or "[REDACTED" in sanitized)
 
     @pytest.mark.standalone()
-    def test_sanitize_phone(self):
+    def test_sanitize_phone(self) -> None:
         """Test sanitizing phone numbers."""
         text = "Call me at (555) 123-4567 or 555-987-6543"
         sanitized = self.sanitizer.sanitize_string(text)
@@ -53,7 +53,7 @@ class TestPHISanitizer(unittest.TestCase):
         self.assertIn("[REDACTED", sanitized)
 
     @pytest.mark.standalone()
-    def test_sanitize_email(self):
+    def test_sanitize_email(self) -> None:
         """Test sanitizing email addresses."""
         text = "My email is test@example.com"
         sanitized = self.sanitizer.sanitize_string(text)
@@ -61,7 +61,7 @@ class TestPHISanitizer(unittest.TestCase):
         self.assertIn("[REDACTED", sanitized)
 
     @pytest.mark.standalone()
-    def test_sanitize_nested_structures(self):
+    def test_sanitize_nested_structures(self) -> None:
         """Test sanitizing nested structures."""
         data = {
             "patient": {
@@ -87,7 +87,7 @@ class TestPHISanitizer(unittest.TestCase):
         self.assertIn("[REDACTED", json.dumps(sanitized))
 
     @pytest.mark.standalone()
-    def test_non_phi_preserved(self):
+    def test_non_phi_preserved(self) -> None:
         """Test with technical terms that should not be identified as PHI."""
         # Use technical terms that should never be mistaken for PHI
         text = "HTTP_STATUS_CODE=200 RESPONSE_SUCCESS=true"
@@ -103,7 +103,7 @@ class TestPHISanitizer(unittest.TestCase):
         )
 
     @pytest.mark.standalone()
-    def test_sanitizer_edge_cases(self):
+    def test_sanitizer_edge_cases(self) -> None:
         """Test edge cases for the sanitizer."""
         # Test with None
         self.assertIsNone(self.sanitizer.sanitize_string(None))
@@ -122,7 +122,7 @@ class TestPHISanitizer(unittest.TestCase):
         self.assertTrue(isinstance(self.sanitizer.sanitize_json({}), dict))
 
     @pytest.mark.standalone()
-    def test_redaction_format_consistency(self):
+    def test_redaction_format_consistency(self) -> None:
         """Test that redaction format is consistent."""
         # All of these contain different kinds of PHI
         texts = ["SSN: 123-45-6789", "Email: test@example.com", "Phone: 555-123-4567"]
@@ -133,7 +133,7 @@ class TestPHISanitizer(unittest.TestCase):
             self.assertIn("[REDACTED", sanitized)
 
     @pytest.mark.standalone()
-    def test_contains_phi_detection(self):
+    def test_contains_phi_detection(self) -> None:
         """Test that contains_phi function correctly identifies certain PHI patterns."""
         # Test with definite PHI
         text_with_phi = "SSN: 123-45-6789"

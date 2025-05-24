@@ -105,9 +105,7 @@ class QuantumNeuralTestOrchestrator:
         if self.level != "all":
             for test_dir in TEST_LEVELS[self.level]:
                 if not Path(test_dir).exists():
-                    logger.warning(
-                        f"Neural pathway directory does not exist: {test_dir}"
-                    )
+                    logger.warning(f"Neural pathway directory does not exist: {test_dir}")
 
     def prepare_environment(self) -> None:
         """
@@ -140,9 +138,7 @@ class QuantumNeuralTestOrchestrator:
 
         logger.info("Quantum neural environment prepared with mathematical precision")
 
-    def _wait_for_postgres(
-        self, host: str, max_retries: int = 30, delay: int = 1
-    ) -> None:
+    def _wait_for_postgres(self, host: str, max_retries: int = 30, delay: int = 1) -> None:
         """Wait for PostgreSQL to be ready with quantum-level precision."""
         logger.info(f"Waiting for PostgreSQL neural pathway at {host}...")
 
@@ -162,28 +158,20 @@ class QuantumNeuralTestOrchestrator:
                     logger.info("PostgreSQL neural pathway established")
                     return
 
-                logger.info(
-                    f"PostgreSQL neural pathway not ready: {result.stdout} {result.stderr}"
-                )
+                logger.info(f"PostgreSQL neural pathway not ready: {result.stdout} {result.stderr}")
 
             except Exception as e:
                 logger.warning(f"Neural pathway error checking PostgreSQL: {e}")
 
             time.sleep(retry_delay)
-            retry_delay = min(
-                retry_delay * 2, 10
-            )  # Exponential backoff, max 10 seconds
+            retry_delay = min(retry_delay * 2, 10)  # Exponential backoff, max 10 seconds
             retry += 1
 
-        logger.warning(
-            f"PostgreSQL neural pathway not established after {max_retries} attempts"
-        )
+        logger.warning(f"PostgreSQL neural pathway not established after {max_retries} attempts")
 
     def _wait_for_redis(self, host: str, max_retries: int = 30, delay: int = 1) -> None:
         """Wait for Redis to be ready with pure quantum socket implementation."""
-        logger.info(
-            f"Waiting for Redis neural pathway at {host} with quantum-level precision..."
-        )
+        logger.info(f"Waiting for Redis neural pathway at {host} with quantum-level precision...")
 
         # Extract port from host if present
         redis_port = 6379  # Default Redis port
@@ -239,9 +227,7 @@ class QuantumNeuralTestOrchestrator:
         # Determine test directories with proper neurotransmitter mappings
         test_dirs = TEST_LEVELS.get(self.level)
         if not test_dirs:
-            logger.error(
-                f"No test directories found for neural pathway level: {self.level}"
-            )
+            logger.error(f"No test directories found for neural pathway level: {self.level}")
             return 1
 
         # Prepare test execution command with quantum-level precision
@@ -286,9 +272,7 @@ class QuantumNeuralTestOrchestrator:
             return result.returncode
 
         except subprocess.TimeoutExpired:
-            logger.error(
-                f"Neural pathway test execution timed out after {self.timeout} seconds"
-            )
+            logger.error(f"Neural pathway test execution timed out after {self.timeout} seconds")
             return 124  # Standard timeout exit code
         except Exception as e:
             logger.error(f"Neural pathway error during test execution: {e}")
@@ -306,9 +290,7 @@ class QuantumNeuralTestOrchestrator:
                 f.write(f"Quantum Neural Test Results - {datetime.now().isoformat()}\n")
                 f.write(f"Test Level: {self.level}\n")
                 f.write(f"Duration: {time.time() - self.start_time:.2f} seconds\n")
-                f.write(
-                    "Neural Pathway: Complete with proper neurotransmitter propagation\n"
-                )
+                f.write("Neural Pathway: Complete with proper neurotransmitter propagation\n")
                 f.write(
                     "Brain Regions: All connected including PITUITARY for hypothalamus connectivity\n"
                 )
@@ -347,9 +329,7 @@ def main() -> int:
         args = parser.parse_args()
 
         # Execute neural pathway tests
-        orchestrator = QuantumNeuralTestOrchestrator(
-            level=args.level, timeout=args.timeout
-        )
+        orchestrator = QuantumNeuralTestOrchestrator(level=args.level, timeout=args.timeout)
 
         result = orchestrator.run_tests()
 

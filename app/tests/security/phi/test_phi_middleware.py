@@ -107,7 +107,7 @@ class TestPHIMiddleware:
 
         return TestClient(app)
 
-    def test_sanitize_response_with_phi(self, client):
+    def test_sanitize_response_with_phi(self, client) -> None:
         """Test that PHI is sanitized in responses."""
         response = client.get("/data-with-phi")
 
@@ -131,7 +131,7 @@ class TestPHIMiddleware:
             for value in patient.values()
         )
 
-    def test_sanitize_request_with_phi(self, client):
+    def test_sanitize_request_with_phi(self, client) -> None:
         """Test that PHI is sanitized in request logging."""
 
         # Override the post method to allow direct sanitization for this test
@@ -157,7 +157,7 @@ class TestPHIMiddleware:
                 from fastapi import Response
 
                 # Create a new response with the sanitized content
-                modified_response = Response(
+                Response(
                     content=json.dumps(sanitized_data),
                     status_code=response.status_code,
                     headers=dict(response.headers),
@@ -207,7 +207,7 @@ class TestPHIMiddleware:
             # Restore original client.post
             client.post = original_post
 
-    def test_whitelist_patterns(self, whitelist_client):
+    def test_whitelist_patterns(self, whitelist_client) -> None:
         """Test that whitelisted patterns are not sanitized."""
         response = whitelist_client.get("/data-with-phi")
 
@@ -223,7 +223,7 @@ class TestPHIMiddleware:
         assert "john.smith@example.com" not in json.dumps(data)
         assert "(555) 123-4567" not in json.dumps(data)
 
-    def test_global_whitelist_patterns(self, global_whitelist_client):
+    def test_global_whitelist_patterns(self, global_whitelist_client) -> None:
         """Test that globally whitelisted patterns are not sanitized."""
         response = global_whitelist_client.get("/nested-phi")
 
@@ -240,7 +240,7 @@ class TestPHIMiddleware:
         assert "987-65-4321" not in records_json
         assert "jane.doe@example.com" not in records_json
 
-    def test_audit_mode(self, audit_client):
+    def test_audit_mode(self, audit_client) -> None:
         """Test that audit mode logs PHI but doesn't sanitize it."""
         with patch("app.infrastructure.security.phi.middleware.logger") as mock_logger:
             response = audit_client.get("/data-with-phi")
@@ -256,7 +256,7 @@ class TestPHIMiddleware:
             # Verify logging occurred
             assert mock_logger.warning.called
 
-    def test_sanitize_non_json_response(self, client):
+    def test_sanitize_non_json_response(self, client) -> None:
         """Test that non-JSON responses are not modified."""
         response = client.get("/html-response")
 
@@ -264,7 +264,7 @@ class TestPHIMiddleware:
         assert response.status_code == 200
         assert response.text == "<html><body>No PHI here</body></html>"
 
-    def test_sanitize_nested_json(self, client):
+    def test_sanitize_nested_json(self, client) -> None:
         """Test that PHI is sanitized in nested JSON structures."""
         response = client.get("/nested-phi")
 
@@ -283,7 +283,7 @@ class TestPHIMiddleware:
         assert len(data["records"]) == 2
         assert data["total"] == 2
 
-    def test_add_phi_middleware(self):
+    def test_add_phi_middleware(self) -> None:
         """Test that add_phi_middleware correctly adds middleware to the app."""
         app = FastAPI()
 

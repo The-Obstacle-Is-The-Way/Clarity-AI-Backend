@@ -31,12 +31,8 @@ def setup_parser() -> argparse.ArgumentParser:
         default="all",
         help="The dependency level to run",
     )
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Run with verbose output"
-    )
-    parser.add_argument(
-        "--markers", action="store_true", help="Show markers used for each level"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Run with verbose output")
+    parser.add_argument("--markers", action="store_true", help="Show markers used for each level")
     parser.add_argument(
         "--dry-run",
         action="store_true",

@@ -83,15 +83,16 @@ class RoleBasedAccessControl:
 
     def has_permission(self, role: Role | str, permission: str) -> bool:
         """Return *True* when *role* grants *permission*."""
-        key: Role | str
-        key = role  # type: ignore[assignment]
+        key: Role
         # Normalise string inputs to uppercase for enum compatibility.
         if isinstance(role, str):
             try:
-                key = Role(role.upper())  # type: ignore[arg-type]
+                key = Role(role.upper())
             except ValueError:
-                # Unknown role string – fallback to plain look‑up with the raw string
-                pass
+                # Unknown role string – return False as permission not found
+                return False
+        else:
+            key = role
 
         return permission in _PERMISSION_MATRIX.get(key, [])
 

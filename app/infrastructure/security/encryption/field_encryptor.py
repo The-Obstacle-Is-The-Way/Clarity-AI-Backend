@@ -180,9 +180,9 @@ class FieldEncryptor:
                 # This handles cases like "items.name" where items is a list of dicts.
                 logger.debug(f"Applying path '{field_path}' to elements of list.")
                 for i, item in enumerate(data):
-                    if isinstance(item, (dict, list)):  # Only process containers
+                    if isinstance(item, dict | list):  # Only process containers
                         self._process_field(item, field_path, encrypt)
-                    elif isinstance(item, (str, int, float)) and current_key in [
+                    elif isinstance(item, str | int | float) and current_key in [
                         "medications",
                         "allergies",
                     ]:
@@ -221,7 +221,7 @@ class FieldEncryptor:
                         obj[field] = encrypted_value
                     else:
                         logger.debug(f"Field '{field}' appears already encrypted, skipping")
-                elif isinstance(value, (dict, list)):
+                elif isinstance(value, dict | list):
                     # For complex types, convert to string and encrypt
                     try:
                         import json

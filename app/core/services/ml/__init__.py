@@ -27,20 +27,20 @@ from app.core.services.ml.pat import (  # PATService, # Removed
 )
 
 __all__ = [
-    # Interfaces
-    "MLService",
-    "MentaLLaMAInterface",
-    "PHIDetectionInterface",  # Corrected: Use actual interface name
-    "DigitalTwinInterface",
-    "PATInterface",
     # Base implementations
     # "MentaLLaMA", # REMOVE: Not in this layer
     # "PATService", # Removed
     "BedrockPAT",  # Added
+    "DigitalTwinInterface",
+    # Interfaces
+    "MLService",
+    "MLServiceCache",
+    # Factory and cache
+    "MLServiceFactory",
+    "MentaLLaMAInterface",
     # Mock implementations
     # "MockMentaLLaMA", # REMOVE: Not in this layer
     "MockPATService",
-    # Factory and cache
-    "MLServiceFactory",
-    "MLServiceCache",
+    "PATInterface",
+    "PHIDetectionInterface",  # Corrected: Use actual interface name
 ]

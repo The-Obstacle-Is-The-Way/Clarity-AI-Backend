@@ -122,64 +122,28 @@ class RefactoringStrategy:
                 return self.app_dir / "domain" / "repositories" / path_parts[-1]
             elif "service" in path_parts[-1].lower():
                 # Service goes to application/use_cases/digital_twin
-                return (
-                    self.app_dir
-                    / "application"
-                    / "use_cases"
-                    / "digital_twin"
-                    / path_parts[-1]
-                )
+                return self.app_dir / "application" / "use_cases" / "digital_twin" / path_parts[-1]
             else:
                 # Entity goes to domain/entities/digital_twin
-                return (
-                    self.app_dir
-                    / "domain"
-                    / "entities"
-                    / "digital_twin"
-                    / path_parts[-1]
-                )
+                return self.app_dir / "domain" / "entities" / "digital_twin" / path_parts[-1]
 
         # Handle infrastructure implementations
         if "repositories" in path_parts and "mongodb" in str(source_path).lower():
-            return (
-                self.app_dir
-                / "infrastructure"
-                / "repositories"
-                / "mongodb"
-                / path_parts[-1]
-            )
+            return self.app_dir / "infrastructure" / "repositories" / "mongodb" / path_parts[-1]
 
         # Handle trinity stack services
         if "trinity_stack" in path_parts:
-            return (
-                self.app_dir
-                / "infrastructure"
-                / "services"
-                / "trinity_stack"
-                / path_parts[-1]
-            )
+            return self.app_dir / "infrastructure" / "services" / "trinity_stack" / path_parts[-1]
 
         # For tests
         if "tests" in path_parts:
             if "domain" in str(source_path).lower():
                 return self.base_dir / "tests" / "unit" / "domain" / path_parts[-1]
-            elif (
-                "application" in str(source_path).lower()
-                or "service" in str(source_path).lower()
-            ):
+            elif "application" in str(source_path).lower() or "service" in str(source_path).lower():
                 return self.base_dir / "tests" / "unit" / "application" / path_parts[-1]
             elif "repository" in str(source_path).lower():
-                return (
-                    self.base_dir
-                    / "tests"
-                    / "integration"
-                    / "repositories"
-                    / path_parts[-1]
-                )
-            elif (
-                "api" in str(source_path).lower()
-                or "endpoint" in str(source_path).lower()
-            ):
+                return self.base_dir / "tests" / "integration" / "repositories" / path_parts[-1]
+            elif "api" in str(source_path).lower() or "endpoint" in str(source_path).lower():
                 return self.base_dir / "tests" / "integration" / "api" / path_parts[-1]
             else:
                 return self.base_dir / "tests" / "unit" / path_parts[-1]
@@ -238,18 +202,12 @@ class RefactoringStrategy:
         for source, dest in files_moved.items():
             # Convert file paths to import paths
             source_import = (
-                str(source.relative_to(self.base_dir))
-                .replace("/", ".")
-                .replace("\\", ".")
+                str(source.relative_to(self.base_dir)).replace("/", ".").replace("\\", ".")
             )
             if source_import.endswith(".py"):
                 source_import = source_import[:-3]
 
-            dest_import = (
-                str(dest.relative_to(self.base_dir))
-                .replace("/", ".")
-                .replace("\\", ".")
-            )
+            dest_import = str(dest.relative_to(self.base_dir)).replace("/", ".").replace("\\", ".")
             if dest_import.endswith(".py"):
                 dest_import = dest_import[:-3]
 

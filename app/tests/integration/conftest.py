@@ -512,7 +512,7 @@ async def app_with_mocked_services() -> FastAPI:
 
 
 @pytest.fixture
-def integration_fixture():
+def integration_fixture() -> str:
     """Basic fixture for integration tests."""
 
     return "integration_fixture"
@@ -684,7 +684,7 @@ async def test_app_with_auth_override(
         raise TypeError("test_app_with_db_session did not yield a FastAPI app for auth override.")
 
     # Store original overrides to restore them specifically, though clear() is usually enough
-    original_overrides = app_to_override.dependency_overrides.copy()
+    app_to_override.dependency_overrides.copy()
 
     # Override authentication dependencies with appropriate role handlers
     test_app_with_db_session.dependency_overrides[get_current_user] = mock_auth_dependency(
@@ -821,7 +821,7 @@ def mock_auth_dependency():
 
 
 # Test API endpoint for authentication verification
-def create_auth_me_endpoint(app: FastAPI):
+def create_auth_me_endpoint(app: FastAPI) -> None:
     """Add a test endpoint to verify authentication."""
 
     @app.get("/api/v1/auth/me")
@@ -843,7 +843,7 @@ def create_auth_me_endpoint(app: FastAPI):
 def create_test_token(
     subject: str = "test.user@example.com",
     user_id: str = "00000000-0000-0000-0000-000000000002",
-    roles: list[str] = None,
+    roles: list[str] | None = None,
     expiration_minutes: int = 30,
 ) -> str:
     """Create a JWT token for testing."""
@@ -927,7 +927,7 @@ def test_client(test_app: FastAPI) -> TestClient:
     )
 
     # Add helper methods for authenticated requests
-    def get_auth_headers(role: str = "clinician", user_id: str = None):
+    def get_auth_headers(role: str = "clinician", user_id: str | None = None):
         """Get authentication headers for the given role."""
         if user_id is None:
             user_id = "00000000-0000-0000-0000-000000000002"  # Default test clinician ID
@@ -958,7 +958,7 @@ def test_client(test_app: FastAPI) -> TestClient:
 def auth_headers():
     """Provide authentication headers for different roles."""
 
-    def _auth_headers(role: str = "clinician", user_id: str = None):
+    def _auth_headers(role: str = "clinician", user_id: str | None = None):
         """Get auth headers for a specific role."""
         if user_id is None:
             user_id = "00000000-0000-0000-0000-000000000002"  # Default test clinician ID
@@ -1063,7 +1063,7 @@ async def db_session_mock() -> AsyncGenerator[MagicMock, None]:
     mock_session.__aexit__.return_value = None
 
     # Provide a way to customize the return values of different query methods
-    def configure_query_result(result_data, method="all"):
+    def configure_query_result(result_data, method="all") -> None:
         """Helper to configure the mock session to return specific results for queries.
 
         Args:

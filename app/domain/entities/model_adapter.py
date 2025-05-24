@@ -157,7 +157,7 @@ class DigitalTwinStateAdapter:
     neural_connections: list[NeuralConnectionAdapter] = field(default_factory=list)
     clinical_insights: list[ClinicalInsight] = field(default_factory=list)
     temporal_patterns: list[TemporalPatternAdapter] = field(default_factory=list)
-    update_source: str = None
+    update_source: str | None = None
     version: int = 1
     id: UUID = field(default_factory=uuid4)
     created_at: datetime = field(default_factory=datetime.now)
@@ -274,7 +274,7 @@ class DigitalTwinStateAdapter:
             active_treatments=self.active_treatments.copy(),
         )
 
-    def add_clinical_insight(self, insight: ClinicalInsight):
+    def add_clinical_insight(self, insight: ClinicalInsight) -> None:
         """Add a clinical insight to the state."""
         # Make sure the insight isn't already present (by ID)
         existing_ids = {i.id for i in self.clinical_insights}

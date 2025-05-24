@@ -23,7 +23,7 @@ class TestAwsXGBoostMinimal:
     """Minimal test suite for AWS XGBoost service."""
 
     @pytest.mark.asyncio
-    async def test_initialization_success(self):
+    async def test_initialization_success(self) -> None:
         """Test successful initialization of AWS XGBoost service."""
         # Define test configuration
         config = {
@@ -47,7 +47,7 @@ class TestAwsXGBoostMinimal:
         service = AWSXGBoostService(aws_service_factory=factory)
 
         # Define a fake implementation to set the properties manually
-        def fake_validate_impl(cfg):
+        def fake_validate_impl(cfg) -> None:
             service._region_name = cfg["region_name"]
             service._endpoint_prefix = cfg["endpoint_prefix"]
             service._bucket_name = cfg["bucket_name"]
@@ -76,7 +76,7 @@ class TestAwsXGBoostMinimal:
                     assert service._bucket_name == "test-bucket"
 
     @pytest.mark.asyncio
-    async def test_initialization_missing_region(self):
+    async def test_initialization_missing_region(self) -> None:
         """Test initialization failure due to missing region."""
         # Create config missing the region_name
         config = {
@@ -104,7 +104,7 @@ class TestAwsXGBoostMinimal:
                 await service.initialize(config)
 
     @pytest.mark.asyncio
-    async def test_healthcheck(self):
+    async def test_healthcheck(self) -> None:
         """Test the healthcheck functionality."""
         # Create a factory mock
         factory = MockAWSServiceFactory()

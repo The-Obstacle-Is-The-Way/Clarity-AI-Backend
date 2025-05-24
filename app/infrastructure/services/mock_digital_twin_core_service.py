@@ -42,8 +42,8 @@ class MockDigitalTwinCoreService:
         self._pat_service = pat_service
         self._mentalllama_service = mentalllama_service
         self._initialized = True
-        self._digital_twins = {}
-        self._sessions = {}
+        self._digital_twins: dict[str, dict[str, Any]] = {}
+        self._sessions: dict[str, dict[str, Any]] = {}
 
     async def initialize(self) -> bool:
         """
@@ -76,7 +76,7 @@ class MockDigitalTwinCoreService:
         state_id = uuid4()
 
         # Example state structure that matches what the test expects
-        state = type(
+        state: Any = type(  # type: ignore[misc]
             "DigitalTwinState",
             (),
             {
@@ -292,7 +292,7 @@ class MockDigitalTwinCoreService:
 
         # Create a new state with incremented version
         state_id = uuid4()
-        new_state = type(
+        new_state: Any = type(  # type: ignore[misc]
             "DigitalTwinState",
             (),
             {
@@ -301,8 +301,7 @@ class MockDigitalTwinCoreService:
                 "version": current_state.version + 1,
                 "data": {
                     "brain_state": current_state.data.get("brain_state", {}),
-                    "treatment_history": current_state.data.get("treatment_history", [])
-                    + [event_data],
+                    "treatment_history": [*current_state.data.get("treatment_history", []), event_data],
                 },
                 "with_updates": lambda clinical_insights=None, metadata_updates=None: new_state,
             },

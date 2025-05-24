@@ -74,7 +74,9 @@ class InMemoryRateLimiter(IRateLimiter):
         reset_at = state["last_reset"] + config.window_seconds
         seconds_until_reset = max(0, int(reset_at - now))
 
-        return state["count"], seconds_until_reset
+        # Ensure count is returned as int
+        count = int(state["count"])
+        return count, seconds_until_reset
 
     def _get_state(self, key: str) -> dict[str, int | float]:
         """

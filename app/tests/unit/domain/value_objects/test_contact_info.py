@@ -24,7 +24,7 @@ class TestContactInfo:
         """Create a valid ContactInfo object."""
         return ContactInfo(email="test@example.com", phone="555-123-4567")
 
-    def test_create_valid_contact_info(self):
+    def test_create_valid_contact_info(self) -> None:
         """Test creation with valid data."""
         # Arrange & Act
         contact_info = ContactInfo(
@@ -38,7 +38,7 @@ class TestContactInfo:
         assert contact_info.phone == "555-123-4567"
         assert contact_info.preferred_contact_method == "email"
 
-    def test_create_with_optional_fields(self):
+    def test_create_with_optional_fields(self) -> None:
         """Test creation with optional fields."""
         # Arrange & Act
         contact_info = ContactInfo(email="test@example.com")
@@ -55,7 +55,7 @@ class TestContactInfo:
         assert contact_info.email is None
         assert contact_info.phone == "555-123-4567"
 
-    def test_email_validation(self):
+    def test_email_validation(self) -> None:
         """Test email validation."""
         # Valid email should not raise an error
         ContactInfo(email="test@example.com")
@@ -73,7 +73,7 @@ class TestContactInfo:
             ContactInfo(email=123)  # type: ignore
         assert "Email must be a string" in str(exc_info.value)
 
-    def test_phone_validation(self):
+    def test_phone_validation(self) -> None:
         """Test phone validation."""
         # Valid phone should not raise an error
         ContactInfo(phone="555-123-4567")
@@ -94,7 +94,7 @@ class TestContactInfo:
             ContactInfo(phone=123)  # type: ignore
         assert "Phone number must be a string" in str(exc_info.value)
 
-    def test_preferred_contact_method_validation(self):
+    def test_preferred_contact_method_validation(self) -> None:
         """Test preferred contact method validation."""
         # Valid values should not raise an error
         ContactInfo(preferred_contact_method="email")
@@ -112,7 +112,7 @@ class TestContactInfo:
         # None should be allowed
         ContactInfo(preferred_contact_method=None)
 
-    def test_to_dict(self, valid_contact_info):
+    def test_to_dict(self, valid_contact_info) -> None:
         """Test to_dict method."""
         # Arrange
         expected = {"email": "test@example.com", "phone": "555-123-4567"}
@@ -150,7 +150,7 @@ class TestContactInfo:
         result = contact_info_with_none.to_dict()
         assert "phone" not in result
 
-    def test_to_json(self, valid_contact_info):
+    def test_to_json(self, valid_contact_info) -> None:
         """Test to_json method."""
         # Arrange
         expected_dict = {"email": "test@example.com", "phone": "555-123-4567"}
@@ -162,7 +162,7 @@ class TestContactInfo:
         # Assert
         assert parsed_json == expected_dict
 
-    def test_from_dict(self):
+    def test_from_dict(self) -> None:
         """Test from_dict method."""
         # Arrange
         data = {
@@ -189,7 +189,7 @@ class TestContactInfo:
             ContactInfo.from_dict({"email": "invalid-email"})
         assert "Invalid contact information format" in str(exc_info.value)
 
-    def test_has_phi(self, valid_contact_info):
+    def test_has_phi(self, valid_contact_info) -> None:
         """Test has_phi method."""
         # Arrange & Act
         result = valid_contact_info.has_phi()
@@ -205,7 +205,7 @@ class TestContactInfo:
         email_only = ContactInfo(email="test@example.com")
         assert email_only.has_phi() is True
 
-    def test_redact_phi(self, valid_contact_info):
+    def test_redact_phi(self, valid_contact_info) -> None:
         """Test redact_phi method."""
         # Arrange & Act
         redacted = valid_contact_info.redact_phi()
@@ -220,7 +220,7 @@ class TestContactInfo:
         assert redacted["email"] is None
         assert redacted["phone"] is None
 
-    def test_create_secure_contact_info_factory(self):
+    def test_create_secure_contact_info_factory(self) -> None:
         """Test the factory function for creating contact info."""
         # Arrange & Act
         contact_info = create_secure_contact_info(
@@ -247,7 +247,7 @@ class TestContactInfo:
 class TestContactInfoEncryption:
     """Test suite for ContactInfo encryption capabilities."""
 
-    def test_encryption(self, mock_decrypt, mock_encrypt):
+    def test_encryption(self, mock_decrypt, mock_encrypt) -> None:
         """Test encryption of ContactInfo."""
         # Setup mock
         mock_encrypt.side_effect = lambda val: f"v1:encrypted_{val}"
@@ -279,7 +279,7 @@ class TestContactInfoEncryption:
         assert encrypted.phone is None
         assert mock_encrypt.call_count == 2  # No additional calls with None values
 
-    def test_decryption(self, mock_decrypt, mock_encrypt):
+    def test_decryption(self, mock_decrypt, mock_encrypt) -> None:
         """Test decryption of ContactInfo."""
         # Setup mock
         mock_decrypt.side_effect = lambda val: val.replace("v1:encrypted_", "")
@@ -326,7 +326,7 @@ class TestContactInfoEncryption:
         assert decrypted is contact_info
         assert mock_decrypt.call_count == 2  # No additional calls
 
-    def test_detect_encryption_state(self, mock_decrypt, mock_encrypt):
+    def test_detect_encryption_state(self, mock_decrypt, mock_encrypt) -> None:
         """Test automatic detection of encryption state."""
         # Arrange - with encrypted values
         contact_info = ContactInfo(email="v1:encrypted_test@example.com", phone="555-123-4567")
@@ -340,7 +340,7 @@ class TestContactInfoEncryption:
         # Assert
         assert contact_info._is_encrypted is False
 
-    def test_get_encryption_service(self, mock_decrypt, mock_encrypt):
+    def test_get_encryption_service(self, mock_decrypt, mock_encrypt) -> None:
         """Test retrieval of encryption service."""
         # Arrange
         ContactInfo._encryption_service = None  # Clear cache
@@ -369,11 +369,11 @@ class TestContactInfoEndToEnd:
     """Test suite for end-to-end encryption of ContactInfo."""
 
     @pytest.fixture(scope="class")
-    def test_encryption_key(self):
+    def test_encryption_key(self) -> str:
         """Provide test encryption key."""
         return "test_encryption_key_for_unit_tests_only_12345"
 
-    def test_real_encryption_decryption(self, test_encryption_key):
+    def test_real_encryption_decryption(self, test_encryption_key) -> None:
         """Test real encryption and decryption with actual service."""
         # Override settings for test
         with patch("app.core.config.settings.get_settings") as mock_settings:
@@ -421,7 +421,7 @@ class Patient:
         return self._contact_info
 
     @contact_info.setter
-    def contact_info(self, value):
+    def contact_info(self, value) -> None:
         """Set ContactInfo with type checking."""
         if not isinstance(value, ContactInfo):
             if isinstance(value, dict):
@@ -446,14 +446,14 @@ class ContactInfoDescriptor:
         if not isinstance(value, ContactInfo):
             if isinstance(value, dict):
                 value = ContactInfo.from_dict(value)
-            elif isinstance(value, (tuple, list)) and len(value) >= 2:
+            elif isinstance(value, tuple | list) and len(value) >= 2:
                 value = ContactInfo(email=value[0], phone=value[1])
             else:
                 raise TypeError("Expected ContactInfo, dict, or tuple")
         instance._contact_info = value
 
 
-def test_patient_integration():
+def test_patient_integration() -> None:
     """Test integration with the Patient class."""
     # Create a patient with contact info
     patient = Patient("patient@example.com", "555-987-6543")

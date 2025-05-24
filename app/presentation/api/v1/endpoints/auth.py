@@ -148,11 +148,6 @@ async def login(
         if is_test_env and username == "test_user" and password == "test_password":
             logger.info("Using test credentials in test environment")
             # Special handling for test environment
-            test_token_data = {
-                "sub": "test-user-id",
-                "roles": ["user"],
-                "permissions": ["read:data", "write:data"],
-            }
             # Skip normal authentication flow for test users
             tokens = {
                 "access_token": "test_access_token",
@@ -393,7 +388,7 @@ async def refresh_token(
 
         # Extract user_id if present in the token data, not needed for TokenResponse
         # but may be useful for extended response models
-        user_id = tokens.get("user_id", None)
+        tokens.get("user_id", None)
 
         # Return tokens with proper response model format
         token_response = TokenResponse(
@@ -443,7 +438,7 @@ async def refresh_token(
         response.delete_cookie(key="refresh_token", path="/api/v1/auth/refresh")
 
         # Determine if this is a client error or server error
-        if isinstance(e, (ValueError, TypeError)) and "token" in str(e).lower():
+        if isinstance(e, ValueError | TypeError) and "token" in str(e).lower():
             # Client error with token format
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

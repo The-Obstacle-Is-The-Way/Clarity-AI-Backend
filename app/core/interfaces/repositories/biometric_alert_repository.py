@@ -3,13 +3,7 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
 
-# Import BiometricAlert entity from domain
-try:
-    from app.domain.entities.biometric_alert import BiometricAlert
-except ImportError:
-    from typing import Any
-
-    BiometricAlert = Any
+from app.domain.entities.biometric_alert import BiometricAlert
 
 
 class IBiometricAlertRepository(ABC):

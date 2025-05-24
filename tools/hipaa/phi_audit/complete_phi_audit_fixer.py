@@ -34,9 +34,7 @@ def fix_phi_auditor_class():
             j = i + 1
 
             # Collect all lines of the method
-            while j < end_line and (
-                lines[j].strip() == "" or lines[j].startswith(" " * 8)
-            ):
+            while j < end_line and (lines[j].strip() == "" or lines[j].startswith(" " * 8)):
                 method_lines.append(lines[j])
                 j += 1
 
@@ -49,9 +47,7 @@ def fix_phi_auditor_class():
                     if m_line.startswith("    def"):
                         fixed_method.append(m_line)  # Keep as is
                     else:
-                        fixed_method.append(
-                            "        " + stripped
-                        )  # 8 spaces indentation
+                        fixed_method.append("        " + stripped)  # 8 spaces indentation
                 else:
                     fixed_method.append("\n")  # Keep empty lines
 

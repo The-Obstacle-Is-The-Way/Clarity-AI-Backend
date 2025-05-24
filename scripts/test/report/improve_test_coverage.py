@@ -107,9 +107,7 @@ class CoverageAnalyzer:
             for module, data in module_coverage.items():
                 if data["statements"] > 0:
                     data["coverage"] = (
-                        (data["statements"] - data["missing"])
-                        / data["statements"]
-                        * 100
+                        (data["statements"] - data["missing"]) / data["statements"] * 100
                     )
                 else:
                     data["coverage"] = 0
@@ -117,9 +115,7 @@ class CoverageAnalyzer:
             # Calculate overall coverage
             overall_coverage = 0
             if total_statements > 0:
-                overall_coverage = (
-                    (total_statements - total_missing) / total_statements * 100
-                )
+                overall_coverage = (total_statements - total_missing) / total_statements * 100
 
             return {
                 "overall": {
@@ -419,21 +415,15 @@ class CoverageAnalyzer:
 def main():
     """Main function to parse arguments and run the coverage analyzer."""
     parser = argparse.ArgumentParser(description="Analyze and improve test coverage")
-    parser.add_argument(
-        "--analyze", action="store_true", help="Analyze existing coverage data"
-    )
+    parser.add_argument("--analyze", action="store_true", help="Analyze existing coverage data")
     parser.add_argument("--run", action="store_true", help="Run tests with coverage")
-    parser.add_argument(
-        "--identify-untested", action="store_true", help="Identify untested code"
-    )
+    parser.add_argument("--identify-untested", action="store_true", help="Identify untested code")
     parser.add_argument(
         "--generate-stubs",
         action="store_true",
         help="Generate test stubs for untested modules",
     )
-    parser.add_argument(
-        "--report", action="store_true", help="Generate coverage report"
-    )
+    parser.add_argument("--report", action="store_true", help="Generate coverage report")
     parser.add_argument(
         "--test-type",
         choices=["standalone", "venv", "integration"],
@@ -445,11 +435,7 @@ def main():
 
     # Default to all actions if none specified
     if not (
-        args.analyze
-        or args.run
-        or args.identify_untested
-        or args.generate_stubs
-        or args.report
+        args.analyze or args.run or args.identify_untested or args.generate_stubs or args.report
     ):
         args.analyze = args.run = args.identify_untested = args.report = True
 
@@ -468,9 +454,7 @@ def main():
             for module, data in sorted(
                 coverage_data.get("modules", {}).items(), key=lambda x: x[1]["coverage"]
             ):
-                print(
-                    f"  {module}: {data['coverage']:.2f}% ({data['statements']} statements)"
-                )
+                print(f"  {module}: {data['coverage']:.2f}% ({data['statements']} statements)")
 
     if args.identify_untested:
         untested = analyzer.identify_untested_code()

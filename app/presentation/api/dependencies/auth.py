@@ -41,12 +41,13 @@ from app.infrastructure.persistence.sqlalchemy.repositories.user_repository impo
 
 # from app.infrastructure.repositories.user_repository import get_user_repository # DELETED OLD IMPORT
 from app.infrastructure.security.auth.auth_service import get_auth_service
-from app.infrastructure.security.jwt.jwt_service import JWTService, get_jwt_service
+from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
 from app.infrastructure.services.redis.redis_cache_service import RedisCacheService
 
 # REMOVED: from app.infrastructure.database.session import get_async_session
 # ADDED: Import get_db from the local database dependency module
 from .database import get_db
+from .jwt import get_jwt_service_from_request
 
 # Initialize logger for this module - MODULE LEVEL
 logger = logging.getLogger(__name__)
@@ -59,7 +60,6 @@ from app.infrastructure.security.auth.authentication_service import (
 )
 
 AuthServiceDep = Annotated[AuthenticationService, Depends(get_auth_service)]
-JWTServiceDep = Annotated[JWTService, Depends(get_jwt_service)]
 
 # --- Dependency Functions --- #
 
@@ -120,43 +120,15 @@ async def get_token_blacklist_repository(
     return RedisTokenBlacklistRepository(redis_service=redis_service)
 
 
-# --- Updated JWT Service Dependency ---
-async def get_jwt_service(
-    settings: Settings = Depends(get_settings),
-    user_repository: SQLAlchemyUserRepository = Depends(get_user_repository_dependency),
-    token_blacklist_repository: RedisTokenBlacklistRepository = Depends(
-        get_token_blacklist_repository
-    ),
-) -> JWTService:  # Return concrete implementation, not interface
-    """Dependency function to get JWTService instance conforming to IJwtService."""
-    # Extract and validate settings, providing defaults if not present
-    secret_key = str(settings.JWT_SECRET_KEY)
-    algorithm = getattr(settings, "JWT_ALGORITHM", "HS256")
-    access_expire = getattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 30)
-    refresh_expire = getattr(settings, "JWT_REFRESH_TOKEN_EXPIRE_DAYS", 7)
-    issuer = getattr(settings, "JWT_ISSUER", None)
-    audience = getattr(settings, "JWT_AUDIENCE", None)
-
-    # Create JWT service with validated settings
-    return JWTService(
-        secret_key=secret_key,
-        algorithm=algorithm,
-        access_token_expire_minutes=access_expire,
-        refresh_token_expire_days=refresh_expire,
-        issuer=issuer,
-        audience=audience,
-        settings=settings,
-        user_repository=user_repository,
-        token_blacklist_repository=token_blacklist_repository,
-    )
+# --- Dependency Functions --- #
 
 
 async def get_current_user(
     token_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     settings: Settings = Depends(get_settings),
-    jwt_service: JWTService = Depends(get_jwt_service),
+    jwt_service: JWTServiceImpl = Depends(get_jwt_service_from_request),
     user_repo: SQLAlchemyUserRepository = Depends(get_user_repository_dependency),
-    options: dict = None,
+    options: dict | None = None,
 ) -> DomainUser:
     """
     Dependency to get the current user from a JWT token.
@@ -200,14 +172,15 @@ async def get_current_user(
 
     token = token_credentials.credentials
 
-    credentials_exception = HTTPException(
+    # Define standard authentication errors
+    HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    expired_token_exception = HTTPException(
+    HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Signature has expired",
+        detail="Token has expired",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
@@ -217,15 +190,52 @@ async def get_current_user(
             f"GET_CURRENT_USER: Using JWT service: {type(jwt_service).__name__}, ID: {id(jwt_service)}"
         )
 
-        # Pass options to decode_token if supported
-        if (
-            hasattr(jwt_service, "decode_token")
-            and "options" in inspect.signature(jwt_service.decode_token).parameters
-        ):
-            payload = jwt_service.decode_token(token, options=options)
-        else:
-            # Fallback to standard decode without options
-            payload = jwt_service.decode_token(token)
+        # Handle JWT service decode - check if it's a mock that returns coroutines
+        try:
+            # Pass options to decode_token if supported
+            if (
+                hasattr(jwt_service, "decode_token")
+                and "options" in inspect.signature(jwt_service.decode_token).parameters
+            ):
+                payload = jwt_service.decode_token(token, options=options)
+            else:
+                # Fallback to standard decode without options
+                payload = jwt_service.decode_token(token)
+
+            # Handle async mock that returns coroutines
+            if hasattr(payload, "__await__"):
+                logger.debug("JWT service returned a coroutine - awaiting it")
+                # For async mocks, we need to await the coroutine
+                payload = await payload
+
+        except Exception as decode_error:
+            logger.warning(f"JWT decode failed: {decode_error}")
+            # Check for specific error types
+            error_str = str(decode_error)
+            if "signature" in error_str.lower() or "verification" in error_str.lower():
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token signature",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            elif "expired" in error_str.lower():
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token has expired",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            elif "segments" in error_str.lower() or "format" in error_str.lower():
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token format",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
 
         logger.debug(
             f"GET_CURRENT_USER: Token decoded successfully by JWT service. Payload type: {type(payload)}"
@@ -234,7 +244,11 @@ async def get_current_user(
         # Validate payload structure (basic check)
         if not payload:
             logger.warning("get_current_user: Decoded payload is empty.")
-            raise credentials_exception
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token payload",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
         # Extract subject (user ID) from payload
         user_id_str = None
@@ -245,7 +259,11 @@ async def get_current_user(
 
         if user_id_str is None:
             logger.warning("get_current_user: Subject (sub) not in token payload.")
-            raise credentials_exception
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: missing subject",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
         # Extract roles from payload if present (for role-based validation)
         roles = None
@@ -256,11 +274,14 @@ async def get_current_user(
 
         logger.debug(f"GET_CURRENT_USER: Extracted roles from token: {roles}")
 
+    except HTTPException:
+        # Re-raise HTTP exceptions directly (these are our intentional 401 responses)
+        raise
     except InvalidTokenException as e:
         logger.warning(f"get_current_user: Invalid token - {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token: {e!s}",
+            detail="Invalid token",
             headers={"WWW-Authenticate": "Bearer"},
         )
     except TokenExpiredException as e:
@@ -274,17 +295,8 @@ async def get_current_user(
         logger.warning(f"get_current_user: JWTError - {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"JWT validation error: {e!s}",
+            detail="Invalid token",
             headers={"WWW-Authenticate": "Bearer"},
-        )
-    except Exception as e:
-        logger.error(
-            f"get_current_user: Unexpected error during token validation - {e}",
-            exc_info=True,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred during authentication",
         )
 
     try:
@@ -300,61 +312,51 @@ async def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
+    except HTTPException:
+        # Re-raise HTTP exceptions directly
+        raise
     except ValueError as e:
         logger.error(
             f"get_current_user: Invalid user ID format in token: {user_id_str}. Error: {e}"
         )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid user ID format in token",
+            detail="Invalid token: malformed user ID",
             headers={"WWW-Authenticate": "Bearer"},
         )
     except Exception as e:
         logger.error(f"get_current_user: Error retrieving user - {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error retrieving user information",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication failed",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # --- DETAILED LOGGING BEFORE STATUS CHECK ---
-    logger.info(f"GET_CURRENT_USER: Inspecting user object before status check. User: {user}")
-    logger.info(f"GET_CURRENT_USER: Type of user: {type(user)}")
-    logger.info(f"GET_CURRENT_USER: Attributes of user (dir(user)): {dir(user)}")
-    # --- END DETAILED LOGGING ---
-
-    # --- CRITICAL PRE-CRASH CHECK ---
-    logger.critical(
-        f"GET_CURRENT_USER: PRE-CRASH CHECK: id(user) = {id(user)}, type(user) = {type(user)}"
-    )
-    logger.critical(
-        f"GET_CURRENT_USER: PRE-CRASH CHECK: id(user_repo) = {id(user_repo)}, type(user_repo) = {type(user_repo)}"
-    )
-    logger.critical(
-        f"GET_CURRENT_USER: PRE-CRASH CHECK: Is user the same object as user_repo? {id(user) == id(user_repo)}"
-    )
-    # --- END CRITICAL PRE-CRASH CHECK ---
-
-    # --- ACCESS OTHER ATTRIBUTES BEFORE STATUS ---
+    # Validate user status
     try:
-        logger.info(f"GET_CURRENT_USER: Attempting to access user.id: {user.id}")
-        logger.info(f"GET_CURRENT_USER: Attempting to access user.email: {user.email}")
-        logger.info(f"GET_CURRENT_USER: Attempting to access user.username: {user.username}")
-        logger.info(f"GET_CURRENT_USER: Attempting to access user.roles: {user.roles}")
-    except Exception as e_access:
-        logger.error(
-            f"GET_CURRENT_USER: Error accessing basic user attributes before status check: {e_access}",
-            exc_info=True,
-        )
-    # --- END ACCESS OTHER ATTRIBUTES ---
+        if user.status != UserStatus.ACTIVE:
+            logger.warning(
+                f"get_current_user: User {user.username} is not active. Status: {user.status}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Account is inactive",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
-    if user.status != UserStatus.ACTIVE:
-        logger.warning(
-            f"get_current_user: User {user.username} is not active. Status: {user.status}"
-        )
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
+        logger.info(f"get_current_user: User {user.username} authenticated successfully.")
+        return user
 
-    logger.info(f"get_current_user: User {user.username} authenticated successfully.")
-    return user
+    except HTTPException:
+        # Re-raise HTTP exceptions directly
+        raise
+    except Exception as e:
+        logger.error(f"get_current_user: Error validating user status - {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication failed",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 CurrentUserDep = Annotated[DomainUser, Depends(get_current_user)]
@@ -450,7 +452,7 @@ async def get_current_active_user_wrapper(
 
 async def get_optional_user(
     token_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
-    jwt_service: JWTServiceDep = None,
+    jwt_service: JWTServiceImpl = Depends(get_jwt_service_from_request),
     user_repo: UserRepoDep = None,
     **kwargs,
 ) -> DomainUser | None:
@@ -572,3 +574,6 @@ __all__ = [
     "require_patient_role",
     "require_roles",
 ]
+
+# Define JWT Service type annotation after function definition to avoid forward reference issues
+JWTServiceDep = Annotated[JWTServiceImpl, Depends(get_jwt_service_from_request)]

@@ -6,27 +6,24 @@ mapping the domain entity to the database schema.
 """
 
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import (
     JSON,
-    Column,
     ForeignKey,
     Integer,
     String,
     Text,
 )
-from sqlalchemy import (
-    UUID as SQLAlchemyUUID,
-)
 from sqlalchemy.ext.mutable import MutableDict
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.sqlalchemy.models.base import (
     AuditMixin,
     Base,
     TimestampMixin,
 )
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 if TYPE_CHECKING:
     from app.domain.entities.clinical_note import ClinicalNote
@@ -42,30 +39,57 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
 
     __tablename__ = "clinical_notes"
 
-    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    patient_id = Column(
-        SQLAlchemyUUID(as_uuid=True),
+    id: Mapped[uuid.UUID] = mapped_column(
+        GUID(), 
+        primary_key=True, 
+        default=uuid.uuid4
+    )
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
         ForeignKey("patients.id"),
         nullable=False,
         index=True,
     )
-    provider_id = Column(
-        SQLAlchemyUUID(as_uuid=True),
+    provider_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
         ForeignKey("providers.id"),
         nullable=False,
         index=True,
     )
-    appointment_id = Column(
-        SQLAlchemyUUID(as_uuid=True), ForeignKey("appointments.id"), nullable=True
+    appointment_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID(), 
+        ForeignKey("appointments.id"), 
+        nullable=True
     )
-    title = Column(String(255), nullable=False)
-    content = Column(Text, nullable=False)
-    redacted_content = Column(Text, nullable=True)
-    note_type = Column(String(50), nullable=True)
-    tags = Column(MutableDict.as_mutable(JSON), nullable=True)
-    version = Column(Integer, default=1, nullable=False)
-    parent_note_id = Column(
-        SQLAlchemyUUID(as_uuid=True), ForeignKey("clinical_notes.id"), nullable=True
+    title: Mapped[str] = mapped_column(
+        String(255), 
+        nullable=False
+    )
+    content: Mapped[str] = mapped_column(
+        Text, 
+        nullable=False
+    )
+    redacted_content: Mapped[Optional[str]] = mapped_column(
+        Text, 
+        nullable=True
+    )
+    note_type: Mapped[Optional[str]] = mapped_column(
+        String(50), 
+        nullable=True
+    )
+    tags: Mapped[Optional[dict]] = mapped_column(
+        MutableDict.as_mutable(JSON), 
+        nullable=True
+    )
+    version: Mapped[int] = mapped_column(
+        Integer, 
+        default=1, 
+        nullable=False
+    )
+    parent_note_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID(), 
+        ForeignKey("clinical_notes.id"), 
+        nullable=True
     )
 
     # Relationships with correct model references
@@ -112,20 +136,38 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
         Returns:
             ClinicalNote: Domain entity instance
         """
-        from app.domain.entities.clinical_note import ClinicalNote, NoteType
+        from app.domain.entities.clinical_note import ClinicalNote, NoteStatus, NoteType
+
+        # Convert tags from JSON dict to set of strings, handling None
+        domain_tags = set()
+        if self.tags:
+            # Tags can be stored as dict or list/set in JSON format
+            try:
+                if hasattr(self.tags, 'values'):
+                    # Dict-like format
+                    domain_tags = {str(v) for v in self.tags.values()}
+                elif hasattr(self.tags, '__iter__'):
+                    # List/set-like format
+                    domain_tags = {str(tag) for tag in self.tags}
+                else:
+                    # Single value or other format
+                    domain_tags = {str(self.tags)}
+            except (TypeError, AttributeError):
+                # Fallback for any unexpected tag format
+                domain_tags = set()
 
         return ClinicalNote(
             id=self.id,
             patient_id=self.patient_id,
             provider_id=self.provider_id,
-            appointment_id=self.appointment_id,
-            note_type=NoteType(self.note_type) if self.note_type else None,
+            note_type=NoteType(self.note_type) if self.note_type else NoteType.PROGRESS_NOTE,
             content=self.content,
-            redacted_content=self.redacted_content,
-            title=self.title,
-            tags=self.tags,
-            version=self.version,
-            parent_note_id=self.parent_note_id,
+            appointment_id=self.appointment_id,
+            status=NoteStatus.DRAFT,  # Default status, could be enhanced with actual status tracking
             created_at=self.created_at,
             updated_at=self.updated_at,
+            tags=domain_tags,
+            version=self.version,
+            # Note: redacted_content, title, parent_note_id are persistence-layer concerns
+            # and are not included in the core domain entity
         )

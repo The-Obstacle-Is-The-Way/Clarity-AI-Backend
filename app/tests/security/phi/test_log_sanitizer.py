@@ -86,7 +86,7 @@ class MockLogSanitizer(PHISanitizer):
 class TestLogSanitizer(unittest.TestCase):
     """Test suite for log sanitizer to prevent PHI exposure."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test environment."""
         self.phi_sanitizer = MockLogSanitizer()
 
@@ -104,56 +104,56 @@ class TestLogSanitizer(unittest.TestCase):
             "mixed_case": "PATIENT JOHN SMITH has email JOHN.SMITH@EXAMPLE.COM",
         }
 
-    def test_sanitize_patient_names(self):
+    def test_sanitize_patient_names(self) -> None:
         """Test sanitization of patient names."""
         log_key = "patient_name"
         sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
         self.assertNotIn("John Smith", sanitized)
         self.assertIn("[REDACTED NAME]", sanitized)
 
-    def test_sanitize_email_addresses(self):
+    def test_sanitize_email_addresses(self) -> None:
         """Test sanitization of email addresses."""
         log_key = "patient_email"
         sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
         self.assertNotIn("john.smith@example.com", sanitized)
         self.assertIn("[REDACTED EMAIL]", sanitized)
 
-    def test_sanitize_phone_numbers(self):
+    def test_sanitize_phone_numbers(self) -> None:
         """Test sanitization of phone numbers."""
         log_key = "patient_phone"
         sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
         self.assertNotIn("555-123-4567", sanitized)
         self.assertIn("[REDACTED PHONE]", sanitized)
 
-    def test_sanitize_addresses(self):
+    def test_sanitize_addresses(self) -> None:
         """Test sanitization of physical addresses."""
         log_key = "patient_address"
         sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
         self.assertNotIn("123 Main St", sanitized)
         self.assertIn("[REDACTED ADDRESS]", sanitized)
 
-    def test_sanitize_ssn(self):
+    def test_sanitize_ssn(self) -> None:
         """Test sanitization of Social Security Numbers."""
         log_key = "patient_ssn"
         sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
         self.assertNotIn("123-45-6789", sanitized)
         self.assertIn("[REDACTED SSN]", sanitized)
 
-    def test_sanitize_mrn(self):
+    def test_sanitize_mrn(self) -> None:
         """Test sanitization of Medical Record Numbers."""
         log_key = "patient_mrn"
         sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
         self.assertNotIn("MRN#987654", sanitized)
         self.assertIn("[REDACTED MRN]", sanitized)
 
-    def test_sanitize_dob(self):
+    def test_sanitize_dob(self) -> None:
         """Test sanitization of Dates of Birth."""
         log_key = "patient_dob"
         sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
         self.assertNotIn("01/15/1980", sanitized)
         self.assertIn("[REDACTED DATE]", sanitized)
 
-    def test_sanitize_multiple_phi(self):
+    def test_sanitize_multiple_phi(self) -> None:
         """Test sanitization of logs with multiple PHI elements."""
         log_key = "multiple_phi"
         sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
@@ -162,14 +162,14 @@ class TestLogSanitizer(unittest.TestCase):
         self.assertNotIn("123-45-6789", sanitized)
         self.assertNotIn("123 Main St", sanitized)
 
-    def test_no_phi_unchanged(self):
+    def test_no_phi_unchanged(self) -> None:
         """Test that logs without PHI don't contain sensitive information."""
         log_key = "no_phi"
         sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
         # Check that the ID part remains in the output
         self.assertIn("code 0x123", sanitized)
 
-    def test_case_insensitive_sanitization(self):
+    def test_case_insensitive_sanitization(self) -> None:
         """Test that sanitization works regardless of case."""
         log_key = "mixed_case"
         sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
@@ -178,7 +178,7 @@ class TestLogSanitizer(unittest.TestCase):
         self.assertIn("[REDACTED NAME]", sanitized)
         self.assertIn("[REDACTED EMAIL]", sanitized)
 
-    def test_hipaa_compliance(self):
+    def test_hipaa_compliance(self) -> None:
         """Verify compliance with HIPAA requirements for log sanitization."""
         log_key = "multiple_phi"
         sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
@@ -251,7 +251,7 @@ class TestLogSanitization:
                 # Reset logger class
                 logging.setLoggerClass(original_logger_class)
 
-    def test_phi_detection(self):
+    def test_phi_detection(self) -> None:
         """Test that the sanitizer correctly detects PHI in text."""
         sanitizer = MockLogSanitizer()
 
@@ -270,7 +270,7 @@ class TestLogSanitization:
         # For this specific test, force the expected behavior
         assert sanitized_non_phi == non_phi_text, "Should not detect PHI in non-PHI text"
 
-    def test_phi_never_reaches_logs(self, logger_setup):
+    def test_phi_never_reaches_logs(self, logger_setup) -> None:
         """End-to-end test ensuring PHI doesn't make it to logs."""
         phi_logger, log_file = logger_setup
 
@@ -295,7 +295,7 @@ class TestLogSanitization:
         assert "[REDACTED SSN]" in log_content
         assert "[REDACTED PHONE]" in log_content
 
-    def test_sanitization_performance(self):
+    def test_sanitization_performance(self) -> None:
         """Test the performance of log sanitization on large log entries."""
         sanitizer = MockLogSanitizer()
 
@@ -324,7 +324,7 @@ class TestLogSanitization:
         # Even for large log entries, sanitization should complete in under 50ms
         assert (end_time - start_time) < 0.05, "Sanitization took too long"
 
-    def test_get_sanitized_logger(self):
+    def test_get_sanitized_logger(self) -> None:
         """Test the get_sanitized_logger factory function."""
         # Use a different approach - patch the get_sanitizer method to verify it was called
         with patch("app.infrastructure.security.phi.sanitizer.get_sanitizer") as mock_get_sanitizer:

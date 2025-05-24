@@ -48,9 +48,7 @@ def setup_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Enable verbose output"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
 
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
@@ -99,9 +97,7 @@ def run_command(command: str, args: list[str]) -> int:
         return 2
 
     except AttributeError:
-        logger.error(
-            f"Function {command_info['function']} not found in {command_info['module']}"
-        )
+        logger.error(f"Function {command_info['function']} not found in {command_info['module']}")
         return 3
 
     except Exception as e:
@@ -150,9 +146,7 @@ def show_commands() -> None:
     logger.info("Available commands:")
     for cmd, info in COMMANDS.items():
         logger.info(f"  {cmd:<15} - {info['description']}")
-    logger.info(
-        "\nFor more information about a command, run: clarity.py <command> --help-full"
-    )
+    logger.info("\nFor more information about a command, run: clarity.py <command> --help-full")
 
 
 def main() -> int:

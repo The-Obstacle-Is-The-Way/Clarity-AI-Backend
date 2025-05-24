@@ -22,7 +22,7 @@ from app.infrastructure.security.rbac.roles import Role
 class TestRoleBasedAccessControl:
     """Test suite for Role-Based Access Control functionality."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test environment."""
         # Instantiate the service (assuming direct instantiation is possible)
         # If RBACService requires dependencies (e.g., RoleManager), mock them:
@@ -67,7 +67,7 @@ class TestRoleBasedAccessControl:
             is_active=True,
         )
 
-    def test_check_permission_admin(self):
+    def test_check_permission_admin(self) -> None:
         """Test permission check for admin role."""
         # Admin should have all permissions
         assert self.rbac_service.check_permission(self.admin_user.roles, "read:all_data") is True
@@ -78,7 +78,7 @@ class TestRoleBasedAccessControl:
         )
         assert self.rbac_service.check_permission(self.admin_user.roles, "manage:users") is True
 
-    def test_check_permission_clinician(self):
+    def test_check_permission_clinician(self) -> None:
         """Test permission check for clinician role."""
         # Clinician should have patient data access but not all admin permissions
         assert (
@@ -101,7 +101,7 @@ class TestRoleBasedAccessControl:
             self.rbac_service.check_permission(self.clinician_user.roles, "manage:users") is False
         )
 
-    def test_check_permission_patient(self):
+    def test_check_permission_patient(self) -> None:
         """Test permission check for patient role (using Role.USER)."""
         # User (patient) should only have access to own data
         assert self.rbac_service.check_permission(self.patient_user.roles, "read:own_data") is True
@@ -125,7 +125,7 @@ class TestRoleBasedAccessControl:
             is False
         )
 
-    def test_check_permission_researcher(self):
+    def test_check_permission_researcher(self) -> None:
         """Test permission check for researcher role."""
         # Researcher should have read access to anonymized data
         assert (
@@ -148,7 +148,7 @@ class TestRoleBasedAccessControl:
             self.rbac_service.check_permission(self.researcher_user.roles, "manage:users") is False
         )
 
-    def test_check_permission_nonexistent_permission(self):
+    def test_check_permission_nonexistent_permission(self) -> None:
         """Test checking for a non-existent permission."""
         # No role should have a non-existent permission
         assert (
@@ -168,19 +168,19 @@ class TestRoleBasedAccessControl:
             is False
         )
 
-    def test_check_permission_with_empty_roles(self):
+    def test_check_permission_with_empty_roles(self) -> None:
         """Test permission check with an empty roles list."""
         assert self.rbac_service.check_permission([], "read:own_data") is False
         assert self.rbac_service.check_permission([], "read:all_data") is False
 
-    def test_check_permission_with_none_permission(self):
+    def test_check_permission_with_none_permission(self) -> None:
         """Test permission check with None permission."""
         # Should handle None permission gracefully
         assert self.rbac_service.check_permission(self.admin_user.roles, None) is False
 
     # The patch target needs to be updated to the actual location of ROLE_PERMISSIONS
     # Assuming it's within the RBACService module or RoleManager
-    def test_check_permission_with_custom_permissions(self):
+    def test_check_permission_with_custom_permissions(self) -> None:
         """Test permission check with custom permissions configuration."""
         # Temporarily override ROLE_PERMISSIONS for this test
         import app.infrastructure.security.rbac.rbac_service as rbac_mod

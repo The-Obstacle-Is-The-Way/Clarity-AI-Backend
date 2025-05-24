@@ -5,6 +5,7 @@ bypassing the middleware chain that's causing recursion issues.
 """
 
 import logging
+from typing import NoReturn
 
 import pytest
 from fastapi import FastAPI, Request, status
@@ -21,7 +22,7 @@ def create_standalone_app():
 
     # Add test endpoint that raises a RuntimeError
     @app.get("/direct-test/runtime-error")
-    async def direct_runtime_error():
+    async def direct_runtime_error() -> NoReturn:
         """Test endpoint that raises a RuntimeError."""
         raise RuntimeError("This is a sensitive internal error detail that should be masked")
 
@@ -49,7 +50,7 @@ def create_standalone_app():
 
 
 @pytest.mark.asyncio
-async def test_direct_error_masking():
+async def test_direct_error_masking() -> None:
     """Test that internal server errors are properly masked in a standalone app."""
     # Create a standalone app without any middleware
     app = create_standalone_app()

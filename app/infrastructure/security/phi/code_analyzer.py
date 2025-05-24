@@ -436,13 +436,13 @@ class PHICodeAnalyzer:
                     self.findings = []
                     self.current_line = 0
 
-                def generic_visit(self, node):
+                def generic_visit(self, node) -> None:
                     """Visit a node and track line numbers."""
                     if hasattr(node, "lineno"):
                         self.current_line = node.lineno
                     ast.NodeVisitor.generic_visit(self, node)
 
-                def visit_Constant(self, node):
+                def visit_Constant(self, node) -> None:
                     """Visit string literals in modern Python (3.8+)."""
                     # Handle string constants which may contain PHI
                     if isinstance(node.value, str):
@@ -464,13 +464,13 @@ class PHICodeAnalyzer:
                     self.generic_visit(node)
 
                 # For backward compatibility with older Python versions
-                def visit_Str(self, node):
+                def visit_Str(self, node) -> None:
                     """Legacy method for string literals (Python < 3.8)."""
                     self.visit_Constant(
                         ast.Constant(value=node.s, lineno=node.lineno, col_offset=node.col_offset)
                     )
 
-                def visit_Name(self, node):
+                def visit_Name(self, node) -> None:
                     """Visit variable names."""
                     for pattern in PHICodeAnalyzer.PHI_VARIABLE_NAMES:
                         if re.search(pattern, node.id, re.IGNORECASE):
@@ -486,7 +486,7 @@ class PHICodeAnalyzer:
                             break
                     self.generic_visit(node)
 
-                def visit_ClassDef(self, node):
+                def visit_ClassDef(self, node) -> None:
                     """Visit class definitions to check for PHI-related models."""
                     # Check for PHI-related class names
                     for pattern in PHICodeAnalyzer.PHI_MODEL_NAMES:
@@ -503,7 +503,7 @@ class PHICodeAnalyzer:
                             break
                     self.generic_visit(node)
 
-                def visit_Call(self, node):
+                def visit_Call(self, node) -> None:
                     """Visit function calls to check for logging and print statements."""
                     if hasattr(node, "lineno"):
                         self.current_line = node.lineno
@@ -649,7 +649,7 @@ class PHICodeAnalyzer:
         findings: list[PHIFinding],
         path: str = "",
         line: int = 0,
-    ):
+    ) -> None:
         """Recursively check a configuration dictionary for sensitive data."""
         if isinstance(config, dict):
             for key, value in config.items():
@@ -668,7 +668,7 @@ class PHICodeAnalyzer:
                     )
 
                 # Recurse into nested dictionaries
-                if isinstance(value, (dict, list)):
+                if isinstance(value, dict | list):
                     self._check_config_dict(value, file_path, findings, current_path, line)
 
                 # Check string values for PHI patterns
@@ -691,7 +691,7 @@ class PHICodeAnalyzer:
         elif isinstance(config, list):
             for i, item in enumerate(config):
                 current_path = f"{path}[{i}]"
-                if isinstance(item, (dict, list)):
+                if isinstance(item, dict | list):
                     self._check_config_dict(item, file_path, findings, current_path, line)
                 elif isinstance(item, str):
                     for pattern in self.PHI_PATTERNS:
@@ -885,7 +885,7 @@ class PHICodeAnalyzer:
                                     if not isinstance(content, dict):
                                         continue
 
-                                    for media_type, media_content in content.items():
+                                    for _media_type, media_content in content.items():
                                         if not isinstance(media_content, dict):
                                             continue
 
@@ -894,7 +894,7 @@ class PHICodeAnalyzer:
                                             continue
 
                                         # Direct search for sensitive field names in the schema
-                                        def search_for_phi_properties(obj, path_prefix=""):
+                                        def search_for_phi_properties(obj, path_prefix="") -> None:
                                             """Recursively search for PHI properties in nested schema objects"""
                                             if not isinstance(obj, dict):
                                                 return
@@ -1037,7 +1037,7 @@ class PHICodeAnalyzer:
             findings.extend(file_findings)
 
         # Create summary
-        files_with_findings = set(finding.file_path for finding in findings)
+        files_with_findings = {finding.file_path for finding in findings}
         findings_by_severity = {"critical": 0, "warning": 0, "info": 0}
 
         for finding in findings:

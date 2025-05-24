@@ -320,7 +320,7 @@ class AuthBypass:
 
         return original_overrides
 
-    def restore_auth_dependencies(self, app: FastAPI, original_overrides: dict[Any, Any]):
+    def restore_auth_dependencies(self, app: FastAPI, original_overrides: dict[Any, Any]) -> None:
         """
         Restore original authentication dependencies
 

@@ -77,6 +77,10 @@ zxcvbn-python==4.4.24
 # ADDED: slowapi
 slowapi==0.1.9
 
+# ADDED: MFA dependencies
+pyotp==2.9.0  # For TOTP/OTP generation
+qrcode[pil]==7.4.2  # For QR code generation with PIL support
+
 # Testing
 pytest==8.2.2
 pytest-asyncio==0.23.7

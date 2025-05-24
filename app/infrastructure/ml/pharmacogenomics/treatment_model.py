@@ -9,7 +9,7 @@ the AI Models Core Implementation documentation and adhering to HIPAA compliance
 import logging
 import os
 from datetime import datetime
-from typing import Any
+from typing import Any, Dict
 from uuid import UUID
 
 import joblib
@@ -99,7 +99,7 @@ class PharmacogenomicsModel:
         ]
 
         # Initialize models dictionary
-        self.models = {}
+        self.models: Dict[str, Any] = {}
 
         # Initialize preprocessors
         self._init_preprocessors()
@@ -188,7 +188,6 @@ class PharmacogenomicsModel:
             genetic_array = np.array(genetic_data, dtype=np.float32).reshape(1, -1)
 
             # Extract patient features
-            patient_data = {}
 
             # Numerical features
             numerical_features = ["age", "weight", "height"]
@@ -283,7 +282,7 @@ class PharmacogenomicsModel:
                 raise ValidationError("No training data provided")
 
             # Prepare data for each medication
-            medication_data = {med: {"X": [], "y": []} for med in self.medications}
+            medication_data: Dict[str, Dict[str, Any]] = {med: {"X": [], "y": []} for med in self.medications}
 
             # Process each training sample
             for sample in training_data:
@@ -719,6 +718,7 @@ class PharmacogenomicsModel:
 
                 # Adjust based on genetic markers
                 for i, gene in enumerate(data["genes"]):
+                    gene: str  # Type annotation for gene variable
                     if gene in genetic_markers:
                         patient_variant = genetic_markers.get(gene)
                         target_variant = data["variants"][i] if i < len(data["variants"]) else None

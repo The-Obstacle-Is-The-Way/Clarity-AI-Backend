@@ -7,7 +7,7 @@ from app.domain.entities.patient import Patient
 
 
 @pytest.mark.asyncio
-async def test_execute_calls_update_and_returns_patient():
+async def test_execute_calls_update_and_returns_patient() -> None:
     # Arrange
     mock_service = AsyncMock()
     dummy_patient = Patient(id="123", date_of_birth="1990-01-01", gender="M")

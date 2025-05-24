@@ -46,9 +46,7 @@ def print_section(message: str) -> None:
     print(f"{Color.BOLD}{Color.YELLOW}{'-' * len(message)}{Color.ENDC}\n")
 
 
-def run_command(
-    cmd: list[str], env: dict[str, str] | None = None
-) -> tuple[bool, str, float]:
+def run_command(cmd: list[str], env: dict[str, str] | None = None) -> tuple[bool, str, float]:
     """Run a command and return success status, output, and execution time."""
     print(f"Running: {' '.join(cmd)}")
     start_time = time.time()
@@ -137,11 +135,7 @@ def run_test_directory(
 
     # Print output and result
     print(output)
-    status = (
-        f"{Color.GREEN}PASSED{Color.ENDC}"
-        if success
-        else f"{Color.RED}FAILED{Color.ENDC}"
-    )
+    status = f"{Color.GREEN}PASSED{Color.ENDC}" if success else f"{Color.RED}FAILED{Color.ENDC}"
     print(f"\n{directory.capitalize()} Tests: {status} in {execution_time:.2f}s\n")
 
     return success, execution_time
@@ -164,26 +158,14 @@ def generate_coverage_report() -> None:
 
 def main() -> int:
     """Main function to parse arguments and run tests."""
-    parser = argparse.ArgumentParser(
-        description="Novamind Test Runner (Directory SSOT)"
-    )
+    parser = argparse.ArgumentParser(description="Novamind Test Runner (Directory SSOT)")
     parser.add_argument("--all", action="store_true", help="Run all tests")
-    parser.add_argument(
-        "--standalone", action="store_true", help="Run standalone tests"
-    )
+    parser.add_argument("--standalone", action="store_true", help="Run standalone tests")
     parser.add_argument("--venv", action="store_true", help="Run VENV tests")
-    parser.add_argument(
-        "--integration", action="store_true", help="Run integration tests"
-    )
-    parser.add_argument(
-        "--coverage", action="store_true", help="Generate coverage reports"
-    )
-    parser.add_argument(
-        "--junit", action="store_true", help="Generate JUnit XML reports"
-    )
-    parser.add_argument(
-        "--markers", type=str, help="Only run tests with specific markers"
-    )
+    parser.add_argument("--integration", action="store_true", help="Run integration tests")
+    parser.add_argument("--coverage", action="store_true", help="Generate coverage reports")
+    parser.add_argument("--junit", action="store_true", help="Generate JUnit XML reports")
+    parser.add_argument("--markers", type=str, help="Only run tests with specific markers")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
 
     args = parser.parse_args()
@@ -215,9 +197,7 @@ def main() -> int:
     # Run VENV tests only if standalone tests pass (when running all)
     if args.venv or args.all:
         if args.all and not results.get("standalone", True):
-            print(
-                f"{Color.YELLOW}Skipping VENV tests due to standalone test failures{Color.ENDC}"
-            )
+            print(f"{Color.YELLOW}Skipping VENV tests due to standalone test failures{Color.ENDC}")
             results["venv"] = False
         else:
             results["venv"], execution_times["venv"] = run_test_directory(
@@ -227,9 +207,7 @@ def main() -> int:
     # Run integration tests only if VENV tests pass (when running all)
     if args.integration or args.all:
         if args.all and not results.get("venv", True):
-            print(
-                f"{Color.YELLOW}Skipping integration tests due to VENV test failures{Color.ENDC}"
-            )
+            print(f"{Color.YELLOW}Skipping integration tests due to VENV test failures{Color.ENDC}")
             results["integration"] = False
         else:
             results["integration"], execution_times["integration"] = run_test_directory(
@@ -244,15 +222,9 @@ def main() -> int:
     print_header("Test Summary")
 
     for test_type, success in results.items():
-        status = (
-            f"{Color.GREEN}PASSED{Color.ENDC}"
-            if success
-            else f"{Color.RED}FAILED{Color.ENDC}"
-        )
+        status = f"{Color.GREEN}PASSED{Color.ENDC}" if success else f"{Color.RED}FAILED{Color.ENDC}"
         time_info = (
-            f" ({execution_times.get(test_type, 0):.2f}s)"
-            if test_type in execution_times
-            else ""
+            f" ({execution_times.get(test_type, 0):.2f}s)" if test_type in execution_times else ""
         )
         print(f"{test_type.capitalize()} Tests: {status}{time_info}")
 

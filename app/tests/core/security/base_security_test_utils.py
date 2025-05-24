@@ -19,7 +19,7 @@ class BaseSecurityTest:
     test_user_id: UUID = uuid4()
     test_roles: list[Role] = [Role.USER]
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up required attributes and mocks before each test."""
         # Override this in subclasses to add additional setup
         self.user = self._create_test_user()
@@ -42,7 +42,7 @@ class TestBaseSecurityTest:
     """Tests for the BaseSecurityTest class itself."""
 
     @pytest.mark.standalone()
-    def test_init(self):
+    def test_init(self) -> None:
         """Test that BaseSecurityTest can be initialized."""
         security_test = BaseSecurityTest()
         security_test.setup_method()
@@ -52,7 +52,7 @@ class TestBaseSecurityTest:
         assert security_test.user.roles == security_test.test_roles
 
     @pytest.mark.standalone()
-    def test_create_test_user_with_defaults(self):
+    def test_create_test_user_with_defaults(self) -> None:
         """Test creating a test user with default values."""
         security_test = BaseSecurityTest()
         user = security_test._create_test_user()
@@ -65,7 +65,7 @@ class TestBaseSecurityTest:
         assert user.full_name == "Test User"
 
     @pytest.mark.standalone()
-    def test_create_test_user_with_custom_values(self):
+    def test_create_test_user_with_custom_values(self) -> None:
         """Test creating a test user with custom values."""
         security_test = BaseSecurityTest()
         custom_id = uuid4()
@@ -83,13 +83,13 @@ class TestBaseSecurityTest:
 class TestAuthenticationSystem(BaseSecurityTest):
     """Tests for the authentication system."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up with admin role for testing."""
         self.test_roles = [Role.ADMIN]
         super().setup_method()
 
     @pytest.mark.standalone()
-    def test_authenticate_user_success(self):
+    def test_authenticate_user_success(self) -> None:
         """Test successful user authentication."""
 
         # Mock the authenticate_user function to return our test user
@@ -113,7 +113,7 @@ class TestAuthenticationSystem(BaseSecurityTest):
             authenticate_user = original_authenticate
 
     @pytest.mark.standalone()
-    def test_authenticate_user_failure(self):
+    def test_authenticate_user_failure(self) -> None:
         """Test failed user authentication."""
 
         # Mock the authenticate_user function to return None for wrong credentials
@@ -135,7 +135,7 @@ class TestAuthenticationSystem(BaseSecurityTest):
             authenticate_user = original_authenticate
 
     @pytest.mark.standalone()
-    def test_get_current_user(self):
+    def test_get_current_user(self) -> None:
         """Test getting the current authenticated user."""
 
         # Mock the get_current_user function to return our test user
@@ -160,20 +160,20 @@ class TestAuthenticationSystem(BaseSecurityTest):
 class TestRBACSystem(BaseSecurityTest):
     """Tests for the RBAC system."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up with clinician role for testing."""
         self.test_roles = [Role.CLINICIAN]
         super().setup_method()
 
     @pytest.mark.standalone()
-    def test_permission_check_success(self):
+    def test_permission_check_success(self) -> None:
         """Test that permission check succeeds for authorized roles."""
         # Should succeed because CLINICIAN has this permission
         check_permission(self.user, required_roles=[Role.CLINICIAN, Role.ADMIN])
         # No exception means the test passed
 
     @pytest.mark.standalone()
-    def test_permission_check_failure(self):
+    def test_permission_check_failure(self) -> None:
         """Test that permission check fails for unauthorized roles."""
         # Should fail because user is not ADMIN
         with pytest.raises(HTTPException) as exc_info:
@@ -182,7 +182,7 @@ class TestRBACSystem(BaseSecurityTest):
         assert exc_info.value.status_code == 403
 
     @pytest.mark.standalone()
-    def test_rbac_middleware(self):
+    def test_rbac_middleware(self) -> None:
         """Test the RBAC middleware."""
         middleware = RBACMiddleware()
 

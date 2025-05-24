@@ -64,7 +64,7 @@ class TestClinicalRuleEngine:
         return uuid4()
 
     @pytest.mark.asyncio
-    async def test_create_rule(self, engine, mock_rule_repository):
+    async def test_create_rule(self, engine, mock_rule_repository) -> None:
         """Test creating a new clinical rule."""
         # Arrange
         patient_id = uuid4()
@@ -155,13 +155,13 @@ class TestClinicalRuleEngine:
         sample_rule_data,
         sample_patient_id,
         sample_provider_id,
-    ):
+    ) -> None:
         """Test that create_rule correctly creates a rule from the provided data."""
         # Setup
         mock_rule_repository.save.return_value = MagicMock()  # Return a mock object
 
         # Execute
-        result = await engine.create_rule(
+        await engine.create_rule(
             name=sample_rule_data["name"],
             description=sample_rule_data["description"],
             conditions=sample_rule_data["conditions"],
@@ -191,7 +191,7 @@ class TestClinicalRuleEngine:
     @pytest.mark.asyncio
     async def test_create_rule_with_invalid_operator(
         self, engine, sample_rule_data, sample_patient_id, sample_provider_id
-    ):
+    ) -> None:
         """Test that create_rule raises ValidationError for invalid operators."""
         # Modify the sample data to have an invalid operator
         sample_rule_data["conditions"][0]["operator"] = "INVALID_OPERATOR"
@@ -211,7 +211,7 @@ class TestClinicalRuleEngine:
     @pytest.mark.asyncio
     async def test_create_rule_with_invalid_logical_operator(
         self, engine, sample_rule_data, sample_patient_id, sample_provider_id
-    ):
+    ) -> None:
         """Test that create_rule raises ValidationError for invalid logical operators."""
         # Execute and verify
         with pytest.raises(ValidationError):
@@ -228,7 +228,7 @@ class TestClinicalRuleEngine:
     @pytest.mark.asyncio
     async def test_create_rule_with_invalid_priority(
         self, engine, sample_rule_data, sample_patient_id, sample_provider_id
-    ):
+    ) -> None:
         """Test that create_rule raises ValidationError for invalid priorities."""
         # Execute and verify
         with pytest.raises(ValidationError):
@@ -243,7 +243,7 @@ class TestClinicalRuleEngine:
             )
 
     @pytest.mark.asyncio
-    async def test_update_rule(self, engine, mock_rule_repository, sample_rule):
+    async def test_update_rule(self, engine, mock_rule_repository, sample_rule) -> None:
         """Test that update_rule correctly updates an existing rule."""
         # Setup
         rule_id = sample_rule.rule_id
@@ -251,7 +251,7 @@ class TestClinicalRuleEngine:
         mock_rule_repository.save.return_value = sample_rule  # Return the rule itself
 
         # Execute
-        result = await engine.update_rule(
+        await engine.update_rule(
             rule_id=rule_id,
             name="Updated Rule Name",
             description="Updated description",
@@ -271,7 +271,7 @@ class TestClinicalRuleEngine:
         assert updated_rule.alert_priority == sample_rule.alert_priority
 
     @pytest.mark.asyncio
-    async def test_update_rule_conditions(self, engine, mock_rule_repository, sample_rule):
+    async def test_update_rule_conditions(self, engine, mock_rule_repository, sample_rule) -> None:
         """Test that update_rule correctly updates rule conditions."""
         # Setup
         rule_id = sample_rule.rule_id
@@ -294,7 +294,7 @@ class TestClinicalRuleEngine:
         ]
 
         # Execute
-        result = await engine.update_rule(
+        await engine.update_rule(
             rule_id=rule_id,
             conditions=new_conditions,
             logical_operator=LogicalOperator.OR,  # Use enum
@@ -310,7 +310,7 @@ class TestClinicalRuleEngine:
         assert updated_rule.logical_operator == LogicalOperator.OR
 
     @pytest.mark.asyncio
-    async def test_update_nonexistent_rule(self, engine, mock_rule_repository):
+    async def test_update_nonexistent_rule(self, engine, mock_rule_repository) -> None:
         """Test that update_rule raises ValidationError for nonexistent rules."""
         # Setup
         rule_id = uuid4()
@@ -323,7 +323,7 @@ class TestClinicalRuleEngine:
     @pytest.mark.asyncio
     async def test_create_standard_rules(
         self, engine, mock_rule_repository, sample_provider_id, sample_patient_id
-    ):
+    ) -> None:
         """Test that create_standard_rules creates a set of predefined rules."""
 
         # Setup
@@ -358,7 +358,7 @@ class TestClinicalRuleEngine:
     @pytest.mark.asyncio
     async def test_get_active_rules_for_patient(
         self, engine, mock_rule_repository, sample_patient_id, sample_rule
-    ):
+    ) -> None:
         """Test that get_active_rules_for_patient returns all active rules for a patient."""
         # Setup
         patient_specific_rule = sample_rule

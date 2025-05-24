@@ -35,7 +35,7 @@ class BaseSecurityTest(TestCase):
     # Default roles for testing, to be overridden by subclasses as needed
     test_roles: list[Role] = [Role.USER]
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up security test fixtures.
 
         This method sets up the following:
@@ -63,7 +63,7 @@ class BaseSecurityTest(TestCase):
         os.environ["TESTING"] = "1"
         os.environ["ENVIRONMENT"] = "testing"
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         """Tear down security test fixtures.
 
         This method cleans up all patches and mocks created during setup.
@@ -89,7 +89,7 @@ class BaseSecurityTest(TestCase):
             "roles": self.test_roles,
         }
 
-    def _setup_auth_patches(self):
+    def _setup_auth_patches(self) -> None:
         """Set up authentication and authorization patches."""
         self.patchers = []
 
@@ -112,7 +112,7 @@ class BaseSecurityTest(TestCase):
         has_role_patcher = patch("app.core.security.auth.has_role", side_effect=mock_has_role)
         self.patchers.append(has_role_patcher)
 
-    def _setup_audit_patches(self):
+    def _setup_audit_patches(self) -> None:
         """Set up audit logging patches."""
         # Patch the audit logger to use our mock
         audit_logger_patcher = patch(
@@ -121,7 +121,7 @@ class BaseSecurityTest(TestCase):
         )
         self.patchers.append(audit_logger_patcher)
 
-    def assert_phi_access_logged(self, resource_type: str, resource_id: str, action: str):
+    def assert_phi_access_logged(self, resource_type: str, resource_id: str, action: str) -> None:
         """Assert that PHI access was properly logged.
 
         Args:
@@ -140,7 +140,7 @@ class BaseSecurityTest(TestCase):
             details=pytest.ANY,
         )
 
-    def assert_has_required_role(self, required_role: Role):
+    def assert_has_required_role(self, required_role: Role) -> None:
         """Assert that the test user has the required role.
 
         Args:

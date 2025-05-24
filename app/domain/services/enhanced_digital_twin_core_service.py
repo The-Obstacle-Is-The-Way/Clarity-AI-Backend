@@ -5,10 +5,15 @@ Pure domain interface with no infrastructure dependencies.
 """
 from abc import ABC, abstractmethod
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from app.domain.entities.digital_twin import DigitalTwinState
-from app.domain.entities.digital_twin_enums import BrainRegion, Neurotransmitter
+from app.domain.entities.digital_twin_enums import (
+    BrainRegion,
+    ClinicalInsightType,
+    Neurotransmitter,
+)
 from app.domain.entities.knowledge_graph import (
     BayesianBeliefNetwork,
     TemporalKnowledgeGraph,
@@ -32,10 +37,10 @@ class EnhancedDigitalTwinCoreService(ABC):
     async def initialize_digital_twin(
         self,
         patient_id: UUID,
-        initial_data: dict | None = None,
+        initial_data: dict[str, Any] | None = None,
         enable_knowledge_graph: bool = True,
         enable_belief_network: bool = True,
-    ) -> tuple[DigitalTwinState, TemporalKnowledgeGraph | None, BayesianBeliefNetwork | None]:
+    ) -> dict[str, Any]:
         """
         Initialize a new Digital Twin state with knowledge graph and belief network.
 
@@ -55,13 +60,13 @@ class EnhancedDigitalTwinCoreService(ABC):
     async def process_multimodal_data(
         self,
         patient_id: UUID,
-        text_data: dict | None = None,
-        physiological_data: dict | None = None,
-        imaging_data: dict | None = None,
-        behavioral_data: dict | None = None,
-        genetic_data: dict | None = None,
-        context: dict | None = None,
-    ) -> tuple[DigitalTwinState, list[dict]]:
+        text_data: dict[str, Any] | None = None,
+        physiological_data: dict[str, Any] | None = None,
+        imaging_data: dict[str, Any] | None = None,
+        behavioral_data: dict[str, Any] | None = None,
+        genetic_data: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> tuple[DigitalTwinState, list[dict[str, Any]]]:
         """
         Process multimodal data using all three AI components.
 
@@ -83,7 +88,7 @@ class EnhancedDigitalTwinCoreService(ABC):
     async def update_knowledge_graph(
         self,
         patient_id: UUID,
-        new_data: dict,
+        new_data: dict[str, Any],
         data_source: str,
         digital_twin_state_id: UUID | None = None,
     ) -> TemporalKnowledgeGraph:
@@ -103,7 +108,7 @@ class EnhancedDigitalTwinCoreService(ABC):
 
     @abstractmethod
     async def update_belief_network(
-        self, patient_id: UUID, evidence: dict, source: str, confidence: float = 1.0
+        self, patient_id: UUID, evidence: dict[str, Any], source: str, confidence: float = 1.0
     ) -> BayesianBeliefNetwork:
         """
         Update the Bayesian belief network with new evidence.
@@ -123,9 +128,9 @@ class EnhancedDigitalTwinCoreService(ABC):
     async def perform_cross_validation(
         self,
         patient_id: UUID,
-        data_points: dict,
+        data_points: dict[str, Any],
         validation_strategy: str = "majority_vote",
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Perform cross-validation of data points across AI components.
 
@@ -147,7 +152,7 @@ class EnhancedDigitalTwinCoreService(ABC):
         end_event: str,
         max_path_length: int = 5,
         min_confidence: float = 0.6,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """
         Analyze cause-effect relationships across time.
 
@@ -170,7 +175,7 @@ class EnhancedDigitalTwinCoreService(ABC):
         treatment_id: UUID,
         time_points: list[datetime],
         effect_types: list[str],
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Map treatment effects on specific patient parameters over time.
 
@@ -192,7 +197,7 @@ class EnhancedDigitalTwinCoreService(ABC):
         intervention_type: str,
         response_markers: list[str],
         time_window: tuple[int, int] = (0, 30),  # days
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Generate precise mapping of intervention effects on response markers.
 
@@ -214,7 +219,7 @@ class EnhancedDigitalTwinCoreService(ABC):
         data_sources: list[str],
         min_data_points: int = 100,
         clustering_method: str = "hierarchical",
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Detect digital phenotype from multimodal data sources.
 
@@ -235,8 +240,8 @@ class EnhancedDigitalTwinCoreService(ABC):
         patient_id: UUID,
         risk_factors: list[str],
         prediction_horizon: int = 90,  # days
-        intervention_options: list[dict] | None = None,
-    ) -> dict:
+        intervention_options: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         """
         Generate a predictive maintenance plan for patient stability.
 
@@ -256,10 +261,10 @@ class EnhancedDigitalTwinCoreService(ABC):
         self,
         patient_id: UUID,
         baseline_state_id: UUID,
-        intervention_scenarios: list[dict],
+        intervention_scenarios: list[dict[str, Any]],
         output_variables: list[str],
         simulation_horizon: int = 180,  # days
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """
         Perform counterfactual simulation of intervention scenarios.
 
@@ -279,10 +284,10 @@ class EnhancedDigitalTwinCoreService(ABC):
     async def generate_early_warning_system(
         self,
         patient_id: UUID,
-        warning_conditions: list[dict],
+        warning_conditions: list[dict[str, Any]],
         monitoring_frequency: str = "daily",
         notification_threshold: float = 0.7,  # 0.0 to 1.0
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Generate an early warning system for patient decompensation.
 
@@ -339,7 +344,7 @@ class EnhancedDigitalTwinCoreService(ABC):
         patient_id: UUID,
         neurotransmitter: Neurotransmitter,
         brain_regions: list[BrainRegion] | None = None,
-    ) -> dict[BrainRegion, dict]:
+    ) -> dict[BrainRegion, dict[str, Any]]:
         """
         Get the effects of a neurotransmitter on specified brain regions.
 
@@ -361,7 +366,7 @@ class EnhancedDigitalTwinCoreService(ABC):
         patient_id: UUID,
         brain_region: BrainRegion,
         neurotransmitters: list[Neurotransmitter] | None = None,
-    ) -> dict[Neurotransmitter, dict]:
+    ) -> dict[Neurotransmitter, dict[str, Any]]:
         """
         Get a brain region's sensitivity to different neurotransmitters.
 
@@ -384,7 +389,8 @@ class EnhancedDigitalTwinCoreService(ABC):
         initial_changes: dict[Neurotransmitter, float],
         simulation_steps: int = 3,
         min_effect_threshold: float = 0.1,
-    ) -> dict:
+        time_resolution_hours: int = 24,
+    ) -> dict[str, Any]:
         """
         Simulate cascade effects of neurotransmitter changes across brain regions.
 
@@ -412,7 +418,7 @@ class EnhancedDigitalTwinCoreService(ABC):
         treatment_id: UUID,
         time_points: list[datetime],
         neurotransmitters: list[Neurotransmitter] | None = None,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Analyze how a treatment affects neurotransmitter levels and brain regions over time.
 
@@ -439,7 +445,7 @@ class EnhancedDigitalTwinCoreService(ABC):
         summary_types: list[str],
         time_range: tuple[datetime, datetime] | None = None,
         detail_level: str = "comprehensive",  # "brief", "standard", "comprehensive"
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Generate a comprehensive multimodal clinical summary.
 
@@ -459,9 +465,9 @@ class EnhancedDigitalTwinCoreService(ABC):
         self,
         patient_id: UUID,
         visualization_type: str,
-        parameters: dict,
+        parameters: dict[str, Any],
         digital_twin_state_id: UUID | None = None,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Generate data for advanced visualizations.
 
@@ -478,7 +484,7 @@ class EnhancedDigitalTwinCoreService(ABC):
 
     @abstractmethod
     async def subscribe_to_events(
-        self, event_types: list[str], callback_url: str, filters: dict | None = None
+        self, event_types: list[str], callback_url: str, filters: dict[str, Any] | None = None
     ) -> UUID:
         """
         Subscribe to Digital Twin events.
@@ -510,7 +516,7 @@ class EnhancedDigitalTwinCoreService(ABC):
     async def publish_event(
         self,
         event_type: str,
-        event_data: dict,
+        event_data: dict[str, Any],
         source: str,
         patient_id: UUID | None = None,
     ) -> UUID:
@@ -525,5 +531,122 @@ class EnhancedDigitalTwinCoreService(ABC):
 
         Returns:
             UUID of the published event
+        """
+        pass
+
+    @abstractmethod
+    async def add_receptor_profile(
+        self, patient_id: UUID, profile: ReceptorProfile
+    ) -> NeurotransmitterMapping:
+        """
+        Add a single receptor profile to the patient's neurotransmitter mapping.
+
+        Args:
+            patient_id: UUID of the patient
+            profile: ReceptorProfile instance to add
+
+        Returns:
+            Updated NeurotransmitterMapping
+        """
+        pass
+
+    @abstractmethod
+    async def get_neurotransmitter_mapping(self, patient_id: UUID) -> NeurotransmitterMapping:
+        """
+        Get the current neurotransmitter mapping for a patient.
+
+        Args:
+            patient_id: UUID of the patient
+
+        Returns:
+            Current NeurotransmitterMapping for the patient
+        """
+        pass
+
+    @abstractmethod
+    async def analyze_neurotransmitter_interactions(
+        self, patient_id: UUID, brain_region: BrainRegion
+    ) -> dict[str, Any]:
+        """
+        Analyze interactions between neurotransmitters in a specific brain region.
+
+        Args:
+            patient_id: UUID of the patient
+            brain_region: Brain region to analyze
+
+        Returns:
+            Dictionary with interaction analysis results
+        """
+        pass
+
+    @abstractmethod
+    async def predict_medication_effects(
+        self, patient_id: UUID, medication: dict[str, Any], prediction_timeframe_days: int
+    ) -> dict[str, Any]:
+        """
+        Predict medication effects on neurotransmitters over time.
+
+        Args:
+            patient_id: UUID of the patient
+            medication: Medication data dictionary
+            prediction_timeframe_days: Timeframe for prediction in days
+
+        Returns:
+            Dictionary with medication effect predictions
+        """
+        pass
+
+    @abstractmethod
+    async def analyze_temporal_response(
+        self,
+        patient_id: UUID,
+        treatment: dict[str, Any],
+        brain_region: BrainRegion,
+        neurotransmitter: Neurotransmitter,
+    ) -> dict[str, Any]:
+        """
+        Analyze temporal response patterns for treatment effects.
+
+        Args:
+            patient_id: UUID of the patient
+            treatment: Treatment data dictionary
+            brain_region: Brain region to analyze
+            neurotransmitter: Neurotransmitter to analyze
+
+        Returns:
+            Dictionary with temporal response analysis
+        """
+        pass
+
+    @abstractmethod
+    async def generate_clinical_insights(
+        self, patient_id: UUID, insight_types: list[ClinicalInsightType]
+    ) -> list[dict[str, Any]]:
+        """
+        Generate clinical insights from neurotransmitter data.
+
+        Args:
+            patient_id: UUID of the patient
+            insight_types: Types of insights to generate
+
+        Returns:
+            List of clinical insight dictionaries
+        """
+        pass
+
+    @abstractmethod
+    async def analyze_regional_effects(
+        self, patient_id: UUID, neurotransmitter: Neurotransmitter, effect_magnitude: float
+    ) -> dict[str, Any]:
+        """
+        Analyze neurotransmitter effects by brain region.
+
+        Args:
+            patient_id: UUID of the patient
+            neurotransmitter: Neurotransmitter to analyze
+            effect_magnitude: Magnitude of the effect
+
+        Returns:
+            Dictionary with regional effects analysis
         """
         pass
