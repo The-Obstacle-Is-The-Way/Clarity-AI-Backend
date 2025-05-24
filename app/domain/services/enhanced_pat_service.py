@@ -26,7 +26,7 @@ class EnhancedPATService(ABC):
     async def fuse_multi_device_data(
         self,
         patient_id: UUID,
-        device_data: dict[str, Any][str, dict[str, Any]],  # device_type -> device_data
+        device_data: dict[str, dict[str, Any]],  # device_type -> device_data
         time_range: tuple[datetime, datetime],
         interpolation_method: str = "linear",  # "linear", "cubic", "nearest"
     ) -> dict[str, Any]:
