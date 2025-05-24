@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime
 from enum import Enum
-from typing import Any, cast
+from typing import Any, Protocol, cast
 from uuid import UUID, uuid4
 
 from app.domain.entities.biometric_alert import AlertStatusEnum
@@ -29,6 +29,33 @@ class AlertPriority(Enum):
 
 # Define AlertStatus as an alias for AlertStatusEnum for backward compatibility
 AlertStatus = AlertStatusEnum
+
+
+# Protocol interfaces for service dependencies (SOLID Interface Segregation)
+class EmailService(Protocol):
+    """Protocol for email notification services."""
+    
+    def send_email(self, recipient: str, subject: str, message: str) -> None:
+        """Send an email notification."""
+        ...
+
+
+class SMSService(Protocol):
+    """Protocol for SMS notification services."""
+    
+    def send_sms(self, recipient: str, message: str) -> None:
+        """Send an SMS notification."""
+        ...
+
+
+class NotificationService(Protocol):
+    """Protocol for in-app notification services."""
+    
+    def send_notification(
+        self, recipient: UUID, priority: str, message: str, metadata: dict[str, Any]
+    ) -> None:
+        """Send an in-app notification."""
+        ...
 
 
 class AlertRule:
@@ -360,7 +387,7 @@ class AlertObserver:
 class EmailAlertObserver(AlertObserver):
     """Observer that sends email notifications for alerts."""
 
-    def __init__(self, email_service: object):
+    def __init__(self, email_service: EmailService):
         """
         Initialize a new email alert observer.
 
@@ -391,6 +418,12 @@ class EmailAlertObserver(AlertObserver):
         Args:
             alert: The alert to notify about
         """
+        # Type safety guards to ensure required fields are present
+        if alert.patient_id is None:
+            raise ValidationError("Alert must have a valid patient_id for email notification")
+        if alert.priority is None:
+            raise ValidationError("Alert must have a valid priority for email notification")
+            
         # In a real implementation, this would use the email service
         # to send a HIPAA-compliant email notification
         recipient = self._get_recipient_for_patient(alert.patient_id)
@@ -437,7 +470,7 @@ class EmailAlertObserver(AlertObserver):
 class SMSAlertObserver(AlertObserver):
     """Observer that sends SMS notifications for alerts."""
 
-    def __init__(self, sms_service: object):
+    def __init__(self, sms_service: SMSService):
         """
         Initialize a new SMS alert observer.
 
@@ -470,6 +503,10 @@ class SMSAlertObserver(AlertObserver):
         Args:
             alert: The alert to notify about
         """
+        # Type safety guard to ensure patient_id is present
+        if alert.patient_id is None:
+            raise ValidationError("Alert must have a valid patient_id for SMS notification")
+            
         # In a real implementation, this would use the SMS service
         # to send a HIPAA-compliant SMS notification
         recipient = self._get_recipient_for_patient(alert.patient_id)
@@ -514,7 +551,7 @@ class SMSAlertObserver(AlertObserver):
 class InAppAlertObserver(AlertObserver):
     """Observer that sends in-app notifications for alerts."""
 
-    def __init__(self, notification_service: object):
+    def __init__(self, notification_service: NotificationService):
         """
         Initialize a new in-app alert observer.
 
@@ -541,6 +578,12 @@ class InAppAlertObserver(AlertObserver):
         Args:
             alert: The alert to notify about
         """
+        # Type safety guards to ensure required fields are present
+        if alert.patient_id is None:
+            raise ValidationError("Alert must have a valid patient_id for in-app notification")
+        if alert.priority is None:
+            raise ValidationError("Alert must have a valid priority for in-app notification")
+            
         # In a real implementation, this would use the notification service
         # to send an in-app notification
         recipients = self._get_recipients_for_patient(alert.patient_id)
@@ -791,7 +834,7 @@ class ClinicalRuleEngine:
         rule_id: str,
         name: str | None = None,
         description: str | None = None,
-        priority: AlertPriority = None,
+        priority: AlertPriority = AlertPriority.WARNING,
         parameters: dict[str, Any] | None = None,
         created_by: UUID | None = None,
         patient_id: UUID | None = None,
@@ -825,8 +868,6 @@ class ClinicalRuleEngine:
             name = template.get("name", "Unnamed Rule")
         if description is None:
             description = template.get("description", "No description")
-        if priority is None:
-            priority = template.get("priority", AlertPriority.WARNING)
         if parameters is None:
             parameters = {}
         if created_by is None:
