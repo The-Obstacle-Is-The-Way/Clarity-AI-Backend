@@ -20,7 +20,7 @@ class ClinicalDocumentationEvent:
     note_id: UUID
     patient_id: UUID
     provider_id: UUID
-    timestamp: datetime = datetime.now(UTC)
+    timestamp: datetime
 
 
 @dataclass
@@ -36,7 +36,7 @@ class ClinicalNoteUpdated(ClinicalDocumentationEvent):
     """Event raised when a clinical note is updated"""
 
     previous_version_id: UUID | None = None
-    updated_sections: list[str] = None  # List of section names that were updated
+    updated_sections: list[str] | None = None  # List of section names that were updated
 
 
 @dataclass
@@ -78,8 +78,8 @@ class DiagnosisRemoved(ClinicalDocumentationEvent):
 class ClinicalNoteShared(ClinicalDocumentationEvent):
     """Event raised when a clinical note is shared with another provider or entity"""
 
+    sharing_purpose: str
     shared_with_provider_id: UUID | None = None
     shared_with_external_entity: str | None = None
-    sharing_purpose: str
     patient_consent_obtained: bool = True
     expiration_date: datetime | None = None

@@ -19,7 +19,7 @@ class MedicationEvent:
     medication_id: UUID
     patient_id: UUID
     provider_id: UUID
-    timestamp: datetime = datetime.now(UTC)
+    timestamp: datetime
 
 
 @dataclass
