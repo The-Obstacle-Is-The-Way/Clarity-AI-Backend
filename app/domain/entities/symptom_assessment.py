@@ -38,10 +38,9 @@ class SymptomAssessment(BaseEntity):
         default_factory=now_utc
     )  # Usually same as created_at for assessments
 
-    def __post_init__(self):
-        # Call BaseEntity's post_init if it exists
-        if hasattr(super(), "__post_init__"):
-            super().__post_init__()
+    def __post_init__(self) -> None:
+        """Initialize the symptom assessment entity."""
+        pass        # Call BaseEntity's post_init if it exists
         # Add validation if needed (e.g., score range for known types)
 
     def touch(self) -> None:
