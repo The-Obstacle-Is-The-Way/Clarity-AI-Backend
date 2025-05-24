@@ -11,7 +11,7 @@ import jwt
 from pydantic import SecretStr
 
 from app.core.config import settings
-from app.domain.entities.user import User
+from app.core.domain.entities.user import User
 from app.domain.exceptions.token_exceptions import (
     InvalidTokenException,
     TokenBlacklistedException,
