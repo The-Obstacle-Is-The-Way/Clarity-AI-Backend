@@ -27,52 +27,38 @@ class MemoryTokenBlacklistRepository(ITokenBlacklistRepository):
         self._token_to_jti: dict[str, str] = {}  # token -> JTI mapping
 
     async def add_to_blacklist(
-        self, token: str, jti: str, expires_at: datetime, reason: str | None = None
+        self, token_jti: str, expires_at: datetime
     ) -> None:
         """
         Add a token to the blacklist.
 
         Args:
-            token: The token value to blacklist
-            jti: JWT ID - unique identifier for the token
+            token_jti: JWT ID - unique identifier for the token
             expires_at: When the token expires
-            reason: Reason for blacklisting (optional)
         """
-        self._blacklist[jti] = {
+        self._blacklist[token_jti] = {
             "expires_at": expires_at,
-            "reason": reason,
+            "reason": "blacklisted",
             "blacklisted_at": datetime.now(),
         }
-        self._token_to_jti[token] = jti
 
-    async def is_blacklisted(self, token: str) -> bool:
+    async def is_blacklisted(self, token_jti: str) -> bool:
         """
         Check if a token is blacklisted.
 
         Args:
-            token: The token value to check
+            token_jti: The token JTI to check
 
         Returns:
             True if the token is blacklisted, False otherwise
         """
-        jti = self._token_to_jti.get(token)
-        if not jti:
-            return False
-        return await self.is_jti_blacklisted(jti)
+        return token_jti in self._blacklist
 
-    async def is_jti_blacklisted(self, token_id: str) -> bool:
-        """
-        Check if a token ID (JTI) is blacklisted.
 
-        Args:
-            token_id: The token ID (JTI) to check
 
-        Returns:
-            True if the token ID is blacklisted, False otherwise
-        """
-        return token_id in self._blacklist
 
-    async def cleanup_expired(self) -> int:
+
+    async def remove_expired(self) -> int:
         """
         Remove expired tokens from the blacklist.
 
@@ -82,42 +68,35 @@ class MemoryTokenBlacklistRepository(ITokenBlacklistRepository):
         now = datetime.now()
         expired_jtis = [jti for jti, data in self._blacklist.items() if data["expires_at"] < now]
 
-        # Clean up token to JTI mapping
-        for token, jti in list(self._token_to_jti.items()):
-            if jti in expired_jtis:
-                del self._token_to_jti[token]
-
         # Clean up blacklist
         for jti in expired_jtis:
             del self._blacklist[jti]
 
         return len(expired_jtis)
 
-    async def clear_expired_tokens(self) -> int:
+    async def get_all_blacklisted(self) -> list[dict]:
         """
-        Remove expired tokens from the blacklist.
-        This is an alias for cleanup_expired to satisfy the interface.
+        Get all blacklisted tokens.
 
         Returns:
-            Number of expired tokens removed
+            List of dictionaries containing token_jti and expires_at
         """
-        return await self.cleanup_expired()
+        return [
+            {"token_jti": jti, "expires_at": data["expires_at"]}
+            for jti, data in self._blacklist.items()
+        ]
 
-    async def blacklist_session(self, session_id: str) -> bool:
+    async def remove_from_blacklist(self, token_jti: str) -> bool:
         """
-        Blacklist all tokens associated with a session.
+        Remove a specific token from the blacklist.
 
         Args:
-            session_id: The session ID to blacklist
+            token_jti: The unique JWT ID to remove
+
+        Returns:
+            True if token was removed, False if not found
         """
-        # In memory implementation just stores the session ID
-        # A real implementation would blacklist all tokens related to this session
-        try:
-            self._blacklist[f"session:{session_id}"] = {
-                "expires_at": datetime.now() + timedelta(days=30),  # Long expiry for sessions
-                "reason": "Session blacklisted",
-                "blacklisted_at": datetime.now(),
-            }
+        if token_jti in self._blacklist:
+            del self._blacklist[token_jti]
             return True
-        except Exception:
-            return False
+        return False

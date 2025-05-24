@@ -7,7 +7,7 @@ for persistence, supporting HIPAA-compliant session management.
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from jose.jwt import decode
 from redis.asyncio import Redis as AsyncRedis
@@ -64,131 +64,52 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
 
         logger.info("Redis token blacklist repository initialized")
 
-    async def add_to_blacklist(self, token_id: str, expires_at: int | None = None) -> bool:
+    async def add_to_blacklist(self, token_jti: str, expires_at: datetime) -> None:
         """Add a token ID to the blacklist.
 
         Args:
-            token_id: JWT token ID (jti) to blacklist
-            expires_at: Optional Unix timestamp when token expires
-
-        Returns:
-            True if successfully added to the blacklist
+            token_jti: JWT token ID (jti) to blacklist
+            expires_at: When the token expires
         """
         try:
-            # Determine TTL based on expiration time
-            if expires_at:
-                # Calculate TTL in seconds
-                ttl = expires_at - int(datetime.now(timezone.utc).timestamp())
-                # Ensure positive TTL (min 60 seconds)
-                ttl = max(60, ttl)
-            else:
-                # Default TTL of 7 days if no expiration provided
-                ttl = 60 * 60 * 24 * 7  # 7 days in seconds
+            # Calculate TTL in seconds
+            current_time = datetime.now(timezone.utc)
+            ttl = int((expires_at - current_time).total_seconds())
+            # Ensure positive TTL (min 60 seconds)
+            ttl = max(60, ttl)
 
             # Store in Redis with expiration
-            key = f"{JTI_PREFIX}{token_id}"
+            key = f"{JTI_PREFIX}{token_jti}"
             await self.redis.set(key, "1", ex=ttl)
-            logger.debug(f"Added token {token_id} to blacklist with TTL of {ttl} seconds")
-            return True
+            logger.debug(f"Added token {token_jti} to blacklist with TTL of {ttl} seconds")
         except RedisError as e:
             logger.error(f"Failed to add token to blacklist: {e!s}")
-            return False
+            raise
 
-    async def is_blacklisted(self, token: str) -> bool:
-        """Check if a token is blacklisted by its full token string.
+    async def is_blacklisted(self, token_jti: str) -> bool:
+        """Check if a token is blacklisted by its JTI.
 
         Args:
-            token: Full JWT token string
+            token_jti: JWT token ID to check
 
         Returns:
             True if token is blacklisted
         """
         try:
-            # Extract JTI from token
-            try:
-                # Decode without verification to extract JTI
-                payload = decode(
-                    token=token,
-                    key=self.jwt_secret_key,
-                    algorithms=[self.jwt_algorithm],
-                    options={"verify_signature": False, "verify_exp": False},
-                )
-                jti = payload.get("jti")
-
-                if not jti:
-                    logger.warning("Token has no JTI claim")
-                    return False
-
-                # Check if JTI is blacklisted
-                return await self.is_jti_blacklisted(jti)
-            except Exception as e:
-                logger.error(f"Failed to decode token for blacklist check: {e!s}")
-                # Fallback: check by token hash
-                key = f"{TOKEN_PREFIX}{hash(token)}"
-                result = await self.redis.get(key)
-                return result is not None
+            key = f"{JTI_PREFIX}{token_jti}"
+            result = await self.redis.get(key)
+            return result is not None
         except RedisError as e:
             logger.error(f"Failed to check token blacklist: {e!s}")
             return False
 
-    async def is_jti_blacklisted(self, jti: str) -> bool:
-        """Check if a token ID is blacklisted.
 
-        Args:
-            jti: JWT token ID to check
 
-        Returns:
-            True if the token ID is blacklisted
-        """
-        try:
-            key = f"{JTI_PREFIX}{jti}"
-            result = await self.redis.get(key)
-            return result is not None
-        except RedisError as e:
-            logger.error(f"Failed to check JTI blacklist: {e!s}")
-            return False
 
-    async def blacklist_session(self, session_id: str) -> bool:
-        """Blacklist all tokens associated with a session.
 
-        Args:
-            session_id: Session identifier to blacklist
 
-        Returns:
-            True if session was successfully blacklisted
-        """
-        try:
-            # Store session in blacklist for 30 days (common session expiry)
-            ttl = 60 * 60 * 24 * 30  # 30 days in seconds
-            key = f"{SESSION_PREFIX}{session_id}"
-            await self.redis.set(key, "1", ex=ttl)
-            logger.info(f"Blacklisted session {session_id}")
-            return True
-        except RedisError as e:
-            logger.error(f"Failed to blacklist session: {e!s}")
-            return False
 
-    async def blacklist_user_tokens(self, user_id: str) -> bool:
-        """Blacklist all tokens for a specific user.
-
-        Args:
-            user_id: User identifier whose tokens should be blacklisted
-
-        Returns:
-            True if user tokens were successfully blacklisted
-        """
-        try:
-            # Store user in blacklist for 30 days
-            ttl = 60 * 60 * 24 * 30  # 30 days in seconds
-            key = f"{USER_PREFIX}{user_id}"
-            await self.redis.set(key, str(int(time.time())), ex=ttl)
-            logger.info(f"Blacklisted all tokens for user {user_id}")
-            return True
-        except RedisError as e:
-            logger.error(f"Failed to blacklist user tokens: {e!s}")
-            return False
-
-    async def clear_expired_tokens(self) -> int:
+    async def remove_expired(self) -> int:
         """Remove expired tokens from the blacklist.
 
         Redis automatically removes expired keys, but this method
@@ -201,36 +122,52 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         # but included for interface completeness
         return 0
 
-    async def is_user_blacklisted(self, user_id: str) -> bool:
-        """Check if a user's tokens are blacklisted.
-
-        Args:
-            user_id: User identifier to check
+    async def get_all_blacklisted(self) -> list[dict]:
+        """Get all blacklisted tokens.
 
         Returns:
-            True if the user's tokens are blacklisted
+            List of dictionaries containing token_jti and expires_at
         """
         try:
-            key = f"{USER_PREFIX}{user_id}"
-            result = await self.redis.get(key)
-            return result is not None
+            # Get all blacklisted JTIs
+            pattern = f"{JTI_PREFIX}*"
+            keys = await self.redis.keys(pattern)
+            
+            result = []
+            for key in keys:
+                # Extract JTI from key
+                jti = key.replace(JTI_PREFIX, "")
+                # Get TTL to estimate expires_at
+                ttl = await self.redis.ttl(key)
+                if ttl > 0:
+                    expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl)
+                    result.append({
+                        "token_jti": jti,
+                        "expires_at": expires_at
+                    })
+            
+            return result
         except RedisError as e:
-            logger.error(f"Failed to check user blacklist: {e!s}")
-            return False
+            logger.error(f"Failed to get all blacklisted tokens: {e!s}")
+            return []
 
-    async def is_session_blacklisted(self, session_id: str) -> bool:
-        """Check if a session is blacklisted.
+    async def remove_from_blacklist(self, token_jti: str) -> bool:
+        """Remove a specific token from the blacklist.
 
         Args:
-            session_id: Session identifier to check
+            token_jti: The unique JWT ID to remove
 
         Returns:
-            True if the session is blacklisted
+            True if token was removed, False if not found
         """
         try:
-            key = f"{SESSION_PREFIX}{session_id}"
-            result = await self.redis.get(key)
-            return result is not None
+            key = f"{JTI_PREFIX}{token_jti}"
+            deleted = await self.redis.delete(key)
+            return deleted > 0
         except RedisError as e:
-            logger.error(f"Failed to check session blacklist: {e!s}")
+            logger.error(f"Failed to remove token from blacklist: {e!s}")
             return False
+
+
+
+

@@ -157,7 +157,7 @@ class DigitalTwinStateAdapter:
     neural_connections: list[NeuralConnectionAdapter] = field(default_factory=list)
     clinical_insights: list[ClinicalInsight] = field(default_factory=list)
     temporal_patterns: list[TemporalPatternAdapter] = field(default_factory=list)
-    update_source: str = None
+    update_source: str | None = None
     version: int = 1
     id: UUID = field(default_factory=uuid4)
     created_at: datetime = field(default_factory=datetime.now)

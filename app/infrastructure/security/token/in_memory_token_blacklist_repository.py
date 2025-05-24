@@ -53,16 +53,14 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
         return hashlib.sha256(token.encode()).hexdigest()
 
     async def add_to_blacklist(
-        self, token: str, jti: str, expires_at: datetime, reason: str | None = None
+        self, token_jti: str, expires_at: datetime
     ) -> None:
         """
         Add a token to the blacklist.
 
         Args:
-            token: The token to blacklist
-            jti: JWT ID - unique identifier for the token
+            token_jti: JWT ID - unique identifier for the token
             expires_at: When the token expires
-            reason: Reason for blacklisting
 
         Raises:
             RepositoryException: If blacklisting fails
@@ -72,30 +70,26 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
             now = datetime.now(timezone.utc)
             if expires_at <= now:
                 # Token already expired, no need to blacklist
-                logger.debug(f"Token {jti} already expired, skipping blacklist")
+                logger.debug(f"Token {token_jti} already expired, skipping blacklist")
                 return
 
-            # Store token hash
-            token_hash = self._hash_token(token)
-            self._token_blacklist[token_hash] = {"jti": jti, "expires_at": expires_at}
-
             # Store JTI reference
-            self._jti_blacklist[jti] = {
+            self._jti_blacklist[token_jti] = {
                 "expires_at": expires_at,
-                "reason": reason or "manual_blacklist",
+                "reason": "manual_blacklist",
             }
 
-            logger.info(f"Token {jti} blacklisted until {expires_at.isoformat()}, reason: {reason}")
+            logger.info(f"Token {token_jti} blacklisted until {expires_at.isoformat()}")
         except Exception as e:
             logger.error(f"Failed to blacklist token: {e!s}")
             raise RepositoryException(f"Failed to blacklist token: {e!s}")
 
-    async def is_blacklisted(self, token: str) -> bool:
+    async def is_blacklisted(self, token_jti: str) -> bool:
         """
         Check if a token is blacklisted.
 
         Args:
-            token: The token to check
+            token_jti: The token JTI to check
 
         Returns:
             True if blacklisted, False otherwise
@@ -104,17 +98,15 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
             RepositoryException: If check fails
         """
         try:
-            token_hash = self._hash_token(token)
-
             # If not in blacklist, return False
-            if token_hash not in self._token_blacklist:
+            if token_jti not in self._jti_blacklist:
                 return False
 
             # Check if token has expired from the blacklist
-            token_info = self._token_blacklist[token_hash]
-            if token_info["expires_at"] < datetime.now(timezone.utc):
+            jti_info = self._jti_blacklist[token_jti]
+            if jti_info["expires_at"] < datetime.now(timezone.utc):
                 # Clean up expired token
-                del self._token_blacklist[token_hash]
+                del self._jti_blacklist[token_jti]
                 return False
 
             return True
@@ -123,72 +115,11 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
             # For security, assume token is blacklisted if check fails
             return True
 
-    async def is_jti_blacklisted(self, jti: str) -> bool:
-        """
-        Check if a token with specific JWT ID is blacklisted.
 
-        Args:
-            jti: JWT ID to check
 
-        Returns:
-            True if blacklisted, False otherwise
 
-        Raises:
-            RepositoryException: If check fails
-        """
-        try:
-            # If not in blacklist, return False
-            if jti not in self._jti_blacklist:
-                return False
 
-            # Check if JTI has expired from the blacklist
-            jti_info = self._jti_blacklist[jti]
-            if jti_info["expires_at"] < datetime.now(timezone.utc):
-                # Clean up expired JTI
-                del self._jti_blacklist[jti]
-                return False
-
-            return True
-        except Exception as e:
-            logger.error(f"Failed to check JTI blacklist: {e!s}")
-            # For security, assume JTI is blacklisted if check fails
-            return True
-
-    async def blacklist_session(self, session_id: str) -> None:
-        """
-        Blacklist all tokens for a specific session.
-
-        Args:
-            session_id: The session ID to blacklist
-
-        Raises:
-            RepositoryException: If blacklisting fails
-        """
-        try:
-            # If no tokens for this session, return
-            if session_id not in self._session_tokens:
-                logger.info(f"No tokens found for session {session_id}")
-                return
-
-            # Get all JTIs for this session
-            session_jtis = self._session_tokens[session_id]
-
-            # Set a far-future expiration date
-            expires_at = datetime.max
-
-            # Blacklist each JTI
-            for jti in session_jtis:
-                self._jti_blacklist[jti] = {
-                    "expires_at": expires_at,
-                    "reason": "session_logout",
-                }
-
-            logger.info(f"Blacklisted all tokens for session {session_id}")
-        except Exception as e:
-            logger.error(f"Failed to blacklist session tokens: {e!s}")
-            raise RepositoryException(f"Failed to blacklist session tokens: {e!s}")
-
-    async def remove_expired_entries(self) -> int:
+    async def remove_expired(self) -> int:
         """
         Remove expired entries from the blacklist.
 
@@ -201,16 +132,6 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
         try:
             now = datetime.now(timezone.utc)
             removed_count = 0
-
-            # Clean up expired tokens
-            token_hashes_to_remove = []
-            for token_hash, token_info in self._token_blacklist.items():
-                if token_info["expires_at"] < now:
-                    token_hashes_to_remove.append(token_hash)
-
-            for token_hash in token_hashes_to_remove:
-                del self._token_blacklist[token_hash]
-                removed_count += 1
 
             # Clean up expired JTIs
             jtis_to_remove = []
@@ -228,18 +149,44 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
             logger.error(f"Failed to remove expired entries: {e!s}")
             raise RepositoryException(f"Failed to remove expired entries: {e!s}")
 
-    async def clear_expired_tokens(self) -> int:
+    async def get_all_blacklisted(self) -> list[dict]:
         """
-        Clear expired tokens from the blacklist.
-
-        This method implements the interface requirement and provides functionality
-        to clean up expired tokens from the in-memory storage.
+        Get all blacklisted tokens.
 
         Returns:
-            Number of tokens removed
+            List of dictionaries containing token_jti and expires_at
 
         Raises:
-            RepositoryException: If cleanup fails
+            RepositoryException: If retrieval fails
         """
-        # Delegate to remove_expired_entries since the functionality is identical
-        return await self.remove_expired_entries()
+        try:
+            return [
+                {"token_jti": jti, "expires_at": data["expires_at"]}
+                for jti, data in self._jti_blacklist.items()
+            ]
+        except Exception as e:
+            logger.error(f"Failed to get all blacklisted tokens: {e!s}")
+            raise RepositoryException(f"Failed to get all blacklisted tokens: {e!s}")
+
+    async def remove_from_blacklist(self, token_jti: str) -> bool:
+        """
+        Remove a specific token from the blacklist.
+
+        Args:
+            token_jti: The unique JWT ID to remove
+
+        Returns:
+            True if token was removed, False if not found
+
+        Raises:
+            RepositoryException: If removal fails
+        """
+        try:
+            if token_jti in self._jti_blacklist:
+                del self._jti_blacklist[token_jti]
+                logger.info(f"Removed token {token_jti} from blacklist")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Failed to remove token from blacklist: {e!s}")
+            raise RepositoryException(f"Failed to remove token from blacklist: {e!s}")

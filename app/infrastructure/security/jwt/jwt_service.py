@@ -207,7 +207,7 @@ class JWTService(IJwtService):
     exclude_from_refresh = ["exp", "iat", "nbf", "jti", "iss", "aud"]
 
     # In-memory blacklist fallback
-    _token_blacklist = {}
+    _token_blacklist: dict[str, dict[str, Any]] = {}
 
     # Standard algorithm configs - add more as needed for tests
     ALGORITHMS: ClassVar[dict[str, dict[str, str]]] = {

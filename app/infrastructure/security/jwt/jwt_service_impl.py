@@ -272,8 +272,8 @@ class JWTServiceImpl(IJwtService):
         self.issuer = self._issuer
 
         # In-memory blacklist for testing
-        self._token_blacklist = {}
-        self._token_families = {}
+        self._token_blacklist: dict[str, bool] = {}
+        self._token_families: dict[str, dict[str, Any]] = {}
 
         logger.info(f"JWT Service initialized with algorithm {self._algorithm}")
 
@@ -807,20 +807,7 @@ class JWTServiceImpl(IJwtService):
             logger.error(f"Unexpected error decoding token: {e!s}")
             raise InvalidTokenException(f"Failed to decode token: {e!s}")
 
-    def verify_token(self, token: str) -> TokenPayload:
-        """Verify a token and return its payload.
 
-        Args:
-            token: JWT token to verify
-
-        Returns:
-            TokenPayload object
-
-        Raises:
-            InvalidTokenException: If token is invalid
-            TokenExpiredException: If token is expired
-        """
-        return self.decode_token(token)
 
     async def get_user_from_token(self, token: str) -> User | None:
         """Get user from a token.
@@ -866,60 +853,7 @@ class JWTServiceImpl(IJwtService):
             logger.error(f"Error retrieving user from token: {e!s}")
             raise InvalidTokenException(str(e))
 
-    def verify_token(self, token: str) -> TokenPayload:
-        """Verify a token and return its payload.
 
-        This function performs standard verification checks:
-        - Signature validation
-        - Expiration time check
-        - Audience validation (if configured)
-        - Issuer validation (if configured)
-
-        Args:
-            token: JWT token to verify
-
-        Returns:
-            TokenPayload: Verified token payload
-
-        Raises:
-            InvalidTokenException: If token is invalid
-            ExpiredTokenException: If token is expired
-        """
-        try:
-            # Default options with basic validation
-            options = {
-                "verify_signature": True,
-                "verify_exp": True,
-                "verify_aud": self.audience is not None,
-                "verify_iss": self.issuer is not None,
-            }
-
-            # Decode token with validation
-            payload = self.decode_token(token, options=options)
-
-            # Check for token blacklisting if repository available
-            if self.token_blacklist_repository:
-                if hasattr(payload, "jti") and payload.jti:
-                    token_id = str(payload.jti)
-                    is_blacklisted = self.token_blacklist_repository.is_token_blacklisted(token_id)
-                    if is_blacklisted:
-                        logger.warning("Token blacklist check failed")
-                        raise InvalidTokenException("Token has been revoked")
-
-            # Clean any PHI from the payload
-            payload = self._sanitize_phi_in_payload(payload)
-
-            return payload
-
-        except ExpiredSignatureError:
-            logger.warning("Token verification failed - expired token")
-            raise TokenExpiredException("Token has expired")
-        except (JWTError, InvalidTokenException) as e:
-            logger.warning(f"Token verification failed: {e!s}")
-            raise InvalidTokenException(f"Invalid token: {e!s}")
-        except Exception as e:
-            logger.error(f"Unexpected error during token verification: {e!s}")
-            raise InvalidTokenException(f"Token verification failed: {e!s}")
 
     def verify_refresh_token(
         self, refresh_token: str, enforce_refresh_type: bool = True
