@@ -78,7 +78,7 @@ class SQLAlchemyAppointmentRepository:
         # 1. Standard SQLAlchemy persistence logic
         # ------------------------------------------------------------------
         self.db_session.add(appointment)
-        await self.db_session.commit()
+        _ = await self.db_session.commit()  # Assign to underscore to satisfy MyPy
 
         # ------------------------------------------------------------------
         # 2. Test‑only helper – record commit in the mock session
