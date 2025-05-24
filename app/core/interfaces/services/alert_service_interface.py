@@ -14,6 +14,10 @@ from uuid import UUID
 from app.core.domain.entities.alert import Alert, AlertPriority
 from app.domain.entities.biometric_alert_rule import BiometricAlertRule
 
+# Backward compatibility alias - AlertSeverity is the same as AlertPriority
+# This maintains DRY principle while supporting legacy test imports
+AlertSeverity = AlertPriority
+
 
 class AlertServiceInterface(ABC):
     """
