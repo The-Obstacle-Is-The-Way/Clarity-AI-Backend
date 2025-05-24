@@ -2,16 +2,15 @@
 Adapter classes for Digital Twin models.
 
 This module provides adapter classes that allow compatibility between
-different implementations of Digital Twin entities.
+different implementations of Digital Twin entities following clean architecture
+and SOLID principles.
 """
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from app.domain.entities.digital_twin_entity import (
-    ClinicalInsight,
-)
+from app.domain.entities.digital_twin_entity import ClinicalInsight
 from app.domain.entities.digital_twin_enums import (
     BrainRegion,
     ClinicalSignificance,
@@ -19,7 +18,7 @@ from app.domain.entities.digital_twin_enums import (
 )
 
 
-def ensure_enum_value(value, enum_class):
+def ensure_enum_value(value: Any, enum_class: type) -> Any:
     """Convert string to enum value if necessary, or keep as enum value."""
     if isinstance(value, str):
         try:
@@ -27,8 +26,8 @@ def ensure_enum_value(value, enum_class):
         except ValueError:
             # If the string doesn't match any enum value, try matching by name
             try:
-                return enum_class[value]
-            except KeyError:
+                return getattr(enum_class, value)
+            except AttributeError:
                 # Return the original string if all conversions fail
                 return value
     return value
@@ -44,14 +43,14 @@ class BrainRegionStateAdapter:
     related_symptoms: list[str] = field(default_factory=list)
     clinical_significance: ClinicalSignificance = ClinicalSignificance.NONE
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Ensure proper enum conversion after initialization."""
         self.region = ensure_enum_value(self.region, BrainRegion)
         self.clinical_significance = ensure_enum_value(
             self.clinical_significance, ClinicalSignificance
         )
 
-    def create_copy(self):
+    def create_copy(self) -> "BrainRegionStateAdapter":
         """Create a copy of this brain region state."""
         return BrainRegionStateAdapter(
             region=self.region,
@@ -71,14 +70,14 @@ class NeurotransmitterStateAdapter:
     confidence: float  # 0.0 to 1.0
     clinical_significance: ClinicalSignificance = ClinicalSignificance.NONE
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Ensure proper enum conversion after initialization."""
         self.neurotransmitter = ensure_enum_value(self.neurotransmitter, Neurotransmitter)
         self.clinical_significance = ensure_enum_value(
             self.clinical_significance, ClinicalSignificance
         )
 
-    def create_copy(self):
+    def create_copy(self) -> "NeurotransmitterStateAdapter":
         """Create a copy of this neurotransmitter state."""
         return NeurotransmitterStateAdapter(
             neurotransmitter=self.neurotransmitter,
@@ -97,12 +96,12 @@ class NeuralConnectionAdapter:
     strength: float  # 0.0 to 1.0
     confidence: float  # 0.0 to 1.0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Ensure proper enum conversion after initialization."""
         self.source_region = ensure_enum_value(self.source_region, BrainRegion)
         self.target_region = ensure_enum_value(self.target_region, BrainRegion)
 
-    def create_copy(self):
+    def create_copy(self) -> "NeuralConnectionAdapter":
         """Create a copy of this neural connection."""
         return NeuralConnectionAdapter(
             source_region=self.source_region,
@@ -122,13 +121,13 @@ class TemporalPatternAdapter:
     strength: float
     clinical_significance: ClinicalSignificance
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Ensure proper enum conversion after initialization."""
         self.clinical_significance = ensure_enum_value(
             self.clinical_significance, ClinicalSignificance
         )
 
-    def create_copy(self):
+    def create_copy(self) -> "TemporalPatternAdapter":
         """Create a copy of this temporal pattern."""
         return TemporalPatternAdapter(
             pattern_type=self.pattern_type,
@@ -145,16 +144,15 @@ class DigitalTwinStateAdapter:
     Adapter for Digital Twin state.
 
     This class adapts between different implementations of Digital Twin state
-    to maintain compatibility across the codebase.
+    to maintain compatibility across the codebase while following clean architecture
+    and SOLID principles.
     """
 
     patient_id: UUID
     timestamp: datetime
-    brain_regions: dict[BrainRegion, BrainRegionStateAdapter] = field(default_factory=dict)
-    neurotransmitters: dict[Neurotransmitter, NeurotransmitterStateAdapter] = field(
-        default_factory=dict
-    )
-    neural_connections: list[NeuralConnectionAdapter] = field(default_factory=list)
+    brain_regions: dict[BrainRegion, Any] = field(default_factory=dict)
+    neurotransmitters: dict[Neurotransmitter, Any] = field(default_factory=dict)
+    neural_connections: list[Any] = field(default_factory=list)
     clinical_insights: list[ClinicalInsight] = field(default_factory=list)
     temporal_patterns: list[TemporalPatternAdapter] = field(default_factory=list)
     update_source: str | None = None
@@ -169,15 +167,22 @@ class DigitalTwinStateAdapter:
     confidence_scores: dict[str, float] = field(default_factory=dict)
     active_treatments: set[str] = field(default_factory=set)
 
-    def __post_init__(self):
-        """Ensure proper enum conversion after initialization."""
-        # Ensure brain regions and neurotransmitters are properly converted
-        brain_regions_copy = {}
+    def __post_init__(self) -> None:
+        """Ensure proper enum conversion and validation after initialization."""
+        self._validate_and_convert_brain_regions()
+        self._validate_and_convert_neurotransmitters()
+        self._validate_and_convert_neural_connections()
+
+    def _validate_and_convert_brain_regions(self) -> None:
+        """Validate and convert brain region data to proper adapter format."""
+        validated_regions: dict[BrainRegion, BrainRegionStateAdapter] = {}
+        
         for key, value in self.brain_regions.items():
             brain_region = ensure_enum_value(key, BrainRegion)
+            
             if not isinstance(value, BrainRegionStateAdapter):
                 # Convert to adapter if not already
-                value = BrainRegionStateAdapter(
+                adapter = BrainRegionStateAdapter(
                     region=brain_region,
                     activation_level=getattr(value, "activation_level", 0.5),
                     confidence=getattr(value, "confidence", 0.5),
@@ -186,15 +191,22 @@ class DigitalTwinStateAdapter:
                         value, "clinical_significance", ClinicalSignificance.NONE
                     ),
                 )
-            brain_regions_copy[brain_region] = value
-        self.brain_regions = brain_regions_copy
+                validated_regions[brain_region] = adapter
+            else:
+                validated_regions[brain_region] = value
+                
+        self.brain_regions = validated_regions
 
-        neurotransmitters_copy = {}
+    def _validate_and_convert_neurotransmitters(self) -> None:
+        """Validate and convert neurotransmitter data to proper adapter format."""
+        validated_neurotransmitters: dict[Neurotransmitter, NeurotransmitterStateAdapter] = {}
+        
         for key, value in self.neurotransmitters.items():
             neurotransmitter = ensure_enum_value(key, Neurotransmitter)
+            
             if not isinstance(value, NeurotransmitterStateAdapter):
                 # Convert to adapter if not already
-                value = NeurotransmitterStateAdapter(
+                adapter = NeurotransmitterStateAdapter(
                     neurotransmitter=neurotransmitter,
                     level=getattr(value, "level", 0.5),
                     confidence=getattr(value, "confidence", 0.5),
@@ -202,34 +214,42 @@ class DigitalTwinStateAdapter:
                         value, "clinical_significance", ClinicalSignificance.NONE
                     ),
                 )
-            neurotransmitters_copy[neurotransmitter] = value
-        self.neurotransmitters = neurotransmitters_copy
+                validated_neurotransmitters[neurotransmitter] = adapter
+            else:
+                validated_neurotransmitters[neurotransmitter] = value
+                
+        self.neurotransmitters = validated_neurotransmitters
 
-        # Ensure neural connections are properly converted
-        neural_connections_copy = []
+    def _validate_and_convert_neural_connections(self) -> None:
+        """Validate and convert neural connection data to proper adapter format."""
+        validated_connections: list[NeuralConnectionAdapter] = []
+        
         for conn in self.neural_connections:
             if not isinstance(conn, NeuralConnectionAdapter):
                 # Convert to adapter if not already
-                conn = NeuralConnectionAdapter(
-                    source_region=getattr(conn, "source_region", None),
-                    target_region=getattr(conn, "target_region", None),
+                adapter = NeuralConnectionAdapter(
+                    source_region=ensure_enum_value(getattr(conn, "source_region", BrainRegion.PREFRONTAL_CORTEX), BrainRegion),
+                    target_region=ensure_enum_value(getattr(conn, "target_region", BrainRegion.PREFRONTAL_CORTEX), BrainRegion),
                     strength=getattr(conn, "strength", 0.5),
                     confidence=getattr(conn, "confidence", 0.5),
                 )
-            neural_connections_copy.append(conn)
-        self.neural_connections = neural_connections_copy
+                validated_connections.append(adapter)
+            else:
+                validated_connections.append(conn)
+                
+        self.neural_connections = validated_connections
 
-    def create_copy(self):
-        """Create a copy of this digital twin state."""
+    def create_copy(self) -> "DigitalTwinStateAdapter":
+        """Create a deep copy of this digital twin state."""
         # Copy brain regions
-        brain_regions_copy = {}
-        for region, state in self.brain_regions.items():
-            brain_regions_copy[region] = state.create_copy()
+        brain_regions_copy = {
+            region: state.create_copy() for region, state in self.brain_regions.items()
+        }
 
         # Copy neurotransmitters
-        neurotransmitters_copy = {}
-        for nt, state in self.neurotransmitters.items():
-            neurotransmitters_copy[nt] = state.create_copy()
+        neurotransmitters_copy = {
+            nt: state.create_copy() for nt, state in self.neurotransmitters.items()
+        }
 
         # Copy neural connections
         neural_connections_copy = [conn.create_copy() for conn in self.neural_connections]
@@ -275,8 +295,19 @@ class DigitalTwinStateAdapter:
         )
 
     def add_clinical_insight(self, insight: ClinicalInsight) -> None:
-        """Add a clinical insight to the state."""
-        # Make sure the insight isn't already present (by ID)
+        """Add a clinical insight to the state if not already present."""
         existing_ids = {i.id for i in self.clinical_insights}
         if insight.id not in existing_ids:
             self.clinical_insights.append(insight)
+
+    def update_brain_region(self, region: BrainRegion, state: BrainRegionStateAdapter) -> None:
+        """Update brain region state with validation."""
+        validated_region = ensure_enum_value(region, BrainRegion)
+        self.brain_regions[validated_region] = state
+        self.updated_at = datetime.now()
+
+    def update_neurotransmitter(self, neurotransmitter: Neurotransmitter, state: NeurotransmitterStateAdapter) -> None:
+        """Update neurotransmitter state with validation."""
+        validated_nt = ensure_enum_value(neurotransmitter, Neurotransmitter)
+        self.neurotransmitters[validated_nt] = state
+        self.updated_at = datetime.now()
