@@ -16,13 +16,13 @@ from dateutil import parser
 from pydantic import ValidationError
 from sqlalchemy import (
     Boolean,
-    Column,
     DateTime,
     ForeignKey,
     String,
 )
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy.orm import relationship, Mapped
+from sqlalchemy.orm import relationship, Mapped, mapped_column
+from typing import Optional
 
 from app.domain.entities.digital_twin_enums import Gender  # Corrected Gender import
 
@@ -83,57 +83,57 @@ class Patient(Base, TimestampMixin, AuditMixin):
     __table_args__ = {"extend_existing": True}
 
     # --- Primary Key and Foreign Keys ---
-    # Clean Architecture: Pure SQLAlchemy Column definitions without conflicting type annotations
+    # SQLAlchemy 2.0+ with explicit type contracts - Interface Segregation Principle
     # Data Mapper pattern implemented through to_domain() and from_domain() methods
-    id: Any = Column(GUID(), primary_key=True, default=uuid.uuid4, nullable=False, index=True)
-    external_id: Any = Column(String(64), unique=True, index=True, nullable=True)
-    user_id: Any = Column(GUID(), ForeignKey("users.id"), index=True, nullable=True)
+    id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4, nullable=False, index=True)
+    external_id: Mapped[Optional[str]] = mapped_column(String(64), unique=True, index=True, nullable=True)
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(GUID(), ForeignKey("users.id"), index=True, nullable=True)
 
-    created_at: Any = Column(DateTime, default=now_utc, nullable=False)
-    updated_at: Any = Column(DateTime, default=now_utc, onupdate=now_utc, nullable=False)
-    is_active: Any = Column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, onupdate=now_utc, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # --- Encrypted PHI Fields (Stored as Text/Blob in DB) ---
-    # Pure infrastructure layer - no domain type annotations to avoid MyPy confusion
-    _first_name: Any = Column("first_name", EncryptedString, nullable=True)
-    _last_name: Any = Column("last_name", EncryptedString, nullable=True)
-    _middle_name: Any = Column("middle_name", EncryptedString, nullable=True)
-    _gender: Any = Column("gender", SQLEnum(Gender, name="gender_enum"), nullable=True)
-    _date_of_birth: Any = Column("date_of_birth", EncryptedString, nullable=True)
-    _ssn: Any = Column("ssn", EncryptedString, nullable=True)
-    _mrn: Any = Column("mrn", EncryptedString, nullable=True)
-    _email: Any = Column("email", EncryptedString, nullable=True)
-    _phone_number: Any = Column("phone_number", EncryptedString, nullable=True)
+    # Proper type annotations with HIPAA-compliant encryption infrastructure
+    _first_name: Mapped[Optional[str]] = mapped_column("first_name", EncryptedString, nullable=True)
+    _last_name: Mapped[Optional[str]] = mapped_column("last_name", EncryptedString, nullable=True)
+    _middle_name: Mapped[Optional[str]] = mapped_column("middle_name", EncryptedString, nullable=True)
+    _gender: Mapped[Optional[Gender]] = mapped_column("gender", SQLEnum(Gender, name="gender_enum"), nullable=True)
+    _date_of_birth: Mapped[Optional[str]] = mapped_column("date_of_birth", EncryptedString, nullable=True)
+    _ssn: Mapped[Optional[str]] = mapped_column("ssn", EncryptedString, nullable=True)
+    _mrn: Mapped[Optional[str]] = mapped_column("mrn", EncryptedString, nullable=True)
+    _email: Mapped[Optional[str]] = mapped_column("email", EncryptedString, nullable=True)
+    _phone_number: Mapped[Optional[str]] = mapped_column("phone_number", EncryptedString, nullable=True)
 
     # Insurance-related fields (PHI)
-    _insurance_provider = Column("insurance_provider", EncryptedString, nullable=True)
-    _insurance_policy_number = Column("insurance_policy_number", EncryptedString, nullable=True)
-    _insurance_group_number = Column("insurance_group_number", EncryptedString, nullable=True)
-    _address_line1 = Column("address_line1", EncryptedString, nullable=True)
-    _address_line2 = Column("address_line2", EncryptedString, nullable=True)
-    _city = Column("city", EncryptedString, nullable=True)
-    _state = Column("state", EncryptedString, nullable=True)
-    _zip_code = Column("zip_code", EncryptedString, nullable=True)
-    _country = Column("country", EncryptedString, nullable=True)
-    _emergency_contact_name = Column("emergency_contact_name", EncryptedString, nullable=True)
-    _emergency_contact_phone = Column("emergency_contact_phone", EncryptedString, nullable=True)
-    _emergency_contact_relationship = Column(
+    _insurance_provider: Mapped[Optional[str]] = mapped_column("insurance_provider", EncryptedString, nullable=True)
+    _insurance_policy_number: Mapped[Optional[str]] = mapped_column("insurance_policy_number", EncryptedString, nullable=True)
+    _insurance_group_number: Mapped[Optional[str]] = mapped_column("insurance_group_number", EncryptedString, nullable=True)
+    _address_line1: Mapped[Optional[str]] = mapped_column("address_line1", EncryptedString, nullable=True)
+    _address_line2: Mapped[Optional[str]] = mapped_column("address_line2", EncryptedString, nullable=True)
+    _city: Mapped[Optional[str]] = mapped_column("city", EncryptedString, nullable=True)
+    _state: Mapped[Optional[str]] = mapped_column("state", EncryptedString, nullable=True)
+    _zip_code: Mapped[Optional[str]] = mapped_column("zip_code", EncryptedString, nullable=True)
+    _country: Mapped[Optional[str]] = mapped_column("country", EncryptedString, nullable=True)
+    _emergency_contact_name: Mapped[Optional[str]] = mapped_column("emergency_contact_name", EncryptedString, nullable=True)
+    _emergency_contact_phone: Mapped[Optional[str]] = mapped_column("emergency_contact_phone", EncryptedString, nullable=True)
+    _emergency_contact_relationship: Mapped[Optional[str]] = mapped_column(
         "emergency_contact_relationship", EncryptedString, nullable=True
     )
 
     # Complex data fields (JSON/JSONB in PostgreSQL, stored as encrypted blobs)
-    _contact_info = Column("contact_info", EncryptedJSON, nullable=True)
-    _address_details = Column("address_details", EncryptedJSON, nullable=True)
-    _emergency_contact_details = Column("emergency_contact_details", EncryptedJSON, nullable=True)
-    _preferences = Column("preferences", EncryptedJSON, nullable=True)
+    _contact_info: Mapped[Optional[dict]] = mapped_column("contact_info", EncryptedJSON, nullable=True)
+    _address_details: Mapped[Optional[dict]] = mapped_column("address_details", EncryptedJSON, nullable=True)
+    _emergency_contact_details: Mapped[Optional[dict]] = mapped_column("emergency_contact_details", EncryptedJSON, nullable=True)
+    _preferences: Mapped[Optional[dict]] = mapped_column("preferences", EncryptedJSON, nullable=True)
 
     # Medical data fields (PHI - stored as encrypted text)
-    _medical_history = Column("medical_history", EncryptedText, nullable=True)
-    _medications = Column("medications", EncryptedText, nullable=True)
-    _allergies = Column("allergies", EncryptedText, nullable=True)
-    _notes = Column("notes", EncryptedText, nullable=True)
-    _custom_fields = Column("custom_fields", EncryptedJSON, nullable=True)
-    _extra_data = Column("extra_data", EncryptedJSON, nullable=True)
+    _medical_history: Mapped[Optional[str]] = mapped_column("medical_history", EncryptedText, nullable=True)
+    _medications: Mapped[Optional[str]] = mapped_column("medications", EncryptedText, nullable=True)
+    _allergies: Mapped[Optional[str]] = mapped_column("allergies", EncryptedText, nullable=True)
+    _notes: Mapped[Optional[str]] = mapped_column("notes", EncryptedText, nullable=True)
+    _custom_fields: Mapped[Optional[dict]] = mapped_column("custom_fields", EncryptedJSON, nullable=True)
+    _extra_data: Mapped[Optional[dict]] = mapped_column("extra_data", EncryptedJSON, nullable=True)
 
     # --- Relationships ---
     # Define relationships with string references to avoid circular imports
@@ -242,15 +242,15 @@ class Patient(Base, TimestampMixin, AuditMixin):
         model = cls()
 
         # Core metadata - Fields guaranteed by DomainPatient
-        model.id = getattr(patient, "id", None) or uuid.uuid4()  # type: ignore[assignment]  # Ensure UUID
+        model.id = getattr(patient, "id", None) or uuid.uuid4()    # Ensure UUID
         if not isinstance(model.id, uuid.UUID):
             try:
-                model.id = uuid.UUID(str(model.id))  # type: ignore[assignment]
+                model.id = uuid.UUID(str(model.id))  
             except ValueError:
                 logger.error(f"Invalid ID format for patient: {model.id}. Generating new UUID.")
-                model.id = uuid.uuid4()  # type: ignore[assignment]
+                model.id = uuid.uuid4()  
 
-        model.external_id = (  # type: ignore[assignment]
+        model.external_id = (  
             str(getattr(patient, "external_id", None))
             if getattr(patient, "external_id", None) is not None
             else None
@@ -260,124 +260,124 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # This needs to be passed or set contextually. For now, assume it might come via created_by.
         created_by_uuid = getattr(patient, "created_by", None)  # DomainPatient might not have this
         if isinstance(created_by_uuid, uuid.UUID):
-            model.user_id = created_by_uuid  # type: ignore[assignment]
+            model.user_id = created_by_uuid  
         elif isinstance(created_by_uuid, str):
             try:
-                model.user_id = uuid.UUID(created_by_uuid)  # type: ignore[assignment]
+                model.user_id = uuid.UUID(created_by_uuid)  
             except ValueError:
                 logger.warning(
                     f"Invalid created_by UUID string: {created_by_uuid}. user_id will be None."
                 )
-                model.user_id = None  # type: ignore[assignment]  # Or handle as error if user_id is non-nullable and no default
+                model.user_id = None    # Or handle as error if user_id is non-nullable and no default
         else:
-            model.user_id = None  # type: ignore[assignment]  # Fallback if not provided or invalid type
+            model.user_id = None    # Fallback if not provided or invalid type
 
-        model.created_at = getattr(patient, "created_at", None)  # type: ignore[assignment]
-        model.updated_at = getattr(patient, "updated_at", None)  # type: ignore[assignment]
-        model.is_active = getattr(  # type: ignore[assignment]
+        model.created_at = getattr(patient, "created_at", None)  
+        model.updated_at = getattr(patient, "updated_at", None)  
+        model.is_active = getattr(  
             patient, "active", getattr(patient, "is_active", True)
         )  # 'active' or 'is_active'
 
         # Basic PII - fields in DomainPatient
-        model._first_name = getattr(patient, "first_name", None)  # type: ignore[assignment]
-        model._last_name = getattr(patient, "last_name", None)  # type: ignore[assignment]
-        model._email = getattr(patient, "email", None)  # type: ignore[assignment]
-        model._phone_number = getattr(patient, "phone", None)  # type: ignore[assignment]
+        model._first_name = getattr(patient, "first_name", None)  
+        model._last_name = getattr(patient, "last_name", None)  
+        model._email = getattr(patient, "email", None)  
+        model._phone_number = getattr(patient, "phone", None)  
 
         # Fix gender handling - convert to proper enum instance for the database model
         gender_value = getattr(patient, "gender", None)
         if gender_value is not None:
             # If it's already an enum instance, use it directly
             if isinstance(gender_value, Gender):
-                model._gender = gender_value  # type: ignore[assignment]
+                model._gender = gender_value  
             # If it's a string matching an enum value, convert to enum
             elif isinstance(gender_value, str):
                 try:
-                    model._gender = Gender(gender_value)  # type: ignore[assignment]
+                    model._gender = Gender(gender_value)  
                 except ValueError:
                     # Case-insensitive check
                     gender_lower = gender_value.lower()
                     for g in Gender:
                         if g.value.lower() == gender_lower:
-                            model._gender = g  # type: ignore[assignment]
+                            model._gender = g  
                             break
                     else:  # No break occurred in for loop
                         logger.warning(
                             f"Invalid gender value in domain object: {gender_value!r}. Setting to None."
                         )
-                        model._gender = None  # type: ignore[assignment]
+                        model._gender = None  
             else:
                 # Invalid type, log and set to None
                 logger.warning(
                     f"Unexpected gender type in domain object: {type(gender_value)}. Setting to None."
                 )
-                model._gender = None  # type: ignore[assignment]
+                model._gender = None  
         else:
-            model._gender = None  # type: ignore[assignment]
+            model._gender = None  
 
         dob_value = getattr(patient, "date_of_birth", None)
         if isinstance(dob_value, date | datetime):
-            model._date_of_birth = dob_value.isoformat()  # type: ignore[assignment]
+            model._date_of_birth = dob_value.isoformat()  
         elif isinstance(dob_value, str):
             try:
-                model._date_of_birth = parser.parse(dob_value).date().isoformat()  # type: ignore[assignment]
+                model._date_of_birth = parser.parse(dob_value).date().isoformat()  
             except:
-                model._date_of_birth = dob_value  # type: ignore[assignment]  # Store as is if unparseable
+                model._date_of_birth = dob_value    # Store as is if unparseable
         else:
-            model._date_of_birth = None  # type: ignore[assignment]
+            model._date_of_birth = None  
 
         # Extended PII - fields NOT in core DomainPatient, use getattr with None default
-        model._middle_name = getattr(patient, "middle_name", None)  # type: ignore[assignment]
+        model._middle_name = getattr(patient, "middle_name", None)  
         model._ssn = getattr(
             patient, "social_security_number_lve", None
-        )  # Corrected to use _lve from DomainPatient  # type: ignore[assignment]
+        )  # Corrected to use _lve from DomainPatient  
         model._mrn = getattr(
             patient, "medical_record_number_lve", None
-        )  # Corrected to use _lve from DomainPatient  # type: ignore[assignment]
+        )  # Corrected to use _lve from DomainPatient  
 
         # Insurance Info - NOT in core DomainPatient
-        model._insurance_provider = getattr(patient, "insurance_provider", None)  # type: ignore[assignment]
-        model._insurance_policy_number = getattr(patient, "insurance_policy_number", None)  # type: ignore[assignment]
-        model._insurance_group_number = getattr(patient, "insurance_group_number", None)  # type: ignore[assignment]
+        model._insurance_provider = getattr(patient, "insurance_provider", None)  
+        model._insurance_policy_number = getattr(patient, "insurance_policy_number", None)  
+        model._insurance_group_number = getattr(patient, "insurance_group_number", None)  
 
         # Address components - NOT directly in core DomainPatient (it has Address VO in contact_info or as separate field)
         # For PatientModel's direct address string fields, attempt to get from patient.address VO if it exists.
         address_vo = getattr(patient, "address", None)
         if isinstance(address_vo, Address):
-            model._address_line1 = getattr(address_vo, "line1", None)  # type: ignore[assignment]
-            model._address_line2 = getattr(address_vo, "line2", None)  # type: ignore[assignment]
-            model._city = getattr(address_vo, "city", None)  # type: ignore[assignment]
-            model._state = getattr(address_vo, "state", None)  # type: ignore[assignment]
-            model._zip_code = getattr(address_vo, "zip_code", None)  # type: ignore[assignment] # or postal_code
-            model._country = getattr(address_vo, "country", None)  # type: ignore[assignment]
+            model._address_line1 = getattr(address_vo, "line1", None)  
+            model._address_line2 = getattr(address_vo, "line2", None)  
+            model._city = getattr(address_vo, "city", None)  
+            model._state = getattr(address_vo, "state", None)  
+            model._zip_code = getattr(address_vo, "zip_code", None)   # or postal_code
+            model._country = getattr(address_vo, "country", None)  
         else:  # Clear them if no proper Address VO
-            model._address_line1 = None  # type: ignore[assignment]
-            model._address_line2 = None  # type: ignore[assignment]
-            model._city = None  # type: ignore[assignment]
-            model._state = None  # type: ignore[assignment]
-            model._zip_code = None  # type: ignore[assignment]
-            model._country = None  # type: ignore[assignment]
+            model._address_line1 = None  
+            model._address_line2 = None  
+            model._city = None  
+            model._state = None  
+            model._zip_code = None  
+            model._country = None  
 
         # Emergency Contact components - NOT in core DomainPatient (it has EmergencyContact VO)
         emergency_contact_vo = getattr(patient, "emergency_contact", None)
         if isinstance(emergency_contact_vo, EmergencyContact):
-            model._emergency_contact_name = getattr(emergency_contact_vo, "name", None)  # type: ignore[assignment]
-            model._emergency_contact_phone = getattr(emergency_contact_vo, "phone", None)  # type: ignore[assignment]
-            model._emergency_contact_relationship = getattr(  # type: ignore[assignment]
+            model._emergency_contact_name = getattr(emergency_contact_vo, "name", None)  
+            model._emergency_contact_phone = getattr(emergency_contact_vo, "phone", None)  
+            model._emergency_contact_relationship = getattr(  
                 emergency_contact_vo, "relationship", None
             )
 
             # Serialize EmergencyContact VO to dict
-            model._emergency_contact_details = (  # type: ignore[assignment]
+            model._emergency_contact_details = (  
                 emergency_contact_vo.model_dump()
                 if hasattr(emergency_contact_vo, "model_dump")
                 else emergency_contact_vo.to_dict()
             )
         else:
-            model._emergency_contact_name = None  # type: ignore[assignment]
-            model._emergency_contact_phone = None  # type: ignore[assignment]
-            model._emergency_contact_relationship = None  # type: ignore[assignment]
-            model._emergency_contact_details = None  # type: ignore[assignment]
+            model._emergency_contact_name = None  
+            model._emergency_contact_phone = None  
+            model._emergency_contact_relationship = None  
+            model._emergency_contact_details = None  
 
         # Complex / JSON / Text fields - use getattr and then str() for EncryptedText
         # EncryptedJSON fields can take the direct object if it's serializable or None.
@@ -388,14 +388,14 @@ class Patient(Base, TimestampMixin, AuditMixin):
         if existing_contact_info is not None:
             # Use existing ContactInfo object - serialize to dict for database storage
             if hasattr(existing_contact_info, "model_dump"):
-                model._contact_info = existing_contact_info.model_dump(exclude_none=False)  # type: ignore[assignment]
+                model._contact_info = existing_contact_info.model_dump(exclude_none=False)  
             elif hasattr(existing_contact_info, "dict"):
-                model._contact_info = existing_contact_info.dict(exclude_none=False)  # type: ignore[assignment]
+                model._contact_info = existing_contact_info.dict(exclude_none=False)  
             elif isinstance(existing_contact_info, dict):
-                model._contact_info = existing_contact_info  # type: ignore[assignment]
+                model._contact_info = existing_contact_info  
             else:
                 # Fallback: try to convert to dict
-                model._contact_info = {  # type: ignore[assignment]
+                model._contact_info = {  
                     "email": getattr(existing_contact_info, "email", None),
                     "phone": getattr(existing_contact_info, "phone", None),
                     "email_secondary": getattr(existing_contact_info, "email_secondary", None),
@@ -415,21 +415,21 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 "phone": patient_phone,
                 "email_secondary": None,  # Default for now
             }
-            model._contact_info = contact_info_dict  # type: ignore[assignment]
+            model._contact_info = contact_info_dict  
 
         address_vo_from_domain = getattr(patient, "address", None)
         # Serialize Address VO to dict for database storage
         if address_vo_from_domain is not None:
-            model._address_details = (  # type: ignore[assignment]
+            model._address_details = (  
                 address_vo_from_domain.model_dump()
                 if hasattr(address_vo_from_domain, "model_dump")
                 else address_vo_from_domain.to_dict()
             )
         else:
-            model._address_details = None  # type: ignore[assignment]
+            model._address_details = None  
 
         preferences_val = getattr(patient, "preferences", None)
-        model._preferences = preferences_val  # type: ignore[assignment]  # EncryptedJSON handles dict serialization
+        model._preferences = preferences_val    # EncryptedJSON handles dict serialization
 
         # For EncryptedText fields that store JSON strings of complex Python objects:
         def _serialize_to_json_string(value: Any) -> str | None:
@@ -445,19 +445,19 @@ class Patient(Base, TimestampMixin, AuditMixin):
                     value
                 )  # Fallback, though ideally this shouldn't happen for expected list/dict types
 
-        model._medical_history = _serialize_to_json_string(  # type: ignore[assignment]
+        model._medical_history = _serialize_to_json_string(  
             getattr(patient, "medical_history", None)
         )
-        model._medications = _serialize_to_json_string(getattr(patient, "medications", None))  # type: ignore[assignment]
-        model._allergies = _serialize_to_json_string(getattr(patient, "allergies", None))  # type: ignore[assignment]
+        model._medications = _serialize_to_json_string(getattr(patient, "medications", None))  
+        model._allergies = _serialize_to_json_string(getattr(patient, "allergies", None))  
 
         notes_val = getattr(patient, "notes", None)  # Assuming notes is a simple string
-        model._notes = str(notes_val) if notes_val is not None else None  # type: ignore[assignment]
+        model._notes = str(notes_val) if notes_val is not None else None  
 
-        model._custom_fields = getattr(  # type: ignore[assignment]
+        model._custom_fields = getattr(  
             patient, "custom_fields", None
         )  # EncryptedJSON handles dict serialization
-        model._extra_data = getattr(  # type: ignore[assignment]
+        model._extra_data = getattr(  
             patient, "extra_data", None
         )  # EncryptedJSON handles dict serialization
 
