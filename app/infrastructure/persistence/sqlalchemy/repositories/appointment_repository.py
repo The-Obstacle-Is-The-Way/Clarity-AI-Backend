@@ -20,7 +20,7 @@ magic test attributes are absent.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -124,7 +124,7 @@ class SQLAlchemyAppointmentRepository:
 
     async def delete(self, appointment: Appointment) -> None:
         self.db_session.delete(appointment)
-        await self.db_session.commit()  # type: ignore[unused-coroutine]
+        _ = await self.db_session.commit()  # Assign to underscore to satisfy MyPy
 
         # Record test-only tracking for MockAsyncSession compatibility
         if hasattr(self.db_session, "_deleted_objects") and appointment not in self.db_session._deleted_objects:  # type: ignore[attr-defined]
