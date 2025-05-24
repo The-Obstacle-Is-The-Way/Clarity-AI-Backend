@@ -198,8 +198,9 @@ class MLEncryptionService(BaseEncryptionService):
         Raises:
             ValueError: If input is not a valid array
         """
+        # Handle None case  
         if embedding is None:
-            return None
+            raise ValueError("Embedding cannot be None")
 
         # Check for valid embedding - strings must raise ValueError
         if isinstance(embedding, str):
@@ -232,7 +233,7 @@ class MLEncryptionService(BaseEncryptionService):
             ValueError: If decryption fails
         """
         if encrypted_embedding is None:
-            return None
+            raise ValueError("Cannot decrypt None embedding")
 
         # Simple handling for already-JSON values (test cases)
         if (
@@ -271,7 +272,7 @@ class MLEncryptionService(BaseEncryptionService):
     def _encrypt_tensors_impl(self, tensors: dict[str, np.ndarray]) -> dict[str, str]:
         """Implementation of encrypt_tensors to avoid recursive calls."""
         if tensors is None:
-            return None
+            raise ValueError("Cannot encrypt None tensors")
 
         result = {}
         for key, tensor in tensors.items():
@@ -295,7 +296,7 @@ class MLEncryptionService(BaseEncryptionService):
             Dictionary with decrypted tensors as NumPy arrays
         """
         if encrypted_tensors is None:
-            return None
+            raise ValueError("Cannot decrypt None tensors")
 
         result = {}
         for key, encrypted_tensor in encrypted_tensors.items():
@@ -325,7 +326,7 @@ class MLEncryptionService(BaseEncryptionService):
             Dictionary with selectively encrypted fields
         """
         if ml_data is None:
-            return None
+            raise ValueError("Cannot encrypt None ML data")
 
         result = {}
 
@@ -421,7 +422,7 @@ class MLEncryptionService(BaseEncryptionService):
             Dictionary with decrypted ML data
         """
         if encrypted_ml_data is None:
-            return None
+            raise ValueError("Cannot decrypt None ML data")
 
         result = {}
 
@@ -624,7 +625,7 @@ class MLEncryptionService(BaseEncryptionService):
             Dictionary with PHI fields encrypted
         """
         if data is None:
-            return None
+            raise ValueError("Cannot encrypt None PHI data")
 
         # PHI field patterns to identify sensitive data
         phi_field_patterns = [
@@ -698,7 +699,7 @@ class MLEncryptionService(BaseEncryptionService):
             Dictionary with PHI fields decrypted
         """
         if data is None:
-            return None
+            raise ValueError("Cannot decrypt None PHI data")
 
         result = {}
 
@@ -756,7 +757,7 @@ class MLEncryptionService(BaseEncryptionService):
             ValueError: If encryption fails
         """
         if embeddings is None:
-            return None
+            raise ValueError("Cannot encrypt None embeddings")
 
         try:
             # Convert NumPy arrays to lists for JSON serialization
@@ -794,7 +795,7 @@ class MLEncryptionService(BaseEncryptionService):
             ValueError: If decryption fails
         """
         if encrypted_embeddings is None:
-            return None
+            raise ValueError("Cannot decrypt None embeddings")
 
         # First try with primary key
         try:
@@ -842,19 +843,19 @@ class MLEncryptionService(BaseEncryptionService):
 
     def encrypt_model(self, model_bytes: bytes) -> str:
         """
-        Encrypt a machine learning model with checksums.
+        Encrypt a machine learning model with checksum verification.
 
         Args:
-            model_bytes: Serialized model bytes
+            model_bytes: Model data to encrypt
 
         Returns:
-            Encrypted model with checksums and version info
+            Encrypted model string
 
         Raises:
             ValueError: If encryption fails
         """
         if model_bytes is None:
-            return None
+            raise ValueError("Cannot encrypt None model bytes")
 
         try:
             # Calculate model checksum for integrity verification
@@ -947,7 +948,7 @@ class MLEncryptionService(BaseEncryptionService):
             Encrypted tensor string
         """
         if tensor is None:
-            return None
+            raise ValueError("Cannot encrypt None tensor")
 
         try:
             # Convert to list for serialization
@@ -997,7 +998,7 @@ class MLEncryptionService(BaseEncryptionService):
             ValueError: If decryption fails
         """
         if encrypted_tensor is None:
-            return None
+            raise ValueError("Cannot decrypt None tensor")
 
         try:
             # Decrypt and parse the tensor data

@@ -277,9 +277,12 @@ class TestMLEncryptionService:
 
     def test_handle_invalid_embedding(self, ml_encryption_service) -> None:
         """Test handling of invalid embeddings and tensors."""
-        # None should be handled gracefully
-        assert ml_encryption_service.encrypt_embedding(None) is None
-        assert ml_encryption_service.decrypt_embedding(None) is None
+        # None should raise ValueError for security
+        with pytest.raises(ValueError, match="Embedding cannot be None"):
+            ml_encryption_service.encrypt_embedding(None)
+        
+        with pytest.raises(ValueError, match="Cannot decrypt None embedding"):
+            ml_encryption_service.decrypt_embedding(None)
 
         # Non-ndarray embeddings should raise ValueError
         with pytest.raises(ValueError):
