@@ -7,18 +7,16 @@ mapping the domain entity to the database schema.
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import UUID as SQLAlchemyUUID
 from sqlalchemy import (
-    Column,
     DateTime,
     ForeignKey,
     String,
     Text,
 )
 from sqlalchemy import Enum as SQLAlchemyEnum
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.entities.appointment import AppointmentStatus
 from app.infrastructure.persistence.sqlalchemy.models.base import (
@@ -26,6 +24,7 @@ from app.infrastructure.persistence.sqlalchemy.models.base import (
     Base,
     TimestampMixin,
 )
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 if TYPE_CHECKING:
     from app.domain.entities.appointment import Appointment
@@ -41,32 +40,50 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
 
     __tablename__ = "appointments"
 
-    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    patient_id = Column(
-        SQLAlchemyUUID(as_uuid=True),
+    id: Mapped[uuid.UUID] = mapped_column(
+        GUID(), 
+        primary_key=True, 
+        default=uuid.uuid4
+    )
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
         ForeignKey("patients.id"),
         nullable=False,
         index=True,
     )
-    provider_id = Column(
-        SQLAlchemyUUID(as_uuid=True),
+    provider_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
         ForeignKey("providers.id"),
         nullable=False,
         index=True,
     )
-    start_time = Column(DateTime(timezone=True), nullable=False)
-    end_time = Column(DateTime(timezone=True), nullable=False)
-    appointment_type = Column(String(50), nullable=False)
-    status = Column(SQLAlchemyEnum(AppointmentStatus), nullable=False)
-    notes = Column(Text, nullable=True)
-    location = Column(String(255), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=datetime.now, nullable=False)
-    updated_at = Column(
-        DateTime(timezone=True),
-        default=datetime.now,
-        onupdate=datetime.now,
-        nullable=False,
+    start_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), 
+        nullable=False
     )
+    end_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), 
+        nullable=False
+    )
+    appointment_type: Mapped[str] = mapped_column(
+        String(50), 
+        nullable=False
+    )
+    status: Mapped[AppointmentStatus] = mapped_column(
+        SQLAlchemyEnum(AppointmentStatus), 
+        nullable=False
+    )
+    notes: Mapped[Optional[str]] = mapped_column(
+        Text, 
+        nullable=True
+    )
+    location: Mapped[Optional[str]] = mapped_column(
+        String(255), 
+        nullable=True
+    )
+
+    # Note: created_at and updated_at are provided by TimestampMixin
+    # Removed duplicate definitions to avoid conflicts
 
     # Relationships - aligned to match the actual database schema and foreign keys
     patient = relationship("Patient", back_populates="appointments")
