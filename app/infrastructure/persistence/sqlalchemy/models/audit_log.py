@@ -6,8 +6,10 @@ tracking access and modifications to sensitive data and system events.
 """
 
 import uuid
+import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from app.infrastructure.persistence.sqlalchemy.types import GUID, JSONEncodedDict
@@ -28,30 +30,30 @@ class AuditLog(Base):
 
     __tablename__ = "audit_logs"
 
-    id: Column = Column(GUID(), primary_key=True, default=uuid.uuid4)
-    timestamp: Column = Column(
+    id: Mapped[str] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    timestamp: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
     # Types of events (phi_access, auth_event, system_change, etc.)
-    event_type: Column = Column(String(100), nullable=False, index=True)
+    event_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
 
     # Link to user table (nullable for system events without a specific user context)
-    user_id: Column = Column(GUID(), ForeignKey("users.id"), nullable=True, index=True)
+    user_id: Mapped[str | None] = mapped_column(GUID(), ForeignKey("users.id"), nullable=True, index=True)
     # TEMP: Comment out relationship until User model is implemented
     # user = relationship("User")
 
     # Source IP of the request
-    ip_address: Column = Column(String(50), nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(50), nullable=True)
     # Actions like 'login', 'view_record', 'update_settings', 'create_user'
-    action: Column = Column(String(255), nullable=False)
+    action: Mapped[str] = mapped_column(String(255), nullable=False)
     # Type of resource (patient, user, setting, etc.)
-    resource_type: Column = Column(String(100), nullable=True)
+    resource_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # ID of the resource (patient_id, user_id, etc.)
-    resource_id: Column = Column(String(255), nullable=True, index=True)
+    resource_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     # Whether the action was successful
-    success: Column = Column(Boolean, nullable=True)
+    success: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     # Additional details as JSON
-    details: Column = Column(JSONEncodedDict, nullable=True)
+    details: Mapped[dict | None] = mapped_column(JSONEncodedDict, nullable=True)
 
     def __repr__(self):
         return (
