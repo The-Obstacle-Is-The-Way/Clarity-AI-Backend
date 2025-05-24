@@ -64,9 +64,9 @@ class BiometricAlertService(AlertServiceInterface):
         if patient_id:
             sample_alert = Alert(
                 id=str(UUID(int=1)),
-                alert_type=alert_type or AlertType.BIOMETRIC_ANOMALY.value,
+                alert_type=AlertType(alert_type) if alert_type else AlertType.BIOMETRIC_ANOMALY,
                 timestamp=datetime.now(timezone.utc),
-                status=status or AlertStatus.OPEN.value,
+                status=AlertStatus(status) if status else AlertStatus.OPEN,
                 priority=severity or AlertPriority.MEDIUM,
                 message="Sample alert for testing",
                 data={"heart_rate": 120},
@@ -94,9 +94,9 @@ class BiometricAlertService(AlertServiceInterface):
         # Create a sample alert for testing
         sample_alert = Alert(
             id=alert_id,
-            alert_type=AlertType.BIOMETRIC_ANOMALY.value,
+            alert_type=AlertType.BIOMETRIC_ANOMALY,
             timestamp=datetime.now(timezone.utc),
-            status=AlertStatus.OPEN.value,
+            status=AlertStatus.OPEN,
             priority=AlertPriority.MEDIUM,
             message="Sample alert for testing",
             data={"heart_rate": 120},
@@ -210,7 +210,7 @@ class BiometricAlertService(AlertServiceInterface):
             },
             "by_type": {
                 AlertType.BIOMETRIC_ANOMALY.value: 3,
-                AlertType.MEDICATION.value: 2,
+                AlertType.MEDICATION_REMINDER.value: 2,
             },
         }
 
