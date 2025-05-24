@@ -35,7 +35,7 @@ class DiagnosisCode:
     description: str
     category: str | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate the diagnosis code format"""
         if not self.code:
             raise ValueError("Diagnosis code cannot be empty")
