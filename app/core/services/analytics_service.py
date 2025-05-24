@@ -29,7 +29,7 @@ class AnalyticsService(AnalyticsServiceInterface):
     Single Responsibility Principle by focusing only on analytics.
     """
 
-    def __init__(self, storage_provider=None):
+    def __init__(self, storage_provider=None) -> None:
         """
         Initialize the analytics service.
 
@@ -39,8 +39,8 @@ class AnalyticsService(AnalyticsServiceInterface):
         self._storage = storage_provider
         # If no storage provider, use in-memory storage for test collection
         if not self._storage:
-            self._events = []
-            self._metrics = {}
+            self._events: list[dict[str, Any]] = []
+            self._metrics: dict[str, Any] = {}
 
     async def track_event(
         self,

@@ -47,7 +47,7 @@ class DigitalTwinService:
         symptom_forecasting_service: SymptomForecastingInterface,
         biometric_correlation_service: BiometricCorrelationInterface,
         pharmacogenomics_service: PharmacogenomicsInterface,
-    ):
+    ) -> None:
         """
         Initialize the digital twin service
 

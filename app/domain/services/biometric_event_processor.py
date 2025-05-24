@@ -579,7 +579,7 @@ class BiometricEventProcessor:
     when concerning patterns emerge.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize a new biometric event processor."""
         self.rules: dict[str, AlertRule] = {}
         self.observers: dict[AlertPriority, list[AlertObserver]] = {
@@ -752,7 +752,7 @@ class ClinicalRuleEngine:
     and evaluating complex conditions.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize a new clinical rule engine."""
         self.rule_templates: dict[str, dict[str, Any]] = {}
         self.custom_conditions: dict[str, Callable] = {}
