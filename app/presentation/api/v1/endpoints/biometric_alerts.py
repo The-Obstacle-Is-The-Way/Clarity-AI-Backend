@@ -427,8 +427,11 @@ class ManualAlertRequest(BaseModel):
 
 @router.post("/patients/{patient_id}/trigger", response_model=dict[str, Any])
 async def trigger_alert_manually(
-    alert_data: ManualAlertRequest = Body(..., description="Alert data"),
     patient_id: UUID = Path(..., description="Patient ID"),
+    message: str = Body(..., description="Alert message content"),
+    severity: AlertPriority = Body(default=AlertPriority.MEDIUM, description="Alert severity level"),
+    alert_type: AlertType = Body(default=AlertType.BIOMETRIC_ANOMALY, description="Type of alert"),
+    data: dict[str, Any] = Body(default_factory=dict, description="Additional alert data"),
     alert_service: AlertServiceInterface = Depends(get_alert_service),
     current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
@@ -469,10 +472,10 @@ async def trigger_alert_manually(
         # Trigger the alert
         success, alert_id, error_msg = await alert_service.create_alert(
             patient_id=str(patient_id),
-            alert_type=alert_data.alert_type.value,
-            severity=alert_data.severity,
-            description=alert_data.message,
-            source_data=alert_data.data,
+            alert_type=alert_type.value,
+            severity=severity,
+            description=message,
+            source_data=data,
             metadata={"manually_triggered_by": str(current_user.id)},
         )
 
