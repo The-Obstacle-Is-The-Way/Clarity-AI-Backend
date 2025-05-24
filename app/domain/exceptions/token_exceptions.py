@@ -17,7 +17,11 @@ class TokenException(AuthenticationError):
 
     def __init__(self, message: str = "Authentication error", *args: object, **kwargs: object) -> None:
         # Ensure message is HIPAA compliant by avoiding sensitive details
-        self.status_code = kwargs.pop("status_code", self.status_code)
+        status_code_val = kwargs.pop("status_code", self.status_code)
+        if isinstance(status_code_val, int):
+            self.status_code = status_code_val
+        else:
+            self.status_code = self.status_code  # Keep class default
         super().__init__(message, *args, **kwargs)
 
 
