@@ -221,7 +221,7 @@ class NeurotransmitterEffect:
         Returns:
             Dictionary representation of the effect
         """
-        result = {
+        result: dict[str, Any] = {
             "neurotransmitter": self.neurotransmitter.value,
             "effect_size": self.effect_size,
             "p_value": self.p_value,
