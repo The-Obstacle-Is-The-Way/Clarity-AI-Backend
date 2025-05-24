@@ -25,7 +25,7 @@ from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 # Application-Specific Imports
 from app.core.config import Settings
 from app.core.config import get_settings as global_get_settings
-from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface as IJWTService
+from app.core.interfaces.services.jwt_service import JWTServiceInterface as IJWTService
 from app.core.interfaces.services.redis_service_interface import IRedisService
 from app.core.logging_config import LOGGING_CONFIG
 from app.infrastructure.security.jwt.jwt_service import get_jwt_service
