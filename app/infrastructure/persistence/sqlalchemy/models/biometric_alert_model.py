@@ -11,7 +11,7 @@ import datetime
 
 from sqlalchemy import (
     JSON,
-    Column,
+
     DateTime,
     ForeignKey,
     String,
@@ -50,15 +50,15 @@ class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
         index=True,
     )
     alert_type: Mapped[str] = mapped_column(String, index=True, nullable=False)
-    description = Column(String, nullable=False)
-    priority: Column[AlertPriorityEnum] = Column(SQLAlchemyEnum(AlertPriorityEnum), nullable=False)
-    rule_id = Column(
+    description: Mapped[str] = mapped_column(String, nullable=False)
+    priority: Mapped[AlertPriorityEnum] = mapped_column(SQLAlchemyEnum(AlertPriorityEnum), nullable=False)
+    rule_id: Mapped[uuid.UUID] = mapped_column(
         SQLAlchemyUUID(as_uuid=True),
         ForeignKey("biometric_rules.id"),
         nullable=False,
         index=True,
     )
-    status: Column[AlertStatusEnum] = Column(
+    status: Mapped[AlertStatusEnum] = mapped_column(
         SQLAlchemyEnum(AlertStatusEnum),
         default=AlertStatusEnum.NEW,
         nullable=False,
@@ -66,28 +66,28 @@ class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
     )
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, default=now_utc, index=True)
-    updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, default=now_utc, index=True)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
 
     # Acknowledgment and resolution
-    acknowledged_at = Column(DateTime, nullable=True)
-    acknowledged_by_user_id = Column(
+    acknowledged_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)
+    acknowledged_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         SQLAlchemyUUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
-    resolved_at = Column(DateTime, nullable=True)
-    resolved_by_user_id = Column(
+    resolved_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)
+    resolved_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         SQLAlchemyUUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
-    resolution_notes = Column(String, nullable=True)
+    resolution_notes: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # Additional data
-    data_points = Column(
+    data_points: Mapped[dict] = mapped_column(
         JSON, nullable=False
     )  # Serialized list of data points that triggered the alert
-    alert_metadata = Column(JSON, nullable=True)  # Renamed from metadata
+    alert_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # Renamed from metadata
 
-    triggering_event_details = Column(MutableDict.as_mutable(JSON), nullable=True)
-    notes = Column(Text, nullable=True)
+    triggering_event_details: Mapped[dict | None] = mapped_column(MutableDict.as_mutable(JSON), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     patient = relationship("Patient")  # Add backref in Patient model if needed
     rule = relationship("BiometricRuleModel")  # Add backref in BiometricRuleModel if needed
