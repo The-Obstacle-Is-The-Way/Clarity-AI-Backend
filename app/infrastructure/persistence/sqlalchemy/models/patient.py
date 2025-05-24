@@ -368,7 +368,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
             )
 
             # Serialize EmergencyContact VO to dict
-            model._emergency_contact_details = (
+            model._emergency_contact_details = (  # type: ignore[assignment]
                 emergency_contact_vo.model_dump()
                 if hasattr(emergency_contact_vo, "model_dump")
                 else emergency_contact_vo.to_dict()
@@ -591,14 +591,14 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # Prepare Address domain object
         address_raw = self._address_details  # Should be dict or None after EncryptedJSON
         address_domain_obj = None
-        if isinstance(address_raw, dict):
+        if isinstance(address_raw, dict):  # type: ignore[unreachable]
             try:
                 address_domain_obj = Address(**address_raw)
             except Exception as e:
                 logger.error(
                     f"Failed to create Address VO for patient {self.id} from _address_details: {e}"
                 )
-        elif isinstance(address_raw, str):
+        elif isinstance(address_raw, str):  # type: ignore[unreachable]
             # Try to parse JSON string to dict
             try:
                 address_dict = json.loads(address_raw)
@@ -635,14 +635,14 @@ class Patient(Base, TimestampMixin, AuditMixin):
             self._emergency_contact_details
         )  # Should be dict or None from EncryptedJSON
         emergency_contact_domain_obj = None
-        if isinstance(emergency_contact_raw, dict):
+        if isinstance(emergency_contact_raw, dict):  # type: ignore[unreachable]
             try:
                 emergency_contact_domain_obj = EmergencyContact(**emergency_contact_raw)
             except Exception as e:
                 logger.error(
                     f"Failed to create EmergencyContact VO for patient {self.id} from _emergency_contact_details: {e}"
                 )
-        elif isinstance(emergency_contact_raw, str):
+        elif isinstance(emergency_contact_raw, str):  # type: ignore[unreachable]
             # Try to parse JSON string to dict
             try:
                 ec_dict = json.loads(emergency_contact_raw)
