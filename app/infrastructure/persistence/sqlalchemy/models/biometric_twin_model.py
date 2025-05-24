@@ -9,11 +9,12 @@ that prevents SQLAlchemy conflicts during testing.
 """
 
 import uuid
+import datetime
 
 from sqlalchemy import (
     JSON,
     Boolean,
-    Column,
+
     DateTime,
     Float,
     ForeignKey,
@@ -21,7 +22,7 @@ from sqlalchemy import (
 )
 from sqlalchemy import UUID as SQLAlchemyUUID
 from sqlalchemy.ext.mutable import MutableDict
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.utils.datetime_utils import now_utc
 from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin
@@ -37,19 +38,19 @@ class BiometricTwinModel(Base, TimestampMixin):
 
     __tablename__ = "biometric_twins"
 
-    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    patient_id = Column(
+    id: Mapped[uuid.UUID] = mapped_column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(
         SQLAlchemyUUID(as_uuid=True),
         ForeignKey("patients.id"),
         nullable=False,
         index=True,
     )
-    created_at = Column(DateTime, nullable=False, default=now_utc)
-    updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
-    baseline_established = Column(Boolean, nullable=False, default=False)
-    connected_devices = Column(JSON, nullable=True)
-    config = Column(MutableDict.as_mutable(JSON), nullable=True)
-    status = Column(String(50), default="active", nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, default=now_utc)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
+    baseline_established: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    connected_devices: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    config: Mapped[dict | None] = mapped_column(MutableDict.as_mutable(JSON), nullable=True)
+    status: Mapped[str] = mapped_column(String(50), default="active", nullable=False)
 
     patient = relationship("Patient", back_populates="biometric_twin")
     data_points = relationship(
@@ -78,20 +79,20 @@ class BiometricDataPointModel(Base):
 
     __tablename__ = "biometric_data_points"
 
-    data_id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    twin_id = Column(
+    data_id: Mapped[uuid.UUID] = mapped_column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    twin_id: Mapped[uuid.UUID] = mapped_column(
         SQLAlchemyUUID(as_uuid=True),
         ForeignKey("biometric_twins.id"),
         index=True,
         nullable=False,
     )
-    data_type = Column(String(100), index=True, nullable=False)
-    value = Column(String, nullable=False)
-    value_type = Column(String, nullable=False)  # "number", "string", "json"
-    timestamp = Column(DateTime, nullable=False, index=True)
-    source = Column(String, nullable=False, index=True)
-    metadata_json = Column("metadata", JSON, nullable=True)
-    confidence = Column(Float, nullable=False, default=1.0)
+    data_type: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
+    value: Mapped[str] = mapped_column(String, nullable=False)
+    value_type: Mapped[str] = mapped_column(String, nullable=False)  # "number", "string", "json"
+    timestamp: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, index=True)
+    source: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    metadata_json: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
 
     # Define relationship to BiometricTwinModel using string reference
     twin = relationship(
@@ -110,20 +111,20 @@ class BiometricDataPointModel(Base):
 class BiometricTimeseriesDataModel(Base, TimestampMixin):
     __tablename__ = "biometric_timeseries_data"
 
-    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    biometric_twin_id = Column(
+    id: Mapped[uuid.UUID] = mapped_column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    biometric_twin_id: Mapped[uuid.UUID] = mapped_column(
         SQLAlchemyUUID(as_uuid=True),
         ForeignKey("biometric_twins.id"),
         nullable=False,
         index=True,
     )
-    data_type = Column(String(100), nullable=False, index=True)
-    timestamp = Column(DateTime, default=now_utc, nullable=False, index=True)
-    value_numeric = Column(Float, nullable=True)
-    value_string = Column(String, nullable=True)
-    value_json = Column(MutableDict.as_mutable(JSON), nullable=True)
-    unit = Column(String(50), nullable=True)
-    metadata_ = Column("metadata", MutableDict.as_mutable(JSON), nullable=True)
+    data_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    timestamp: Mapped[datetime.datetime] = mapped_column(DateTime, default=now_utc, nullable=False, index=True)
+    value_numeric: Mapped[float | None] = mapped_column(Float, nullable=True)
+    value_string: Mapped[str | None] = mapped_column(String, nullable=True)
+    value_json: Mapped[dict | None] = mapped_column(MutableDict.as_mutable(JSON), nullable=True)
+    unit: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    metadata_: Mapped[dict | None] = mapped_column("metadata", MutableDict.as_mutable(JSON), nullable=True)
 
     biometric_twin = relationship("BiometricTwinModel", back_populates="timeseries_data")
 
