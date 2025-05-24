@@ -1620,8 +1620,7 @@ def get_jwt_service(
     issuer = getattr(settings, "JWT_ISSUER", None)
     audience = getattr(settings, "JWT_AUDIENCE", None)
 
-    # Create and return JWT service instance
-    # Try to use JWTServiceImpl first
+    # Create and return JWT service instance - use concrete implementation only
     try:
         from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
 
@@ -1638,7 +1637,8 @@ def get_jwt_service(
             settings=settings,
         )
     except ImportError:
-        # Fallback to JWTService if implementation is not available
+        # Use the concrete JWTService class directly (not abstract)
+        # This should work since JWTService is now a concrete implementation
         return JWTService(
             secret_key=secret_key,
             algorithm=algorithm,
