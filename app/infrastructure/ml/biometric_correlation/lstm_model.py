@@ -7,7 +7,7 @@ between biometric data and mental health indicators.
 
 import logging
 import os
-from typing import Any
+from typing import Any, Dict, cast
 
 import numpy as np
 
@@ -92,7 +92,7 @@ class BiometricCorrelationModel:
         self.output_dim = output_dim
         self.sequence_length = sequence_length
         self.is_initialized = False
-        self.model = None
+        self.model: Any = None
 
     def initialize(self) -> None:
         """
@@ -237,8 +237,8 @@ class BiometricCorrelationModel:
             Dictionary containing anomaly detection results
         """
         # Initialize results
-        anomalies_by_feature = {}
-        anomalies_by_time = {}
+        anomalies_by_feature: Dict[str, Any] = {}
+        anomalies_by_time: Dict[str, Any] = {}
 
         # Detect anomalies for each feature
         for i in range(biometric_data.shape[1]):
@@ -253,8 +253,8 @@ class BiometricCorrelationModel:
                 means.append(np.mean(window))
                 stds.append(np.std(window))
 
-            means = np.array(means)
-            stds = np.array(stds)
+            means = cast(Any, np.array(means))
+            stds = cast(Any, np.array(stds))
 
             # Detect anomalies (values outside 3 standard deviations)
             anomalies = []

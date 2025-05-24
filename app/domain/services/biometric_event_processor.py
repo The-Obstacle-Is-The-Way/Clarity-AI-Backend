@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 from app.domain.entities.biometric_alert import AlertStatusEnum
@@ -124,7 +124,7 @@ class AlertRule:
         if "context_key" in self.condition and context and self.condition["context_key"] in context:
             context_value = context[self.condition["context_key"]]
             if context_value is not None:
-                return True
+                return cast(bool, True)
 
         # Handle context-based threshold comparisons
         if (
@@ -138,42 +138,42 @@ class AlertRule:
                 context_threshold = self.condition["context_threshold"]
 
                 if context_operator == ">":
-                    return diff > context_threshold
+                    return cast(bool, diff > context_threshold)
                 elif context_operator == "<":
-                    return diff < context_threshold
+                    return cast(bool, diff < context_threshold)
                 elif context_operator == ">=":
-                    return diff >= context_threshold
+                    return cast(bool, diff >= context_threshold)
                 elif context_operator == "<=":
-                    return diff <= context_threshold
+                    return cast(bool, diff <= context_threshold)
                 elif context_operator == "==" or context_operator == "=":
-                    return diff == context_threshold
+                    return cast(bool, diff == context_threshold)
 
         # Standard comparison operators
         if operator == ">":
-            return data_point.value > threshold
+            return cast(bool, data_point.value > threshold)
         elif operator == ">=":
-            return data_point.value >= threshold
+            return cast(bool, data_point.value >= threshold)
         elif operator == "<":
-            return data_point.value < threshold
+            return cast(bool, data_point.value < threshold)
         elif operator == "<=":
-            return data_point.value <= threshold
+            return cast(bool, data_point.value <= threshold)
         elif operator == "==" or operator == "=":
-            return data_point.value == threshold
+            return cast(bool, data_point.value == threshold)
         elif operator == "!=":
-            return data_point.value != threshold
+            return cast(bool, data_point.value != threshold)
         # Handle string versions of operators as well for flexibility
         elif operator == "greater_than":
-            return data_point.value > threshold
+            return cast(bool, data_point.value > threshold)
         elif operator == "greater_than_or_equal":
-            return data_point.value >= threshold
+            return cast(bool, data_point.value >= threshold)
         elif operator == "less_than":
-            return data_point.value < threshold
+            return cast(bool, data_point.value < threshold)
         elif operator == "less_than_or_equal":
-            return data_point.value <= threshold
+            return cast(bool, data_point.value <= threshold)
         elif operator == "equal":
-            return data_point.value == threshold
+            return cast(bool, data_point.value == threshold)
         elif operator == "not_equal":
-            return data_point.value != threshold
+            return cast(bool, data_point.value != threshold)
         elif operator and operator not in [
             ">",
             ">=",

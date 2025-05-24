@@ -11,7 +11,7 @@ import json
 import os
 import unittest
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 
 class MockDatabase:
@@ -518,7 +518,7 @@ def parse_test_results(results_path: str) -> dict[str, Any]:
         Parsed results dictionary
     """
     with open(results_path) as f:
-        return json.load(f)
+        return cast(dict[str, Any], json.load(f))
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ neurotransmitter levels across different brain regions.
 """
 import uuid
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from app.domain.entities.digital_twin_enums import (
@@ -347,4 +347,4 @@ class TemporalNeurotransmitterSequence(TemporalSequence):
         if var_x == 0 or var_y == 0:
             return 0.0
 
-        return cov / ((var_x * var_y) ** 0.5)
+        return cast(float, cov / ((var_x * var_y) ** 0.5))

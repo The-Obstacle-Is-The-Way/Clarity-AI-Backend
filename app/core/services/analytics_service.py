@@ -9,7 +9,7 @@ and clean architecture principles.
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from app.core.interfaces.services.analytics_service_interface import (
@@ -256,7 +256,7 @@ class AnalyticsService(AnalyticsServiceInterface):
             Sanitized event data with PHI removed
         """
         # Deep copy to avoid modifying the original
-        sanitized = json.loads(json.dumps(event_data))
+        sanitized = cast(dict[str, Any], json.loads(json.dumps(event_data)))
 
         # List of fields that might contain PHI
         phi_fields = [
