@@ -428,8 +428,8 @@ class ManualAlertRequest(BaseModel):
 
 @router.post("/patients/{patient_id}/trigger", response_model=dict[str, Any])
 async def trigger_alert_manually(
+    alert_data: ManualAlertRequest,
     patient_id: UUID = Path(..., description="Patient ID"),
-    alert_data: ManualAlertRequest = Body(...),
     alert_service: AlertServiceInterface = Depends(get_alert_service),
     current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:

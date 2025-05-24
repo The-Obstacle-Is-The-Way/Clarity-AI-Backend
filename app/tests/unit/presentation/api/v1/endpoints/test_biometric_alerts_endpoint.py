@@ -27,6 +27,7 @@ from app.core.config.settings import Settings as AppSettings
 from app.core.domain.entities.alert import AlertPriority, AlertStatus, AlertType
 from app.core.domain.entities.user import User, UserRole
 from app.core.exceptions import ApplicationError, ErrorCode
+from app.core.interfaces.services.alert_service_interface import AlertSeverity
 from app.core.interfaces.services.alert_rule_service_interface import (
     AlertRuleServiceInterface,
 )
@@ -1532,7 +1533,7 @@ class TestBiometricAlertsEndpoints:
 
         # Create alert trigger payload
         trigger_payload = {
-            "severity": "high",
+            "severity": AlertSeverity.HIGH,
             "message": "Manual alert created by test",
             "data": {"key": "value"},
         }
@@ -1541,12 +1542,10 @@ class TestBiometricAlertsEndpoints:
         response = await client.post(
             f"/api/v1/biometric-alerts/patients/{sample_patient_id}/trigger",
             json={
-                "alert_data": {
-                    "message": trigger_payload["message"],
-                    "priority": trigger_payload["severity"],
-                    "alert_type": AlertType.BIOMETRIC_ANOMALY.value,
-                    "data": trigger_payload["data"],
-                }
+                "message": trigger_payload["message"],
+                "severity": trigger_payload["severity"],
+                "alert_type": AlertType.BIOMETRIC_ANOMALY.value,
+                "data": trigger_payload["data"],
             },
             headers=get_valid_provider_auth_headers,
         )
