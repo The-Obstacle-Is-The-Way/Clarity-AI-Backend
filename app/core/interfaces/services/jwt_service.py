@@ -14,7 +14,7 @@ from datetime import timedelta
 from typing import Any
 
 from app.core.domain.types.jwt_payload import JWTPayload, RefreshTokenPayload
-from app.domain.entities.user import User
+from app.core.domain.entities.user import User
 
 
 class IJwtService(ABC):
