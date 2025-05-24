@@ -31,6 +31,7 @@ MANIFEST
 .roorules
 .windsurfrules
 .cursor/
+.roo/mcp.json
 
 # -------------------
 # IDE settings
