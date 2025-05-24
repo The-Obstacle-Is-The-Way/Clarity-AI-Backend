@@ -8,7 +8,7 @@ to the domain-driven MentaLLaMAServiceInterface.
 import random
 import uuid
 from datetime import datetime
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 from zoneinfo import ZoneInfo
 
 # Define UTC timezone
@@ -120,9 +120,9 @@ class MockMentaLLaMA:
 
         # Use configured mock responses if available
         if model_type and model_type in self._mock_responses:
-            return self._mock_responses[model_type]
+            return cast(dict[str, Any], self._mock_responses[model_type])
         elif "general" in self._mock_responses:
-            return self._mock_responses["general"]
+            return cast(dict[str, Any], self._mock_responses["general"])
 
         # If running a specific test that expects a ModelNotFoundError for nonexistent model
         if model_type == "nonexistent_model_type":
