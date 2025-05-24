@@ -7,6 +7,7 @@ of concerning patterns in patient biometric data.
 """
 
 import uuid
+import datetime
 
 from sqlalchemy import (
     JSON,
@@ -19,7 +20,7 @@ from sqlalchemy import (
 from sqlalchemy import UUID as SQLAlchemyUUID
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.ext.mutable import MutableDict
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.entities.biometric_alert import AlertStatusEnum
 from app.domain.entities.biometric_alert_rule import AlertPriority as AlertPriorityEnum
@@ -41,14 +42,14 @@ class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
 
     __tablename__ = "biometric_alerts"
 
-    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    patient_id = Column(
+    id: Mapped[uuid.UUID] = mapped_column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(
         SQLAlchemyUUID(as_uuid=True),
         ForeignKey("patients.id"),
         nullable=False,
         index=True,
     )
-    alert_type = Column(String, index=True, nullable=False)
+    alert_type: Mapped[str] = mapped_column(String, index=True, nullable=False)
     description = Column(String, nullable=False)
     priority: Column[AlertPriorityEnum] = Column(SQLAlchemyEnum(AlertPriorityEnum), nullable=False)
     rule_id = Column(
