@@ -6,8 +6,10 @@ mapping the domain entity to the database schema.
 """
 
 import uuid
+import datetime
 
 from sqlalchemy import UUID as SQLAlchemyUUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import (
     Boolean,
     Column,
@@ -16,7 +18,7 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.orm import relationship
+
 
 from app.infrastructure.persistence.sqlalchemy.models.base import (
     AuditMixin,
@@ -35,11 +37,11 @@ class MedicationModel(Base, TimestampMixin, AuditMixin):
 
     __tablename__ = "medications"
 
-    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String(255), nullable=False, index=True)
-    description = Column(Text, nullable=True)
-    form = Column(String(100), nullable=True)  # e.g., tablet, capsule, liquid
-    strength = Column(String(100), nullable=True)  # e.g., 10mg, 50mg/mL
+    id: Mapped[uuid.UUID] = mapped_column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    form: Mapped[str | None] = mapped_column(String(100), nullable=True)  # e.g., tablet, capsule, liquid
+    strength: Mapped[str | None] = mapped_column(String(100), nullable=True)  # e.g., 10mg, 50mg/mL
     # manufacturer = Column(String(255), nullable=True) # Optional
 
     # Relationship to the association table
@@ -58,20 +60,20 @@ class PatientMedicationModel(Base, TimestampMixin, AuditMixin):
 
     __tablename__ = "patient_medications"
 
-    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    patient_id = Column(
+    id: Mapped[uuid.UUID] = mapped_column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(
         SQLAlchemyUUID(as_uuid=True),
         ForeignKey("patients.id"),
         nullable=False,
         index=True,
     )
-    medication_id = Column(
+    medication_id: Mapped[uuid.UUID] = mapped_column(
         SQLAlchemyUUID(as_uuid=True),
         ForeignKey("medications.id"),
         nullable=False,
         index=True,
     )
-    provider_id = Column(
+    provider_id: Mapped[uuid.UUID] = mapped_column(
         SQLAlchemyUUID(as_uuid=True),
         ForeignKey("providers.id"),
         nullable=False,
@@ -79,12 +81,12 @@ class PatientMedicationModel(Base, TimestampMixin, AuditMixin):
     )  # MODIFIED: Changed from users.id to providers.id
 
     # Prescription-specific details
-    dosage = Column(String(100), nullable=False)
-    frequency = Column(String(100), nullable=False)
-    start_date = Column(Date, nullable=False)
-    end_date = Column(Date, nullable=True)
-    instructions = Column(Text, nullable=True)
-    is_active = Column(
+    dosage: Mapped[str] = mapped_column(String(100), nullable=False)
+    frequency: Mapped[str] = mapped_column(String(100), nullable=False)
+    start_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
+    instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, nullable=False
     )  # Renamed from 'active' to avoid conflict
 
