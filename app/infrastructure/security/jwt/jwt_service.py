@@ -497,7 +497,66 @@ class JWTService(IJwtService):
 
         return payload
 
-    def create_access_token(
+    async def create_access_token(
+        self,
+        user_id: str | UUID,
+        roles: list[str] | None = None,
+        expires_delta_minutes: int | None = None,
+    ) -> str:
+        """
+        Create a JWT access token for authentication.
+
+        Args:
+            user_id: The user ID to encode in the token
+            roles: The user roles to encode in the token
+            expires_delta_minutes: Custom expiration time in minutes
+
+        Returns:
+            JWT access token as a string
+        """
+        # Convert user_id to string for consistency
+        subject = str(user_id)
+        
+        # Prepare additional claims
+        additional_claims = {
+            "roles": roles or []
+        }
+        
+        # Create the token using existing sync implementation
+        return self._create_access_token_sync(
+            subject=subject,
+            additional_claims=additional_claims,
+            expires_delta_minutes=expires_delta_minutes
+        )
+
+    async def create_refresh_token(
+        self, user_id: str | UUID, expires_delta_minutes: int | None = None
+    ) -> str:
+        """
+        Create a JWT refresh token that can be used to generate new access tokens.
+
+        Args:
+            user_id: The user ID to encode in the token
+            expires_delta_minutes: Custom expiration time in minutes
+
+        Returns:
+            JWT refresh token as a string
+        """
+        # Convert user_id to string for consistency
+        subject = str(user_id)
+        
+        # Convert minutes to days if provided
+        expires_delta_days = None
+        if expires_delta_minutes is not None:
+            expires_delta_days = expires_delta_minutes / (24 * 60)  # Convert minutes to days
+        
+        # Create the token using existing sync implementation
+        return self._create_refresh_token_sync(
+            subject=subject,
+            expires_delta_days=expires_delta_days
+        )
+
+    def _create_access_token_sync(
         self,
         subject: str | None = None,
         additional_claims: dict[str, Any] | None = None,
@@ -506,22 +565,7 @@ class JWTService(IJwtService):
         data: Any = None,
         jti: str | None = None,
     ) -> str:
-        """Creates a new access token.
-
-        Args:
-            subject: The subject of the token (typically a user ID)
-            additional_claims: Additional claims to include in the token
-            expires_delta: Custom expiration time as timedelta
-            expires_delta_minutes: Custom expiration time in minutes
-            data: Alternative way to provide token data (for compatibility with tests)
-            jti: Custom JWT ID to use for the token
-
-        Returns:
-            str: The encoded access token
-
-        Raises:
-            ValueError: If no subject is provided directly or in data/additional_claims
-        """
+        """Creates a new access token (sync implementation for backward compatibility)."""
         additional_claims = additional_claims or {}
 
         # Handle data parameter for backward compatibility with tests
@@ -592,7 +636,7 @@ class JWTService(IJwtService):
         # Create token
         return self._create_token(claims, data)
 
-    def create_refresh_token(
+    def _create_refresh_token_sync(
         self,
         subject: str | None = None,
         additional_claims: dict[str, Any] | None = None,
@@ -601,22 +645,7 @@ class JWTService(IJwtService):
         data: Any = None,
         jti: str | None = None,
     ) -> str:
-        """Creates a new refresh token.
-
-        Args:
-            subject: The subject of the token (typically a user ID)
-            additional_claims: Additional claims to include in the token
-            expires_delta: Custom expiration time as timedelta
-            expires_delta_days: Custom expiration time in days
-            data: Alternative way to provide token data (for compatibility with tests)
-            jti: Custom JWT ID
-
-        Returns:
-            str: The encoded refresh token
-
-        Raises:
-            ValueError: If no subject is provided
-        """
+        """Creates a new refresh token (sync implementation for backward compatibility)."""
         additional_claims = additional_claims or {}
 
         # Handle data parameter for backward compatibility with tests
@@ -682,6 +711,72 @@ class JWTService(IJwtService):
 
         # Create token
         return self._create_token(claims, data)
+
+    async def verify_token(self, token: str) -> JWTPayload:
+        """
+        Verify a JWT token's validity and return its decoded payload.
+
+        Args:
+            token: The JWT token to verify
+
+        Returns:
+            Decoded token payload as structured JWT payload object
+
+        Raises:
+            JWTError: If token is invalid, expired, or has been tampered with
+        """
+        try:
+            # Decode and validate the token
+            payload = self.decode_token(token)
+
+            # Check if token is blacklisted
+            jti = payload.get("jti") if hasattr(payload, "get") else getattr(payload, "jti", None)
+            if jti:
+                # Check in-memory blacklist first
+                if jti in self._token_blacklist:
+                    raise TokenBlacklistedError("Token has been blacklisted")
+
+                # Check repository if available
+                if self.token_blacklist_repository:
+                    is_blacklisted = await self.token_blacklist_repository.is_blacklisted(jti)
+                    if is_blacklisted:
+                        reason = "Unknown reason"
+                        blacklist_info = await self.token_blacklist_repository.get_blacklist_info(
+                            jti
+                        )
+                        if blacklist_info and "reason" in blacklist_info:
+                            reason = blacklist_info["reason"]
+
+                        # Raise token blacklisted exception
+                        raise TokenBlacklistedError(f"Token has been blacklisted: {reason}")
+
+            # Convert TokenPayload to proper JWTPayload type
+            from app.core.domain.types.jwt_payload import payload_from_dict, JWTPayload
+            
+            # Convert payload to dict if it's not already
+            if hasattr(payload, "model_dump"):
+                payload_dict = payload.model_dump()
+            elif hasattr(payload, "__dict__"):
+                payload_dict = payload.__dict__.copy()
+                # Remove custom_fields if it exists to avoid duplication
+                payload_dict.pop("custom_fields", None)
+                # Add custom fields back from the payload
+                if hasattr(payload, "custom_fields"):
+                    payload_dict.update(payload.custom_fields)
+            else:
+                payload_dict = dict(payload) if hasattr(payload, "keys") else {}
+
+            # Convert to structured JWTPayload
+            jwt_payload = payload_from_dict(payload_dict)
+            return jwt_payload
+
+        except TokenBlacklistedError:
+            # Re-raise blacklist exceptions without modification
+            raise
+        except Exception as e:
+            # Log and sanitize other errors
+            logger.error(f"Error verifying token: {e}")
+            raise InvalidTokenError(self._sanitize_error_message(str(e)))
 
     def decode_token(
         self,
@@ -929,35 +1024,34 @@ class JWTService(IJwtService):
                 return None
             raise AuthenticationError(f"Authentication failed: {e!s}")
 
-    def verify_refresh_token(self, token: str, enforce_refresh_type: bool = True) -> TokenPayload:
+    def verify_refresh_token(self, refresh_token: str) -> RefreshTokenPayload:
         """Verify that a token is a valid refresh token."""
         # Decode the token
         try:
             # Use standard options
             options = {"verify_signature": True, "verify_exp": True}
-            payload = self.decode_token(token, options=options)
+            payload = self.decode_token(refresh_token, options=options)
 
             # Check that it's a refresh token
-            if enforce_refresh_type:
-                # Check token type - look for both 'type' and 'refresh' fields
-                is_refresh = False
+            # Check token type - look for both 'type' and 'refresh' fields
+            is_refresh = False
 
-                # Check if type field indicates refresh token
-                if hasattr(payload, "type") and payload.type:
-                    token_type = payload.type
-                    if (
-                        token_type == TokenType.REFRESH.value
-                        or token_type == "refresh"
-                        or token_type == "REFRESH"
-                    ):
-                        is_refresh = True
-
-                # Check refresh boolean field as fallback
-                if not is_refresh and hasattr(payload, "refresh") and payload.refresh:
+            # Check if type field indicates refresh token
+            if hasattr(payload, "type") and payload.type:
+                token_type = payload.type
+                if (
+                    token_type == TokenType.REFRESH.value
+                    or token_type == "refresh"
+                    or token_type == "REFRESH"
+                ):
                     is_refresh = True
 
-                if not is_refresh:
-                    raise InvalidTokenError("Token is not a refresh token")
+            # Check refresh boolean field as fallback
+            if not is_refresh and hasattr(payload, "refresh") and payload.refresh:
+                is_refresh = True
+
+            if not is_refresh:
+                raise InvalidTokenError("Token is not a refresh token")
 
             # Check token family for reuse
             if (
@@ -970,8 +1064,27 @@ class JWTService(IJwtService):
                     # This is a reused token from this family
                     raise InvalidTokenError("Refresh token reuse detected")
 
-            # Return the payload
-            return payload
+            # Convert to RefreshTokenPayload for proper type safety
+            from app.core.domain.types.jwt_payload import RefreshTokenPayload
+            
+            # Extract data for RefreshTokenPayload
+            payload_dict = {}
+            if hasattr(payload, "model_dump"):
+                payload_dict = payload.model_dump()
+            elif hasattr(payload, "__dict__"):
+                payload_dict = payload.__dict__.copy()
+            
+            # Ensure required fields are present
+            payload_dict.setdefault("sub", str(payload.subject) if hasattr(payload, "subject") else "unknown")
+            payload_dict.setdefault("iat", int(datetime.now(timezone.utc).timestamp()))
+            payload_dict.setdefault("exp", int((datetime.now(timezone.utc) + timedelta(days=7)).timestamp()))
+            payload_dict.setdefault("jti", str(uuid4()))
+            payload_dict.setdefault("roles", [])
+            payload_dict.setdefault("type", TokenType.REFRESH.value)
+            payload_dict.setdefault("custom_fields", {})
+            
+            # Create and return RefreshTokenPayload
+            return RefreshTokenPayload(**payload_dict)
 
         except TokenExpiredError:
             # Specifically handle expired refresh tokens
@@ -1144,44 +1257,6 @@ class JWTService(IJwtService):
         except Exception as e:
             logger.error(f"Error blacklisting session {session_id}: {e}")
             return False
-
-    async def verify_token(self, token: str) -> dict[str, Any]:
-        """Verify a JWT token's validity and return its decoded payload."""
-        try:
-            # Decode and validate the token
-            payload = self.decode_token(token)
-
-            # Check if token is blacklisted
-            jti = payload.get("jti")
-            if jti:
-                # Check in-memory blacklist first
-                if jti in self._token_blacklist:
-                    raise TokenBlacklistedError("Token has been blacklisted")
-
-                # Check repository if available
-                if self.token_blacklist_repository:
-                    is_blacklisted = await self.token_blacklist_repository.is_blacklisted(jti)
-                    if is_blacklisted:
-                        reason = "Unknown reason"
-                        blacklist_info = await self.token_blacklist_repository.get_blacklist_info(
-                            jti
-                        )
-                        if blacklist_info and "reason" in blacklist_info:
-                            reason = blacklist_info["reason"]
-
-                        # Raise token blacklisted exception
-                        raise TokenBlacklistedError(f"Token has been blacklisted: {reason}")
-
-            # Convert to TokenPayload object for attribute access instead of dict
-            return TokenPayload(**payload)
-
-        except TokenBlacklistedError:
-            # Re-raise blacklist exceptions without modification
-            raise
-        except Exception as e:
-            # Log and sanitize other errors
-            logger.error(f"Error verifying token: {e}")
-            raise InvalidTokenError(self._sanitize_error_message(str(e)))
 
     # Implementing required abstract methods from the interface
     async def blacklist_token(
@@ -1437,6 +1512,45 @@ class JWTService(IJwtService):
                 "WWW-Authenticate": f'Bearer error="{error_code}", error_description="{safe_message}"'
             },
         }
+
+    # Backward compatibility aliases for existing code
+    def create_access_token(
+        self,
+        subject: str | None = None,
+        additional_claims: dict[str, Any] | None = None,
+        expires_delta: timedelta | None = None,
+        expires_delta_minutes: int | None = None,
+        data: Any = None,
+        jti: str | None = None,
+    ) -> str:
+        """Backward compatibility method - delegates to sync implementation."""
+        return self._create_access_token_sync(
+            subject=subject,
+            additional_claims=additional_claims,
+            expires_delta=expires_delta,
+            expires_delta_minutes=expires_delta_minutes,
+            data=data,
+            jti=jti,
+        )
+
+    def create_refresh_token(
+        self,
+        subject: str | None = None,
+        additional_claims: dict[str, Any] | None = None,
+        expires_delta: timedelta | None = None,
+        expires_delta_days: int | None = None,
+        data: Any = None,
+        jti: str | None = None,
+    ) -> str:
+        """Backward compatibility method - delegates to sync implementation."""
+        return self._create_refresh_token_sync(
+            subject=subject,
+            additional_claims=additional_claims,
+            expires_delta=expires_delta,
+            expires_delta_days=expires_delta_days,
+            data=data,
+            jti=jti,
+        )
 
 
 # Define dependency injection function
