@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from app.domain.entities.user import User
+from app.core.domain.entities.user import User
 
 
 class ITokenService(ABC):
