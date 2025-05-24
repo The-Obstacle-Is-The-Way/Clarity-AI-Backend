@@ -19,7 +19,7 @@ from app.core.domain.entities.user import User as DomainUser
 from app.core.domain.entities.user import UserRole, UserStatus
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
-from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+from app.core.interfaces.services.jwt_service import JWTServiceInterface
 
 # Import User entity for type hinting
 from app.domain.entities.user import User

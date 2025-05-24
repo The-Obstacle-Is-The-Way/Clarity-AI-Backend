@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.core.domain.entities.user import User, UserRole, UserStatus
-from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+from app.core.interfaces.services.jwt_service import JWTServiceInterface
 
 
 @pytest.fixture(scope="module")

@@ -273,7 +273,7 @@ class DIContainer:
         from app.core.interfaces.services.auth_service_interface import (
             AuthServiceInterface,
         )
-        from app.core.interfaces.services.jwt_service_interface import (
+        from app.core.interfaces.services.jwt_service import (
             JWTServiceInterface,
         )
         from app.infrastructure.security.auth.auth_service import get_auth_service

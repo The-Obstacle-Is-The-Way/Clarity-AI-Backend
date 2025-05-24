@@ -19,7 +19,7 @@ from starlette.responses import JSONResponse
 from app.core.domain.entities.user import User as DomainUser
 from app.core.domain.entities.user import UserRole, UserStatus
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
-from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+from app.core.interfaces.services.jwt_service import JWTServiceInterface
 
 # Exceptions
 # UserNotFoundException is raised by the middleware itself, not directly by user_repo in these tests typically

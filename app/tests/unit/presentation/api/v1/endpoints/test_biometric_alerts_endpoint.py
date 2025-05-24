@@ -36,7 +36,7 @@ from app.core.interfaces.services.alert_rule_template_service_interface import (
 )
 from app.core.interfaces.services.alert_service_interface import AlertServiceInterface
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
-from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+from app.core.interfaces.services.jwt_service import JWTServiceInterface
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 from app.domain.repositories.biometric_alert_rule_repository import (
     BiometricAlertRuleRepository,

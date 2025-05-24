@@ -13,7 +13,7 @@ from starlette.status import (
 )
 
 from app.core.domain.entities.user import UserRole, UserStatus
-from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+from app.core.interfaces.services.jwt_service import JWTServiceInterface
 from app.domain.entities.auth import UnauthenticatedUser
 from app.domain.exceptions.auth_exceptions import (
     AuthenticationException,

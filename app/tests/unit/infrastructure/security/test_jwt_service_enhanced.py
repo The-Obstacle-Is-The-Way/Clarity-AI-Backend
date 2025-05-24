@@ -31,7 +31,7 @@ except ImportError:
 # Import both interface and implementation for proper typing
 # Use canonical config path
 from app.config.settings import Settings
-from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+from app.core.interfaces.services.jwt_service import JWTServiceInterface
 from app.domain.enums.token_type import TokenType
 from app.domain.exceptions.token_exceptions import (
     InvalidTokenException,
