@@ -114,11 +114,21 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
 
         # Convert tags from JSON dict to set of strings, handling None
         domain_tags = set()
-        if self.tags and isinstance(self.tags, dict):
-            # Extract values if tags is stored as a dict, otherwise convert keys
-            domain_tags = {str(v) for v in self.tags.values()} if self.tags else set()
-        elif self.tags and isinstance(self.tags, list | set):
-            domain_tags = {str(tag) for tag in self.tags}
+        if self.tags:
+            # Tags can be stored as dict or list/set in JSON format
+            try:
+                if hasattr(self.tags, 'values'):
+                    # Dict-like format
+                    domain_tags = {str(v) for v in self.tags.values()}
+                elif hasattr(self.tags, '__iter__'):
+                    # List/set-like format
+                    domain_tags = {str(tag) for tag in self.tags}
+                else:
+                    # Single value or other format
+                    domain_tags = {str(self.tags)}
+            except (TypeError, AttributeError):
+                # Fallback for any unexpected tag format
+                domain_tags = set()
 
         return ClinicalNote(
             id=self.id,

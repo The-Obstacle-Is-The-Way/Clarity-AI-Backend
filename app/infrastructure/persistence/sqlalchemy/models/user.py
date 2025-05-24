@@ -252,7 +252,7 @@ class User(Base, TimestampMixin, AuditMixin):
             "is_active": self.is_active,
             "is_verified": self.is_verified,
             "role": self.role.value if self.role else None,
-            "roles": self.roles if isinstance(self.roles, list) else [],
+            "roles": self.roles if self.roles else [],
             "last_login": self.last_login.isoformat() if self.last_login else None,
             "first_name": self.first_name,
             "last_name": self.last_name,

@@ -591,71 +591,75 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # Prepare Address domain object
         address_raw = self._address_details  # Should be dict or None after EncryptedJSON
         address_domain_obj = None
-        if isinstance(address_raw, dict):  # type: ignore[unreachable]
+        if address_raw is not None:
             try:
-                address_domain_obj = Address(**address_raw)
+                if hasattr(address_raw, 'keys'):
+                    # Dict-like object
+                    address_domain_obj = Address(**address_raw)
+                else:
+                    # Try to parse as JSON string if it's a string
+                    try:
+                        address_dict = json.loads(str(address_raw))
+                        address_domain_obj = Address(**address_dict)
+                    except (json.JSONDecodeError, Exception) as e:
+                        logger.error(
+                            f"Failed to parse address_details for patient {self.id}: {e}"
+                        )
             except Exception as e:
                 logger.error(
                     f"Failed to create Address VO for patient {self.id} from _address_details: {e}"
                 )
-        elif isinstance(address_raw, str):  # type: ignore[unreachable]
-            # Try to parse JSON string to dict
-            try:
-                address_dict = json.loads(address_raw)
-                address_domain_obj = Address(**address_dict)
-            except (json.JSONDecodeError, Exception) as e:
-                logger.error(
-                    f"Failed to parse address_details JSON string for patient {self.id}: {e}"
-                )
-        elif address_raw is not None:
-            # If _address_details is None, try constructing from individual fields
-            # This is a fallback if _address_details wasn't populated from a full VO during from_domain
-            address_components = {
-                "line1": _decode_if_bytes(self._address_line1),
-                "line2": _decode_if_bytes(self._address_line2),
-                "city": _decode_if_bytes(self._city),
-                "state": _decode_if_bytes(self._state),
-                "zip_code": _decode_if_bytes(self._zip_code),
-                "country": _decode_if_bytes(self._country),
-            }
-            if any(v is not None for v in address_components.values()):
-                try:
-                    # Use factory method for backward compatibility with 'line1' field
-                    # This follows the Factory Pattern and handles field name mapping properly
-                    address_domain_obj = Address.create_from_dict(
-                        {k: v if v is not None else "" for k, v in address_components.items()}
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Failed to create Address VO from components for patient {self.id}: {e}"
-                    )
+            
+            # Fallback: try constructing from individual fields if we don't have address_domain_obj yet
+            if address_domain_obj is None:
+                address_components = {
+                    "line1": _decode_if_bytes(self._address_line1),
+                    "line2": _decode_if_bytes(self._address_line2),
+                    "city": _decode_if_bytes(self._city),
+                    "state": _decode_if_bytes(self._state),
+                    "zip_code": _decode_if_bytes(self._zip_code),
+                    "country": _decode_if_bytes(self._country),
+                }
+                if any(v is not None for v in address_components.values()):
+                    try:
+                        # Use factory method for backward compatibility with 'line1' field
+                        # This follows the Factory Pattern and handles field name mapping properly
+                        address_domain_obj = Address.create_from_dict(
+                            {k: v if v is not None else "" for k, v in address_components.items()}
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to create Address VO from components for patient {self.id}: {e}"
+                        )
 
         # Prepare EmergencyContact domain object
         emergency_contact_raw = (
             self._emergency_contact_details
         )  # Should be dict or None from EncryptedJSON
         emergency_contact_domain_obj = None
-        if isinstance(emergency_contact_raw, dict):  # type: ignore[unreachable]
+        if emergency_contact_raw is not None:
             try:
-                emergency_contact_domain_obj = EmergencyContact(**emergency_contact_raw)
+                if hasattr(emergency_contact_raw, 'keys'):
+                    # Dict-like object
+                    emergency_contact_domain_obj = EmergencyContact(**emergency_contact_raw)
+                else:
+                    # Try to parse as JSON string if it's a string
+                    try:
+                        ec_dict = json.loads(str(emergency_contact_raw))
+                        emergency_contact_domain_obj = EmergencyContact(**ec_dict)
+                    except (json.JSONDecodeError, Exception) as e:
+                        logger.error(
+                            f"Failed to parse emergency_contact_details for patient {self.id}: {e}"
+                        )
             except Exception as e:
                 logger.error(
                     f"Failed to create EmergencyContact VO for patient {self.id} from _emergency_contact_details: {e}"
                 )
-        elif isinstance(emergency_contact_raw, str):  # type: ignore[unreachable]
-            # Try to parse JSON string to dict
-            try:
-                ec_dict = json.loads(emergency_contact_raw)
-                emergency_contact_domain_obj = EmergencyContact(**ec_dict)
-            except (json.JSONDecodeError, Exception) as e:
-                logger.error(
-                    f"Failed to parse emergency_contact_details JSON string for patient {self.id}: {e}"
+            
+            if emergency_contact_domain_obj is None:
+                logger.warning(
+                    f"emergency_contact_details for patient {self.id} could not be processed"
                 )
-        elif emergency_contact_raw is not None:
-            logger.warning(
-                f"emergency_contact_details for patient {self.id} is not a dict or string: {type(emergency_contact_raw)}"
-            )
-
 
         # Parse list-like fields from their string representation after decryption
         _decode_if_bytes(self._medical_history)

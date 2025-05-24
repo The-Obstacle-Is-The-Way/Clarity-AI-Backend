@@ -946,50 +946,19 @@ class JWTService(IJwtService):
 
             # Extract user_id from payload
             user_id = None
-
-            # Try to extract the subject in various ways for compatibility with different payload formats
             try:
-                if hasattr(payload, "sub") and payload.sub is not None:
-                    user_id = str(payload.sub)
-                elif hasattr(payload, "subject") and payload.subject is not None:
-                    user_id = str(payload.subject)
-                elif isinstance(payload, dict) and "sub" in payload:
-                    user_id = str(payload["sub"])
-                elif hasattr(payload, "__dict__") and "sub" in payload.__dict__:
-                    user_id = str(payload.__dict__["sub"])
-                elif hasattr(payload, "__dict__") and "subject" in payload.__dict__:
-                    user_id = str(payload.__dict__["subject"])
-                elif str(payload).startswith("TokenPayload"):
-                    # Extract from TokenPayload string representation
-                    payload_str = str(payload)
-                    import re
-
-                    match = re.search(r"sub='([^']+)'", payload_str)
-                    if match:
-                        user_id = match.group(1)
-                    else:
-                        match = re.search(r"subject='([^']+)'", payload_str)
-                        if match:
-                            user_id = match.group(1)
-
-                # If all else fails, try using the string representation directly
-                if not user_id and isinstance(payload, str):
-                    user_id = payload
-
-                # Extract UUID from dict-like objects if needed for tests
-                if not user_id and isinstance(payload, dict) and "sub" in payload:
-                    user_id = str(payload["sub"])
-
-                # Special case for testing
-                if isinstance(user_id, dict) and "sub" in user_id:
-                    user_id = user_id["sub"]
-
+                if hasattr(payload, "sub"):
+                    user_id = payload.sub
+                elif hasattr(payload, "subject"):
+                    user_id = payload.subject
+                else:
+                    # Fallback to generic access
+                    user_id = getattr(payload, "sub", None) or getattr(payload, "subject", None)
             except Exception as e:
-                logger.warning(f"Error extracting user ID from token payload: {e}")
+                logger.debug(f"Failed to extract user_id from payload: {e}")
 
             if not user_id:
-                logger.warning("Token doesn't contain valid user ID")
-                raise AuthenticationError("Token doesn't contain valid user ID")
+                raise InvalidTokenError("Invalid token: missing subject claim")
 
             # Look up user using repository
             try:
@@ -1073,10 +1042,17 @@ class JWTService(IJwtService):
             
             # Extract data for RefreshTokenPayload
             payload_dict = {}
-            if hasattr(payload, "model_dump"):
-                payload_dict = payload.model_dump()
-            elif hasattr(payload, "__dict__"):
-                payload_dict = payload.__dict__.copy()
+            try:
+                if hasattr(payload, "model_dump"):
+                    payload_dict = payload.model_dump()
+                elif hasattr(payload, "__dict__"):
+                    payload_dict = payload.__dict__.copy()
+                else:
+                    # Fallback to empty dict and fill required fields
+                    payload_dict = {}
+            except Exception as e:
+                logger.debug(f"Failed to extract payload dict: {e}")
+                payload_dict = {}
             
             # Ensure required fields are present
             payload_dict.setdefault("sub", str(payload.subject) if hasattr(payload, "subject") else "unknown")
@@ -1114,10 +1090,16 @@ class JWTService(IJwtService):
 
             # Extract user ID from payload
             user_id = None
-            if isinstance(payload, dict):
-                user_id = payload.get("sub")
-            elif hasattr(payload, "sub"):
-                user_id = payload.sub
+            try:
+                if hasattr(payload, "sub"):
+                    user_id = payload.sub
+                elif hasattr(payload, "subject"):
+                    user_id = payload.subject
+                else:
+                    # Fallback to generic access
+                    user_id = getattr(payload, "sub", None) or getattr(payload, "subject", None)
+            except Exception as e:
+                logger.debug(f"Failed to extract user_id from payload: {e}")
 
             if not user_id:
                 raise InvalidTokenError("Invalid token: missing subject claim")
@@ -1125,19 +1107,15 @@ class JWTService(IJwtService):
             # Create a new access token with the same claims
             claims = {}
 
-            # Handle claims based on payload type
-            if isinstance(payload, dict):
-                # Dictionary-style payload
+            # Handle claims based on payload capabilities
+            try:
                 for claim in self.preserved_claims:
-                    if claim in payload and claim not in self.exclude_from_refresh:
-                        claims[claim] = payload[claim]
-            else:
-                # Object-style payload (TokenPayload)
-                for claim in self.preserved_claims:
-                    if hasattr(payload, claim) and claim not in self.exclude_from_refresh:
-                        value = getattr(payload, claim)
+                    if claim not in self.exclude_from_refresh:
+                        value = getattr(payload, claim, None)
                         if value is not None:  # Only include non-None values
                             claims[claim] = value
+            except Exception as e:
+                logger.debug(f"Failed to extract claims from payload: {e}")
 
             # Create a new access token
             new_access_token = self.create_access_token(subject=user_id, additional_claims=claims)
