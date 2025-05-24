@@ -28,7 +28,7 @@ class InvalidCredentialsError(SecurityException):
         self,
         message: str = "Invalid authentication credentials provided",
         detail: dict | None = None,
-    ):
+    ) -> None:
         super().__init__(message, detail=detail)
 
 
@@ -39,7 +39,7 @@ class TokenExpiredError(InvalidCredentialsError):
         self,
         message: str = "Authentication token has expired",
         detail: dict | None = None,
-    ):
+    ) -> None:
         super().__init__(message, detail=detail)
 
 
@@ -50,7 +50,7 @@ class TokenValidationError(InvalidCredentialsError):
         self,
         message: str = "Authentication token validation failed",
         detail: dict | None = None,
-    ):
+    ) -> None:
         super().__init__(message, detail=detail)
 
 
@@ -66,7 +66,7 @@ class InsufficientPermissionsError(SecurityException):
         message: str = "Insufficient permissions to perform this action",
         required_permissions: list | None = None,
         detail: dict | None = None,
-    ):
+    ) -> None:
         if required_permissions:
             if detail is None:
                 detail = {}
@@ -81,7 +81,7 @@ class SessionExpiredError(SecurityException):
         self,
         message: str = "Your session has expired, please login again",
         detail: dict | None = None,
-    ):
+    ) -> None:
         super().__init__(message, detail=detail)
 
 
@@ -93,7 +93,7 @@ class RateLimitExceededError(SecurityException):
         message: str = "Rate limit exceeded",
         retry_after: int | None = None,
         detail: dict | None = None,
-    ):
+    ) -> None:
         if retry_after:
             if detail is None:
                 detail = {}

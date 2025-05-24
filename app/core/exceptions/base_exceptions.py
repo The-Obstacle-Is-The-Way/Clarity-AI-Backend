@@ -23,7 +23,7 @@ class BaseException(Exception):
         message: str,
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str | None = None,
-    ):
+    ) -> None:
         self.message = message
         self.detail = detail
         self.code = code
@@ -43,7 +43,7 @@ class ValidationException(BaseException):
         message: str = "Validation error",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "VALIDATION_ERROR",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -55,7 +55,7 @@ class ResourceNotFoundException(BaseException):
         message: str = "Resource not found",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "RESOURCE_NOT_FOUND",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -71,7 +71,7 @@ class ResourceNotFoundError(BaseException):
         message: str = "Resource not found",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "RESOURCE_NOT_FOUND",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
         if " not found" not in message:
@@ -90,7 +90,7 @@ class EntityNotFoundError(ResourceNotFoundError):
         message: str = "Entity not found",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "ENTITY_NOT_FOUND",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -102,7 +102,7 @@ class AuthenticationException(BaseException):
         message: str = "Authentication failed",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "AUTHENTICATION_ERROR",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -114,7 +114,7 @@ class AuthorizationException(BaseException):
         message: str = "Not authorized",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "AUTHORIZATION_ERROR",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -126,7 +126,7 @@ class BusinessRuleException(BaseException):
         message: str = "Business rule violation",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "BUSINESS_RULE_ERROR",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -138,7 +138,7 @@ class InitializationError(BaseException):
         message: str = "Failed to initialize",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "INITIALIZATION_ERROR",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -150,7 +150,7 @@ class ConfigurationError(BaseException):
         message: str = "Configuration error",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "CONFIGURATION_ERROR",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -162,7 +162,7 @@ class ExternalServiceException(BaseException):
         message: str = "External service error",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "EXTERNAL_SERVICE_ERROR",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -174,7 +174,7 @@ class DatabaseException(BaseException):
         message: str = "Database error",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "DATABASE_ERROR",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -187,7 +187,7 @@ class PersistenceError(BaseException):
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "PERSISTENCE_ERROR",
         original_exception: Exception | None = None,
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
         self.original_exception = original_exception
 
@@ -200,7 +200,7 @@ class SecurityException(BaseException):
         message: str = "Security error",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "SECURITY_ERROR",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -212,7 +212,7 @@ class ApplicationError(BaseException):
         message: str = "Application error",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "APPLICATION_ERROR",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -224,7 +224,7 @@ class InvalidConfigurationError(BaseException):
         message: str = "Invalid configuration",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "INVALID_CONFIGURATION",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -236,7 +236,7 @@ class ModelExecutionError(BaseException):
         message: str = "Model execution error",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "MODEL_EXECUTION_ERROR",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -248,7 +248,7 @@ class IntegrationError(BaseException):
         message: str = "Integration error",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "INTEGRATION_ERROR",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -260,7 +260,7 @@ class ServiceProviderError(BaseException):
         message: str = "Service provider error",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "SERVICE_PROVIDER_ERROR",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -272,7 +272,7 @@ class AnalysisError(BaseException):
         message: str = "Analysis error",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "ANALYSIS_ERROR",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -284,7 +284,7 @@ class EmbeddingError(BaseException):
         message: str = "Embedding error",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "EMBEDDING_ERROR",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
 
 
@@ -297,7 +297,7 @@ class HIPAAComplianceError(BusinessRuleException):
         detail: str | list[str] | dict[str, Any] | None = None,
         violation_type: str | None = None,
         code: str = "HIPAA_COMPLIANCE_ERROR",
-    ):
+    ) -> None:
         super().__init__(message=message, detail=detail, code=code)
         self.violation_type = violation_type
 

@@ -28,7 +28,7 @@ class BaseAppException(Exception):
         message: str,
         error_code: str | None = None,
         detail: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Initialize the base exception.
 
@@ -79,7 +79,7 @@ class NotFoundException(BaseAppException):
     that does not exist in the system.
     """
 
-    def __init__(self, entity_type: str, identifier: Any, **kwargs):
+    def __init__(self, entity_type: str, identifier: Any, **kwargs) -> None:
         """
         Initialize not found exception with entity information.
 

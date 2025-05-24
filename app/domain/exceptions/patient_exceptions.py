@@ -9,7 +9,7 @@ of any infrastructure or application framework.
 class PatientError(Exception):
     """Base exception class for all patient-related errors."""
 
-    def __init__(self, message: str = "An error occurred with patient operation"):
+    def __init__(self, message: str = "An error occurred with patient operation") -> None:
         self.message = message
         super().__init__(self.message)
 
@@ -17,7 +17,7 @@ class PatientError(Exception):
 class PatientNotFoundError(PatientError):
     """Exception raised when a patient cannot be found."""
 
-    def __init__(self, patient_id: str):
+    def __init__(self, patient_id: str) -> None:
         self.patient_id = patient_id
         message = f"Patient with ID '{patient_id}' not found"
         super().__init__(message)
@@ -26,7 +26,7 @@ class PatientNotFoundError(PatientError):
 class PatientValidationError(PatientError):
     """Exception raised when patient data fails validation."""
 
-    def __init__(self, message: str = "Invalid patient data", field: str | None = None):
+    def __init__(self, message: str = "Invalid patient data", field: str | None = None) -> None:
         self.field = field
         if field:
             message = f"Invalid patient data: field '{field}' {message}"
@@ -36,7 +36,7 @@ class PatientValidationError(PatientError):
 class PatientAlreadyExistsError(PatientError):
     """Exception raised when attempting to create a patient that already exists."""
 
-    def __init__(self, patient_id: str):
+    def __init__(self, patient_id: str) -> None:
         self.patient_id = patient_id
         message = f"Patient with ID '{patient_id}' already exists"
         super().__init__(message)
@@ -45,7 +45,7 @@ class PatientAlreadyExistsError(PatientError):
 class PatientOperationError(PatientError):
     """Exception raised when a patient operation fails due to a system error."""
 
-    def __init__(self, operation: str, message: str = "Operation failed"):
+    def __init__(self, operation: str, message: str = "Operation failed") -> None:
         self.operation = operation
         message = f"Patient {operation} operation failed: {message}"
         super().__init__(message)
