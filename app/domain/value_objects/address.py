@@ -28,7 +28,7 @@ class Address:
         country: str = "US",
         line1: str | None = None,
         **kwargs,
-    ):
+    ) -> None:
         """Initialize Address with backward compatibility for 'line1' parameter."""
         # Handle legacy 'line1' parameter
         if line1 is not None and street is None:
