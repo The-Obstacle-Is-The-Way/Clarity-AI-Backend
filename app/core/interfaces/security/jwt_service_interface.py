@@ -11,6 +11,9 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+# Import domain types for proper type safety
+from app.core.domain.types.jwt_payload import RefreshTokenPayload, AccessTokenPayload, JWTPayload
+
 
 class IJwtService(ABC):
     """
@@ -64,7 +67,7 @@ class IJwtService(ABC):
         pass
 
     @abstractmethod
-    async def verify_token(self, token: str) -> dict[str, Any]:
+    async def verify_token(self, token: str) -> JWTPayload:
         """
         Verify a JWT token's validity and return its decoded payload.
 
@@ -72,10 +75,26 @@ class IJwtService(ABC):
             token: The JWT token to verify
 
         Returns:
-            Decoded token payload as a dictionary
+            Decoded token payload as structured JWT payload object
 
         Raises:
             JWTError: If token is invalid, expired, or has been tampered with
+        """
+        pass
+
+    @abstractmethod
+    def verify_refresh_token(self, refresh_token: str) -> RefreshTokenPayload:
+        """
+        Verify that a token is a valid refresh token and return its payload.
+
+        Args:
+            refresh_token: The refresh token to verify
+
+        Returns:
+            Decoded refresh token payload
+
+        Raises:
+            JWTError: If token is invalid, expired, or not a refresh token
         """
         pass
 

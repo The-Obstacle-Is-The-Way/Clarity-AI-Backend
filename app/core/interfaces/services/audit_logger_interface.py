@@ -24,10 +24,13 @@ class AuditEventType(str, Enum):
 
     # Token events
     TOKEN_CREATION = "TOKEN_CREATION"
+    TOKEN_CREATED = "TOKEN_CREATED"  # Added for JWT service compatibility
     TOKEN_VALIDATION = "TOKEN_VALIDATION"
     TOKEN_VALIDATION_FAILED = "TOKEN_VALIDATION_FAILED"
     TOKEN_REFRESH = "TOKEN_REFRESH"
     TOKEN_REVOCATION = "TOKEN_REVOCATION"
+    TOKEN_REVOKED = "TOKEN_REVOKED"  # Added for JWT service compatibility
+    TOKEN_BLACKLISTED = "TOKEN_BLACKLISTED"  # Added for JWT service compatibility
 
     # Access control events
     ACCESS_GRANTED = "ACCESS_GRANTED"
