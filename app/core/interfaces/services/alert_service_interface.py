@@ -174,3 +174,37 @@ class AlertServiceInterface(ABC):
     async def list_rules(self, user_id: str | None = None) -> list[BiometricAlertRule]:
         """List alert rules, optionally filtered by user."""
         pass
+
+    @abstractmethod
+    async def validate_access(self, user_id: str, patient_id: str) -> bool:
+        """
+        Validate if a user has access to a patient's alerts.
+        
+        Args:
+            user_id: ID of the user requesting access
+            patient_id: ID of the patient whose alerts are being accessed
+            
+        Returns:
+            True if access is allowed, raises exception if not
+            
+        Raises:
+            PermissionError: If access is denied
+        """
+        pass
+
+    @abstractmethod
+    async def get_alert_by_id(self, alert_id: str, user_id: str) -> dict[str, Any] | None:
+        """
+        Get a specific alert by ID with access validation.
+        
+        Args:
+            alert_id: Unique identifier for the alert
+            user_id: ID of the user requesting the alert
+            
+        Returns:
+            Alert data if found and accessible, None otherwise
+            
+        Raises:
+            PermissionError: If user doesn't have access to this alert
+        """
+        pass

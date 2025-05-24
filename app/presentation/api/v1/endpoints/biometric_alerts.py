@@ -15,7 +15,10 @@ from pydantic import BaseModel, Field
 
 from app.core.domain.entities.alert import AlertPriority, AlertStatus, AlertType
 from app.core.domain.entities.user import User
-from app.core.interfaces.services.alert_service_interface import AlertServiceInterface
+from app.core.interfaces.services.alert_service_interface import (
+    AlertServiceInterface,
+    AlertSeverity,
+)
 from app.presentation.api.dependencies.auth import get_current_active_user
 from app.presentation.api.schemas.alert import (
     AlertResponse,
@@ -34,7 +37,7 @@ router = APIRouter(
 async def get_alerts(
     status_param: AlertStatus
     | None = Query(None, alias="status", description="Filter by alert status"),
-    priority: AlertPriority | None = Query(None, description="Filter by alert priority"),
+    severity: AlertSeverity | None = Query(None, description="Filter by alert severity"),
     alert_type: AlertType | None = Query(None, description="Filter by alert type"),
     start_date: str | None = Query(None, description="Filter by start date (ISO format)"),
     end_date: str | None = Query(None, description="Filter by end date (ISO format)"),
@@ -53,7 +56,7 @@ async def get_alerts(
 
     Args:
         status_param: Optional filter by alert status
-        priority: Optional filter by alert priority
+        severity: Optional filter by alert severity (using AlertSeverity enum)
         alert_type: Optional filter by alert type
         start_date: Optional filter by start date
         end_date: Optional filter by end date
@@ -105,7 +108,7 @@ async def get_alerts(
             alerts = await alert_service.get_alerts(
                 patient_id=subject_id,
                 alert_type=alert_type.value if alert_type else None,
-                severity=priority,
+                severity=severity,
                 status=status_param.value if status_param else None,
                 start_time=start_time,
                 end_time=end_time,
@@ -416,8 +419,8 @@ class ManualAlertRequest(BaseModel):
     """Request schema for manually triggering an alert."""
 
     message: str = Field(..., min_length=1, max_length=500, description="Alert message content")
-    priority: AlertPriority = Field(
-        default=AlertPriority.MEDIUM, description="Alert priority level"
+    severity: AlertSeverity = Field(
+        default=AlertSeverity.MEDIUM, description="Alert severity level"
     )
     alert_type: AlertType = Field(default=AlertType.BIOMETRIC_ANOMALY, description="Type of alert")
     data: dict[str, Any] = Field(default_factory=dict, description="Additional alert data")
@@ -468,7 +471,7 @@ async def trigger_alert_manually(
         success, alert_id, error_msg = await alert_service.create_alert(
             patient_id=str(patient_id),
             alert_type=alert_data.alert_type.value,
-            severity=alert_data.priority,
+            severity=alert_data.severity,
             description=alert_data.message,
             source_data=alert_data.data,
             metadata={"manually_triggered_by": str(current_user.id)},
