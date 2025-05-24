@@ -254,7 +254,7 @@ def mock_model_info():
         ),
     ],
 )
-def test_xgboost_endpoints_return_200(client, endpoint, request_model, response_model):
+def test_xgboost_endpoints_return_200(client, endpoint, request_model, response_model) -> None:
     """Test that XGBoost endpoints return 200 status code."""
     # Configure the mock to return the expected response
     mock_xgboost_service.predict_risk.return_value = response_model
@@ -293,7 +293,7 @@ def test_xgboost_endpoints_return_200(client, endpoint, request_model, response_
     ), f"Response data for {endpoint} does not match expected response model"
 
 
-def test_xgboost_risk_prediction_with_invalid_data(client):
+def test_xgboost_risk_prediction_with_invalid_data(client) -> None:
     """Test that risk prediction endpoint validates input data."""
     # Invalid data - missing required fields
     invalid_data = {

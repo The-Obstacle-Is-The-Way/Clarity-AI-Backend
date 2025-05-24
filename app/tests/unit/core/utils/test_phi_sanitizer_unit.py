@@ -19,13 +19,13 @@ from app.core.utils.phi_sanitizer import (
 
 
 @pytest.fixture
-def sample_phi_text():
+def sample_phi_text() -> str:
     """Sample text containing PHI for testing."""
     return "Patient John Smith with SSN 123-45-6789 can be reached at john.smith@example.com or (555) 123-4567"
 
 
 @pytest.fixture
-def sample_non_phi_text():
+def sample_non_phi_text() -> str:
     """Sample text without PHI for testing."""
     return "System error occurred at 14:30. Error code: E12345. Contact support for assistance."
 
@@ -48,15 +48,15 @@ def sample_patient_data():
 class TestPHIDetector:
     """Tests for the PHI detection functionality."""
 
-    def test_contains_phi_true(self, sample_phi_text):
+    def test_contains_phi_true(self, sample_phi_text) -> None:
         """Test PHI detection in text containing PHI."""
         assert PHIDetector.contains_phi(sample_phi_text)
 
-    def test_contains_phi_false(self, sample_non_phi_text):
+    def test_contains_phi_false(self, sample_non_phi_text) -> None:
         """Test PHI detection in text without PHI."""
         assert not PHIDetector.contains_phi(sample_non_phi_text)
 
-    def test_contains_phi_edge_cases(self):
+    def test_contains_phi_edge_cases(self) -> None:
         """Test PHI detection with edge cases."""
         # Empty or None values
         assert not PHIDetector.contains_phi("")
@@ -70,7 +70,7 @@ class TestPHIDetector:
         assert not PHIDetector.contains_phi("Code 123-456 Error")
         assert not PHIDetector.contains_phi("System IP: 192.168.1.1")
 
-    def test_detect_phi_types(self, sample_phi_text):
+    def test_detect_phi_types(self, sample_phi_text) -> None:
         """Test detection of specific PHI types."""
         detected = PHIDetector.detect_phi_types(sample_phi_text)
 
@@ -87,7 +87,7 @@ class TestPHIDetector:
         assert "john.smith@example.com" in phi_values
         assert "(555) 123-4567" in phi_values
 
-    def test_detect_phi_types_edge_cases(self):
+    def test_detect_phi_types_edge_cases(self) -> None:
         """Test PHI type detection with edge cases."""
         # Empty or None values should return empty list
         assert PHIDetector.detect_phi_types("") == []
@@ -104,7 +104,7 @@ class TestPHIDetector:
 class TestPHISanitizer:
     """Tests for the PHI sanitization functionality."""
 
-    def test_sanitize_text(self, sample_phi_text):
+    def test_sanitize_text(self, sample_phi_text) -> None:
         """Test sanitization of text containing PHI."""
         sanitized = PHISanitizer.sanitize_string(sample_phi_text)
 
@@ -120,13 +120,13 @@ class TestPHISanitizer:
         assert "[EMAIL REDACTED]" in sanitized or "[REDACTED]" in sanitized
         assert "[PHONE REDACTED]" in sanitized or "[REDACTED]" in sanitized
 
-    def test_sanitize_text_no_phi(self, sample_non_phi_text):
+    def test_sanitize_text_no_phi(self, sample_non_phi_text) -> None:
         """Test sanitization of text without PHI."""
         sanitized = PHISanitizer.sanitize_string(sample_non_phi_text)
         # Should be unchanged
         assert sanitized == sample_non_phi_text
 
-    def test_sanitize_structured_data(self, sample_patient_data):
+    def test_sanitize_structured_data(self, sample_patient_data) -> None:
         """Test sanitization of structured data."""
         sanitized = PHISanitizer.sanitize_dict(sample_patient_data)
 
@@ -143,7 +143,7 @@ class TestPHISanitizer:
         assert "diagnosis" in sanitized["medical_data"]
         assert "medication" in sanitized["medical_data"]
 
-    def test_sanitize_structured_data_nested(self):
+    def test_sanitize_structured_data_nested(self) -> None:
         """Test sanitization of deeply nested structured data."""
         # Arrange
         nested_data = {
@@ -210,7 +210,7 @@ class TestPHISecureLogger:
 
         return logger
 
-    def test_get_sanitized_logger(self):
+    def test_get_sanitized_logger(self) -> None:
         """Test creation of PHI-secure logger."""
         # For this test, we'll create a mock logger that will serve as the base
         # for our PHI-secure wrapper
@@ -223,7 +223,7 @@ class TestPHISecureLogger:
         assert hasattr(mock_logger, "error")
         assert hasattr(mock_logger, "critical")
 
-    def test_phi_secure_logger_methods(self, phi_secure_logger, caplog):
+    def test_phi_secure_logger_methods(self, phi_secure_logger, caplog) -> None:
         """Test that PHI-secure logger sanitizes all message types."""
         # Setup using the caplog fixture to capture logs
         caplog.set_level(logging.INFO)

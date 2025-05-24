@@ -117,7 +117,9 @@ class TestAnalyzer:
                 test_file.destination_path = f"backend/app/tests/standalone/{components}/{os.path.basename(test_file.file_path)}"
             elif test_file.dependency_level == "venv":
                 components = self._extract_component(test_file.relative_path)
-                test_file.destination_path = f"backend/app/tests/venv/{components}/{os.path.basename(test_file.file_path)}"
+                test_file.destination_path = (
+                    f"backend/app/tests/venv/{components}/{os.path.basename(test_file.file_path)}"
+                )
             elif test_file.dependency_level == "integration":
                 components = self._extract_component(test_file.relative_path)
                 test_file.destination_path = f"backend/app/tests/integration/{components}/{os.path.basename(test_file.file_path)}"
@@ -212,15 +214,11 @@ class TestAnalyzer:
 
             # Determine dependency level based on imports if not already determined
             if test_info.dependency_level == "unknown":
-                test_info.dependency_level = self._determine_dependency_from_imports(
-                    imports
-                )
+                test_info.dependency_level = self._determine_dependency_from_imports(imports)
 
             # If still unknown, check path hints
             if test_info.dependency_level == "unknown":
-                test_info.dependency_level = self._determine_dependency_from_path(
-                    relative_path
-                )
+                test_info.dependency_level = self._determine_dependency_from_path(relative_path)
 
         except SyntaxError as e:
             test_info.has_syntax_error = True

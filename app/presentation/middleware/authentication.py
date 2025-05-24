@@ -39,10 +39,10 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         self,
         app: ASGIApp,
         jwt_service: JWTServiceInterface,
-        user_repository: type[SQLAlchemyUserRepository] = None,
-        public_paths: set[str] = None,
-        session_factory: Callable[[], AsyncIterator[AsyncSession]] = None,
-        public_path_regexes: list[str] = None,
+        user_repository: type[SQLAlchemyUserRepository] | None = None,
+        public_paths: set[str] | None = None,
+        session_factory: Callable[[], AsyncIterator[AsyncSession]] | None = None,
+        public_path_regexes: list[str] | None = None,
         settings: Any = None,
     ):
         super().__init__(app)
@@ -206,7 +206,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                     domain_roles = domain_user.roles
 
                     # Handle if roles is a set, list, or other iterable
-                    if isinstance(domain_roles, (set, list, tuple)):
+                    if isinstance(domain_roles, set | list | tuple):
                         for role in domain_roles:
                             # If already a UserRole enum, use it
                             if isinstance(role, UserRole):

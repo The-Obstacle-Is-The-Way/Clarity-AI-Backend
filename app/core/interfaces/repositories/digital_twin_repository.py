@@ -10,13 +10,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-# Import DigitalTwin entity - use Any as fallback if import fails
-try:
-    from app.domain.entities.digital_twin import DigitalTwin
-except ImportError:
-    from typing import Any
-
-    DigitalTwin = Any
+from app.domain.entities.digital_twin import DigitalTwin
 
 
 class IDigitalTwinRepository(ABC):

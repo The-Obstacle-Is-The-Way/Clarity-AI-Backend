@@ -54,7 +54,7 @@ def test_client():
 class TestMiddlewareChain:
     """Tests for the middleware chain integration."""
 
-    def test_request_id_propagation(self, test_client):
+    def test_request_id_propagation(self, test_client) -> None:
         """Test that RequestIdMiddleware generates and propagates request IDs."""
         # Make a request with no Request-ID header
         response = test_client.get("/health")
@@ -71,7 +71,7 @@ class TestMiddlewareChain:
         assert response2.headers["X-Request-ID"] == request_id
 
     @patch("app.presentation.middleware.request_id.uuid.uuid4")
-    def test_middleware_with_mocked_uuid(self, mock_uuid, test_client):
+    def test_middleware_with_mocked_uuid(self, mock_uuid, test_client) -> None:
         """Test middleware with a mocked UUID for predictable testing."""
         # Mock UUID generation to have a predictable request ID
         test_uuid = uuid.UUID("12345678-1234-5678-1234-567812345678")
@@ -85,7 +85,7 @@ class TestMiddlewareChain:
         assert response.headers["X-Request-ID"] == str(test_uuid)
         assert response.status_code == 200
 
-    def test_authentication_behavior(self, test_client):
+    def test_authentication_behavior(self, test_client) -> None:
         """Test authentication-like behavior with our simplified setup."""
         # Without auth headers
         response = test_client.get("/api/v1/users/me")

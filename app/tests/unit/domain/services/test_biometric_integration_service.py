@@ -34,7 +34,7 @@ class TestBiometricIntegrationService:
     def service(self, mock_repository):
         return BiometricIntegrationService(biometric_twin_repository=mock_repository)
 
-    def test_get_or_create_biometric_twin_existing(self, service, mock_repository):
+    def test_get_or_create_biometric_twin_existing(self, service, mock_repository) -> None:
         patient_id = uuid4()
         mock_twin = BiometricTwin.create(patient_id=str(patient_id))
         mock_repository.get_by_patient_id.return_value = mock_twin
@@ -43,7 +43,7 @@ class TestBiometricIntegrationService:
         mock_repository.get_by_patient_id.assert_called_once_with(patient_id)
         mock_repository.save.assert_not_called()
 
-    def test_get_or_create_biometric_twin_new(self, service, mock_repository):
+    def test_get_or_create_biometric_twin_new(self, service, mock_repository) -> None:
         patient_id = uuid4()
         mock_repository.get_by_patient_id.return_value = None
 
@@ -57,14 +57,14 @@ class TestBiometricIntegrationService:
         mock_repository.get_by_patient_id.assert_called_once_with(patient_id)
         mock_repository.save.assert_called_once()
 
-    def test_get_or_create_biometric_twin_error(self, service, mock_repository):
+    def test_get_or_create_biometric_twin_error(self, service, mock_repository) -> None:
         patient_id = uuid4()
         mock_repository.get_by_patient_id.side_effect = Exception("Database error")
         with pytest.raises(DomainError) as exc_info:
             service.get_or_create_biometric_twin(patient_id)
         assert "Failed to get or create biometric twin" in str(exc_info.value)
 
-    def test_add_biometric_data(self, service, mock_repository):
+    def test_add_biometric_data(self, service, mock_repository) -> None:
         patient_id = uuid4()
         mock_twin = MagicMock(spec=BiometricTwin)
         mock_twin.patient_id = patient_id
@@ -85,7 +85,7 @@ class TestBiometricIntegrationService:
         mock_twin.add_data_point.assert_called_once()
         mock_repository.save.assert_called_once_with(mock_twin)
 
-    def test_add_biometric_data_with_error(self, service, mock_repository):
+    def test_add_biometric_data_with_error(self, service, mock_repository) -> None:
         patient_id = uuid4()
         service.get_or_create_biometric_twin = MagicMock(side_effect=Exception("Repository error"))
         with pytest.raises(DomainError) as exc_info:
@@ -97,7 +97,7 @@ class TestBiometricIntegrationService:
             )
         assert "Failed to add biometric data" in str(exc_info.value)
 
-    def test_batch_add_biometric_data(self, service, mock_repository):
+    def test_batch_add_biometric_data(self, service, mock_repository) -> None:
         patient_id = uuid4()
         mock_twin = MagicMock(spec=BiometricTwin)
         mock_twin.patient_id = patient_id
@@ -124,10 +124,10 @@ class TestBiometricIntegrationService:
         assert mock_twin.add_data_point.call_count == 2
         mock_repository.save.assert_called_once_with(mock_twin)
 
-    def test_get_biometric_data(self, service, mock_repository):
+    def test_get_biometric_data(self, service, mock_repository) -> None:
         patient_id = uuid4()
         mock_twin = MagicMock(spec=BiometricTwin)
-        now = datetime.now(UTC)
+        datetime.now(UTC)
         mock_twin.timeseries_data = {}
         mock_twin.get_biometric_data = MagicMock(return_value=None)
         mock_repository.get_by_patient_id.return_value = mock_twin
@@ -137,15 +137,15 @@ class TestBiometricIntegrationService:
             service._to_biometric_type("heart_rate")
         ) if hasattr(service, "_to_biometric_type") else True
 
-    def test_get_biometric_data_no_twin(self, service, mock_repository):
+    def test_get_biometric_data_no_twin(self, service, mock_repository) -> None:
         patient_id = uuid4()
         mock_repository.get_by_patient_id.return_value = None
         result = service.get_biometric_data(patient_id=patient_id)
         assert result == []
 
-    def test_analyze_trends(self, service, mock_repository):
+    def test_analyze_trends(self, service, mock_repository) -> None:
         patient_id = uuid4()
-        now = datetime.now(UTC)
+        datetime.now(UTC)
         service.get_biometric_data = MagicMock(
             return_value=[
                 MagicMock(value=70),
@@ -165,13 +165,13 @@ class TestBiometricIntegrationService:
         assert result["minimum"] == 70
         assert result["maximum"] == 85
 
-    def test_analyze_trends_insufficient_data(self, service, mock_repository):
+    def test_analyze_trends_insufficient_data(self, service, mock_repository) -> None:
         patient_id = uuid4()
         service.get_biometric_data = MagicMock(return_value=[])
         result = service.analyze_trends(patient_id=patient_id, data_type="heart_rate")
         assert result["status"] == "insufficient_data"
 
-    def test_detect_correlations(self, service, mock_repository):
+    def test_detect_correlations(self, service, mock_repository) -> None:
         patient_id = uuid4()
         mock_twin = MagicMock(spec=BiometricTwin)
         mock_repository.get_by_patient_id.return_value = mock_twin
@@ -193,7 +193,7 @@ class TestBiometricIntegrationService:
         assert "activity" in result
         assert isinstance(result["activity"], float)
 
-    def test_connect_device(self, service, mock_repository):
+    def test_connect_device(self, service, mock_repository) -> None:
         patient_id = uuid4()
         mock_twin = MagicMock(spec=BiometricTwin)
         service.get_or_create_biometric_twin = MagicMock(return_value=mock_twin)
@@ -209,7 +209,7 @@ class TestBiometricIntegrationService:
         mock_repository.save.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_disconnect_device(self, service, mock_repository):
+    async def test_disconnect_device(self, service, mock_repository) -> None:
         patient_id = uuid4()
         mock_twin = MagicMock(spec=BiometricTwin)
         mock_repository.get_by_patient_id.return_value = mock_twin
@@ -222,7 +222,7 @@ class TestBiometricIntegrationService:
         mock_repository.save.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_disconnect_device_no_twin(self, service, mock_repository):
+    async def test_disconnect_device_no_twin(self, service, mock_repository) -> None:
         patient_id = uuid4()
         mock_repository.get_by_patient_id.return_value = None
         result = await service.disconnect_device(patient_id=patient_id, device_id="wearable-123")

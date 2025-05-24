@@ -6,6 +6,7 @@ completely bypassing the middleware chain issues.
 
 import logging
 import traceback
+from typing import NoReturn
 
 import pytest
 from fastapi import FastAPI, Request, status
@@ -22,12 +23,12 @@ def create_isolated_app():
     app = FastAPI(debug=False)
 
     @app.get("/test/runtime-error")
-    async def runtime_error():
+    async def runtime_error() -> NoReturn:
         """Endpoint that raises a RuntimeError with sensitive information."""
         raise RuntimeError("This is a sensitive internal error detail that should be masked")
 
     @app.get("/test/http-error")
-    async def http_error():
+    async def http_error() -> NoReturn:
         """Endpoint that raises an HTTP exception."""
         from fastapi import HTTPException
 
@@ -79,7 +80,7 @@ def create_isolated_app():
 
 
 @pytest.mark.asyncio
-async def test_error_masking_isolation():
+async def test_error_masking_isolation() -> None:
     """Test error masking in complete isolation from middleware chain."""
     # Create isolated app
     app = create_isolated_app()
@@ -104,7 +105,7 @@ async def test_error_masking_isolation():
 
 
 @pytest.mark.asyncio
-async def test_http_error_masking_isolation():
+async def test_http_error_masking_isolation() -> None:
     """Test HTTP error masking in isolation."""
     app = create_isolated_app()
 

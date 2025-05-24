@@ -86,7 +86,7 @@ def client(app):
     return TestClient(app)
 
 
-def test_get_rule_templates(client, mock_clinical_rule_engine):
+def test_get_rule_templates(client, mock_clinical_rule_engine) -> None:
     """Test that get_rule_templates returns the correct response."""
     # Execute
     response = client.get("/biometric-alerts/rule-templates")

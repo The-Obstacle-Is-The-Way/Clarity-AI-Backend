@@ -81,7 +81,7 @@ def digital_twin(sample_patient):
 class TestDigitalTwin:
     """Tests for the DigitalTwin entity."""
 
-    def test_init(self, sample_patient):
+    def test_init(self, sample_patient) -> None:
         """Test that a digital twin can be initialized with valid parameters."""
         twin = DigitalTwin(
             patient_id=sample_patient.id,
@@ -103,7 +103,7 @@ class TestDigitalTwin:
         assert twin.medication_sensitivity == 1.0
         assert twin.therapy_sensitivity == 0.8
 
-    def test_invalid_parameters(self, sample_patient):
+    def test_invalid_parameters(self, sample_patient) -> None:
         """Test that initialization fails with invalid parameters."""
         with pytest.raises(ValidationError):
             DigitalTwin(
@@ -121,7 +121,7 @@ class TestDigitalTwin:
 class TestNeurotransmitterTwinModel:
     """Tests for the NeurotransmitterTwinModel."""
 
-    def test_init(self, digital_twin):
+    def test_init(self, digital_twin) -> None:
         """Test initializing the neurotransmitter model."""
         model = NeurotransmitterTwinModel(digital_twin=digital_twin)
 
@@ -131,7 +131,7 @@ class TestNeurotransmitterTwinModel:
         assert model.current_gaba == digital_twin.baseline_gaba
         assert model.current_norepinephrine == digital_twin.baseline_norepinephrine
 
-    def test_simulate_medication_effect(self, digital_twin, sample_medication):
+    def test_simulate_medication_effect(self, digital_twin, sample_medication) -> None:
         """Test simulating medication effects on neurotransmitters."""
         model = NeurotransmitterTwinModel(digital_twin=digital_twin)
 
@@ -154,7 +154,7 @@ class TestNeurotransmitterTwinModel:
         assert model.current_serotonin > initial_serotonin
         assert model.current_norepinephrine > initial_norepinephrine
 
-    def test_simulate_stress(self, digital_twin):
+    def test_simulate_stress(self, digital_twin) -> None:
         """Test simulating stress effects on neurotransmitters."""
         model = NeurotransmitterTwinModel(digital_twin=digital_twin)
 
@@ -168,7 +168,7 @@ class TestNeurotransmitterTwinModel:
         assert model.current_serotonin < initial_serotonin
         assert model.current_dopamine < initial_dopamine
 
-    def test_reset_to_baseline(self, digital_twin):
+    def test_reset_to_baseline(self, digital_twin) -> None:
         """Test resetting neurotransmitters to baseline levels."""
         model = NeurotransmitterTwinModel(digital_twin=digital_twin)
 
@@ -187,7 +187,7 @@ class TestNeurotransmitterTwinModel:
 class TestMentalStateModel:
     """Tests for the MentalStateModel."""
 
-    def test_init(self, digital_twin):
+    def test_init(self, digital_twin) -> None:
         """Test initializing the mental state model."""
         neurotransmitter_model = NeurotransmitterTwinModel(digital_twin=digital_twin)
         model = MentalStateModel(neurotransmitter_model=neurotransmitter_model)
@@ -196,7 +196,7 @@ class TestMentalStateModel:
         assert 0 <= model.depression_score <= 100
         assert 0 <= model.anxiety_score <= 100
 
-    def test_calculate_depression_score(self, digital_twin):
+    def test_calculate_depression_score(self, digital_twin) -> None:
         """Test calculating depression score from neurotransmitter levels."""
         neurotransmitter_model = NeurotransmitterTwinModel(digital_twin=digital_twin)
         model = MentalStateModel(neurotransmitter_model=neurotransmitter_model)
@@ -212,7 +212,7 @@ class TestMentalStateModel:
         # Depression score should increase with lower serotonin/dopamine
         assert model.depression_score > baseline_score
 
-    def test_calculate_anxiety_score(self, digital_twin):
+    def test_calculate_anxiety_score(self, digital_twin) -> None:
         """Test calculating anxiety score from neurotransmitter levels."""
         neurotransmitter_model = NeurotransmitterTwinModel(digital_twin=digital_twin)
         model = MentalStateModel(neurotransmitter_model=neurotransmitter_model)
@@ -232,14 +232,14 @@ class TestMentalStateModel:
 class TestMedicationResponseModel:
     """Tests for the MedicationResponseModel."""
 
-    def test_init(self, digital_twin, sample_medication):
+    def test_init(self, digital_twin, sample_medication) -> None:
         """Test initializing the medication response model."""
         neurotransmitter_model = NeurotransmitterTwinModel(digital_twin=digital_twin)
         model = MedicationResponseModel(neurotransmitter_model=neurotransmitter_model)
 
         assert model.neurotransmitter_model == neurotransmitter_model
 
-    def test_predict_response(self, digital_twin, sample_medication):
+    def test_predict_response(self, digital_twin, sample_medication) -> None:
         """Test predicting medication response."""
         neurotransmitter_model = NeurotransmitterTwinModel(digital_twin=digital_twin)
         model = MedicationResponseModel(neurotransmitter_model=neurotransmitter_model)
@@ -266,7 +266,7 @@ class TestDigitalTwinService:
         mock_repo = MagicMock()
         return MockDigitalTwinService(repository=mock_repo)
 
-    def test_generate_digital_twin(self, twin_service, sample_patient):
+    def test_generate_digital_twin(self, twin_service, sample_patient) -> None:
         """Test generating a digital twin for a patient."""
         digital_twin = twin_service.generate_digital_twin(sample_patient)
 
@@ -279,7 +279,7 @@ class TestDigitalTwinService:
         assert digital_twin.medication_sensitivity == 1.0
         assert digital_twin.therapy_sensitivity == 0.8
 
-    def test_predict_medication_response(self, twin_service, digital_twin, sample_medication):
+    def test_predict_medication_response(self, twin_service, digital_twin, sample_medication) -> None:
         """Test predicting medication response."""
         response = twin_service.predict_medication_response(digital_twin, sample_medication)
 

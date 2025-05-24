@@ -71,7 +71,7 @@ class TestAppointment:
     """Tests for the Appointment class."""
 
     @pytest.mark.standalone()
-    def test_create_appointment(self, valid_appointment_data):
+    def test_create_appointment(self, valid_appointment_data) -> None:
         """Test creating an appointment."""
         # Import Appointment here where it is instantiated
         from app.domain.entities.appointment import Appointment
@@ -90,7 +90,7 @@ class TestAppointment:
         # assert appointment.reason == valid_appointment_data["reason"] # Verify reason field exists
 
     @pytest.mark.standalone()
-    def test_create_appointment_with_string_enums(self, valid_appointment_data):
+    def test_create_appointment_with_string_enums(self, valid_appointment_data) -> None:
         """Test creating an appointment with string enums."""
         # Import Appointment here where it is instantiated
         from app.domain.entities.appointment import Appointment
@@ -107,7 +107,7 @@ class TestAppointment:
         # assert appointment.priority == AppointmentPriority.NORMAL # Removed
 
     @pytest.mark.standalone()
-    def test_create_appointment_with_auto_id(self, valid_appointment_data):
+    def test_create_appointment_with_auto_id(self, valid_appointment_data) -> None:
         """Test creating an appointment with auto-generated ID."""
         # Import Appointment here where it is instantiated
         from app.domain.entities.appointment import Appointment
@@ -119,7 +119,7 @@ class TestAppointment:
         assert isinstance(appointment.id, uuid.UUID)
 
     @pytest.mark.standalone()
-    def test_validate_times(self, future_datetime):
+    def test_validate_times(self, future_datetime) -> None:
         """Test validation of appointment times."""
         # Import Appointment here where it is instantiated
         from app.domain.entities.appointment import Appointment
@@ -147,7 +147,7 @@ class TestAppointment:
             )
 
     @pytest.mark.standalone()
-    def test_validate_required_fields(self, future_datetime):
+    def test_validate_required_fields(self, future_datetime) -> None:
         """Test validation of required fields."""
         # Import Appointment here where it is instantiated
         from app.domain.entities.appointment import Appointment
@@ -198,7 +198,7 @@ class TestAppointment:
             )
 
     @pytest.mark.standalone()
-    def test_confirm_appointment(self, valid_appointment):
+    def test_confirm_appointment(self, valid_appointment) -> None:
         """Test confirming an appointment."""
         assert valid_appointment.status == AppointmentStatus.SCHEDULED
 
@@ -207,7 +207,7 @@ class TestAppointment:
         assert valid_appointment.updated_at > valid_appointment.created_at
 
     @pytest.mark.standalone()
-    def test_cannot_confirm_completed_appointment(self, valid_appointment):
+    def test_cannot_confirm_completed_appointment(self, valid_appointment) -> None:
         """Test that a completed appointment cannot be confirmed."""
         valid_appointment.complete()
 
@@ -215,7 +215,7 @@ class TestAppointment:
             valid_appointment.confirm()
 
     @pytest.mark.standalone()
-    def test_cancel_appointment(self, valid_appointment):
+    def test_cancel_appointment(self, valid_appointment) -> None:
         """Test canceling an appointment."""
         assert valid_appointment.status == AppointmentStatus.SCHEDULED
 
@@ -231,7 +231,7 @@ class TestAppointment:
         assert valid_appointment.cancelled_at is not None
 
     @pytest.mark.standalone()
-    def test_cannot_cancel_completed_appointment(self, valid_appointment):
+    def test_cannot_cancel_completed_appointment(self, valid_appointment) -> None:
         """Test that a completed appointment cannot be canceled."""
         # Manually set status for test (assuming check_in and start happened)
         valid_appointment.status = AppointmentStatus.IN_PROGRESS
@@ -243,7 +243,7 @@ class TestAppointment:
             valid_appointment.cancel(cancelled_by=cancelled_by_user, reason="Too late")
 
     @pytest.mark.standalone()
-    def test_reschedule_appointment(self, valid_appointment, future_datetime):
+    def test_reschedule_appointment(self, valid_appointment, future_datetime) -> None:
         """Test rescheduling an appointment."""
         new_start_time = future_datetime + timedelta(days=2)
         new_end_time = new_start_time + timedelta(hours=1)
@@ -256,7 +256,7 @@ class TestAppointment:
         assert valid_appointment.updated_at > valid_appointment.created_at
 
     @pytest.mark.standalone()
-    def test_complete_appointment(self, valid_appointment):
+    def test_complete_appointment(self, valid_appointment) -> None:
         """Test completing an appointment."""
         # Need to set status to IN_PROGRESS first
         valid_appointment.status = AppointmentStatus.IN_PROGRESS
@@ -266,7 +266,7 @@ class TestAppointment:
         # Notes should be updated separately if needed: valid_appointment.update_notes(notes)
 
     @pytest.mark.standalone()
-    def test_cannot_complete_cancelled_appointment(self, valid_appointment):
+    def test_cannot_complete_cancelled_appointment(self, valid_appointment) -> None:
         """Test that a cancelled appointment cannot be completed."""
         cancelled_by_user = str(uuid.uuid4())
         valid_appointment.cancel(cancelled_by=cancelled_by_user, reason="Patient request")
@@ -276,14 +276,14 @@ class TestAppointment:
             valid_appointment.complete()
 
     @pytest.mark.standalone()
-    def test_no_show_appointment(self, valid_appointment):
+    def test_no_show_appointment(self, valid_appointment) -> None:
         """Test marking an appointment as no-show."""
         # Use the correct method name: mark_no_show()
         valid_appointment.mark_no_show()
         assert valid_appointment.status == AppointmentStatus.NO_SHOW
 
     @pytest.mark.standalone()
-    def test_cannot_no_show_cancelled_appointment(self, valid_appointment):
+    def test_cannot_no_show_cancelled_appointment(self, valid_appointment) -> None:
         """Test that a cancelled appointment cannot be marked as no-show."""
         cancelled_by_user = str(uuid.uuid4())
         valid_appointment.cancel(cancelled_by=cancelled_by_user, reason="Patient request")
@@ -293,7 +293,7 @@ class TestAppointment:
             valid_appointment.mark_no_show()
 
     @pytest.mark.standalone()
-    def test_update_notes(self, valid_appointment):
+    def test_update_notes(self, valid_appointment) -> None:
         """Test updating appointment notes."""
         original_notes = valid_appointment.notes
         new_notes = "Updated patient notes"
@@ -304,7 +304,7 @@ class TestAppointment:
         assert valid_appointment.updated_at > valid_appointment.created_at
 
     @pytest.mark.standalone()
-    def test_update_location(self, valid_appointment):
+    def test_update_location(self, valid_appointment) -> None:
         """Test updating appointment location."""
         original_location = valid_appointment.location
         new_location = "Office 202"
@@ -315,7 +315,7 @@ class TestAppointment:
         assert valid_appointment.updated_at > valid_appointment.created_at
 
     @pytest.mark.standalone()
-    def test_to_dict(self, valid_appointment):
+    def test_to_dict(self, valid_appointment) -> None:
         """Test converting an appointment to a dictionary."""
         appointment_dict = valid_appointment.to_dict()
 
@@ -336,7 +336,7 @@ class TestAppointment:
         assert isinstance(appointment_dict["updated_at"], str)
 
     @pytest.mark.standalone()
-    def test_from_dict(self, valid_appointment):
+    def test_from_dict(self, valid_appointment) -> None:
         """Test creating an appointment from a dictionary."""
         # Import Appointment here where it is instantiated
         from app.domain.entities.appointment import Appointment
@@ -396,7 +396,7 @@ class TestAppointment:
         # assert recreated_appointment.reason == valid_appointment.reason # Add if field exists
 
     @pytest.mark.standalone()
-    def test_equality(self, valid_appointment_data):
+    def test_equality(self, valid_appointment_data) -> None:
         """Test appointment equality."""
         # Import Appointment here where it is instantiated
         from app.domain.entities.appointment import Appointment
@@ -406,7 +406,7 @@ class TestAppointment:
         assert app1 == app2
 
     @pytest.mark.standalone()
-    def test_inequality(self, valid_appointment_data):
+    def test_inequality(self, valid_appointment_data) -> None:
         """Test appointment inequality."""
         # Import Appointment here where it is instantiated
         from app.domain.entities.appointment import Appointment
@@ -424,7 +424,7 @@ class TestAppointment:
         assert app1 != app3
 
     @pytest.mark.standalone()
-    def test_string_representation(self, valid_appointment):
+    def test_string_representation(self, valid_appointment) -> None:
         """Test string representation of an appointment."""
         string_repr = str(valid_appointment)
         assert str(valid_appointment.id) in string_repr

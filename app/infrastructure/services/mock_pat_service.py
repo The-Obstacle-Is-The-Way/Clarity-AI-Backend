@@ -26,7 +26,7 @@ class MockPATService:
         self.config = config or {}
         self._initialized = True
         self._analysis_model_id = "mock-pat-model-1"
-        self._sessions = {}
+        self._sessions: dict[str, dict[str, Any]] = {}
 
     async def initialize(self) -> bool:
         """

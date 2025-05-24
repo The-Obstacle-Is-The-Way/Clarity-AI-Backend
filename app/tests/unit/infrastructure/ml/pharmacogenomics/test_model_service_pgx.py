@@ -189,7 +189,7 @@ class TestPharmacogenomicsService:
         sample_genetic_data,
         sample_patient_data,
         sample_patient_id,
-    ):
+    ) -> None:
         """Test that predict_medication_response correctly processes data and returns predictions."""
         # Setup
         medications = ["fluoxetine", "sertraline", "bupropion"]
@@ -231,7 +231,7 @@ class TestPharmacogenomicsService:
     @pytest.mark.asyncio
     async def test_predict_medication_response_no_genetic_data(
         self, service, sample_patient_data, sample_patient_id
-    ):
+    ) -> None:
         """Test that predict_medication_response handles missing genetic data."""
         # Setup
         medications = ["fluoxetine", "sertraline"]
@@ -251,7 +251,7 @@ class TestPharmacogenomicsService:
     @pytest.mark.asyncio
     async def test_predict_medication_response_no_patient_data(
         self, service, sample_genetic_data, sample_patient_id
-    ):
+    ) -> None:
         """Test that predict_medication_response handles missing patient data."""
         # Setup
         medications = ["fluoxetine", "sertraline"]
@@ -271,7 +271,7 @@ class TestPharmacogenomicsService:
     @pytest.mark.asyncio
     async def test_predict_medication_response_no_medications(
         self, service, sample_genetic_data, sample_patient_data, sample_patient_id
-    ):
+    ) -> None:
         """Test that predict_medication_response handles empty medications list."""
         # Execute/Assert
         with pytest.raises(ValueError) as excinfo:
@@ -293,7 +293,7 @@ class TestPharmacogenomicsService:
         sample_genetic_data,
         sample_patient_data,
         sample_patient_id,
-    ):
+    ) -> None:
         """Test that predict_medication_response handles model errors correctly."""
         # Setup
         medications = ["fluoxetine", "sertraline"]
@@ -324,7 +324,7 @@ class TestPharmacogenomicsService:
         sample_genetic_data,
         sample_patient_data,
         sample_patient_id,
-    ):
+    ) -> None:
         """Test that PHI access is properly logged."""
         # Setup
         medications = ["fluoxetine", "sertraline"]
@@ -348,7 +348,7 @@ class TestPharmacogenomicsService:
     @pytest.mark.asyncio  # Add async
     async def test_analyze_medication_interactions(
         self, service, mock_gene_medication_model, sample_genetic_data
-    ):
+    ) -> None:
         """Test the analyze_medication_interactions method."""
         # Setup
         medications = ["fluoxetine", "sertraline"]
@@ -367,7 +367,7 @@ class TestPharmacogenomicsService:
     @pytest.mark.asyncio  # Add async
     async def test_analyze_medication_interactions_no_genetic_data(
         self, service
-    ):  # Removed unused parameter
+    ) -> None:  # Removed unused parameter
         """Test analyze_medication_interactions with no genetic data."""
         # Setup
         medications = ["fluoxetine", "sertraline"]
@@ -384,7 +384,7 @@ class TestPharmacogenomicsService:
     @pytest.mark.asyncio  # Add async
     async def test_is_model_healthy(
         self, service, mock_gene_medication_model, mock_treatment_model
-    ):
+    ) -> None:
         """Test the is_model_healthy method."""
         # Both models are healthy (as set in fixtures)
         assert await service.is_model_healthy() is True
@@ -403,7 +403,7 @@ class TestPharmacogenomicsService:
         assert await service.is_model_healthy() is True
 
     @pytest.mark.asyncio  # Add async
-    async def test_get_model_info(self, service, mock_gene_medication_model, mock_treatment_model):
+    async def test_get_model_info(self, service, mock_gene_medication_model, mock_treatment_model) -> None:
         """Test the get_model_info method."""
         # Setup mock responses
         # Corrected return value structure
@@ -441,7 +441,7 @@ class TestPharmacogenomicsService:
         mocker: MockerFixture,
         test_patient: Patient,
         test_report: PGXReport,
-    ):
+    ) -> None:
         # Mock the model's predict method
         mock_predict = mocker.patch.object(
             pharmacogenomics_service.model,
@@ -500,7 +500,7 @@ class TestPharmacogenomicsService:
         mocker: MockerFixture,
         test_patient: Patient,
         test_report: PGXReport,
-    ):
+    ) -> None:
         # Mock the model's analyze method
         mock_analyze = mocker.patch.object(
             pharmacogenomics_service.model,
@@ -552,7 +552,7 @@ class TestPharmacogenomicsService:
         mocker: MockerFixture,
         test_patient: Patient,
         test_report: PGXReport,
-    ):
+    ) -> None:
         # Mock the model's predict_side_effects method
         mock_predict_se = mocker.patch.object(
             pharmacogenomics_service.model,
@@ -607,7 +607,7 @@ class TestPharmacogenomicsService:
         pharmacogenomics_service: PharmacogenomicsService,
         mocker: MockerFixture,
         test_patient: Patient,
-    ):
+    ) -> None:
         # Mock the model's predict method to raise ModelExecutionError
         mock_predict = mocker.patch.object(
             pharmacogenomics_service.model,
@@ -637,7 +637,7 @@ class TestPharmacogenomicsService:
         pharmacogenomics_service: PharmacogenomicsService,
         mocker: MockerFixture,
         test_patient: Patient,
-    ):
+    ) -> None:
         # No need to mock the model itself, validation happens before model call
         # Mock services (as before)
         mocker.patch(

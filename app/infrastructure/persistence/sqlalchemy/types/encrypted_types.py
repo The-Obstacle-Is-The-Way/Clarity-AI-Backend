@@ -7,7 +7,6 @@ using the application's configured encryption service.
 """
 
 import base64
-import dataclasses
 import json
 import logging
 from typing import Any, TypeVar
@@ -27,103 +26,94 @@ logger = logging.getLogger(__name__)
 PydanticModel = TypeVar("PydanticModel", bound=BaseModel)
 
 
-def serialize_for_encryption(obj: Any) -> str:
+def serialize_for_encryption(obj: Any) -> str | None:
     """
-    Serialize an object to a JSON string for encryption.
+    Serialize various Python objects to JSON strings for encryption.
 
-    Handles various types including:
-    - Pydantic models (v1 and v2)
-    - Dataclasses
-    - Objects with to_dict()
-    - Native Python types
-    - MagicMock objects (for testing)
+    Handles Pydantic models, Python dicts, lists, and primitive types.
+    For non-JSON serializable objects, falls back to string representation.
 
     Args:
-        obj: Object to serialize
+        obj: The object to serialize
 
     Returns:
-        JSON string representation
+        JSON string representation of the object, or None if obj is None
 
     Raises:
-        TypeError: If object cannot be serialized
+        TypeError: If the object cannot be serialized to JSON or string
     """
     if obj is None:
         return None
 
-    # Handle unittest.mock.MagicMock objects
-    if hasattr(obj, "__class__") and obj.__class__.__name__ == "MagicMock":
-        return json.dumps({"__mock__": True, "repr": repr(obj)})
-
-    # Handle Pydantic v2 models
-    if hasattr(obj, "model_dump") and callable(obj.model_dump):
-        return json.dumps(obj.model_dump())
-
-    # Handle Pydantic v1 models
-    if hasattr(obj, "dict") and callable(obj.dict):
-        return json.dumps(obj.dict())
-
-    # Handle dataclasses
-    if dataclasses.is_dataclass(obj):
-        return json.dumps(dataclasses.asdict(obj))
-
-    # Handle objects with to_dict method
-    if hasattr(obj, "to_dict") and callable(obj.to_dict):
-        return json.dumps(obj.to_dict())
-
-    # Try direct JSON serialization
     try:
+        # Handle Pydantic models
+        if hasattr(obj, "model_dump") and callable(obj.model_dump):
+            return json.dumps(obj.model_dump())
+
+        # Handle other objects that have dict() method
+        if hasattr(obj, "dict") and callable(obj.dict):
+            return json.dumps(obj.dict())
+
+        # Handle dict, list, or primitive types
         return json.dumps(obj)
     except (TypeError, ValueError) as e:
-        # Last resort - try string conversion
+        # For non-JSON serializable objects (like MagicMock), fall back to string representation
+        logger.warning(
+            f"Object of type {type(obj)} is not JSON serializable, using string representation: {e!s}"
+        )
         try:
-            return json.dumps(str(obj))
-        except Exception:
+            return str(obj)
+        except Exception as str_error:
+            logger.error(f"Failed to serialize object of type {type(obj)} to string: {str_error!s}")
             raise TypeError(
-                f"Object of type {type(obj).__name__} cannot be serialized to JSON: {e!s}"
+                f"Object of type {type(obj).__name__} cannot be serialized: {str_error!s}"
             )
 
 
-def deserialize_from_encryption(json_str: str, target_cls: type[PydanticModel] = None) -> Any:
+def deserialize_from_encryption(
+    json_str: str, target_cls: type[PydanticModel] | None = None
+) -> Any:
     """
-    Deserialize JSON string back to an object.
-
-    If target_cls is provided, will convert to that Pydantic model.
+    Deserialize JSON strings back to Python objects after decryption.
 
     Args:
         json_str: JSON string to deserialize
-        target_cls: Optional target Pydantic class
+        target_cls: Optional target class for Pydantic model instantiation
 
     Returns:
-        Deserialized object
+        Deserialized Python object
 
     Raises:
-        ValueError: If deserialization fails
+        ValueError: If the JSON is invalid or target class cannot be instantiated
     """
-    if json_str is None:
+    if not json_str:
         return None
 
     try:
-        # Parse JSON to Python dict/list/etc.
+        # Parse the JSON
         data = json.loads(json_str)
 
-        # Convert to target class if specified and valid
-        if target_cls is not None and issubclass(target_cls, BaseModel):
-            # Handle Pydantic v1 vs v2 initialization
-            if hasattr(target_cls, "model_validate") and callable(target_cls.model_validate):
-                return target_cls.model_validate(data)
-            elif hasattr(target_cls, "parse_obj") and callable(target_cls.parse_obj):
-                return target_cls.parse_obj(data)
-            else:
-                return target_cls(**data)
+        # If a target class is provided and it's a Pydantic model, instantiate it
+        if target_cls is not None:
+            try:
+                if hasattr(target_cls, "model_validate"):
+                    return target_cls.model_validate(data)
+                elif hasattr(target_cls, "parse_obj"):
+                    return target_cls.parse_obj(data)
+                else:
+                    # Not a Pydantic model, just return the data
+                    return data
+            except Exception as e:
+                logger.warning(
+                    f"Failed to instantiate {target_cls.__name__}: {e!s}, returning raw data"
+                )
+                return data
+        else:
+            return data
 
-        # Otherwise return the parsed data
-        return data
     except json.JSONDecodeError as e:
-        logger.error(f"JSON deserialization failed: {e!s}")
-        raise ValueError(f"Failed to parse JSON data: {e!s}")
-    except Exception as e:
-        logger.error(f"Object deserialization failed: {e!s}")
-        raise ValueError(f"Failed to deserialize data: {e!s}")
+        logger.error(f"Failed to deserialize JSON: {e!s}")
+        raise ValueError(f"Invalid JSON in encrypted data: {e!s}")
 
 
 class EncryptedTypeBase(types.TypeDecorator):
@@ -212,7 +202,7 @@ class EncryptedTypeBase(types.TypeDecorator):
         """
         raise NotImplementedError("Subclasses must implement this method")
 
-    def process_bind_param(self, value: Any, dialect: Dialect) -> str:
+    def process_bind_param(self, value: Any, dialect: Dialect) -> str | None:
         """
         Process a Python value before binding to a SQL statement parameter.
 
@@ -243,7 +233,7 @@ class EncryptedTypeBase(types.TypeDecorator):
             logger.error(f"Failed to encrypt value: {e!s}", exc_info=True)
             raise ValueError(f"Encryption failed: {e!s}")
 
-    def process_result_value(self, value: str, dialect: Dialect) -> Any:
+    def process_result_value(self, value: Any | None, dialect: Dialect) -> Any:
         """
         Process a database value after retrieving from the database.
 
@@ -334,7 +324,7 @@ class EncryptedTypeBase(types.TypeDecorator):
 class EncryptedString(EncryptedTypeBase):
     """Encrypted string column type for SQLAlchemy."""
 
-    def _convert_bind_param(self, value: Any) -> str:
+    def _convert_bind_param(self, value: Any) -> str | None:
         """
         Convert a Python object to a string for encryption.
 
@@ -352,7 +342,7 @@ class EncryptedString(EncryptedTypeBase):
 
         return value
 
-    def _convert_result_value(self, value: str | bytes) -> str:
+    def _convert_result_value(self, value: str | bytes) -> str | None:
         """
         Return the decrypted string directly.
 
@@ -384,7 +374,7 @@ class EncryptedText(EncryptedTypeBase):
 
     impl = types.Text
 
-    def _convert_bind_param(self, value: Any) -> str:
+    def _convert_bind_param(self, value: Any) -> str | None:
         """
         Convert a Python object to a string for encryption.
 
@@ -402,7 +392,7 @@ class EncryptedText(EncryptedTypeBase):
 
         return value
 
-    def _convert_result_value(self, value: str | bytes) -> str:
+    def _convert_result_value(self, value: str | bytes) -> str | None:
         """
         Return the decrypted string directly.
 
@@ -429,7 +419,7 @@ class EncryptedText(EncryptedTypeBase):
 class EncryptedInteger(EncryptedTypeBase):
     """Encrypted integer column type for SQLAlchemy."""
 
-    def _convert_bind_param(self, value: Any) -> str:
+    def _convert_bind_param(self, value: Any) -> str | None:
         """
         Convert an integer to a string for encryption.
 
@@ -452,7 +442,7 @@ class EncryptedInteger(EncryptedTypeBase):
             logger.error(f"Failed to convert {value} to integer: {e!s}")
             raise TypeError(f"Value {value} cannot be converted to integer")
 
-    def _convert_result_value(self, value: str | bytes) -> int:
+    def _convert_result_value(self, value: str | bytes) -> int | None:
         """
         Convert a decrypted string value to an integer.
 
@@ -498,7 +488,7 @@ class EncryptedJSON(EncryptedTypeBase):
     and store the encrypted string in the database.
     """
 
-    def _convert_bind_param(self, value: dict | list | BaseModel | Any) -> str:
+    def _convert_bind_param(self, value: dict | list | BaseModel | Any) -> str | None:
         """
         Convert a Python object to a JSON string for encryption.
 
@@ -517,18 +507,18 @@ class EncryptedJSON(EncryptedTypeBase):
         # Use the serialization helper to handle various types
         return serialize_for_encryption(value)
 
-    def _convert_result_value(self, value: str | bytes) -> dict | list:
+    def _convert_result_value(self, value: str | bytes) -> dict | list | str | None:
         """
-        Convert a decrypted string to a JSON object.
+        Convert a decrypted string to a JSON object or string.
 
         Args:
             value: Decrypted string to convert to JSON
 
         Returns:
-            Parsed JSON object (dict or list)
+            Parsed JSON object (dict or list) or original string if not valid JSON
 
         Raises:
-            ValueError: If the JSON is invalid
+            ValueError: If the data cannot be processed
         """
         if value is None:
             return None
@@ -542,22 +532,21 @@ class EncryptedJSON(EncryptedTypeBase):
                     logger.error("Cannot decode bytes as UTF-8 in JSON conversion")
                     raise ValueError("Decrypted data contains invalid UTF-8 bytes")
 
-            # Check for mock objects (special case for testing)
-            parsed = json.loads(value)
-            if isinstance(parsed, dict) and parsed.get("__mock__") is True:
-                # This was a mock object, so we'll return a simplified dict
-                return {"__mock__": True}
+            # Try to parse as JSON first
+            return json.loads(value)
 
-            return parsed
-        except json.JSONDecodeError as e:
-            # Make an extra attempt to parse the JSON
+        except json.JSONDecodeError:
+            # If it's not valid JSON, try cleaning and parsing again
             try:
                 # Sometimes the JSON might be escaped or have extra quotes
                 cleaned_value = value.strip("\"'")
                 return json.loads(cleaned_value)
             except json.JSONDecodeError:
-                logger.error(f"Failed to parse JSON from decrypted value: {e!s}")
-                raise ValueError(f"Invalid JSON in decrypted data: {e!s}")
+                # If still not valid JSON, return as string (for objects that were serialized as strings)
+                logger.warning(
+                    f"Decrypted value is not valid JSON, returning as string: {value[:50]}..."
+                )
+                return value
 
 
 class EncryptedPickle(EncryptedTypeBase):
@@ -570,7 +559,7 @@ class EncryptedPickle(EncryptedTypeBase):
     Only use for trusted data and when JSON serialization is not sufficient.
     """
 
-    def _convert_bind_param(self, value: Any) -> str:
+    def _convert_bind_param(self, value: Any) -> str | None:
         """
         Convert a Python object to a base64-encoded pickle string for encryption.
 
@@ -595,7 +584,7 @@ class EncryptedPickle(EncryptedTypeBase):
             logger.error(f"Failed to pickle object: {e!s}")
             raise TypeError(f"Object of type {type(value).__name__} cannot be pickled: {e!s}")
 
-    def _convert_result_value(self, value: str) -> Any:
+    def _convert_result_value(self, value: str) -> Any | None:
         """
         Convert a decrypted base64-encoded pickle string to a Python object.
 

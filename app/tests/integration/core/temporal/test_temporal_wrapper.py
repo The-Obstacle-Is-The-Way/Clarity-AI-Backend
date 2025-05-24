@@ -28,7 +28,7 @@ async def test_temporal_endpoints_integration(
     mock_current_user,
     temporal_service: TemporalNeurotransmitterService,
     patient_id: UUID,
-):
+) -> None:
     """
     Test API integration with the neurotransmitter service.
 
@@ -73,7 +73,7 @@ async def test_temporal_endpoints_integration(
         assert "sequence_ids" in treatment_response.json()
 
         # Extract a sequence ID for visualization test
-        first_sequence_id = list(treatment_response.json()["sequence_ids"].values())[0]
+        first_sequence_id = next(iter(treatment_response.json()["sequence_ids"].values()))
 
         # Test 3: Get visualization data
         viz_response = test_client.post(

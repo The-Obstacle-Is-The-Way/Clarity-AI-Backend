@@ -105,7 +105,7 @@ class MockBiometricAlertRuleService(AlertRuleServiceInterface):
         filtered_rules = []
 
         # Apply filters
-        for rule_id, rule in self.rules.items():
+        for _rule_id, rule in self.rules.items():
             if patient_id and rule.get("patient_id") != str(patient_id):
                 continue
             if is_active is not None and rule.get("is_active") != is_active:

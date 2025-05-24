@@ -115,13 +115,13 @@ def mock_child_event_model(mock_event_model):
 class TestSqlAlchemyEventRepository:
     """Tests for SqlAlchemyEventRepository."""
 
-    def test_init(self, mock_session):
+    def test_init(self, mock_session) -> None:
         """Test repository initialization."""
         repo = SqlAlchemyEventRepository(session=mock_session)
         assert repo.session == mock_session
 
     @pytest.mark.asyncio()
-    async def test_save_event(self, mock_session, test_event):
+    async def test_save_event(self, mock_session, test_event) -> None:
         """Test saving a correlated event."""
         # Setup
         repo = SqlAlchemyEventRepository(session=mock_session)
@@ -146,7 +146,7 @@ class TestSqlAlchemyEventRepository:
         assert added_model.event_metadata == test_event.event_metadata  # Renamed
 
     @pytest.mark.asyncio()
-    async def test_get_event_by_id_found(self, mock_session, mock_event_model):
+    async def test_get_event_by_id_found(self, mock_session, mock_event_model) -> None:
         """Test getting an event by ID when found."""
         # Setup
         repo = SqlAlchemyEventRepository(session=mock_session)
@@ -174,7 +174,7 @@ class TestSqlAlchemyEventRepository:
         mock_session.execute.assert_called_once()
 
     @pytest.mark.asyncio()
-    async def test_get_event_by_id_not_found(self, mock_session):
+    async def test_get_event_by_id_not_found(self, mock_session) -> None:
         """Test getting an event by ID when not found."""
         # Setup
         repo = SqlAlchemyEventRepository(session=mock_session)
@@ -196,7 +196,7 @@ class TestSqlAlchemyEventRepository:
     @pytest.mark.asyncio()
     async def test_get_events_by_correlation_id(
         self, mock_session, mock_event_model, mock_child_event_model
-    ):
+    ) -> None:
         """Test getting events by correlation ID."""
         # Setup
         repo = SqlAlchemyEventRepository(session=mock_session)
@@ -219,7 +219,7 @@ class TestSqlAlchemyEventRepository:
         mock_session.execute.assert_called_once()
 
     @pytest.mark.asyncio()
-    async def test_get_event_chain(self, mock_session, mock_event_model, mock_child_event_model):
+    async def test_get_event_chain(self, mock_session, mock_event_model, mock_child_event_model) -> None:
         """Test getting an event chain by correlation ID."""
         # Setup
         repo = SqlAlchemyEventRepository(session=mock_session)
@@ -251,7 +251,7 @@ class TestSqlAlchemyEventRepository:
             )
 
     @pytest.mark.asyncio()
-    async def test_get_patient_events(self, mock_session, mock_event_model, mock_child_event_model):
+    async def test_get_patient_events(self, mock_session, mock_event_model, mock_child_event_model) -> None:
         """Test getting events associated with a patient."""
         # Setup
         repo = SqlAlchemyEventRepository(session=mock_session)

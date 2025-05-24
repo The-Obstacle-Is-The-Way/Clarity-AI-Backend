@@ -36,7 +36,7 @@ class TestGetLogger:
     """Test suite for the get_logger function."""
 
     @patch("app.core.utils.logging.logging.getLogger")
-    def test_get_logger_basic(self, mock_get_logger):
+    def test_get_logger_basic(self, mock_get_logger) -> None:
         """Test getting a basic logger."""
         # Setup mock
         mock_logger = MagicMock()
@@ -52,7 +52,7 @@ class TestGetLogger:
         assert logger == mock_logger
 
     @patch("app.core.utils.logging.logging.getLogger")
-    def test_get_logger_configuration(self, mock_get_logger):
+    def test_get_logger_configuration(self, mock_get_logger) -> None:
         """Test logger configuration within get_logger."""
         # Setup mock logger to simulate no handlers
         mock_logger_instance = MagicMock()

@@ -3,6 +3,7 @@ Unit tests for database connection and session management.
 """
 
 import asyncio
+from typing import NoReturn
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -46,7 +47,7 @@ def event_loop():
 @pytest.mark.asyncio
 @patch.object(dbmod, "create_async_engine")  # Patch the underlying engine creation
 @pytest.mark.asyncio
-async def test_get_engine(mock_create_engine, test_settings: Settings):
+async def test_get_engine(mock_create_engine, test_settings: Settings) -> None:
     """Test the get_engine function."""
     # Ensure the test_settings fixture provides the DATABASE_URL
     assert test_settings.DATABASE_URL is not None, "DATABASE_URL must be set in test_settings"
@@ -84,7 +85,7 @@ async def test_get_engine(mock_create_engine, test_settings: Settings):
 @pytest.mark.asyncio
 @patch.object(dbmod, "sessionmaker")  # Patch sessionmaker creation
 @pytest.mark.asyncio
-async def test_get_session_local(mock_sessionmaker, test_settings: Settings):
+async def test_get_session_local(mock_sessionmaker, test_settings: Settings) -> None:
     """Test the creation of the sessionmaker via get_session_local."""
     mock_engine = AsyncMock()
     with patch.object(dbmod, "get_engine", return_value=mock_engine):
@@ -101,7 +102,7 @@ async def test_get_session_local(mock_sessionmaker, test_settings: Settings):
 
 
 @pytest.mark.asyncio
-async def test_get_session_context_manager():
+async def test_get_session_context_manager() -> None:
     """Test the get_session context manager yields and closes a session."""
     mock_session_factory = MagicMock(spec=sessionmaker)
     mock_session_instance = AsyncMock(spec=AsyncSession)
@@ -118,7 +119,7 @@ async def test_get_session_context_manager():
 
 
 @pytest.mark.asyncio
-async def test_get_session_context_manager_exception():
+async def test_get_session_context_manager_exception() -> NoReturn:
     """Test the get_session context manager handles exceptions correctly."""
     mock_session_factory = MagicMock(spec=sessionmaker)
     mock_session_instance = AsyncMock(spec=AsyncSession)
@@ -139,7 +140,7 @@ async def test_get_session_context_manager_exception():
 
 
 @pytest.mark.asyncio
-async def test_route_using_get_db():
+async def test_route_using_get_db() -> None:
     """Test a FastAPI route that uses the DB dependency."""
     mock_session = AsyncMock(spec=AsyncSession)
 

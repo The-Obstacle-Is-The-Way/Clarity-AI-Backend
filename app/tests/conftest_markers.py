@@ -6,7 +6,7 @@ to avoid warnings during test collection and execution.
 """
 
 
-def pytest_configure(config):
+def pytest_configure(config) -> None:
     """
     Register custom markers for pytest.
 

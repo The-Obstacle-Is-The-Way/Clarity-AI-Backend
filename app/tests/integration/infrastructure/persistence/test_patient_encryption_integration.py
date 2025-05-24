@@ -27,14 +27,6 @@ from sqlalchemy.ext.asyncio import (  # , async_sessionmaker, create_async_engin
 
 # from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import EncryptedString, EncryptedText, EncryptedJSON # Not directly used in test logic
 from app.core.config import settings
-
-# Import domain entities with clear namespace
-from app.core.domain.entities.patient import (
-    ContactInfo,
-)
-from app.core.domain.entities.patient import (
-    Patient as DomainPatient,  # Gender, Address, EmergencyContact will be added to DomainPatient
-)
 from app.core.domain.entities.user import UserRole
 from app.core.domain.enums import Gender  # Corrected Gender import
 
@@ -45,6 +37,9 @@ from app.core.domain.enums import Gender  # Corrected Gender import
 # However, ensuring the global instance is correctly configured for tests IS crucial.
 # import app.infrastructure.persistence.sqlalchemy.models.patient as patient_module_for_esi # Keep for now if other parts rely on it, but aim to remove dependency on this patching.
 from app.core.exceptions.base_exceptions import PersistenceError  # Corrected import
+
+# Import domain entities with clear namespace
+from app.domain.entities.patient import Patient as DomainPatient
 from app.domain.value_objects.address import (  # Assuming this is the canonical Pydantic/dataclass VO
     Address,
 )
@@ -110,7 +105,6 @@ async def integration_db_session():  # Removed encryption_service_fixture depend
     # async_session_factory = db_instance.session_factory # Not using factory directly
 
     patient_audit_log_id_for_yield: uuid.UUID | None = None
-    user_for_patient_audit_id: uuid.UUID | None = None  # Keep for logging clarity if needed
 
     async with engine.connect() as conn:  # Single connection for DDL and test session
         logger.info("[Integration Fixture] Performing DDL operations on shared connection.")
@@ -194,7 +188,6 @@ async def integration_db_session():  # Removed encryption_service_fixture depend
                 )
 
                 patient_audit_log_id_for_yield = patient_action_audit_log.id
-                user_for_patient_audit_id = patient_action_audit_log.user_id
 
             # The 'async with async_session.begin()' block ensures all the above is committed here if no exceptions.
             logger.info(
@@ -223,7 +216,7 @@ async def integration_db_session():  # Removed encryption_service_fixture depend
 class TestPatientEncryptionIntegration:
     """Integration test suite for Patient model encryption with database."""
 
-    def setup_method(self, method):
+    def setup_method(self, method) -> None:
         """Initialize the encryption service before each test method."""
         global encryption_service_instance
         from app.infrastructure.security.encryption.base_encryption_service import (
@@ -251,94 +244,39 @@ class TestPatientEncryptionIntegration:
         # For now, it's an aspiration for what DomainPatient should hold.
         # Fallback to basic DomainPatient if fields are not yet available.
 
-        patient_data = {
-            "id": patient_id,
-            "user_id": user_id,  # Assuming DomainPatient will have user_id
-            "first_name": "EncrFirstName",
-            "last_name": "EncrLastName",
-            "email": "encrypted.patient@example.com",
-            "date_of_birth": date(1990, 1, 1),
-            "phone_number": "555-123-4567",
-            "contact_info": ContactInfo(
-                phone="555-0100", email_secondary="secondary@example.com"
-            ),  # Pydantic ContactInfo
-            "gender": Gender.FEMALE,
-            "address": Address(
+        # Create patient with only fields that domain Patient accepts
+        return DomainPatient(
+            id=patient_id,
+            first_name="EncrFirstName",
+            last_name="EncrLastName",
+            email="encrypted.patient@example.com",
+            date_of_birth=date(1990, 1, 1),
+            phone="555-123-4567",
+            gender=Gender.FEMALE.value,  # Convert enum to string
+            address=Address(
                 line1="123 Encrypt Lane",
                 city="SecureVille",
                 state="SS",
-                postal_code="00000",
+                zip_code="00000",
                 country="US",
             ),
-            "emergency_contact": EmergencyContact(
+            emergency_contact=EmergencyContact(
                 name="EC Name", phone="555-555-0199", relationship="Sibling"
             ),
-            "medical_history": ["Condition A", "Condition B"],
-            "medications": [{"name": "MedX", "dosage": "10mg"}],
-            "allergies": ["Peanuts"],
-            "social_security_number_lve": "000-00-0000",
-            "middle_name": "EncrMid",
-            "sex_at_birth": "Female",
-            "pronouns": "they/them",
-            "ethnicity": "Test Ethnicity",
-            "race": "Test Race",
-            "preferred_language": "Klingon",
-            "religion_spirituality": "Jedi",
-            "occupation": "Cipherpunk",
-            "education_level": "PhD",
-            "marital_status": "Single",
-            "medical_record_number_lve": "MRNENC123",
-            "drivers_license_number_lve": "DLENC123",
-            "insurance_policy_number_lve": "POLENC123",
-            "insurance_group_number_lve": "GRPENC123",
-            "living_arrangement": "Alone",
-            "allergies_sensitivities": "Sulfa",
-            "problem_list": "Chronic Debugging",
-            "primary_care_physician": "Dr. Encrypto",
-            "pharmacy_information": "Secure Pharmacy",
-            "care_team_contact_info": "Team Secure",
-            "treatment_history_notes": "Long history of secure treatments.",
-            "current_medications_lve": "Aspirin, Vitamins",
-            "confidential_information_lve": "Truly secret stuff.",
-            "additional_notes_lve": "More notes here.",
-            "contact_details_json": {
-                "home_phone": "555-0001",
-                "work_email": "work@enc.com",
-            },  # Renamed for clarity, assuming it maps to a JSON field
-            "preferences_json": {
-                "communication": "encrypted_email",
-                "theme": "dark_mode",
-            },  # Renamed for clarity
-            "notes": "Encrypted notes here.",
-            "custom_fields": {"custom_key": "encrypted_custom_value"},
-            "is_active": True,
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
-        }
-
-        # Simplified creation for now, assuming DomainPatient can take these directly
-        # or has a constructor/factory that can handle them.
-        # This might require DomainPatient to be more flexible or use **patient_data
-        try:
-            return DomainPatient(**patient_data)
-        except TypeError as e:
-            logger.error(f"Error creating DomainPatient with provided data: {e}")
-            # Fallback to a more basic instantiation if the full one fails due to missing fields
-            # This is a temporary measure until DomainPatient is fully aligned.
-            return DomainPatient(
-                id=patient_id,
-                user_id=user_id,
-                first_name="EncrFirstName",
-                last_name="EncrLastName",
-                email="encrypted.patient@example.com",
-                date_of_birth=date(1990, 1, 1),
-                # Add other core fields that DomainPatient expects
-            )
+            medical_history=["Condition A", "Condition B"],
+            medications=["MedX 10mg"],  # Simplified format
+            allergies=["Peanuts"],
+            ssn="000-00-0000",  # Use ssn field instead of social_security_number_lve
+            medical_record_number="MRNENC123",  # Use standard field
+            active=True,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
 
     @pytest.mark.asyncio
     async def test_phi_encrypted_in_database(
         self, integration_db_session: tuple[AsyncSession, uuid.UUID]
-    ):  # Removed encryption_service_fixture
+    ) -> None:  # Removed encryption_service_fixture
         """Verify that PHI stored in the database is actually encrypted."""
         session, patient_audit_log_id = integration_db_session
         # encryption_service = encryption_service_fixture # No longer using separate fixture instance
@@ -422,7 +360,7 @@ class TestPatientEncryptionIntegration:
     @pytest.mark.asyncio
     async def test_phi_decrypted_in_repository(
         self, integration_db_session: tuple[AsyncSession, uuid.UUID]
-    ):
+    ) -> None:
         """Verify that PHI is decrypted when retrieved via the repository."""
         session, patient_audit_log_id = integration_db_session
         # encryption_service = encryption_service_fixture # No longer using separate fixture instance
@@ -504,7 +442,7 @@ class TestPatientEncryptionIntegration:
     @pytest.mark.asyncio
     async def test_encryption_error_handling(
         self,
-    ):  # Removed integration_db_session, encryption_service_fixture
+    ) -> None:  # Removed integration_db_session, encryption_service_fixture
         """Test error handling for encryption/decryption failures (e.g., tampered data)."""
         # Use the global encryption_service_instance, ensure it's configured for tests
         global encryption_service_instance

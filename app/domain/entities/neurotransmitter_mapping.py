@@ -278,7 +278,7 @@ class NeurotransmitterMapping:
         brain_region: BrainRegion,
         neurotransmitter: Neurotransmitter,
         level: float = 0.5,
-        neurotransmitter_level: float = None,  # For compatibility with tests
+        neurotransmitter_level: float | None = None,  # For compatibility with tests
     ) -> tuple[float, float]:
         """
         Calculate the response of a brain region to a neurotransmitter at a given level.

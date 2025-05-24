@@ -32,7 +32,7 @@ except ModuleNotFoundError:  # pragma: no cover - only in test env
 
             return decorator
 
-    def get_remote_address():
+    def get_remote_address() -> str:
         return "127.0.0.1"
 
     RATE_LIMIT_STRATEGIES = {

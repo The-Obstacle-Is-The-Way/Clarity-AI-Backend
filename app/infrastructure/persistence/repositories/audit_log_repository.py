@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import and_, desc, func, select
+from sqlalchemy import and_, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -215,7 +215,7 @@ class AuditLogRepository(IAuditLogRepository):
             .group_by(AuditLogModel.event_type)
         )
         event_type_result = await self._session.execute(event_type_query)
-        event_type_counts = {event_type: count for event_type, count in event_type_result.all()}
+        event_type_counts = dict(event_type_result.all())
 
         # Count successful vs failed events
         success_query = (

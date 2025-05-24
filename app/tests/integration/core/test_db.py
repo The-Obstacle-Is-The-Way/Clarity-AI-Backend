@@ -20,7 +20,7 @@ from app.tests.integration.utils.test_db_initializer import (
 
 
 @pytest.mark.asyncio
-async def test_database_connection(db_session: AsyncSession):
+async def test_database_connection(db_session: AsyncSession) -> None:
     """Test basic database connectivity with standardized session."""
     # Simple query to verify connection
     result = await db_session.execute(text("SELECT 1"))
@@ -29,7 +29,7 @@ async def test_database_connection(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_table_creation(db_session: AsyncSession):
+async def test_table_creation(db_session: AsyncSession) -> None:
     """Test that tables are properly created in the test database."""
     # Verify our standard tables exist
     assert await verify_table_exists(db_session, "users"), "Users table missing"
@@ -81,7 +81,7 @@ async def setup_custom_model():
 
 
 @pytest.mark.asyncio
-async def test_custom_table_operations(setup_custom_model: AsyncSession):
+async def test_custom_table_operations(setup_custom_model: AsyncSession) -> None:
     """Test operations on a custom table."""
     session = setup_custom_model
 

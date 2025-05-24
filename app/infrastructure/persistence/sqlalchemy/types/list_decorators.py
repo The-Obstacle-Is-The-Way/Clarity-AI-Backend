@@ -55,7 +55,7 @@ class StringListDecorator(types.TypeDecorator):
             return None
 
         # Ensure we have a list
-        if not isinstance(value, (list, tuple)):
+        if not isinstance(value, list | tuple):
             raise ValueError(f"Expected list or tuple, got {type(value)}: {value}")
 
         # For PostgreSQL, return the list directly
@@ -136,7 +136,7 @@ class FloatListDecorator(types.TypeDecorator):
             return None
 
         # Ensure we have a list or sequence
-        if not isinstance(value, (list, tuple, Sequence)):
+        if not isinstance(value, list | tuple | Sequence):
             raise ValueError(f"Expected list, tuple or sequence, got {type(value)}: {value}")
 
         # For PostgreSQL, return the list directly

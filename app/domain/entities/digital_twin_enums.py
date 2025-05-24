@@ -7,6 +7,16 @@ and clinical metrics used throughout the system.
 from enum import Enum
 
 
+class Gender(Enum):
+    """Gender classification for patient records."""
+
+    MALE = "male"
+    FEMALE = "female"
+    NON_BINARY = "non_binary"
+    OTHER = "other"
+    PREFER_NOT_TO_SAY = "prefer_not_to_say"
+
+
 class ConnectionType(Enum):
     """Types of connections between brain regions."""
 
@@ -140,10 +150,10 @@ class TemporalResolution(Enum):
     YEARLY = "yearly"
 
 
-# Additional enums referenced in digital_twin/__init__.py
+# Renamed enums to avoid namespace collisions with domain entities
 
 
-class ClinicalInsight(Enum):
+class ClinicalInsightType(Enum):
     """Clinical insights derived from digital twin analysis."""
 
     TREATMENT_RESPONSE = "treatment_response"
@@ -162,8 +172,8 @@ class ClinicalInsight(Enum):
     BIOMARKER_CORRELATION = "biomarker_correlation"
 
 
-class DigitalTwinState(Enum):
-    """Overall state of the digital twin model."""
+class DigitalTwinStatus(Enum):
+    """Overall status of the digital twin model."""
 
     INITIALIZING = "initializing"
     CALIBRATING = "calibrating"
@@ -177,7 +187,7 @@ class DigitalTwinState(Enum):
     INACTIVE = "inactive"
 
 
-class NeuralConnection(Enum):
+class NeuralConnectionType(Enum):
     """Types of neural connections in the digital twin model."""
 
     PRIMARY = "primary"
@@ -190,7 +200,7 @@ class NeuralConnection(Enum):
     MODULATORY = "modulatory"
 
 
-class TemporalPattern(Enum):
+class TemporalPatternType(Enum):
     """Temporal patterns in neurotransmitter activity."""
 
     SUSTAINED = "sustained"
@@ -204,8 +214,8 @@ class TemporalPattern(Enum):
     REACTIVE = "reactive"
 
 
-class BrainRegionState(Enum):
-    """State of activity in brain regions."""
+class BrainRegionStatus(Enum):
+    """Status of activity in brain regions."""
 
     HYPOACTIVE = "hypoactive"
     BELOW_BASELINE = "below_baseline"
@@ -215,3 +225,22 @@ class BrainRegionState(Enum):
     DYSREGULATED = "dysregulated"
     SYNCHRONIZED = "synchronized"
     DESYNCHRONIZED = "desynchronized"
+
+
+class TemporalPattern(Enum):
+    """Temporal patterns for biometric and physiological data analysis."""
+
+    CIRCADIAN = "circadian"
+    ULTRADIAN = "ultradian"
+    INFRADIAN = "infradian"
+    SEASONAL = "seasonal"
+    WEEKLY = "weekly"
+    DAILY = "daily"
+    HOURLY = "hourly"
+    IRREGULAR = "irregular"
+    PERIODIC = "periodic"
+    APERIODIC = "aperiodic"
+    TRENDING_UP = "trending_up"
+    TRENDING_DOWN = "trending_down"
+    STABLE = "stable"
+    VOLATILE = "volatile"

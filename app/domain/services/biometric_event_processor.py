@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 from app.domain.entities.biometric_alert import AlertStatusEnum
@@ -124,7 +124,7 @@ class AlertRule:
         if "context_key" in self.condition and context and self.condition["context_key"] in context:
             context_value = context[self.condition["context_key"]]
             if context_value is not None:
-                return True
+                return cast(bool, True)
 
         # Handle context-based threshold comparisons
         if (
@@ -138,42 +138,42 @@ class AlertRule:
                 context_threshold = self.condition["context_threshold"]
 
                 if context_operator == ">":
-                    return diff > context_threshold
+                    return cast(bool, diff > context_threshold)
                 elif context_operator == "<":
-                    return diff < context_threshold
+                    return cast(bool, diff < context_threshold)
                 elif context_operator == ">=":
-                    return diff >= context_threshold
+                    return cast(bool, diff >= context_threshold)
                 elif context_operator == "<=":
-                    return diff <= context_threshold
+                    return cast(bool, diff <= context_threshold)
                 elif context_operator == "==" or context_operator == "=":
-                    return diff == context_threshold
+                    return cast(bool, diff == context_threshold)
 
         # Standard comparison operators
         if operator == ">":
-            return data_point.value > threshold
+            return cast(bool, data_point.value > threshold)
         elif operator == ">=":
-            return data_point.value >= threshold
+            return cast(bool, data_point.value >= threshold)
         elif operator == "<":
-            return data_point.value < threshold
+            return cast(bool, data_point.value < threshold)
         elif operator == "<=":
-            return data_point.value <= threshold
+            return cast(bool, data_point.value <= threshold)
         elif operator == "==" or operator == "=":
-            return data_point.value == threshold
+            return cast(bool, data_point.value == threshold)
         elif operator == "!=":
-            return data_point.value != threshold
+            return cast(bool, data_point.value != threshold)
         # Handle string versions of operators as well for flexibility
         elif operator == "greater_than":
-            return data_point.value > threshold
+            return cast(bool, data_point.value > threshold)
         elif operator == "greater_than_or_equal":
-            return data_point.value >= threshold
+            return cast(bool, data_point.value >= threshold)
         elif operator == "less_than":
-            return data_point.value < threshold
+            return cast(bool, data_point.value < threshold)
         elif operator == "less_than_or_equal":
-            return data_point.value <= threshold
+            return cast(bool, data_point.value <= threshold)
         elif operator == "equal":
-            return data_point.value == threshold
+            return cast(bool, data_point.value == threshold)
         elif operator == "not_equal":
-            return data_point.value != threshold
+            return cast(bool, data_point.value != threshold)
         elif operator and operator not in [
             ">",
             ">=",
@@ -316,11 +316,11 @@ class BiometricAlert:
         return self.message
 
     @description.setter
-    def description(self, value):
+    def description(self, value) -> None:
         """Setter for description (alias for message)"""
         self.message = value
 
-    def acknowledge(self, provider_id: str, acknowledge_time: datetime = None) -> None:
+    def acknowledge(self, provider_id: str, acknowledge_time: datetime | None = None) -> None:
         """Mark alert as acknowledged by provider."""
         self.acknowledged = True
         self.acknowledged_by = provider_id
@@ -330,8 +330,8 @@ class BiometricAlert:
     def resolve(
         self,
         provider_id: str,
-        resolution_time: datetime = None,
-        resolution_note: str = None,
+        resolution_time: datetime | None = None,
+        resolution_note: str | None = None,
     ) -> None:
         """Mark alert as resolved by provider."""
         # Make sure it's acknowledged first
@@ -757,7 +757,7 @@ class ClinicalRuleEngine:
         self.rule_templates: dict[str, dict[str, Any]] = {}
         self.custom_conditions: dict[str, Callable] = {}
 
-    def register_rule_template(self, template: dict[str, Any], template_id: str = None) -> None:
+    def register_rule_template(self, template: dict[str, Any], template_id: str | None = None) -> None:
         """
         Register a rule template.
 
@@ -789,11 +789,11 @@ class ClinicalRuleEngine:
         self,
         template_id: str,
         rule_id: str,
-        name: str = None,
-        description: str = None,
+        name: str | None = None,
+        description: str | None = None,
         priority: AlertPriority = None,
-        parameters: dict[str, Any] = None,
-        created_by: UUID = None,
+        parameters: dict[str, Any] | None = None,
+        created_by: UUID | None = None,
         patient_id: UUID | None = None,
     ) -> AlertRule:
         """

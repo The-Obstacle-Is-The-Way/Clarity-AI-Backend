@@ -37,7 +37,7 @@ class BaseSecurityTest:
     """
 
     @pytest.fixture(autouse=True)
-    def setup_security_test(self, mock_db_session, mock_entity_factory, mock_rbac):
+    def setup_security_test(self, mock_db_session, mock_entity_factory, mock_rbac) -> None:
         """Auto-use fixture to set up common attributes for each test method."""
         # Initialize authentication attributes
         self.test_user_id = str(uuid.uuid4())

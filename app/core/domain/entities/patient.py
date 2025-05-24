@@ -67,10 +67,12 @@ class Patient(BaseModel):
 
     # Contact Information
     email: EmailStr | None = Field(None, description="Patient's primary email address")
-    phone_number: str | None = Field(None, description="Patient's primary phone number")
+    phone_number: str | None = Field(
+        None, alias="phone", description="Patient's primary phone number"
+    )
     address: Address | None = Field(None, description="Patient's primary address")
     contact_info: ContactInfo = Field(
-        default_factory=ContactInfo, description="Detailed contact information object"
+        default_factory=lambda: ContactInfo(), description="Detailed contact information object"
     )
     emergency_contact: EmergencyContact | None = Field(
         None, description="Patient's emergency contact"
@@ -241,7 +243,7 @@ class Patient(BaseModel):
         # If not None, Gender instance, or string, it's invalid
         raise ValueError(f"Gender must be a string or Gender enum instance, got {type(v)}")
 
-    def update_timestamp(self):
+    def update_timestamp(self) -> None:
         self.updated_at = datetime.now(timezone.utc)
 
     def get_full_name(self) -> str:
@@ -258,3 +260,13 @@ class Patient(BaseModel):
 
     def is_minor(self) -> bool:
         return self.get_age() < 18
+
+    @property
+    def phone(self) -> str | None:
+        """Alias property for phone_number to maintain backward compatibility."""
+        return self.phone_number
+
+    @phone.setter
+    def phone(self, value: str | None) -> None:
+        """Setter for phone property that updates phone_number."""
+        self.phone_number = value

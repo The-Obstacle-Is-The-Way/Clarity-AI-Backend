@@ -41,14 +41,14 @@ class BiometricDataInput(BaseModel):
     )
 
     @field_validator("biometric_type")
-    def validate_biometric_type(cls, value: str) -> str:
+    def validate_biometric_type(self, value: str) -> str:
         """Ensure biometric type is a valid string."""
         if not value or not isinstance(value, str):
             raise ValueError("Biometric type must be a non-empty string")
         return value.lower()
 
     @field_validator("source")
-    def validate_source(cls, value: str) -> str:
+    def validate_source(self, value: str) -> str:
         """Ensure source is a valid string."""
         if not value or not isinstance(value, str):
             raise ValueError("Source must be a non-empty string")
@@ -117,7 +117,7 @@ class BiometricHistoryParams(BaseModel):
 
     @field_validator("end_time")
     def validate_time_range(
-        cls, end_time: datetime | None, values: dict[str, Any]
+        self, end_time: datetime | None, values: dict[str, Any]
     ) -> datetime | None:
         """Ensure end_time is after start_time if both are provided."""
         start_time = values.get("start_time")
@@ -155,7 +155,7 @@ class PhysiologicalRangeModel(BaseModel):
     )
 
     @field_validator("max")
-    def validate_max(cls, max_val: float, values: dict[str, Any]) -> float:
+    def validate_max(self, max_val: float, values: dict[str, Any]) -> float:
         """Ensure max is greater than min."""
         min_val = values.get("min")
         if min_val is not None and max_val <= min_val:
@@ -163,7 +163,7 @@ class PhysiologicalRangeModel(BaseModel):
         return max_val
 
     @field_validator("critical_min")
-    def validate_critical_min(cls, critical_min: float, values: dict[str, Any]) -> float:
+    def validate_critical_min(self, critical_min: float, values: dict[str, Any]) -> float:
         """Ensure critical_min is less than or equal to min."""
         min_val = values.get("min")
         if min_val is not None and critical_min > min_val:
@@ -171,7 +171,7 @@ class PhysiologicalRangeModel(BaseModel):
         return critical_min
 
     @field_validator("critical_max")
-    def validate_critical_max(cls, critical_max: float, values: dict[str, Any]) -> float:
+    def validate_critical_max(self, critical_max: float, values: dict[str, Any]) -> float:
         """Ensure critical_max is greater than or equal to max."""
         max_val = values.get("max")
         if max_val is not None and critical_max < max_val:

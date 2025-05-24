@@ -40,9 +40,9 @@ class MentaLLaMA(MentaLLaMAInterface):
         """
         self._initialized = False
         self._config = config or {}
-        self._models = {}
+        self._models: dict[str, dict[str, Any]] = {}
         self._healthy = True
-        self._digital_twin_sessions = {}
+        self._digital_twin_sessions: dict[str, dict[str, Any]] = {}
 
     def initialize(self, config: dict[str, Any]) -> None:
         """
@@ -305,7 +305,7 @@ class MentaLLaMA(MentaLLaMAInterface):
 
         # Count occurrences of depression keywords
         keyword_counts = {}
-        for keyword, weight in depression_keywords.items():
+        for keyword, _weight in depression_keywords.items():
             count = sum(1 for word in words if keyword in word)
             if count > 0:
                 keyword_counts[keyword] = count
@@ -462,7 +462,7 @@ class MentaLLaMA(MentaLLaMAInterface):
 
         # Count keyword occurrences
         keyword_counts = {}
-        for keyword, weight in keywords.items():
+        for keyword, _weight in keywords.items():
             count = text_lower.count(keyword)
             if count > 0:
                 keyword_counts[keyword] = count

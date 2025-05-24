@@ -206,7 +206,7 @@ class BiometricRule:
         return self.priority
 
     @alert_priority.setter
-    def alert_priority(self, value):
+    def alert_priority(self, value) -> None:
         """Setter for alert_priority that maps to priority."""
         self.priority = value
 
@@ -216,7 +216,7 @@ class BiometricRule:
     last_updated: datetime = field(default_factory=now_utc)
     version: int = 1
 
-    def touch(self):
+    def touch(self) -> None:
         """Update the last_updated timestamp and version."""
         self.last_updated = now_utc()
         self.version += 1
@@ -374,7 +374,7 @@ class BiometricAlertRule:
         attributes = {
             "name": template.name,
             "description": template.description,
-            "conditions": [condition for condition in template.conditions],
+            "conditions": list(template.conditions),
             "logical_operator": template.logical_operator,
             "priority": template.priority,
             "is_active": template.is_active,

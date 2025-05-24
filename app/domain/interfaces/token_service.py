@@ -21,7 +21,7 @@ class ITokenService(ABC):
         pass
 
     @abstractmethod
-    def validate_access_token(self, token: str) -> dict[str, Any]:
+    async def validate_access_token(self, token: str) -> dict[str, Any]:
         """
         Validate an access token and return its payload.
 
@@ -34,7 +34,7 @@ class ITokenService(ABC):
         pass
 
     @abstractmethod
-    def validate_refresh_token(self, token: str) -> dict[str, Any]:
+    async def validate_refresh_token(self, token: str) -> dict[str, Any]:
         """
         Validate a refresh token and return its payload.
 
@@ -47,7 +47,7 @@ class ITokenService(ABC):
         pass
 
     @abstractmethod
-    def refresh_tokens(self, refresh_token: str, user: User) -> dict[str, str]:
+    async def refresh_tokens(self, refresh_token: str, user: User) -> dict[str, str]:
         """
         Generate new access and refresh tokens using a valid refresh token.
 
@@ -61,7 +61,7 @@ class ITokenService(ABC):
         pass
 
     @abstractmethod
-    def revoke_token(self, token: str) -> None:
+    async def revoke_token(self, token: str) -> None:
         """
         Revoke (blacklist) a token.
 
@@ -71,7 +71,7 @@ class ITokenService(ABC):
         pass
 
     @abstractmethod
-    def revoke_user_tokens(self, user_id: str) -> None:
+    async def revoke_user_tokens(self, user_id: str) -> None:
         """
         Revoke all tokens for a specific user.
 
@@ -81,7 +81,7 @@ class ITokenService(ABC):
         pass
 
     @abstractmethod
-    def get_user_from_token(self, token: str) -> dict[str, Any]:
+    async def get_user_from_token(self, token: str) -> dict[str, Any]:
         """
         Extract and return the user information from a token.
 

@@ -46,7 +46,7 @@ class EnhancedDigitalTwinDemo:
 
         logger.info("Enhanced Digital Twin Demo initialized")
 
-    async def run_demo(self):
+    async def run_demo(self) -> None:
         """Run the full enhanced digital twin demonstration."""
         logger.info("Starting Enhanced Digital Twin demonstration")
 
@@ -74,7 +74,7 @@ class EnhancedDigitalTwinDemo:
 
         logger.info("Enhanced Digital Twin demonstration completed")
 
-    async def initialize_patient_digital_twin(self, patient_id: UUID):
+    async def initialize_patient_digital_twin(self, patient_id: UUID) -> None:
         """Initialize the patient's digital twin with initial data."""
         logger.info("Step 1: Initializing patient's Digital Twin")
 
@@ -120,7 +120,7 @@ class EnhancedDigitalTwinDemo:
         )
         logger.info(f"Belief network initialized with {len(belief_network.variables)} variables")
 
-    async def process_patient_data(self, patient_id: UUID):
+    async def process_patient_data(self, patient_id: UUID) -> None:
         """Process multimodal patient data."""
         logger.info("Step 2: Processing multimodal patient data")
 
@@ -189,7 +189,7 @@ class EnhancedDigitalTwinDemo:
         )
         logger.info(f"Received {len(results)} processing results from AI components")
 
-    async def perform_advanced_analyses(self, patient_id: UUID):
+    async def perform_advanced_analyses(self, patient_id: UUID) -> None:
         """Perform various advanced analyses using the enhanced digital twin services."""
         logger.info("Step 3: Performing advanced analyses")
 
@@ -296,7 +296,7 @@ class EnhancedDigitalTwinDemo:
             f"Predictive maintenance plan generated with {len(maintenance_plan['intervention_recommendations'])} recommendations"
         )
 
-    async def generate_visualizations(self, patient_id: UUID):
+    async def generate_visualizations(self, patient_id: UUID) -> None:
         """Generate visualization data for the digital twin."""
         logger.info("Step 4: Generating visualizations")
 
@@ -323,7 +323,7 @@ class EnhancedDigitalTwinDemo:
             f"Intervention response coupling generated for: {response_coupling['intervention']}"
         )
 
-    async def run_counterfactual_simulations(self, patient_id: UUID):
+    async def run_counterfactual_simulations(self, patient_id: UUID) -> None:
         """Run counterfactual simulations of different intervention scenarios."""
         logger.info("Step 5: Running counterfactual simulations")
 
@@ -400,7 +400,7 @@ class EnhancedDigitalTwinDemo:
             f"Top-ranked scenario: {top_scenario['scenario']['name']} with score {top_scenario['scenario_score']}"
         )
 
-    async def generate_clinical_summary(self, patient_id: UUID):
+    async def generate_clinical_summary(self, patient_id: UUID) -> None:
         """Generate a comprehensive clinical summary."""
         logger.info("Step 6: Generating comprehensive clinical summary")
 
@@ -419,7 +419,7 @@ class EnhancedDigitalTwinDemo:
         logger.info(f"Generated at: {summary['metadata']['generated_at']}")
 
 
-async def main():
+async def main() -> None:
     """Run the Enhanced Digital Twin demo."""
     demo = EnhancedDigitalTwinDemo()
     await demo.run_demo()

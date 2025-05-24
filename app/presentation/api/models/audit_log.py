@@ -76,7 +76,7 @@ class AuditSearchRequest(BaseModel):
     )
 
     @validator("filters")
-    def validate_filters(cls, v: dict[str, Any]) -> dict[str, Any]:
+    def validate_filters(self, v: dict[str, Any]) -> dict[str, Any]:
         """Validate that filters contain valid keys and values."""
         valid_keys = {
             "event_type",

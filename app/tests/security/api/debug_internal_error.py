@@ -5,6 +5,7 @@ import logging
 import sys
 import traceback
 from contextlib import asynccontextmanager
+from typing import NoReturn
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -32,7 +33,7 @@ app = FastAPI(lifespan=lifespan)
 
 
 @app.get("/test-api/test/runtime-error")
-async def force_runtime_error():
+async def force_runtime_error() -> NoReturn:
     """Endpoint that deliberately raises a RuntimeError, mimicking the test endpoint."""
     logger.debug("Runtime error endpoint called")
     raise RuntimeError("This is a sensitive internal error detail that should be masked")
@@ -97,7 +98,7 @@ async def set_essential_app_state_middleware(request: Request, call_next):
         raise
 
 
-async def run_test_with_timeout():
+async def run_test_with_timeout() -> None:
     """Run the test with a timeout to avoid infinite hanging."""
     logger.debug("Creating test client")
     transport = ASGITransport(app=app)

@@ -1,5 +1,6 @@
 """Unit tests for the rate limiting middleware."""
 import asyncio
+from typing import NoReturn
 from unittest.mock import MagicMock
 
 import pytest
@@ -100,7 +101,7 @@ def test_client(test_app):
 class TestRateLimitingMiddleware:
     """Tests for the RateLimitingMiddleware class."""
 
-    def test_allowed_request(self, test_app, test_client):
+    def test_allowed_request(self, test_app, test_client) -> None:
         """Test that a request is allowed when rate limit is not exceeded."""
         _, mock_limiter = test_app
 
@@ -117,7 +118,7 @@ class TestRateLimitingMiddleware:
         assert hasattr(mock_limiter, "last_key")
         assert "global:" in mock_limiter.last_key
 
-    def test_rate_limited_request(self, test_app, test_client):
+    def test_rate_limited_request(self, test_app, test_client) -> None:
         """Test that a request is denied when rate limit is exceeded."""
         _, mock_limiter = test_app
 
@@ -137,7 +138,7 @@ class TestRateLimitingMiddleware:
         # Verify limiter was called
         assert hasattr(mock_limiter, "last_key")
 
-    def test_health_endpoint(self, test_app, test_client):
+    def test_health_endpoint(self, test_app, test_client) -> None:
         """Test that health endpoint bypasses rate limiting."""
         _, mock_limiter = test_app
 
@@ -155,7 +156,7 @@ class TestRateLimitingMiddleware:
         # last_key should not be set since track_request shouldn't be called
         assert not hasattr(mock_limiter, "last_key")
 
-    def test_path_specific_limits(self):
+    def test_path_specific_limits(self) -> None:
         """Test that path-specific limits are used when available."""
         # Create mock limiter
         mock_limiter = MockRateLimiter()
@@ -184,7 +185,7 @@ class TestRateLimitingMiddleware:
         # Verify the key included the global scope
         assert "global:" in mock_limiter.last_key  # Should have "global:" prefix
 
-    def test_custom_key_function(self):
+    def test_custom_key_function(self) -> None:
         """Test custom key function for client identification."""
         # Create a test client identifier
         test_client_id = "custom-test-client-123"
@@ -204,16 +205,16 @@ class TestRateLimitingMiddleware:
         assert mock_limiter.last_key is not None
         assert f"global:{test_client_id}" == mock_limiter.last_key
 
-    def test_exception_handling(self):
+    def test_exception_handling(self) -> None:
         """Test that general exceptions in the limiter are handled gracefully."""
         # Create a mock that will raise an exception when called
         import asyncio
 
         class ExceptionRaisingLimiter:
-            async def is_allowed(self, client_id):
+            async def is_allowed(self, client_id) -> NoReturn:
                 raise ValueError("Test exception")
 
-            async def check_rate_limit(self, request, config=None):
+            async def check_rate_limit(self, request, config=None) -> NoReturn:
                 raise ValueError("Test exception")
 
         # Create middleware instance with our test limiter
@@ -249,7 +250,7 @@ class TestRateLimitingMiddleware:
         # Since we're propagating exceptions, the result should be None
         assert result is None
 
-    def test_middleware_initialization_with_defaults(self):
+    def test_middleware_initialization_with_defaults(self) -> None:
         """Test that middleware initialization with default values works correctly."""
         # Create a mock app
         app_mock = MagicMock()
@@ -271,7 +272,7 @@ class TestRateLimitingMiddleware:
 
 
 @pytest.mark.asyncio
-async def test_rate_limit_initialization():
+async def test_rate_limit_initialization() -> None:
     """Test the initialization of the RateLimiter from core.security.rate_limiting.limiter."""
     from app.core.security.rate_limiting.limiter import RateLimiter
 

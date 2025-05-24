@@ -20,7 +20,7 @@ class AppointmentBase(BaseModel):
     notes: str | None = None
 
     @field_validator("end_time")
-    def end_time_must_be_after_start_time(cls, v, values):
+    def end_time_must_be_after_start_time(self, v, values):
         if "start_time" in values.data and v <= values.data["start_time"]:
             raise ValueError("End time must be after start time")
         return v
@@ -41,7 +41,7 @@ class AppointmentUpdate(BaseModel):
     # Add patient_id/provider_id/type only if reassigning appointments is allowed
 
     @field_validator("end_time")
-    def end_time_must_be_after_start_time_optional(cls, v, values):
+    def end_time_must_be_after_start_time_optional(self, v, values):
         # Only validate if both start and end are being updated
         if v is not None and "start_time" in values.data and values.data["start_time"] is not None:
             if v <= values.data["start_time"]:

@@ -6,6 +6,7 @@ audit trails are properly created and maintained.
 """
 
 import asyncio
+from typing import NoReturn
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -23,17 +24,17 @@ from app.infrastructure.logging.audit import (
 class TestAuditDecorators:
     """Test suite for audit logging decorators."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures before each test method."""
         # Clear any user context that might be set
         clear_current_user()
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clean up after each test method."""
         # Clean up user context
         clear_current_user()
 
-    def test_user_context_functions(self):
+    def test_user_context_functions(self) -> None:
         """Test the user context management functions."""
         # Initially should be None
         assert get_current_user_id() is None
@@ -53,7 +54,7 @@ class TestAuditDecorators:
         assert get_current_user_id() is None
         assert get_current_access_reason() is None
 
-    def test_audit_phi_access_decorator(self):
+    def test_audit_phi_access_decorator(self) -> None:
         """Test the audit_phi_access decorator."""
         # Mock the audit logger
         with patch("app.infrastructure.logging.audit.get_audit_logger") as mock_get_logger:
@@ -91,7 +92,7 @@ class TestAuditDecorators:
             assert success_call_args["user_id"] == "doctor_smith"
             assert success_call_args["status"] == "success"
 
-    def test_audit_phi_access_with_exception(self):
+    def test_audit_phi_access_with_exception(self) -> None:
         """Test the audit_phi_access decorator when the function raises an exception."""
         # Mock the audit logger
         with patch("app.infrastructure.logging.audit.get_audit_logger") as mock_get_logger:
@@ -100,7 +101,7 @@ class TestAuditDecorators:
 
             # Define a test function with the decorator that raises an exception
             @audit_phi_access(resource_type="patient", action="view")
-            def get_patient_data_with_error(patient_id):
+            def get_patient_data_with_error(patient_id) -> NoReturn:
                 raise ValueError("Test error")
 
             # Set user context
@@ -122,7 +123,7 @@ class TestAuditDecorators:
             assert failed_call_args["status"] == "failed"
             assert "Test error" in failed_call_args["details"]
 
-    def test_audit_phi_access_without_user_context(self):
+    def test_audit_phi_access_without_user_context(self) -> None:
         """Test the audit_phi_access decorator when no user context is set."""
         # Mock the audit logger
         with patch("app.infrastructure.logging.audit.get_audit_logger") as mock_get_logger:
@@ -154,7 +155,7 @@ class TestAuditDecorators:
             assert "system_operation" in init_call_args["details"]
 
     @pytest.mark.asyncio
-    async def test_audit_async_phi_access_decorator(self):
+    async def test_audit_async_phi_access_decorator(self) -> None:
         """Test the audit_async_phi_access decorator."""
         # Mock the audit logger
         with patch("app.infrastructure.logging.audit.get_audit_logger") as mock_get_logger:
@@ -193,7 +194,7 @@ class TestAuditDecorators:
             assert success_call_args["status"] == "success"
 
     @pytest.mark.asyncio
-    async def test_audit_async_phi_access_with_exception(self):
+    async def test_audit_async_phi_access_with_exception(self) -> None:
         """Test the audit_async_phi_access decorator when the function raises an exception."""
         # Mock the audit logger
         with patch("app.infrastructure.logging.audit.get_audit_logger") as mock_get_logger:
@@ -202,7 +203,7 @@ class TestAuditDecorators:
 
             # Define a test async function with the decorator that raises an exception
             @audit_async_phi_access(resource_type="medical_record", action="update")
-            async def update_medical_record_with_error(record_id):
+            async def update_medical_record_with_error(record_id) -> NoReturn:
                 await asyncio.sleep(0.01)  # Simulate async operation
                 raise ValueError("Async test error")
 

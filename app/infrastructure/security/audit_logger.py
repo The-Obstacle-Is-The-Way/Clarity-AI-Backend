@@ -38,7 +38,7 @@ class AuditLogger:
     - Implements §164.312(b) audit controls
     """
 
-    def __init__(self, store_path: str = None):
+    def __init__(self, store_path: str | None = None):
         """
         Initialize the audit logger with a storage mechanism.
 

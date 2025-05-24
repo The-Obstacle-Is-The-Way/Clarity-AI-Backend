@@ -207,7 +207,7 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
                 "operation": "detect_phi",
                 "has_phi": len(entities_list) > 0,
                 "phi_count": len(entities_list),
-                "phi_types": list(set(entity["type"] for entity in entities_list))
+                "phi_types": list({entity["type"] for entity in entities_list})
                 if entities_list
                 else [],
                 "text_length": len(text),

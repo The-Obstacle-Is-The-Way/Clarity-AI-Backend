@@ -45,6 +45,6 @@ class ClinicalSession(BaseEntity):
         if hasattr(super(), "__post_init__"):
             super().__post_init__()
 
-    def touch(self):
+    def touch(self) -> None:
         """Update the last_updated timestamp."""
         self.last_updated = now_utc()

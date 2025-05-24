@@ -105,7 +105,7 @@ async def get_async_session_utility(
 
 
 # Test function to simulate dependency usage (not part of actual app logic)
-async def example_dependency_using_session(db: AsyncSession):
+async def example_dependency_using_session(db: AsyncSession) -> None:
     logger.info(f"Example dependency received session: {db}")
     # Use db session here
     pass

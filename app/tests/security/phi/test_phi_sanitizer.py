@@ -112,7 +112,7 @@ class MockPHISanitizer(PHISanitizer):
             }
 
         # Handle numeric types special case
-        if isinstance(data, (int, float, bool)):
+        if isinstance(data, int | float | bool):
             return data
 
         # Fall back to standard sanitization
@@ -151,7 +151,7 @@ class TestPHISanitizer:
             "insurance_id": "INS123456789",
         }
 
-    def test_sanitize_string_with_ssn(self, sanitizer):
+    def test_sanitize_string_with_ssn(self, sanitizer) -> None:
         """Test that patient names are properly sanitized."""
         # Test text with common name patterns
         text = "Patient John Smith reported symptoms."
@@ -160,14 +160,14 @@ class TestPHISanitizer:
         assert "[REDACTED NAME]" in sanitized
         assert "reported symptoms" in sanitized
 
-    def test_no_false_positives(self, sanitizer):
+    def test_no_false_positives(self, sanitizer) -> None:
         """Test that non-PHI text is not redacted."""
         text = "The patient reported feeling better after treatment. Follow-up in 2 weeks."
         sanitized = sanitizer.sanitize_string(text)
         # Non-PHI text should remain unchanged (Name pattern is stricter now)
         assert sanitized == text
 
-    def test_sanitize_unicode_and_idempotency(self, sanitizer):
+    def test_sanitize_unicode_and_idempotency(self, sanitizer) -> None:
         """Test unicode and idempotency."""
         text = "患者: 李雷, 电话: 555-123-4567"
 
@@ -209,7 +209,7 @@ class TestPHISanitizer:
         assert "SSN" in sanitized
         assert "[REDACTED SSN]" in sanitized
 
-    def test_sanitize_string_with_multiple_phi(self, sanitizer):
+    def test_sanitize_string_with_multiple_phi(self, sanitizer) -> None:
         """Test sanitizing a string containing multiple types of PHI."""
         # Get the direct method we need to override for this test
         original_sanitize = sanitizer.sanitize_json
@@ -263,7 +263,7 @@ class TestPHISanitizer:
             # Restore the original sanitize method to avoid affecting other tests
             sanitizer.sanitize_json = original_sanitize
 
-    def test_sanitize_json_with_phi(self, sanitizer, sample_phi_data):
+    def test_sanitize_json_with_phi(self, sanitizer, sample_phi_data) -> None:
         """Test sanitization of JSON data containing PHI."""
         input_json = json.dumps(sample_phi_data)
 
@@ -309,7 +309,7 @@ class TestPHISanitizer:
         # Restore original function
         sanitizer.sanitize_json = original_sanitize
 
-    def test_sanitize_dict_with_phi(self, sanitizer, sample_phi_data):
+    def test_sanitize_dict_with_phi(self, sanitizer, sample_phi_data) -> None:
         """Test sanitization of dictionary data containing PHI."""
         # OVERRIDE - Create a mock for this specific case
         original_sanitize = sanitizer.sanitize_json
@@ -348,7 +348,7 @@ class TestPHISanitizer:
         # Restore original function
         sanitizer.sanitize_json = original_sanitize
 
-    def test_sanitize_nested_dict_with_phi(self, sanitizer):
+    def test_sanitize_nested_dict_with_phi(self, sanitizer) -> None:
         """Test sanitization of nested dictionaries containing PHI."""
         nested_data = {
             "patient": {
@@ -416,7 +416,7 @@ class TestPHISanitizer:
         # Restore original function
         sanitizer.sanitize_json = original_sanitize
 
-    def test_sanitize_list_with_phi(self, sanitizer):
+    def test_sanitize_list_with_phi(self, sanitizer) -> None:
         """Test sanitization of lists containing PHI."""
         list_data = [
             "Patient John Doe",
@@ -436,7 +436,7 @@ class TestPHISanitizer:
         # Non-PHI should be untouched
         assert sanitized_list[3] == "Non-PHI data"
 
-    def test_sanitize_complex_structure(self, sanitizer):
+    def test_sanitize_complex_structure(self, sanitizer) -> None:
         """Test sanitizing complex nested data structures."""
         input_data = {
             "patient": {
@@ -470,7 +470,7 @@ class TestPHISanitizer:
         # Clean up environment variable
         os.environ.pop("SANITIZER_TEST_MODE", None)
 
-    def test_sanitize_phi_in_logs(self, sanitizer):
+    def test_sanitize_phi_in_logs(self, sanitizer) -> None:
         """Test sanitization of PHI in log messages."""
         log_message = "Error processing patient John Smith (SSN: 123-45-6789) due to system failure"
         # Use the sanitize_string method for this test
@@ -482,7 +482,7 @@ class TestPHISanitizer:
         assert "Error processing patient" in sanitized
         assert "due to system failure" in sanitized
 
-    def test_phi_detection_integration(self, sanitizer):
+    def test_phi_detection_integration(self, sanitizer) -> None:
         """Test integration with PHI detector component."""
         # Test sanitization with a known PHI pattern
         input_text = "Patient SSN: 123-45-6789"
@@ -491,7 +491,7 @@ class TestPHISanitizer:
         # Verify PHI was detected and sanitized
         assert "[REDACTED SSN]" in result
 
-    def test_phi_sanitizer_performance(self, sanitizer, sample_phi_data):
+    def test_phi_sanitizer_performance(self, sanitizer, sample_phi_data) -> None:
         """Test sanitizer performance with large nested structures."""
         # Create a large nested structure with PHI
         large_data = {
@@ -513,7 +513,7 @@ class TestPHISanitizer:
         assert "123-45-6789" not in str(sanitized_data)
         assert "John Smith" not in str(sanitized_data)
 
-    def test_preservation_of_non_phi(self, sanitizer):
+    def test_preservation_of_non_phi(self, sanitizer) -> None:
         """Test that non-PHI data is preserved during sanitization."""
         mixed_data = {
             "patient_id": "PID12345",
@@ -531,7 +531,7 @@ class TestPHISanitizer:
         assert sanitized["priority"] == "High"
         assert sanitized["is_insured"] is True
 
-    def test_sanitizer_edge_cases(self, sanitizer):
+    def test_sanitizer_edge_cases(self, sanitizer) -> None:
         """Test sanitizer with edge cases and unusual inputs."""
         # Test with None
         assert sanitizer.sanitize_json(None) is None
@@ -558,7 +558,7 @@ class TestPHISanitizer:
         assert isinstance(sanitized_list[2], dict)
         assert sanitized_list[2]["ssn"] == "[REDACTED SSN]"  # Check if SSN in dict was redacted
 
-    def test_redaction_format_consistency(self, sanitizer):
+    def test_redaction_format_consistency(self, sanitizer) -> None:
         """Test that redaction format is consistent."""
         phi_types = ["SSN", "NAME", "DOB", "PHONE", "EMAIL", "ADDRESS", "MRN"]
 
@@ -575,7 +575,7 @@ class TestPHISanitizer:
                 for match in matches:
                     assert match in phi_types
 
-    def test_sanitize_text_with_phone(self, sanitizer):
+    def test_sanitize_text_with_phone(self, sanitizer) -> None:
         """Test sanitization of strings containing phone numbers."""
         input_text = "Contact at (555) 123-4567 for more info"
         expected = "Contact at [REDACTED PHONE] for more info"
@@ -583,7 +583,7 @@ class TestPHISanitizer:
         # Refined phone pattern should work
         assert expected == result
 
-    def test_sanitize_dict_with_phone(self, sanitizer):
+    def test_sanitize_dict_with_phone(self, sanitizer) -> None:
         """Test sanitization of dictionaries containing phone numbers."""
         input_data = {
             "name": "John Doe",
@@ -595,7 +595,7 @@ class TestPHISanitizer:
         assert sanitized_data["name"] == "[REDACTED NAME]"  # Name should also be sanitized
         assert sanitized_data["note"] == "Call for appointment"  # Non-PHI note preserved
 
-    def test_sanitize_complex_data_structure(self, sanitizer):
+    def test_sanitize_complex_data_structure(self, sanitizer) -> None:
         """Test sanitizing complex nested data structures."""
         input_data = {
             "patients": [

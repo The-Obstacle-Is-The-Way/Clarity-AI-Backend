@@ -6,10 +6,10 @@ from app.infrastructure.security.encryption.base_encryption_service import (
 
 
 class TestDatabaseSecurity:
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.encryption_service = BaseEncryptionService(direct_key="test_key_for_db_sec")
 
-    def test_database_encryption(self):
+    def test_database_encryption(self) -> None:
         """
         Test that sensitive data is encrypted in the database.
         """

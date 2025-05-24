@@ -62,7 +62,7 @@ class TestPatientPHISecurity(BaseSecurityTest):
         service = BaseEncryptionService(direct_key=test_key.hex())
         return service
 
-    def test_patient_phi_encryption_at_rest(self):
+    def test_patient_phi_encryption_at_rest(self) -> None:
         """Test that PHI data is encrypted in the database."""
         # Arrange
         # Create a test patient with PHI data
@@ -77,7 +77,7 @@ class TestPatientPHISecurity(BaseSecurityTest):
         encryption_service = self._create_encryption_service()
 
         # Mock the repository to capture encrypted data
-        mock_repo = MagicMock()
+        MagicMock()
 
         # Act - Call the method that would encrypt the data
         # In this test, we don't actually save to DB, just verify encryption
@@ -102,7 +102,7 @@ class TestPatientPHISecurity(BaseSecurityTest):
         # For better HIPAA compliance, verify the original data is not visible
         assert patient.email not in encrypted_email
 
-    def test_no_phi_in_logs(self):
+    def test_no_phi_in_logs(self) -> None:
         patient = self._create_sample_patient_with_phi()
         logger = logging.getLogger(__name__)
         with patch.object(logger, "info") as mock_log_info, patch.object(
@@ -118,7 +118,7 @@ class TestPatientPHISecurity(BaseSecurityTest):
                     patient.insurance_number not in log_message
                 ), "Insurance number should not be in logs"
 
-    def test_audit_trail_for_phi_access(self):
+    def test_audit_trail_for_phi_access(self) -> None:
         patient = self._create_sample_patient_with_phi()
         with patch("app.core.utils.audit.audit_logger.log_access") as mock_audit_log:
             accessed_fields = ["email", "insurance_number"]
@@ -136,7 +136,7 @@ class TestPatientPHISecurity(BaseSecurityTest):
                     patient.insurance_number not in log_content
                 ), "Insurance number should not be in audit log"
 
-    def test_secure_error_handling(self):
+    def test_secure_error_handling(self) -> None:
         patient = self._create_sample_patient_with_phi()
         # Use the canonical function
         logger = get_sanitized_logger(__name__)
@@ -168,7 +168,7 @@ class TestPatientPHISecurity(BaseSecurityTest):
             # Clean up
             logger.removeHandler(handler)
 
-    def test_phi_field_access_restrictions(self):
+    def test_phi_field_access_restrictions(self) -> None:
         """Test that accessing PHI fields creates audit log entries."""
         patient = self._create_sample_patient_with_phi()
 
@@ -202,7 +202,7 @@ class TestPatientPHISecurity(BaseSecurityTest):
                 mock_audit_log.call_count == 0
             ), "Audit log should not be called for non-PHI fields"
 
-    def test_encrypted_fields_not_serialized(self):
+    def test_encrypted_fields_not_serialized(self) -> None:
         """Test that PHI fields are properly redacted in serialization."""
         patient = self._create_sample_patient_with_phi()
 
@@ -225,13 +225,13 @@ class TestPatientPHISecurity(BaseSecurityTest):
         assert serialized_with_phi.get("name") == patient.name
 
     @patch("app.infrastructure.security.encryption.BaseEncryptionService.encrypt")
-    def test_all_phi_fields_are_encrypted(self, mock_encrypt):
+    def test_all_phi_fields_are_encrypted(self, mock_encrypt) -> None:
         """Test that all PHI fields are encrypted."""
         # Create a test patient with PHI data
         patient = self._create_sample_patient_with_phi()
 
         # Mock the repository save method to simulate saving to DB
-        mock_repo = MagicMock()
+        MagicMock()
 
         # Set up the encryption service mock
         mock_encrypt.return_value = "v1:encrypted_data_mock"
@@ -245,11 +245,11 @@ class TestPatientPHISecurity(BaseSecurityTest):
             if field_name in patient_dict and patient_dict[field_name] is not None:
                 if isinstance(patient_dict[field_name], str):
                     # For this test, we're mocking the encryption
-                    encrypted_value = mock_encrypt(patient_dict[field_name])
+                    mock_encrypt(patient_dict[field_name])
                     # Just ensure our mock is called
 
         # Verify encrypt called for each PHI field with value
-        expected_encrypt_calls = sum(
+        sum(
             1
             for f in patient.phi_fields
             if hasattr(patient, f)
@@ -263,7 +263,7 @@ class TestPatientPHISecurity(BaseSecurityTest):
         assert mock_encrypt.called, "encrypt should be called for PHI fields"
 
     @patch("app.infrastructure.security.encryption.BaseEncryptionService.decrypt")
-    def test_phi_fields_decryption(self, mock_decrypt):
+    def test_phi_fields_decryption(self, mock_decrypt) -> None:
         """Test that PHI fields are properly decrypted when accessed."""
         # Create sample encrypted data - as if loaded from DB
         encrypted_data = {
@@ -290,7 +290,7 @@ class TestPatientPHISecurity(BaseSecurityTest):
         # Verify decrypt was called
         assert mock_decrypt.called, "decrypt should be called for encrypted PHI fields"
 
-    def test_audit_trail_for_phi_access(self):
+    def test_audit_trail_for_phi_access(self) -> None:
         """Test that accessing PHI fields creates audit log entries."""
         # Create a patient with PHI
         patient = self._create_sample_patient_with_phi()
@@ -322,7 +322,7 @@ class TestPatientPHISecurity(BaseSecurityTest):
             ), "Audit log should not be called for non-PHI fields"
 
     @patch("app.infrastructure.security.encryption.BaseEncryptionService.decrypt")
-    def test_error_handling_without_phi_exposure(self, mock_decrypt):
+    def test_error_handling_without_phi_exposure(self, mock_decrypt) -> None:
         """Test that errors don't expose PHI."""
         # Setup
         patient = self._create_sample_patient_with_phi()

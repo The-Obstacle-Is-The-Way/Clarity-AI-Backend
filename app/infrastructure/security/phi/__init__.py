@@ -63,7 +63,7 @@ def sanitize_phi(data: any) -> any:
         for item in data:
             if isinstance(item, str):
                 result.append(_sanitizer.sanitize_string(item))
-            elif isinstance(item, (dict, list)):
+            elif isinstance(item, dict | list):
                 result.append(sanitize_phi(item))
             else:
                 result.append(item)
@@ -72,19 +72,19 @@ def sanitize_phi(data: any) -> any:
 
 
 __all__ = [
-    # Core components
-    "PHISanitizer",
-    "PHISafeLogger",
-    "RedactionStrategy",
-    # Convenience functions
-    "contains_phi",
-    "sanitize_phi",
-    "get_sanitizer",
-    "get_sanitized_logger",
     # Middleware components
     "PHIMiddleware",
-    "add_phi_middleware",
-    "get_phi_middleware",
+    "PHISafeLogger",
+    # Core components
+    "PHISanitizer",
     # Types
     "PHIType",
+    "RedactionStrategy",
+    "add_phi_middleware",
+    # Convenience functions
+    "contains_phi",
+    "get_phi_middleware",
+    "get_sanitized_logger",
+    "get_sanitizer",
+    "sanitize_phi",
 ]

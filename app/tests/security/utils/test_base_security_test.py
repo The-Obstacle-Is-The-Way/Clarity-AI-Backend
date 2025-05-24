@@ -23,7 +23,7 @@ class TestBaseSecurityTest(BaseSecurityTest):
 
     # Remove setUp method, rely on autouse fixture from BaseSecurityTest
 
-    def test_initialization(self):
+    def test_initialization(self) -> None:
         """Test that BaseSecurityTest initializes via its autouse fixture."""
         # Access attributes set by the autouse fixture in BaseSecurityTest
         assert self.test_user_id is not None
@@ -36,7 +36,7 @@ class TestBaseSecurityTest(BaseSecurityTest):
         assert self.entity_factory is not None  # Instance of MockEntityFactory from fixture
         assert self.rbac is not None  # Instance of RoleBasedAccessControl from fixture
 
-    def test_has_permission(self):
+    def test_has_permission(self) -> None:
         """Test permission checking functionality using instance attributes."""
         # Access self.rbac and self.test_roles set by the autouse fixture
 
@@ -49,7 +49,7 @@ class TestBaseSecurityTest(BaseSecurityTest):
         assert self.has_permission("delete:all_data", roles=["admin"])
         assert not self.has_permission("delete:all_data", roles=["user"])
 
-    def test_get_auth_token(self):
+    def test_get_auth_token(self) -> None:
         """Test generation of authentication tokens using instance attributes."""
         # Access self.test_user_id and self.test_roles set by the autouse fixture
 
@@ -73,7 +73,7 @@ class TestBaseSecurityTest(BaseSecurityTest):
         assert f"'roles': {custom_roles!r}" in token  # Use repr for list comparison
         assert "'extra': 'value'" in token
 
-    def test_get_auth_headers(self):
+    def test_get_auth_headers(self) -> None:
         """Test generation of authentication headers using instance methods."""
         # Access get_auth_token set by the autouse fixture
 
@@ -95,7 +95,7 @@ class TestBaseSecurityTest(BaseSecurityTest):
     # Patching should still work if the mock is correctly provided/used
     # The test method just needs access to the instance's db_session
     # No mock_session_class argument needed if we check self.db_session
-    def test_db_session_setup(self):
+    def test_db_session_setup(self) -> None:
         """Test database session fixture provides a mock session."""
         # Verify session is initialized by the autouse fixture
         assert self.db_session is not None
@@ -103,7 +103,7 @@ class TestBaseSecurityTest(BaseSecurityTest):
         # from app.tests.security.utils.test_mocks import MockAsyncSession
         # assert isinstance(self.db_session, MockAsyncSession)
 
-    def test_entity_factory_setup(self):
+    def test_entity_factory_setup(self) -> None:
         """Test entity factory fixture provides a mock factory."""
         # Verify entity factory is initialized by the autouse fixture
         assert self.entity_factory is not None

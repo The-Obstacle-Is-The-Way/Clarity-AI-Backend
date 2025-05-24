@@ -12,7 +12,7 @@ from app.presentation.api.v1.dependencies.ml import get_mentallama_service
 router = APIRouter()
 
 
-def _check_health(svc: MentaLLaMAInterface):
+def _check_health(svc: MentaLLaMAInterface) -> None:
     if (hasattr(svc, "initialized") and not svc.initialized) or (
         hasattr(svc, "is_healthy") and not svc.is_healthy()
     ):
@@ -192,7 +192,7 @@ async def analyze_wellness_dimensions_endpoint(
     payload = await _parse_payload(request)
     text = payload.get("text")
     dimensions = payload.get("dimensions")
-    include_recommendations = payload.get("include_recommendations", False)
+    payload.get("include_recommendations", False)
     if not isinstance(text, str) or not text:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

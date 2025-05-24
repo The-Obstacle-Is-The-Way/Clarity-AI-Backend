@@ -24,7 +24,7 @@ from app.domain.entities.temporal_events import CorrelatedEvent, EventChain
 from app.domain.entities.temporal_neurotransmitter_mapping import (
     extend_neurotransmitter_mapping,
 )
-from app.domain.entities.temporal_sequence import TemporalSequence
+from app.domain.entities.temporal_sequence import ExtendedTemporalSequence
 from app.domain.services.visualization_preprocessor import (
     NeurotransmitterEffectVisualizer,
     NeurotransmitterVisualizationPreprocessor,
@@ -35,7 +35,7 @@ from app.domain.services.visualization_preprocessor import (
 class TestTemporalEvents:
     """Test suite for temporal event correlation tracking."""
 
-    def test_correlated_event_creation(self):
+    def test_correlated_event_creation(self) -> None:
         """Test creation of correlated events."""
         # Create a root event
         root_event = CorrelatedEvent(event_type="test_event", metadata={"test_key": "test_value"})
@@ -60,7 +60,7 @@ class TestTemporalEvents:
         assert child_event.parent_event_id == root_event.id
         assert child_event.correlation_id == root_event.correlation_id
 
-    def test_event_chain_creation(self):
+    def test_event_chain_creation(self) -> None:
         """Test creation and management of event chains."""
         # Create an event chain
         chain = EventChain(name="test_chain", description="Test event chain")
@@ -102,10 +102,10 @@ class TestTemporalEvents:
 class TestTemporalSequence:
     """Test suite for temporal sequences of neurotransmitter changes."""
 
-    def test_temporal_sequence_creation(self):
+    def test_temporal_sequence_creation(self) -> None:
         """Test creation of temporal sequences."""
         # Create a sequence
-        sequence = TemporalSequence(
+        sequence = ExtendedTemporalSequence(
             name="test_sequence",
             description="Test temporal sequence",
             time_unit="hours",
@@ -171,7 +171,7 @@ class TestTemporalSequence:
 class TestTemporalNeurotransmitterMapping:
     """Test suite for temporal neurotransmitter mapping."""
 
-    def test_extend_neurotransmitter_mapping(self):
+    def test_extend_neurotransmitter_mapping(self) -> None:
         """Test extending a neurotransmitter mapping with temporal capabilities."""
         # Create a base mapping
         patient_id = uuid.uuid4()
@@ -186,7 +186,7 @@ class TestTemporalNeurotransmitterMapping:
         assert hasattr(extended_mapping, "event_chains")
         assert len(extended_mapping.receptor_profiles) == len(base_mapping.receptor_profiles)
 
-    def test_temporal_receptor_response(self):
+    def test_temporal_receptor_response(self) -> None:
         """Test temporal response of receptors to neurotransmitter changes."""
         # Create a patient and mapping
         patient_id = uuid.uuid4()
@@ -206,7 +206,7 @@ class TestTemporalNeurotransmitterMapping:
         mapping.add_receptor_profile(profile)
 
         # Create a temporal sequence for serotonin changes
-        sequence = TemporalSequence(
+        sequence = ExtendedTemporalSequence(
             name="serotonin_response",
             description="Serotonin response over time",
             time_unit="hours",
@@ -241,7 +241,7 @@ class TestTemporalNeurotransmitterMapping:
         assert "clinical_significance" in response
         assert response["activation_level"] > 0.5  # Should be activated by increased serotonin
 
-    def test_temporal_cascade_effects(self):
+    def test_temporal_cascade_effects(self) -> None:
         """Test cascade effects over time between connected neurotransmitter systems."""
         # Create a patient and mapping
         patient_id = uuid.uuid4()
@@ -258,7 +258,7 @@ class TestTemporalNeurotransmitterMapping:
         )
 
         # Create a temporal sequence for serotonin changes
-        sequence = TemporalSequence(
+        sequence = ExtendedTemporalSequence(
             name="serotonin_increase",
             description="Serotonin increase over time",
             time_unit="hours",
@@ -308,7 +308,7 @@ class TestTemporalNeurotransmitterMapping:
 class TestNeurotransmitterVisualization:
     """Test suite for neurotransmitter visualization preprocessing."""
 
-    def test_visualization_preprocessor(self):
+    def test_visualization_preprocessor(self) -> None:
         """Test the visualization preprocessor for neurotransmitter data."""
         # Create a preprocessor
         preprocessor = NeurotransmitterVisualizationPreprocessor()
@@ -348,7 +348,7 @@ class TestNeurotransmitterVisualization:
         assert "normalization_applied" in metadata
         assert metadata["normalization_applied"] is True
 
-    def test_effect_visualizer(self):
+    def test_effect_visualizer(self) -> None:
         """Test the neurotransmitter effect visualizer."""
         # Create a visualizer
         visualizer = NeurotransmitterEffectVisualizer()

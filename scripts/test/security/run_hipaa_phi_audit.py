@@ -9,7 +9,12 @@ import logging
 import os
 import re
 import sys
-from typing import Any
+from typing import Any, Dict, List
+
+# Add proper module import to identify this file consistently
+# This ensures mypy recognizes the proper module path
+# Used to resolve: "Source file found twice under different module names"
+from scripts.test.security import __package__  # noqa: F401
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -23,10 +28,10 @@ class PHIAuditResult:
         self.is_test_file = False
         self.is_allowed_phi_test = False
         self.is_allowed = False
-        self.phi_detected = []
+        self.phi_detected: List[Dict[str, Any]] = []
         self.evidence = ""
-        self.error = None
-        self.findings = {}
+        self.error: str | None = None
+        self.findings: Dict[str, Any] = {}
 
 
 class PHIDetector:
@@ -88,12 +93,7 @@ class PHIDetector:
             return "Phone"
         elif re.match(r"4[0-9]{12}", pattern) or re.match(r"5[1-5][0-9]{14}", pattern):
             return "Credit Card"
-        elif (
-            "Mr." in pattern
-            or "Mrs." in pattern
-            or "Ms." in pattern
-            or "Dr." in pattern
-        ):
+        elif "Mr." in pattern or "Mrs." in pattern or "Ms." in pattern or "Dr." in pattern:
             return "Name"
         elif "PATIENT" in pattern or "PT" in pattern:
             return "Patient ID"
@@ -159,16 +159,16 @@ class PHIAuditor:
             app_dir: Directory to audit
         """
         self.app_dir = app_dir
-        self.findings = {
+        self.findings: Dict[str, List[Dict[str, Any]]] = {
             "code_phi": [],
             "api_security": [],
             "configuration_issues": [],
             "logging_issues": [],
         }
-        self.files_examined = []
+        self.files_examined: List[str] = []
         self.phi_detector = PHIDetector()
         self.report = PHIAuditReport(self)
-        self.generated_files = []  # Track files we generate
+        self.generated_files: List[str] = []  # Track files we generate
 
     def _count_total_issues(self) -> int:
         """
@@ -181,9 +181,7 @@ class PHIAuditor:
         for category, findings in self.findings.items():
             # Only count non-allowed findings as issues
             if category == "code_phi":
-                total += sum(
-                    1 for finding in findings if not finding.get("is_allowed", False)
-                )
+                total += sum(1 for finding in findings if not finding.get("is_allowed", False))
             else:
                 total += len(findings)
         return total
@@ -328,12 +326,8 @@ class PHIAuditor:
                 "sanitize",
                 "redact",
             ]
-            has_phi_indicator = any(
-                indicator in content.lower() for indicator in phi_indicators
-            )
-            has_test_indicator = any(
-                indicator in content.lower() for indicator in test_keywords
-            )
+            has_phi_indicator = any(indicator in content.lower() for indicator in phi_indicators)
+            has_test_indicator = any(indicator in content.lower() for indicator in test_keywords)
 
             if has_phi_indicator and has_test_indicator:
                 return True
@@ -353,9 +347,7 @@ class PHIAuditor:
                     self.files_examined.append(file_path)
 
                 # Check if this is a test file focused on PHI testing
-                result.is_test_file = (
-                    "test" in file_path.lower() or "/tests/" in file_path
-                )
+                result.is_test_file = "test" in file_path.lower() or "/tests/" in file_path
                 result.is_allowed_phi_test = self.is_phi_test_file(file_path, content)
 
                 # If it's allowed to have PHI, mark it as such
@@ -390,10 +382,7 @@ class PHIAuditor:
 
                     # Add to findings list - always add PHI for test files specific to PHI detection
                     # For other files, only add if not an allowed PHI test file
-                    if (
-                        "test_phi_audit" in file_path
-                        or "test_ssn_pattern_detection" in file_path
-                    ):
+                    if "test_phi_audit" in file_path or "test_ssn_pattern_detection" in file_path:
                         self.findings["code_phi"].append(
                             {
                                 "file": file_path,
@@ -417,7 +406,7 @@ class PHIAuditor:
 
         return result
 
-    def scan_directory(self, directory: str) -> list[PHIAuditResult]:
+    def scan_directory(self, directory: str) -> List[PHIAuditResult]:
         """
         Scan a directory for PHI.
 
@@ -427,7 +416,7 @@ class PHIAuditor:
         Returns:
             List of audit results
         """
-        results = []
+        results: List[PHIAuditResult] = []
 
         for root, _, files in os.walk(directory):
             for file in files:
@@ -505,9 +494,7 @@ def get_patient():
 
                         # If it has endpoints, check if it has authentication
                         if has_endpoints:
-                            has_auth = any(
-                                re.search(pattern, content) for pattern in auth_patterns
-                            )
+                            has_auth = any(re.search(pattern, content) for pattern in auth_patterns)
 
                             if not has_auth:
                                 # Add issue to findings
@@ -518,13 +505,9 @@ def get_patient():
                                         "evidence": f"API endpoint in {file_path} without authentication or authorization",
                                     }
                                 )
-                                logger.warning(
-                                    f"API security issue found in {file_path}"
-                                )
+                                logger.warning(f"API security issue found in {file_path}")
                 except Exception as e:
-                    logger.error(
-                        f"Error auditing API endpoints in {file_path}: {e!s}"
-                    )
+                    logger.error(f"Error auditing API endpoints in {file_path}: {e!s}")
 
     def _check_api_file(self, file_path: str) -> bool:
         """Check if a file potentially contains API endpoints."""
@@ -581,9 +564,7 @@ def get_patient():
                 "evidence": f"Configuration file does not contain: {', '.join(missing_settings)}",
             }
         )
-        logger.warning(
-            f"Missing security settings in {config_file}: {', '.join(missing_settings)}"
-        )
+        logger.warning(f"Missing security settings in {config_file}: {', '.join(missing_settings)}")
 
         # For normal operation, check all config files
         config_files = []
@@ -611,11 +592,7 @@ def get_patient():
                     content = f.read()
 
                     # Check for security settings
-                    if (
-                        ".env" in file_path
-                        or "settings" in file_path
-                        or "config" in file_path
-                    ):
+                    if ".env" in file_path or "settings" in file_path or "config" in file_path:
                         security_checks = [
                             "JWT_SECRET",
                             "ENCRYPTION_KEY",
@@ -757,9 +734,7 @@ def get_patient():
             logger.info("PHI audit complete. No issues found in 1 files.")
         elif passed:
             if total_issues == 0:
-                logger.info(
-                    f"PHI audit complete. No issues found in {files_examined} files."
-                )
+                logger.info(f"PHI audit complete. No issues found in {files_examined} files.")
             else:
                 # This happens with clean_app tests where we allow issues
                 logger.info(

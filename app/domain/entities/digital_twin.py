@@ -90,7 +90,7 @@ class DigitalTwin:
 
             raise ValidationError("Neurotransmitter baselines must be non-negative")
 
-    def update_state(self, new_state_data: dict[str, Any]):
+    def update_state(self, new_state_data: dict[str, Any]) -> None:
         """Update the twin's state based on new data."""
         for key, value in new_state_data.items():
             if hasattr(self.state, key):
@@ -98,14 +98,14 @@ class DigitalTwin:
         self.state.last_sync_time = now_utc()
         self.touch()
 
-    def update_configuration(self, new_config_data: dict[str, Any]):
+    def update_configuration(self, new_config_data: dict[str, Any]) -> None:
         """Update the twin's configuration."""
         for key, value in new_config_data.items():
             if hasattr(self.configuration, key):
                 setattr(self.configuration, key, value)
         self.touch()
 
-    def touch(self):
+    def touch(self) -> None:
         """Update the last_updated timestamp and version."""
         self.last_updated = now_utc()
         self.version += 1

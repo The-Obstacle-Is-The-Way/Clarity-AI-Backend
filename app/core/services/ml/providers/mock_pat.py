@@ -479,7 +479,7 @@ class MockPAT(PATInterface):
         if readings:
             # Extract timestamps and group by day
             timestamps = [r.get("timestamp", "2025-01-01T00:00:00Z") for r in readings]
-            dates = list(set(t.split("T")[0] for t in timestamps))
+            dates = list({t.split("T")[0] for t in timestamps})
             dates.sort()
         else:
             # Generate random dates if no readings provided

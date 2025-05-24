@@ -49,7 +49,7 @@ class TestAuditLogger:
         # Clean up after the test
         yield logger
 
-    def test_init(self, mock_settings, mock_logger):
+    def test_init(self, mock_settings, mock_logger) -> None:
         """Test initialization of the AuditLogger."""
         # Exercise
         logger = AuditLogger()
@@ -61,7 +61,7 @@ class TestAuditLogger:
         assert logger.external_audit_enabled is False
         assert logger.logger == mock_logger
 
-    def test_log_phi_access(self, audit_logger, mock_logger):
+    def test_log_phi_access(self, audit_logger, mock_logger) -> None:
         """Test logging of PHI access events."""
         # Setup
         actor_id = str(uuid.uuid4())
@@ -73,7 +73,7 @@ class TestAuditLogger:
         reason = "medical review"
 
         # Exercise
-        event_id = audit_logger.log_phi_access(
+        audit_logger.log_phi_access(
             actor_id=actor_id,
             patient_id=patient_id,
             action=action,
@@ -101,7 +101,7 @@ class TestAuditLogger:
         assert log_data["phi_fields"] == phi_fields
         assert log_data["reason"] == reason
 
-    def test_log_auth_event(self, audit_logger, mock_logger):
+    def test_log_auth_event(self, audit_logger, mock_logger) -> None:
         """Test logging of authentication events."""
         # Setup
         event_type = "login"
@@ -111,7 +111,7 @@ class TestAuditLogger:
         user_id = str(uuid.uuid4())
 
         # Exercise
-        event_id = audit_logger.log_auth_event(
+        audit_logger.log_auth_event(
             actor_id=actor_id,
             event_type=event_type,
             success=success,
@@ -135,7 +135,7 @@ class TestAuditLogger:
         assert log_data["details"] == details
         assert log_data["user_id"] == user_id
 
-    def test_log_system_event(self, audit_logger, mock_logger):
+    def test_log_system_event(self, audit_logger, mock_logger) -> None:
         """Test logging of system events."""
         # Setup
         event_type = "startup"
@@ -144,7 +144,7 @@ class TestAuditLogger:
         actor_id = str(uuid.uuid4())
 
         # Exercise
-        event_id = audit_logger.log_system_event(
+        audit_logger.log_system_event(
             event_type=event_type,
             description=description,
             details=details,
@@ -169,7 +169,7 @@ class TestAuditLogger:
         assert log_data["details"] == details
 
     @patch("app.infrastructure.security.audit.audit.AuditLogger._send_to_external_audit_service")
-    def test_external_audit_service_called(self, mock_send, mock_settings, mock_logger):
+    def test_external_audit_service_called(self, mock_send, mock_settings, mock_logger) -> None:
         """Test that external audit service is called when enabled."""
         # Setup
         mock_settings.return_value.EXTERNAL_AUDIT_ENABLED = True
@@ -194,7 +194,7 @@ class TestAuditLogger:
         assert "timestamp" in mock_send.call_args[0][0]
         assert "event_type" in mock_send.call_args[0][0]
 
-    def test_file_handler_creation(self, mock_settings):
+    def test_file_handler_creation(self, mock_settings) -> None:
         """Test that file handler is created when audit log file is set."""
         # Setup
         with patch(
@@ -203,12 +203,12 @@ class TestAuditLogger:
             mock_file_handler.return_value = MagicMock()
 
             # Exercise
-            logger = AuditLogger()
+            AuditLogger()
 
             # Verify
             mock_file_handler.assert_called_once_with("logs/test_audit.log")
 
-    def test_directory_creation(self, mock_settings):
+    def test_directory_creation(self, mock_settings) -> None:
         """Test that log directory is created if it doesn't exist."""
         # Setup
         test_dir = "test_logs"
@@ -221,7 +221,7 @@ class TestAuditLogger:
             shutil.rmtree(test_dir)
 
         # Exercise
-        logger = AuditLogger()
+        AuditLogger()
 
         # Verify
         assert os.path.exists(test_dir)

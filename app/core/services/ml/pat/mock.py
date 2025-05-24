@@ -713,7 +713,7 @@ class MockPATService(PATInterface):
                 field_id = f"phq9_{i}"
                 if field_id in assessment["data"]:
                     value = assessment["data"][field_id]
-                    if isinstance(value, (int, float)):
+                    if isinstance(value, int | float):
                         phq9_total += value
 
             # If no data, generate random score
@@ -741,7 +741,7 @@ class MockPATService(PATInterface):
                 field_id = f"gad7_{i}"
                 if field_id in assessment["data"]:
                     value = assessment["data"][field_id]
-                    if isinstance(value, (int, float)):
+                    if isinstance(value, int | float):
                         gad7_total += value
 
             # If no data, generate random score
@@ -1335,7 +1335,7 @@ class MockPATService(PATInterface):
 
         if (
             sampling_rate_hz is None
-            or not isinstance(sampling_rate_hz, (int, float))
+            or not isinstance(sampling_rate_hz, int | float)
             or sampling_rate_hz <= 0
         ):
             raise ValidationError("Sampling rate must be positive")

@@ -264,7 +264,7 @@ async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
 
         # Create tables based on the real application models
         # Use a sync function to create all tables
-        def create_tables(sync_conn):
+        def create_tables(sync_conn) -> None:
             # Create all tables using the canonical Base metadata
             Base.metadata.create_all(sync_conn)
             logger.info(f"Created {len(Base.metadata.tables)} tables from metadata")
@@ -302,7 +302,7 @@ async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
             try:
                 async with engine.begin() as conn:
                     # Define the sync function
-                    def validate_models_sync(sync_session_arg_not_used):
+                    def validate_models_sync(sync_session_arg_not_used) -> None:
                         logger.info("Validating models (sync context inside get_test_db_session)")
                         # validate_models()
 

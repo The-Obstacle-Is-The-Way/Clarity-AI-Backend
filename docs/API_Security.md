@@ -21,7 +21,7 @@ The JWT service follows a clean architecture interface design:
 ```python
 from app.core.interfaces.services.audit_logger_interface import IAuditLogger
 from app.core.interfaces.repositories.token_blacklist_repository_interface import ITokenBlacklistRepository
-from app.domain.interfaces.token_repository import ITokenRepository
+from app.core.interfaces.repositories.token_repository_interface import ITokenRepository
 
 class JWTService:
     """

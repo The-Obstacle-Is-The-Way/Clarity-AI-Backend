@@ -113,9 +113,7 @@ class TestRunner:
             )
 
             if not level_success:
-                print(
-                    f"{Colors.RED}Tests failed at {test_level.value} level.{Colors.ENDC}"
-                )
+                print(f"{Colors.RED}Tests failed at {test_level.value} level.{Colors.ENDC}")
                 success = False
                 if progressive:
                     break
@@ -186,9 +184,7 @@ class TestRunner:
                     print(result.stdout.decode("utf-8"))
                 return False
         except Exception as e:
-            print(
-                f"{Colors.RED}Error running {level.value} tests: {e!s}{Colors.ENDC}"
-            )
+            print(f"{Colors.RED}Error running {level.value} tests: {e!s}{Colors.ENDC}")
             return False
 
 
@@ -203,32 +199,20 @@ def parse_args() -> argparse.Namespace:
 
     # Test level options
     level_group = parser.add_mutually_exclusive_group(required=True)
-    level_group.add_argument(
-        "--standalone", action="store_true", help="Run standalone tests only"
-    )
-    level_group.add_argument(
-        "--venv", action="store_true", help="Run standalone and venv tests"
-    )
+    level_group.add_argument("--standalone", action="store_true", help="Run standalone tests only")
+    level_group.add_argument("--venv", action="store_true", help="Run standalone and venv tests")
     level_group.add_argument(
         "--integration", action="store_true", help="Run integration tests only"
     )
     level_group.add_argument("--all", action="store_true", help="Run all tests")
 
     # Marker options
-    parser.add_argument(
-        "--security", action="store_true", help="Run security-focused tests"
-    )
+    parser.add_argument("--security", action="store_true", help="Run security-focused tests")
 
     # Coverage options
-    parser.add_argument(
-        "--coverage", action="store_true", help="Generate coverage report"
-    )
-    parser.add_argument(
-        "--html", action="store_true", help="Generate HTML coverage report"
-    )
-    parser.add_argument(
-        "--xml", action="store_true", help="Generate XML coverage report"
-    )
+    parser.add_argument("--coverage", action="store_true", help="Generate coverage report")
+    parser.add_argument("--html", action="store_true", help="Generate HTML coverage report")
+    parser.add_argument("--xml", action="store_true", help="Generate XML coverage report")
 
     # Execution options
     parser.add_argument("--verbose", action="store_true", help="Show verbose output")

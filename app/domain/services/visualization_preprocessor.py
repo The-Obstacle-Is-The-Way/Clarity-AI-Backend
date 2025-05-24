@@ -80,7 +80,7 @@ class NeurotransmitterVisualizationPreprocessor:
         """
         # Check which format we're dealing with
         is_time_series = False
-        for region, data in cascade_data.items():
+        for _region, data in cascade_data.items():
             if isinstance(data, list):
                 is_time_series = True
                 break
@@ -254,7 +254,7 @@ class NeurotransmitterVisualizationPreprocessor:
                 "total_regions": len(nodes),
                 "total_connections": len(edges),
                 "neurotransmitter_count": len(
-                    set(nt for region in cascade_data.values() for nt in region.keys())
+                    {nt for region in cascade_data.values() for nt in region.keys()}
                 ),
             },
         }

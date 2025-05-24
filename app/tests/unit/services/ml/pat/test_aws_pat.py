@@ -38,10 +38,10 @@ def mock_boto3(mocker, request):
     mock_s3_instance.list_buckets.return_value = {"Buckets": [{"Name": "test-pat-bucket"}]}
     # Add other S3 mocks as needed...
 
-    mock_sagemaker_instance = MagicMock()
+    MagicMock()
     # Add SageMaker mocks as needed...
 
-    mock_comprehend_instance = MagicMock(name="GenericMockComprehendMedicalClient")
+    MagicMock(name="GenericMockComprehendMedicalClient")
     # No specific config here anymore - will be handled by dedicated fixture
     # Add other Comprehend Medical mocks as needed...
 
@@ -66,7 +66,7 @@ def mock_boto3(mocker, request):
     # mock_client.side_effect = client_side_effect
 
     # --- Mock boto3.resource ---
-    mock_dynamodb_table_instance = MagicMock()
+    MagicMock()
 
     # Central mock for boto3.resource, targeting where it's imported in the service module
     # mock_resource = mocker.patch("app.core.services.ml.pat.aws.boto3.resource") # INCORRECT TARGET & Unused

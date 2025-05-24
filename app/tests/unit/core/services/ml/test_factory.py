@@ -42,7 +42,7 @@ class TestMLServiceFactory:
         factory.initialize(test_config)
         return factory
 
-    def test_initialization(self):
+    def test_initialization(self) -> None:
         """Test factory initialization with valid configuration."""
         factory = MLServiceFactory()
         test_config = {
@@ -52,7 +52,7 @@ class TestMLServiceFactory:
         assert factory._config is not None
         assert "mentalllama" in factory._config
 
-    def test_initialization_empty_config(self):
+    def test_initialization_empty_config(self) -> None:
         """Test factory initialization with empty configuration."""
         factory = MLServiceFactory()
 
@@ -62,7 +62,7 @@ class TestMLServiceFactory:
         with pytest.raises(InvalidConfigurationError):
             factory.initialize(None)
 
-    def test_create_phi_detection_service_aws(self, factory):
+    def test_create_phi_detection_service_aws(self, factory) -> None:
         """Test creating AWS PHI detection service."""
         # Corrected patch path
         with patch(
@@ -72,7 +72,7 @@ class TestMLServiceFactory:
             assert isinstance(service, AWSComprehendMedicalPHIDetection)
             mock_initialize.assert_called_once()
 
-    def test_create_phi_detection_service_mock(self, factory):
+    def test_create_phi_detection_service_mock(self, factory) -> None:
         """Test creating mock PHI detection service."""
         # Corrected patch path
         with patch("app.infrastructure.ml.phi.mock.MockPHIDetection.initialize") as mock_initialize:
@@ -80,12 +80,12 @@ class TestMLServiceFactory:
             assert isinstance(service, MockPHIDetection)
             mock_initialize.assert_called_once()
 
-    def test_create_phi_detection_service_invalid(self, factory):
+    def test_create_phi_detection_service_invalid(self, factory) -> None:
         """Test creating PHI detection service with invalid type."""
         with pytest.raises(InvalidConfigurationError):
             factory.create_phi_detection_service("invalid")
 
-    def test_create_mentalllama_service_aws(self, factory):
+    def test_create_mentalllama_service_aws(self, factory) -> None:
         """Test creating AWS MentaLLaMA service."""
         # Corrected patch path for MentaLLaMA
         with patch(
@@ -108,7 +108,7 @@ class TestMLServiceFactory:
                     "Skipping test as create_mentalllama_service method seems removed from factory"
                 )
 
-    def test_create_mentalllama_service_mock(self, factory):
+    def test_create_mentalllama_service_mock(self, factory) -> None:
         """Test creating mock MentaLLaMA service."""
         # Corrected patch path for MockMentaLLaMA
         with patch(
@@ -128,7 +128,7 @@ class TestMLServiceFactory:
                     "Skipping test as create_mentalllama_service method seems removed from factory"
                 )
 
-    def test_create_mentalllama_service_without_phi(self, factory):
+    def test_create_mentalllama_service_without_phi(self, factory) -> None:
         """Test creating MentaLLaMA service without PHI detection."""
         # Corrected patch path for MentaLLaMA
         with patch(
@@ -147,12 +147,12 @@ class TestMLServiceFactory:
                     "Skipping test as create_mentalllama_service method seems removed from factory"
                 )
 
-    def test_create_mentalllama_service_invalid(self, factory):
+    def test_create_mentalllama_service_invalid(self, factory) -> None:
         """Test creating MentaLLaMA service with invalid type."""
         with pytest.raises(InvalidConfigurationError):
             factory.create_mentalllama_service("invalid", True)
 
-    def test_service_caching(self, factory):
+    def test_service_caching(self, factory) -> None:
         """Test that services are cached and reused."""
         # Corrected patch paths
         with patch(
@@ -176,7 +176,7 @@ class TestMLServiceFactory:
             assert service1_phi is service2_phi
             mock_phi_init.assert_called_once()
 
-    def test_shutdown(self, factory):
+    def test_shutdown(self, factory) -> None:
         """Test factory shutdown."""
         # Corrected patch paths
         with patch("app.infrastructure.ml.mentallama.service.MentaLLaMA.initialize"), patch(

@@ -18,6 +18,8 @@ except ImportError:
         UTC,
     )  # Fallback to app's UTC implementation
 
+from typing import NoReturn
+
 from app.core.services.ml.xgboost.aws_service import AWSXGBoostService, PrivacyLevel
 from app.core.services.ml.xgboost.exceptions import (
     PredictionError,
@@ -32,7 +34,7 @@ class TestAWSXGBoostServicePrediction:
     """Test prediction functionality of the AWS XGBoost service."""
 
     @pytest.fixture
-    def sample_patient_id(self):
+    def sample_patient_id(self) -> str:
         """Sample patient ID for testing."""
         return "patient-456"
 
@@ -80,7 +82,7 @@ class TestAWSXGBoostServicePrediction:
         return service
 
     @pytest.mark.asyncio
-    async def test_predict_risk_validation(self, aws_xgboost_service, sample_clinical_data):
+    async def test_predict_risk_validation(self, aws_xgboost_service, sample_clinical_data) -> None:
         """Test predict_risk validation for missing patient_id."""
         with pytest.raises(ValidationError):
             await aws_xgboost_service.predict_risk(
@@ -90,7 +92,7 @@ class TestAWSXGBoostServicePrediction:
             )
 
     @pytest.mark.asyncio
-    async def test_predict_risk_empty_data(self, aws_xgboost_service, sample_patient_id):
+    async def test_predict_risk_empty_data(self, aws_xgboost_service, sample_patient_id) -> None:
         """Test predict_risk validation for empty clinical_data."""
         with pytest.raises(ValidationError):
             await aws_xgboost_service.predict_risk(
@@ -102,7 +104,7 @@ class TestAWSXGBoostServicePrediction:
     @pytest.mark.asyncio
     async def test_predict_risk_successful(
         self, aws_xgboost_service, sample_patient_id, sample_clinical_data
-    ):
+    ) -> None:
         """Test successful risk prediction."""
         # COMPLETELY BYPASS THE INTERNAL IMPLEMENTATION - create our own result directly
         # This is the most reliable way to test this functionality without dealing with complex mocks
@@ -144,11 +146,11 @@ class TestAWSXGBoostServicePrediction:
     @pytest.mark.asyncio
     async def test_predict_risk_error_handling(
         self, aws_xgboost_service, sample_patient_id, sample_clinical_data
-    ):
+    ) -> None:
         """Test error handling during risk prediction."""
         # Directly override the predict_risk method to raise the specific error we want to test
 
-        async def prediction_error_func(patient_id, risk_type, clinical_data, **kwargs):
+        async def prediction_error_func(patient_id, risk_type, clinical_data, **kwargs) -> NoReturn:
             # Raise the exact error type we want to test
             raise PredictionError("Model error: invalid input shape")
 
@@ -165,11 +167,11 @@ class TestAWSXGBoostServicePrediction:
     @pytest.mark.asyncio
     async def test_predict_risk_service_unavailable(
         self, aws_xgboost_service, sample_patient_id, sample_clinical_data
-    ):
+    ) -> None:
         """Test predict_risk failure due to AWS service unavailability."""
         # Directly override the predict_risk method to raise the specific error we want to test
 
-        async def connection_error_predict_risk(patient_id, risk_type, clinical_data, **kwargs):
+        async def connection_error_predict_risk(patient_id, risk_type, clinical_data, **kwargs) -> NoReturn:
             # Raise the exact error type we want to test
             raise ServiceConnectionError("Failed to connect to SageMaker endpoint: test-endpoint")
 

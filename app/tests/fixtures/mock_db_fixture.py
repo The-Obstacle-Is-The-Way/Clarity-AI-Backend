@@ -175,7 +175,7 @@ class MockAsyncSession:  # pylint: disable=too-many-instance-attributes
         if callable(self._refresh_callback):
             self._refresh_callback(obj)
 
-    def set_refresh_callback(self, callback):
+    def set_refresh_callback(self, callback) -> None:
         self._refresh_callback = callback
 
     # ------------------------------------------------------------------
@@ -218,11 +218,11 @@ class MockAsyncSession:  # pylint: disable=too-many-instance-attributes
     # ------------------------------------------------------------------
     # Convenience helpers for tests to pre‑seed results ------------------
     # ------------------------------------------------------------------
-    def set_result(self, results: Any | list[Any]):
+    def set_result(self, results: Any | list[Any]) -> None:
         """Configure default *SELECT* results when query string unknown."""
         self.query_results["unknown_query"] = results
 
-    def configure_mock_results(self, query: str, results: Any | list[Any]):
+    def configure_mock_results(self, query: str, results: Any | list[Any]) -> None:
         """Bind *results* to a specific ``query`` string (exact match)."""
         self.query_results[query] = results
 

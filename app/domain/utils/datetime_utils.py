@@ -139,4 +139,6 @@ def format_iso8601(dt: datetime.datetime | None = None) -> str:
     Returns:
         str: ISO 8601 formatted datetime string
     """
+    if dt is None:
+        dt = now()
     return format_iso(dt)

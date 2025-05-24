@@ -6,9 +6,11 @@ for machine learning service tests, following clean architecture principles.
 """
 
 import sys
+from types import ModuleType
+from typing import Any
 
 
-def pytest_collect_file(parent, path):
+def pytest_collect_file(parent, path) -> None:
     """
     Custom collection hook to prevent pytest from trying to collect
     the xgboost directory as if it were the actual xgboost package.
@@ -27,7 +29,7 @@ for key in list(sys.modules.keys()):
 
 
 # Apply YAML mocking for XGBoost tests if needed
-def setup_yaml_mocking():
+def setup_yaml_mocking() -> None:
     """Set up YAML mocking for XGBoost tests."""
     try:
         # Import the mocks first so they're in scope
@@ -40,7 +42,12 @@ def setup_yaml_mocking():
             _is_mocked = True
 
         if "yaml" in sys.modules and not hasattr(sys.modules["yaml"], "_is_mocked"):
-            sys.modules["yaml"] = MockYamlModule
+            # Create a module instance with the mock attributes
+            mock_module = ModuleType("yaml")
+            mock_module.safe_load = mock_safe_load  # type: ignore[attr-defined]
+            mock_module.dump = mock_dump  # type: ignore[attr-defined]  
+            mock_module._is_mocked = True  # type: ignore[attr-defined]
+            sys.modules["yaml"] = mock_module
     except ImportError:
         pass  # Skip if mock_yaml module not found
 

@@ -5,6 +5,7 @@ This module contains tests for the Digital Twin Integration Service, which
 coordinates all ML microservices and provides a unified interface for the
 domain layer, following Clean Architecture principles and ensuring HIPAA compliance.
 """
+from typing import NoReturn
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -205,7 +206,7 @@ def integration_service(
 
 
 @pytest.mark.asyncio
-async def test_generate_comprehensive_patient_insights(integration_service, patient_data):
+async def test_generate_comprehensive_patient_insights(integration_service, patient_data) -> None:
     """Test generating comprehensive patient insights."""
     patient_id = uuid4()
 
@@ -263,14 +264,14 @@ async def test_generate_comprehensive_patient_insights(integration_service, pati
 
 
 @pytest.mark.asyncio
-async def test_handle_microservice_failure(integration_service, patient_data):
+async def test_handle_microservice_failure(integration_service, patient_data) -> None:
     """Test handling of microservice failures."""
     patient_id = uuid4()
 
     # Make symptom forecasting service fail
     original_method = integration_service.symptom_forecasting_service.forecast_symptoms
 
-    async def failing_forecast(*args, **kwargs):
+    async def failing_forecast(*args, **kwargs) -> NoReturn:
         raise ModelInferenceError("Test error")
 
     integration_service.symptom_forecasting_service.forecast_symptoms = failing_forecast
@@ -292,7 +293,7 @@ async def test_handle_microservice_failure(integration_service, patient_data):
 
 
 @pytest.mark.asyncio
-async def test_sanitize_patient_data(integration_service, patient_data):
+async def test_sanitize_patient_data(integration_service, patient_data) -> None:
     """Test sanitization of patient data for HIPAA compliance."""
     # Add PHI to patient data
     patient_data_with_phi = patient_data.copy()

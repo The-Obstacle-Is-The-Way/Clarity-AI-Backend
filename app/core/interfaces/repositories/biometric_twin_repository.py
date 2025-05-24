@@ -8,35 +8,29 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-# Import BiometricTwinState entity - use Any as fallback if import fails
-try:
-    from app.domain.entities.biometric_twin import BiometricTwinState
-except ImportError:
-    from typing import Any
-
-    BiometricTwinState = Any
+from app.domain.entities.biometric_twin_enhanced import BiometricTwin
 
 
 class IBiometricTwinRepository(ABC):
     """Abstract base class for biometric twin data persistence operations."""
 
     @abstractmethod
-    async def get_by_id(self, twin_id: UUID) -> BiometricTwinState | None:
+    async def get_by_id(self, twin_id: UUID) -> BiometricTwin | None:
         """Retrieve a biometric twin by its unique ID."""
         pass
 
     @abstractmethod
-    async def get_by_patient_id(self, patient_id: UUID) -> BiometricTwinState | None:
+    async def get_by_patient_id(self, patient_id: UUID) -> BiometricTwin | None:
         """Retrieve a biometric twin for a specific patient."""
         pass
 
     @abstractmethod
-    async def create(self, twin: BiometricTwinState) -> BiometricTwinState:
+    async def create(self, twin: BiometricTwin) -> BiometricTwin:
         """Create a new biometric twin record."""
         pass
 
     @abstractmethod
-    async def update(self, twin: BiometricTwinState) -> BiometricTwinState:
+    async def update(self, twin: BiometricTwin) -> BiometricTwin:
         """Update an existing biometric twin record."""
         pass
 
@@ -46,7 +40,7 @@ class IBiometricTwinRepository(ABC):
         pass
 
     @abstractmethod
-    async def list_all(self, skip: int = 0, limit: int = 100) -> list[BiometricTwinState]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[BiometricTwin]:
         """List all biometric twins with pagination."""
         pass
 
@@ -57,7 +51,7 @@ class IBiometricTwinRepository(ABC):
         data_type: str,
         value: float | int | bool | dict[str, Any],
         timestamp: datetime | None = None,
-    ) -> BiometricTwinState:
+    ) -> BiometricTwin:
         """Add a new data point to a patient's biometric twin."""
         pass
 

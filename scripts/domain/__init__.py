@@ -41,6 +41,4 @@ class Neurotransmitter(Enum):
 
 # Type definitions for neural pathway modeling
 RegionToRegionMapping = dict[BrainRegion, dict[BrainRegion, EffectMagnitude]]
-NeurotransmitterEffects = dict[
-    Neurotransmitter, dict[Neurotransmitter, EffectMagnitude]
-]
+NeurotransmitterEffects = dict[Neurotransmitter, dict[Neurotransmitter, EffectMagnitude]]

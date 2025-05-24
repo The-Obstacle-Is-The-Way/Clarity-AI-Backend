@@ -54,7 +54,9 @@ from app.presentation.api.dependencies.auth import (
     get_current_active_user,
     get_current_user,
 )
-from app.presentation.api.dependencies.auth import get_jwt_service as get_jwt_service_dependency
+from app.presentation.api.dependencies.auth import (
+    get_jwt_service_from_request as get_jwt_service_dependency,
+)
 from app.presentation.api.dependencies.biometric_alert import (
     get_alert_repository,
     get_event_processor,
@@ -302,7 +304,7 @@ def global_mock_jwt_service() -> MagicMock:
     mock = MagicMock(spec=JWTServiceInterface)
 
     # Mock create_access_token to return a test token
-    async def create_access_token_mock(*args, **kwargs):
+    async def create_access_token_mock(*args, **kwargs) -> str:
         return "test.provider.token"
 
     # Set up the mock
@@ -519,6 +521,7 @@ class TestBiometricAlertsEndpoints:
             "name": "High Heart Rate Alert",
             "description": "Detects abnormally high heart rate",
             "patient_id": str(sample_patient_id),
+            "priority": "high",
             "conditions": [
                 {
                     "metric_name": "heart_rate",
@@ -526,7 +529,7 @@ class TestBiometricAlertsEndpoints:
                     "threshold_value": 110.0,
                 }
             ],
-            "priority": "high",
+            "logical_operator": "and",
             "is_active": True,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
@@ -624,9 +627,7 @@ class TestBiometricAlertsEndpoints:
         rule_service_mock.create_rule = AsyncMock(return_value=expected_result)
 
         # Override dependencies
-        from app.presentation.api.v1.endpoints.biometric_alert_rules import (
-            get_rule_service,
-        )
+        from app.presentation.api.v1.endpoints.biometric_alert_rules import get_rule_service
 
         app.dependency_overrides[get_rule_service] = lambda: rule_service_mock
 
@@ -1277,7 +1278,7 @@ class TestBiometricAlertsEndpoints:
         sample_patient_id: uuid.UUID,
     ) -> None:
         # Create summary response data
-        summary_data = {
+        {
             "patient_id": str(sample_patient_id),
             "start_date": "2023-01-01T00:00:00+00:00",
             "end_date": "2023-02-01T00:00:00+00:00",
@@ -1675,7 +1676,6 @@ async def app_with_mock_template_service(
     )
 
     # Store original
-    original_get_template_service = get_alert_rule_template_service
 
     # Replace with mock
     app.dependency_overrides[get_alert_rule_template_service] = lambda: mock_template_service

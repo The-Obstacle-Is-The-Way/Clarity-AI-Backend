@@ -50,7 +50,7 @@ class BiometricDataPointCreate(BaseModel):
     )
 
     @field_validator("data_type")
-    def validate_data_type(cls, v):
+    def validate_data_type(self, v):
         """Validate that data_type is not empty."""
         if not v or not v.strip():
             raise ValueError("Biometric data type cannot be empty")

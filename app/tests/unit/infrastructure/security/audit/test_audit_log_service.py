@@ -70,11 +70,11 @@ def audit_service(mock_repository):
 class TestAuditLogService:
     """Test suite for the audit logging service."""
 
-    async def test_log_event(self, audit_service, mock_repository):
+    async def test_log_event(self, audit_service, mock_repository) -> None:
         """Test logging an event."""
         mock_repository._create.reset_mock()
 
-        log_id = await audit_service.log_event(
+        await audit_service.log_event(
             event_type=AuditEventType.LOGIN_SUCCESS,
             actor_id=TEST_USER_ID,
             action="login",
@@ -91,11 +91,11 @@ class TestAuditLogService:
         assert audit_log.action == "login"
         assert audit_log.status == "success"
 
-    async def test_log_security_event(self, audit_service, mock_repository):
+    async def test_log_security_event(self, audit_service, mock_repository) -> None:
         """Test logging a security event."""
         mock_repository._create.reset_mock()
 
-        log_id = await audit_service.log_security_event(
+        await audit_service.log_security_event(
             description="Failed login attempt", actor_id=TEST_USER_ID, status="failure"
         )
 
@@ -108,11 +108,11 @@ class TestAuditLogService:
         assert audit_log.actor_id == TEST_USER_ID
         assert "Failed login attempt" in str(audit_log.details)
 
-    async def test_log_phi_access(self, audit_service, mock_repository):
+    async def test_log_phi_access(self, audit_service, mock_repository) -> None:
         """Test logging PHI access."""
         mock_repository._create.reset_mock()
 
-        log_id = await audit_service.log_phi_access(
+        await audit_service.log_phi_access(
             actor_id=TEST_USER_ID,
             patient_id=TEST_PATIENT_ID,
             resource_type="patient",
@@ -137,7 +137,7 @@ class TestAuditLogService:
         assert "name" in audit_log.details["phi_fields"]
         assert "dob" in audit_log.details["phi_fields"]
 
-    async def test_get_audit_trail(self, audit_service, mock_repository):
+    async def test_get_audit_trail(self, audit_service, mock_repository) -> None:
         """Test retrieving the audit trail."""
         # Create some test logs
         test_logs = [
@@ -181,7 +181,7 @@ class TestAuditLogService:
         assert logs[0]["event_type"] == AuditEventType.PHI_ACCESS
         assert logs[1]["event_type"] == AuditEventType.LOGIN_SUCCESS
 
-    async def test_anomaly_detection(self, audit_service, mock_repository):
+    async def test_anomaly_detection(self, audit_service, mock_repository) -> None:
         """Test that anomalies are detected."""
         # Reset the service to clear any existing history
         audit_service._user_access_history = {}
@@ -313,7 +313,7 @@ class TestAuditLogMiddleware:
         mock_is_disabled_method: AsyncMock,
         middleware: AuditLogMiddleware,
         mock_audit_logger: MagicMock,
-    ):
+    ) -> None:
         """Test that PHI access is logged for PHI paths when audit is enabled."""
         mock_is_disabled_method.return_value = False  # Ensure audit is NOT disabled by the mock
 
@@ -361,7 +361,7 @@ class TestAuditLogMiddleware:
         mock_is_disabled_method: AsyncMock,
         middleware: AuditLogMiddleware,
         mock_audit_logger: MagicMock,
-    ):
+    ) -> None:
         """Test that if audit is disabled (by mock), PHI path processing skips logging."""
         mock_is_disabled_method.return_value = True  # Simulate _is_audit_disabled returning True
 
@@ -382,7 +382,7 @@ class TestAuditLogMiddleware:
         mock_is_disabled_method: AsyncMock,
         middleware: AuditLogMiddleware,
         mock_audit_logger: MagicMock,
-    ):
+    ) -> None:
         """Test non-PHI paths are skipped, even if _is_audit_disabled would allow logging."""
         mock_is_disabled_method.return_value = False  # Audit is notionally enabled by this mock
 
@@ -411,7 +411,7 @@ class TestAuditLogMiddleware:
         mock_is_disabled_method: AsyncMock,
         middleware: AuditLogMiddleware,
         mock_audit_logger: MagicMock,
-    ):
+    ) -> None:
         """Test that paths in skip_paths list are skipped before _is_audit_disabled or PHI checks."""
         # mock_is_disabled_method is present due to decorator, but should not be called.
         # We don't set its return_value as it's irrelevant if code path is correct.
@@ -433,7 +433,7 @@ class TestAuditLogMiddleware:
         mock_is_disabled_method: AsyncMock,
         middleware: AuditLogMiddleware,
         mock_audit_logger: MagicMock,
-    ):
+    ) -> None:
         """Test that if audit_logger.log_phi_access raises an exception, the main request still completes."""
         mock_is_disabled_method.return_value = False  # Audit is enabled
 
@@ -461,7 +461,7 @@ class TestAuditLogMiddleware:
         call_next.assert_called_once_with(request)
         mock_audit_logger.log_phi_access.assert_called_once()  # Logger was attempted
 
-    async def test_extract_user_id_from_valid_request_state(self, middleware: AuditLogMiddleware):
+    async def test_extract_user_id_from_valid_request_state(self, middleware: AuditLogMiddleware) -> None:
         """Test _extract_user_id successfully gets user ID from request.state.user.id."""
         user_id_val = str(uuid.uuid4())
         # _prepare_request_mock now correctly sets request.state.user with an object having an 'id' attribute
@@ -470,7 +470,7 @@ class TestAuditLogMiddleware:
         extracted_user_id = await middleware._extract_user_id(request)
         assert extracted_user_id == user_id_val
 
-    async def test_extract_user_id_when_no_current_user(self, middleware: AuditLogMiddleware):
+    async def test_extract_user_id_when_no_current_user(self, middleware: AuditLogMiddleware) -> None:
         """Test _extract_user_id returns None if request.state.user is None."""
         request = self._prepare_request_mock(
             path="/any", method="GET", user_id=None
@@ -480,7 +480,7 @@ class TestAuditLogMiddleware:
 
     async def test_extract_user_id_when_current_user_has_no_id(
         self, middleware: AuditLogMiddleware
-    ):
+    ) -> None:
         """Test _extract_user_id returns None if request.state.user object lacks an 'id' attribute."""
         # _prepare_request_mock with user_id will create a mock with .id
         # To test this case, we need to manually create a mock without .id
@@ -500,7 +500,7 @@ class TestAuditLogMiddleware:
 
     async def test_extract_user_id_when_request_state_missing_user_attr(
         self, middleware: AuditLogMiddleware
-    ):
+    ) -> None:
         """Test _extract_user_id returns None if request.state has no 'user' attribute."""
         request = self._prepare_request_mock(
             path="/any", method="GET", user_id=None
@@ -512,7 +512,7 @@ class TestAuditLogMiddleware:
         extracted_user_id = await middleware._extract_user_id(request)
         assert extracted_user_id is None
 
-    def test_extract_resource_info_various_paths(self, middleware: AuditLogMiddleware):
+    def test_extract_resource_info_various_paths(self, middleware: AuditLogMiddleware) -> None:
         """Test _extract_resource_info correctly parses various PHI-like and other paths."""
         # Note: The AuditLogMiddleware's default phi_url_patterns might influence this.
         # These tests assume the generic extraction logic based on typical REST patterns.

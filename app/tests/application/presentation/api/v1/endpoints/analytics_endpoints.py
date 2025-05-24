@@ -146,7 +146,7 @@ async def _process_treatment_outcomes(
     start_date: datetime,
     end_date: datetime | None,
     cache_key: str,
-):
+) -> None:
     """
     Process treatment outcomes in background and store in cache.
 
@@ -278,7 +278,7 @@ async def _process_practice_metrics(
     provider_id: UUID | None,
     metric_type: str | None,
     cache_key: str,
-):
+) -> None:
     """
     Process practice metrics in background and store in cache.
 
@@ -439,7 +439,7 @@ async def _process_medication_effectiveness(
     end_date: datetime | None,
     min_effectiveness_score: float | None,
     cache_key: str,
-):
+) -> None:
     """
     Process medication effectiveness in background and store in cache.
 
@@ -554,7 +554,7 @@ async def _process_treatment_comparison(
     start_date: datetime | None,
     end_date: datetime | None,
     cache_key: str,
-):
+) -> None:
     """
     Process treatment comparison in background and store in cache.
 

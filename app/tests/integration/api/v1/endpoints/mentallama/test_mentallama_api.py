@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from app.core.config import Settings
 from app.core.interfaces.services.audit_logger_interface import (
     AuditEventType,
+    AuditSeverity,
     IAuditLogger,
 )
 from app.core.interfaces.services.authentication_service import IAuthenticationService
@@ -36,7 +37,7 @@ from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.presentation.api.dependencies.auth import (
     get_current_active_user,
     get_current_user,
-    get_jwt_service,
+    get_jwt_service_from_request,
 )
 from app.presentation.api.v1.dependencies.digital_twin import get_mentallama_service
 
@@ -93,6 +94,51 @@ class MockAuditLogService(IAuditLogger):
         """Log PHI access without using the database."""
         return str(uuid.uuid4())
 
+    def log_security_event(
+        self,
+        event_type: AuditEventType,
+        description: str,
+        severity: AuditSeverity = AuditSeverity.INFO,
+        user_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Log a security-related event for audit purposes."""
+        logger.info(
+            f"MOCK SECURITY EVENT: {event_type} - {description} - Severity: {severity} - User: {user_id}"
+        )
+        return
+
+    def log_data_access(
+        self,
+        resource_type: str,
+        resource_id: str,
+        action: str,
+        user_id: str,
+        reason: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Log access to sensitive data for HIPAA compliance."""
+        logger.info(
+            f"MOCK DATA ACCESS: {resource_type}/{resource_id} - Action: {action} - User: {user_id} - Reason: {reason}"
+        )
+        return
+
+    def log_api_request(
+        self,
+        endpoint: str,
+        method: str,
+        status_code: int,
+        user_id: str | None = None,
+        request_id: str | None = None,
+        duration_ms: float | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Log API request information for audit trails."""
+        logger.info(
+            f"MOCK API REQUEST: {method} {endpoint} - Status: {status_code} - User: {user_id} - Duration: {duration_ms}ms"
+        )
+        return
+
     async def log_security_event(
         self,
         event_type: AuditEventType,
@@ -130,15 +176,16 @@ class MockAuditLogService(IAuditLogger):
         """Log logout event without using the database."""
         return str(uuid.uuid4())
 
-    async def log_system_event(
+    def log_system_event(
         self,
         event_type: str,
-        details: str,
-        component: str | None = None,
-        metadata: dict | None = None,
-    ) -> str:
-        """Log system event without using the database."""
-        return str(uuid.uuid4())
+        description: str,
+        severity: AuditSeverity = AuditSeverity.INFO,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Log system-level events for operational auditing."""
+        logger.info(f"MOCK SYSTEM EVENT: {event_type} - {description} - Severity: {severity}")
+        return
 
     async def log_auth_event(
         self,
@@ -331,7 +378,7 @@ def global_mock_jwt_service() -> MagicMock:
     mock = MagicMock(spec=IJwtService)
 
     # Mock token creation function
-    async def create_access_token_side_effect(data=None, expires_delta=None):
+    async def create_access_token_side_effect(data=None, expires_delta=None) -> str:
         return "test.jwt.token"
 
     mock.create_access_token = AsyncMock(side_effect=create_access_token_side_effect)
@@ -384,7 +431,7 @@ async def mentallama_test_client(
     logging.info(f"MENTALLAMA_TEST_CLIENT: Overrode MentaLLaMAInterface on app {id(app)}")
 
     # Override JWT service
-    app.dependency_overrides[get_jwt_service] = lambda: global_mock_jwt_service
+    app.dependency_overrides[get_jwt_service_from_request] = lambda: global_mock_jwt_service
     logging.info(
         f"MENTALLAMA_TEST_CLIENT: Overrode IJwtService on app {id(app)} with global_mock_jwt_service ID: {id(global_mock_jwt_service)}"
     )
@@ -412,6 +459,8 @@ async def mentallama_test_client(
             is_active=True,
             is_verified=True,
             roles=[UserRole.PATIENT],
+            first_name="Test",
+            last_name="User",
         )
 
     # Override get_current_active_user to avoid account_status check

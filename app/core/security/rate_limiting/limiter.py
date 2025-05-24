@@ -7,6 +7,7 @@ rate limiting with HIPAA-compliant protection against DDoS attacks.
 
 import logging
 import time
+from typing import Dict, Union
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ class RateLimiter:
             requests_per_minute: Maximum requests allowed per minute
         """
         self.requests_per_minute = requests_per_minute
-        self.client_requests = {}  # Dict to track client requests
+        self.client_requests: Dict[str, Dict[str, Union[int, float]]] = {}  # Dict to track client requests
         logger.info(f"Initialized RateLimiter with {requests_per_minute} requests per minute")
 
     async def is_allowed(self, client_id: str) -> bool:
@@ -91,4 +92,4 @@ class RateLimiter:
         client_data = self.client_requests[client_id]
         seconds_until_reset = max(0, client_data["reset_at"] - current_time)
 
-        return client_data["count"], int(seconds_until_reset)
+        return int(client_data["count"]), int(seconds_until_reset)

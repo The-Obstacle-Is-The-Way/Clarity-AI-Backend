@@ -156,7 +156,7 @@ async def test_temporal_service_with_xgboost_integration(
     patient_id: UUID,
     sequence_repository: TemporalSequenceRepository,
     event_repository: EventRepository,
-):
+) -> None:
     """
     Test integrated functionality of TemporalNeurotransmitterService with XGBoost.
 
@@ -229,7 +229,7 @@ async def test_temporal_service_with_xgboost_integration(
 @pytest.mark.asyncio()
 async def test_full_brain_region_coverage_with_visualization(
     temporal_service: TemporalNeurotransmitterService, patient_id: UUID
-):
+) -> None:
     """
     Test complete horizontal coverage across brain regions with visualization.
 
@@ -291,7 +291,7 @@ async def test_full_brain_region_coverage_with_visualization(
 @pytest.mark.asyncio()
 async def test_full_neurotransmitter_coverage_with_treatment(
     temporal_service: TemporalNeurotransmitterService, patient_id: UUID
-):
+) -> None:
     """
     Test complete horizontal coverage across neurotransmitters with treatment simulation.
 
@@ -350,7 +350,7 @@ async def test_api_integration_with_service(
     # test_app fixture removed
     temporal_service: TemporalNeurotransmitterService,  # Fixture now provides a service linked to patient_id
     patient_id: UUID,
-):
+) -> None:
     """
     Test API integration with the neurotransmitter service.
 
@@ -360,7 +360,7 @@ async def test_api_integration_with_service(
     with mock_current_user, patch(
         "app.api.routes.temporal_neurotransmitter.get_temporal_neurotransmitter_service",
         return_value=AsyncMock(return_value=temporal_service),
-    ) as mock:
+    ):
         # Test 1: Generate time series
         time_series_response = await test_client.post(  # Use test_client fixture
             "/api/v1/temporal-neurotransmitter/time-series",
@@ -394,7 +394,7 @@ async def test_api_integration_with_service(
         assert "sequence_ids" in treatment_response.json()
 
         # Extract a sequence ID for visualization test
-        first_sequence_id = list(treatment_response.json()["sequence_ids"].values())[0]
+        first_sequence_id = next(iter(treatment_response.json()["sequence_ids"].values()))
 
         # Test 3: Get visualization data
         viz_response = await test_client.post(  # Use test_client fixture

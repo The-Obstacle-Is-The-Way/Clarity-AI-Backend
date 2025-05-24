@@ -6,7 +6,7 @@ Tests for the Appointment Service.
 # from app.domain.services.appointment_service import AppointmentService
 import uuid
 from datetime import UTC, datetime, timedelta
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -33,10 +33,10 @@ def future_datetime():
 def appointment_repository():
     """Fixture for appointment repository."""
     repository = MagicMock()
-    repository.get_by_id.return_value = None
-    repository.save.side_effect = lambda x: x
-    # Add mock for get_by_provider_id used in conflict checks
-    repository.get_by_provider_id.return_value = []
+    # Use AsyncMock for async methods
+    repository.get_by_id = AsyncMock(return_value=None)
+    repository.save = AsyncMock(side_effect=lambda x: x)
+    repository.list_by_provider_id = AsyncMock(return_value=[])
     return repository
 
 
@@ -44,7 +44,9 @@ def appointment_repository():
 def patient_repository():
     """Fixture for patient repository."""
     repository = MagicMock()
-    repository.get_by_id.return_value = {"id": "patient123", "name": "John Doe"}
+    patient_id = uuid.uuid4()
+    # Use AsyncMock for async methods
+    repository.get_by_id = AsyncMock(return_value={"id": patient_id, "name": "John Doe"})
     return repository
 
 
@@ -52,7 +54,9 @@ def patient_repository():
 def provider_repository():
     """Fixture for provider repository."""
     repository = MagicMock()
-    repository.get_by_id.return_value = {"id": "provider456", "name": "Dr. Smith"}
+    provider_id = uuid.uuid4()
+    # Use AsyncMock for async methods
+    repository.get_by_id = AsyncMock(return_value={"id": provider_id, "name": "Dr. Smith"})
     return repository
 
 
@@ -75,11 +79,11 @@ def appointment_service(appointment_repository, patient_repository, provider_rep
 
 @pytest.fixture
 def valid_appointment_data(future_datetime):
-    """Fixture for valid appointment data (used only by valid_appointment fixture)"""
+    """Fixture for valid appointment data dict."""
     return {
-        "id": str(uuid.uuid4()),  # Keep id for direct use in valid_appointment
-        "patient_id": "patient123",
-        "provider_id": "provider456",
+        "id": str(uuid.uuid4()),  # Convert to string as expected by the test
+        "patient_id": uuid.uuid4(),
+        "provider_id": uuid.uuid4(),
         "start_time": future_datetime,
         "end_time": future_datetime + timedelta(hours=1),
         "appointment_type": AppointmentType.INITIAL_CONSULTATION,
@@ -117,28 +121,30 @@ class TestAppointmentService:
     # No direct Appointment instantiation needed in tests if using fixtures/service methods
     # Ensure tests use the service methods and rely on the valid_appointment fixture
 
-    def test_get_appointment(self, appointment_service, appointment_repository, valid_appointment):
+    @pytest.mark.asyncio
+    async def test_get_appointment(self, appointment_service, appointment_repository, valid_appointment) -> None:
         """Test getting an appointment."""
         appointment_repository.get_by_id.return_value = valid_appointment
-        appointment = appointment_service.get_appointment(valid_appointment.id)
+        appointment = await appointment_service.get_appointment(valid_appointment.id)
         assert appointment == valid_appointment
         appointment_repository.get_by_id.assert_called_once_with(valid_appointment.id)
 
     # ... (other tests using service methods and valid_appointment fixture)
 
     # Example modification for conflict test (imports Appointment locally)
-    def test_create_appointment_conflict(
+    @pytest.mark.asyncio
+    async def test_create_appointment_conflict(
         self, appointment_service, appointment_repository, future_datetime
-    ):
+    ) -> None:
         """Test creating an appointment with a conflict."""
         # Import Appointment here where it is instantiated for the mock return value
         from app.domain.entities.appointment import Appointment
 
         # Set up the repository to return a conflicting appointment
-        appointment_repository.get_by_provider_id.return_value = [
+        appointment_repository.list_by_provider_id.return_value = [
             Appointment(
-                patient_id="patient789",  # Need required fields
-                provider_id="provider456",
+                patient_id=uuid.uuid4(),  # Need required fields
+                provider_id=uuid.uuid4(),
                 start_time=future_datetime - timedelta(minutes=30),
                 end_time=future_datetime + timedelta(minutes=30),
                 appointment_type=AppointmentType.FOLLOW_UP,
@@ -148,26 +154,30 @@ class TestAppointmentService:
         ]
 
         with pytest.raises(AppointmentConflictError):
-            appointment_service.create_appointment(
-                patient_id="patient123",
-                provider_id="provider456",
+            patient_id = uuid.uuid4()
+            provider_id = uuid.uuid4()
+            await appointment_service.create_appointment(
+                patient_id=patient_id,
+                provider_id=provider_id,
                 start_time=future_datetime,
                 end_time=future_datetime + timedelta(hours=1)
                 # Assuming priority is gone
             )
 
-    def test_create_appointment_daily_limit(
+    @pytest.mark.asyncio
+    async def test_create_appointment_daily_limit(
         self, appointment_service, appointment_repository, future_datetime
-    ):
+    ) -> None:
         """Test creating an appointment when the daily limit is reached."""
         # Import Appointment here where it is instantiated for the mock return value
         from app.domain.entities.appointment import Appointment
 
         # Set up the repository to return a list of appointments at the limit
+        provider_id = uuid.uuid4()
         appointments = [
             Appointment(
-                patient_id=f"patient{i}",
-                provider_id="provider456",
+                patient_id=uuid.uuid4(),
+                provider_id=provider_id,
                 start_time=future_datetime + timedelta(hours=i),
                 end_time=future_datetime + timedelta(hours=i + 1),
                 appointment_type=AppointmentType.FOLLOW_UP,
@@ -175,12 +185,12 @@ class TestAppointmentService:
             )
             for i in range(8)  # Assuming max_appointments_per_day=8 in service fixture
         ]
-        appointment_repository.get_by_provider_id.return_value = appointments
+        appointment_repository.list_by_provider_id.return_value = appointments
 
         with pytest.raises(AppointmentConflictError):  # Change to AppointmentConflictError
-            appointment_service.create_appointment(
-                patient_id="patient_new",
-                provider_id="provider456",
+            await appointment_service.create_appointment(
+                patient_id=uuid.uuid4(),
+                provider_id=provider_id,
                 start_time=future_datetime + timedelta(hours=9),
                 end_time=future_datetime + timedelta(hours=10),
             )

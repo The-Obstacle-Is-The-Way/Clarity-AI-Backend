@@ -183,7 +183,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
                 raise PHIInUrlError("PHI detected in URL path")
 
         # Check query parameters
-        for key, values in request.query_params.items():
+        for _key, values in request.query_params.items():
             if isinstance(values, str):
                 values = [values]
             for value in values:

@@ -1,5 +1,5 @@
 """
-NovaMind Digital Twin Backend - Test Suite Utilities Package
-
-This package contains utilities for testing, test management, and test quality assurance.
+Test scripts and utilities for the Clarity AI Backend.
 """
+
+__package__ = "scripts.test"

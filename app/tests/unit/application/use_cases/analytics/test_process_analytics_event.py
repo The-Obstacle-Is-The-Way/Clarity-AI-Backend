@@ -45,7 +45,7 @@ def mock_cache_service():
     cache = MagicMock()
 
     # Set up increment method
-    async def increment_mock(key, increment=1):
+    async def increment_mock(key, increment=1) -> int:
         return 5  # Mock counter value
 
     cache.increment = AsyncMock(side_effect=increment_mock)
@@ -91,7 +91,7 @@ class TestProcessAnalyticsEventUseCase:
     """Test suite for the ProcessAnalyticsEventUseCase."""
 
     @pytest.mark.asyncio
-    async def test_execute_with_all_parameters(self, use_case, mock_analytics_repository):
+    async def test_execute_with_all_parameters(self, use_case, mock_analytics_repository) -> None:
         """
         Test processing an analytics event with all parameters provided.
         """
@@ -133,7 +133,7 @@ class TestProcessAnalyticsEventUseCase:
             assert kwargs.get("session_id") == session_id
 
     @pytest.mark.asyncio
-    async def test_execute_with_minimal_parameters(self, use_case, mock_analytics_repository):
+    async def test_execute_with_minimal_parameters(self, use_case, mock_analytics_repository) -> None:
         """
         Test processing an analytics event with only required parameters.
         """
@@ -160,7 +160,7 @@ class TestProcessAnalyticsEventUseCase:
         assert event_type in args[0]
 
     @pytest.mark.asyncio
-    async def test_real_time_counter_updates(self, use_case, mock_cache_service):
+    async def test_real_time_counter_updates(self, use_case, mock_cache_service) -> None:
         """
         Test that real-time counters are updated in cache.
         """
@@ -177,7 +177,7 @@ class TestProcessAnalyticsEventUseCase:
         mock_cache_service.increment.assert_any_call(f"analytics:user:{user_id}:{event_type}")
 
     @pytest.mark.asyncio
-    async def test_phi_not_logged(self, use_case, mock_analytics_repository, capsys):
+    async def test_phi_not_logged(self, use_case, mock_analytics_repository, capsys) -> None:
         """
         Test that PHI is not logged in analytics events.
         """
@@ -195,7 +195,7 @@ class TestProcessAnalyticsEventUseCase:
         session_id = "session-xyz"
 
         # Act
-        result = await use_case.execute(
+        await use_case.execute(
             event_type=event_type, event_data=event_data, session_id=session_id
         )
 
@@ -215,7 +215,7 @@ class TestProcessAnalyticsEventUseCase:
         assert "John Doe" not in log_message  # Name should not be logged
 
     @pytest.mark.asyncio
-    async def test_repository_error_handling(self, use_case, mock_analytics_repository):
+    async def test_repository_error_handling(self, use_case, mock_analytics_repository) -> None:
         """
         Test proper error handling when repository operations fail.
         """

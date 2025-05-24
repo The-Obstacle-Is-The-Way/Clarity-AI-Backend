@@ -172,7 +172,7 @@ class ModelInputValidator:
 
             # Validate marker values
             for marker, value in genetic_markers.items():
-                if not isinstance(value, (int, float)):
+                if not isinstance(value, int | float):
                     raise ValueError(f"Genetic marker '{marker}' has invalid value: {value}")
 
             return genetic_markers
@@ -340,7 +340,7 @@ class ModelOutputValidator:
                     )
 
                 # Check for invalid values
-                if not all(isinstance(v, (int, float)) or v is None for v in values):
+                if not all(isinstance(v, int | float) or v is None for v in values):
                     raise ValueError(f"Invalid values in forecast for '{metric}'")
 
             return forecasts
@@ -460,7 +460,7 @@ class ModelOutputValidator:
                 # Check effectiveness score
                 if "effectiveness_score" in pred:
                     score = pred["effectiveness_score"]
-                    if not isinstance(score, (int, float)) or score < 0 or score > 1:
+                    if not isinstance(score, int | float) or score < 0 or score > 1:
                         raise ValueError(f"Invalid effectiveness score for '{med}': {score}")
 
             return predictions
@@ -530,7 +530,7 @@ class ModelOutputValidator:
 
                     # Check correlation value
                     corr = indicator["correlation"]
-                    if not isinstance(corr, (int, float)) or corr < -1 or corr > 1:
+                    if not isinstance(corr, int | float) or corr < -1 or corr > 1:
                         raise ValueError(f"Invalid correlation value at index {i}: {corr}")
 
             return correlations

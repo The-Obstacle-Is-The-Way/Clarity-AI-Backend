@@ -313,7 +313,7 @@ class BiometricIntegrationService:
                     all_points.extend(timeseries.data_points)
             else:
                 if hasattr(twin, "timeseries_data") and isinstance(twin.timeseries_data, dict):
-                    for ts_type, timeseries_obj in twin.timeseries_data.items():
+                    for _ts_type, timeseries_obj in twin.timeseries_data.items():
                         if hasattr(timeseries_obj, "data_points"):
                             all_points.extend(timeseries_obj.data_points)
                 else:
@@ -373,12 +373,12 @@ class BiometricIntegrationService:
 
             values = []
             for dp in data_points:
-                if isinstance(dp.value, (int, float)):
+                if isinstance(dp.value, int | float):
                     values.append(float(dp.value))
                 elif (
                     isinstance(dp.value, dict)
                     and "value" in dp.value
-                    and isinstance(dp.value["value"], (int, float))
+                    and isinstance(dp.value["value"], int | float)
                 ):
                     values.append(float(dp.value["value"]))
 
@@ -457,7 +457,7 @@ class BiometricIntegrationService:
             f"Attempting to connect device {device_id} ({device_type}) for patient {patient_id}"
         )
         try:
-            twin = self.get_or_create_biometric_twin(patient_id)
+            self.get_or_create_biometric_twin(patient_id)
 
             event_metadata = connection_metadata or {}
             event_metadata.update(

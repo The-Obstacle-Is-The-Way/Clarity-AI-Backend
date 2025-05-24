@@ -70,7 +70,7 @@ class TestEnsembleModel:
         return pd.DataFrame(data)
 
     @pytest.mark.asyncio
-    async def test_initialize(self, ml_settings):
+    async def test_initialize(self, ml_settings) -> None:
         """Test initialization of the ensemble model."""
         model = SymptomForecastingEnsemble(settings=ml_settings)
 
@@ -84,7 +84,7 @@ class TestEnsembleModel:
         assert model.ensemble_weights["transformer"] + model.ensemble_weights["xgboost"] == 1.0
 
     @pytest.mark.asyncio
-    async def test_predict(self, ensemble_model, sample_input_data):
+    async def test_predict(self, ensemble_model, sample_input_data) -> None:
         """Test the predict method of the ensemble model."""
         # Set up
         forecast_days = 5
@@ -117,7 +117,7 @@ class TestEnsembleModel:
         np.testing.assert_allclose(result["predictions"], expected_predictions, rtol=1e-5)
 
     @pytest.mark.asyncio
-    async def test_predict_with_invalid_parameters(self, ensemble_model, sample_input_data):
+    async def test_predict_with_invalid_parameters(self, ensemble_model, sample_input_data) -> None:
         """Test predict method with invalid parameters."""
         # Set up
         symptom_type = "anxiety"
@@ -138,7 +138,7 @@ class TestEnsembleModel:
             )
 
     @pytest.mark.asyncio
-    async def test_predict_with_interventions(self, ensemble_model, sample_input_data):
+    async def test_predict_with_interventions(self, ensemble_model, sample_input_data) -> None:
         """Test prediction with interventions applied."""
         # Set up
         forecast_days = 5
@@ -177,7 +177,7 @@ class TestEnsembleModel:
         assert result["intervention_effects"][0]["name"] == "Fluoxetine"
 
     @pytest.mark.asyncio
-    async def test_get_confidence_intervals(self, ensemble_model):
+    async def test_get_confidence_intervals(self, ensemble_model) -> None:
         """Test confidence interval calculation."""
         # Set up mock predictions from component models
         predictions = np.array([4.0, 3.8, 3.6, 3.4, 3.2])

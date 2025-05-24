@@ -97,7 +97,7 @@ async def create_demo_patient():
     )
 
 
-async def run_demo():
+async def run_demo() -> None:
     """Run the full Digital Twin demonstration."""
     print("\n🧠 NOVAMIND DIGITAL TWIN DEMONSTRATION 🧠")
     print("=" * 50)
@@ -109,9 +109,9 @@ async def run_demo():
     # Extract components
     patient_repo = system["repositories"]["patient_repository"]
     digital_twin_core = system["services"]["digital_twin_core"]
-    xgboost_service = system["services"]["xgboost_service"]
-    pat_service = system["services"]["pat_service"]
-    mentalllama_service = system["services"]["mentalllama_service"]
+    system["services"]["xgboost_service"]
+    system["services"]["pat_service"]
+    system["services"]["mentalllama_service"]
 
     print("System initialized successfully!")
     print("=" * 50)
@@ -311,7 +311,7 @@ async def run_demo():
 
     def json_serializer(obj):
         """Custom JSON serializer for objects not serializable by default json code"""
-        if isinstance(obj, (datetime, UUID)):
+        if isinstance(obj, datetime | UUID):
             return str(obj)
         raise TypeError(f"Type {type(obj)} not serializable")
 

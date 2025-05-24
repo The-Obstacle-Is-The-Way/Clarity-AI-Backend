@@ -9,7 +9,7 @@ and clean architecture principles.
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from app.core.interfaces.services.analytics_service_interface import (
@@ -256,7 +256,7 @@ class AnalyticsService(AnalyticsServiceInterface):
             Sanitized event data with PHI removed
         """
         # Deep copy to avoid modifying the original
-        sanitized = json.loads(json.dumps(event_data))
+        sanitized = cast(dict[str, Any], json.loads(json.dumps(event_data)))
 
         # List of fields that might contain PHI
         phi_fields = [
@@ -290,12 +290,12 @@ class AnalyticsService(AnalyticsServiceInterface):
                 if key.lower() in [f.lower() for f in phi_fields]:
                     # Replace PHI with hashed version
                     data[key] = self._hash_identifier(data[key])
-                elif isinstance(data[key], (dict, list)):
+                elif isinstance(data[key], dict | list):
                     # Recursively process nested structures
                     self._remove_phi_recursive(data[key], phi_fields)
         elif isinstance(data, list):
             for item in data:
-                if isinstance(item, (dict, list)):
+                if isinstance(item, dict | list):
                     self._remove_phi_recursive(item, phi_fields)
 
     def _hash_identifier(self, identifier: Any) -> str:

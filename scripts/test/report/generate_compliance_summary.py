@@ -66,12 +66,8 @@ class ComplianceSummaryGenerator:
                 with open(score_path) as f:
                     score_data = json.load(f)
 
-                self.report_data["security_score"] = score_data.get(
-                    "overall_score", 0.0
-                )
-                self.report_data["compliance_status"] = score_data.get(
-                    "status", "UNKNOWN"
-                )
+                self.report_data["security_score"] = score_data.get("overall_score", 0.0)
+                self.report_data["compliance_status"] = score_data.get("status", "UNKNOWN")
                 self.report_data["category_scores"] = score_data.get("tool_scores", {})
         except Exception as e:
             print(f"Error reading compliance score: {e!s}")
@@ -95,9 +91,7 @@ class ComplianceSummaryGenerator:
                 self.report_data["tests_passed"] += tests - failures - errors - skipped
 
             # Try to read auth middleware test results
-            auth_tests_path = os.path.join(
-                self.reports_dir, "auth_middleware_tests.xml"
-            )
+            auth_tests_path = os.path.join(self.reports_dir, "auth_middleware_tests.xml")
             if os.path.exists(auth_tests_path):
                 tree = ET.parse(auth_tests_path)
                 root = tree.getroot()
@@ -114,9 +108,7 @@ class ComplianceSummaryGenerator:
             # Calculate pass rate
             if self.report_data["total_tests"] > 0:
                 self.report_data["pass_rate"] = (
-                    self.report_data["tests_passed"]
-                    / self.report_data["total_tests"]
-                    * 100.0
+                    self.report_data["tests_passed"] / self.report_data["total_tests"] * 100.0
                 )
 
             # Try to read coverage data
@@ -154,9 +146,7 @@ class ComplianceSummaryGenerator:
                             {
                                 "type": "Security Issue",
                                 "severity": severity,
-                                "description": result.get(
-                                    "issue_text", "Unknown issue"
-                                ),
+                                "description": result.get("issue_text", "Unknown issue"),
                                 "location": f"{result.get('filename', 'Unknown')}: {result.get('line_number', 0)}",
                                 "recommendation": "Fix according to bandit recommendation",
                             }
@@ -186,9 +176,7 @@ class ComplianceSummaryGenerator:
                             {
                                 "type": "Dependency Vulnerability",
                                 "severity": severity,
-                                "description": vuln.get(
-                                    "description", "Unknown vulnerability"
-                                ),
+                                "description": vuln.get("description", "Unknown vulnerability"),
                                 "location": f"Package: {package} {version}",
                                 "recommendation": f"Upgrade {package} to a patched version",
                             }
@@ -247,9 +235,7 @@ class ComplianceSummaryGenerator:
             )
 
         # Add recommendations based on vulnerabilities
-        high_vulns = [
-            v for v in self.report_data["vulnerabilities"] if v["severity"] == "HIGH"
-        ]
+        high_vulns = [v for v in self.report_data["vulnerabilities"] if v["severity"] == "HIGH"]
         if high_vulns:
             recommendations.append(
                 {
@@ -257,8 +243,7 @@ class ComplianceSummaryGenerator:
                     "description": f"Fix {len(high_vulns)} high severity vulnerabilities",
                     "priority": "CRITICAL",
                     "actions": [
-                        f"Address {v['description']} in {v['location']}"
-                        for v in high_vulns[:3]
+                        f"Address {v['description']} in {v['location']}" for v in high_vulns[:3]
                     ]
                     + (["...and more"] if len(high_vulns) > 3 else []),
                 }
@@ -332,22 +317,12 @@ class ComplianceSummaryGenerator:
         report_path = os.path.join(self.reports_dir, "compliance_summary.txt")
 
         with open(report_path, "w") as f:
-            f.write(
-                "===================================================================\n"
-            )
-            f.write(
-                "           HIPAA COMPLIANCE SUMMARY REPORT                        \n"
-            )
-            f.write(
-                "           Luxury Concierge Psychiatry Platform                   \n"
-            )
-            f.write(
-                "===================================================================\n\n"
-            )
+            f.write("===================================================================\n")
+            f.write("           HIPAA COMPLIANCE SUMMARY REPORT                        \n")
+            f.write("           Luxury Concierge Psychiatry Platform                   \n")
+            f.write("===================================================================\n\n")
 
-            f.write(
-                f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-            )
+            f.write(f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
 
             # Overall compliance status
             f.write("COMPLIANCE STATUS\n")
@@ -400,20 +375,12 @@ class ComplianceSummaryGenerator:
                 f.write("No specific recommendations.\n\n")
 
             # Footer
-            f.write(
-                "===================================================================\n"
-            )
+            f.write("===================================================================\n")
             if status == "COMPLIANT":
-                f.write(
-                    "This platform meets HIPAA security and compliance requirements.\n"
-                )
+                f.write("This platform meets HIPAA security and compliance requirements.\n")
             else:
-                f.write(
-                    "This platform requires remediation to meet HIPAA requirements.\n"
-                )
-            f.write(
-                "===================================================================\n"
-            )
+                f.write("This platform requires remediation to meet HIPAA requirements.\n")
+            f.write("===================================================================\n")
 
     def generate_markdown_report(self) -> None:
         """Generate a Markdown report."""
@@ -423,20 +390,14 @@ class ComplianceSummaryGenerator:
             f.write("# HIPAA Compliance Summary Report\n\n")
             f.write("## Luxury Concierge Psychiatry Platform\n\n")
 
-            f.write(
-                f"*Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n\n"
-            )
+            f.write(f"*Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n\n")
 
             # Overall compliance status
             f.write("## Compliance Status\n\n")
             status = self.report_data["compliance_status"]
             status_color = "green" if status == "COMPLIANT" else "red"
-            f.write(
-                f"**Overall Status:** <span style='color:{status_color}'>{status}</span>\n\n"
-            )
-            f.write(
-                f"**Security Score:** {self.report_data['security_score']:.1f}%\n\n"
-            )
+            f.write(f"**Overall Status:** <span style='color:{status_color}'>{status}</span>\n\n")
+            f.write(f"**Security Score:** {self.report_data['security_score']:.1f}%\n\n")
 
             # Test Results
             f.write("## Test Results\n\n")
@@ -454,9 +415,7 @@ class ComplianceSummaryGenerator:
             f.write("|----------|-------|\n")
             for category, score in self.report_data.get("hipaa_categories", {}).items():
                 score_color = "green" if score >= 80.0 else "red"
-                f.write(
-                    f"| {category} | <span style='color:{score_color}'>{score:.1f}%</span> |\n"
-                )
+                f.write(f"| {category} | <span style='color:{score_color}'>{score:.1f}%</span> |\n")
             f.write("\n")
 
             # Vulnerabilities
@@ -489,13 +448,9 @@ class ComplianceSummaryGenerator:
             # Footer
             f.write("---\n\n")
             if status == "COMPLIANT":
-                f.write(
-                    "**This platform meets HIPAA security and compliance requirements.**\n"
-                )
+                f.write("**This platform meets HIPAA security and compliance requirements.**\n")
             else:
-                f.write(
-                    "**This platform requires remediation to meet HIPAA requirements.**\n"
-                )
+                f.write("**This platform requires remediation to meet HIPAA requirements.**\n")
 
     def generate_json_report(self) -> None:
         """Generate a JSON report."""
@@ -532,12 +487,8 @@ class ComplianceSummaryGenerator:
         # Overall compliance status
         status = self.report_data["compliance_status"]
         status_color = "green" if status == "COMPLIANT" else "red"
-        console.print(
-            f"[bold]Overall Status:[/bold] [{status_color}]{status}[/{status_color}]"
-        )
-        console.print(
-            f"[bold]Security Score:[/bold] {self.report_data['security_score']:.1f}%"
-        )
+        console.print(f"[bold]Overall Status:[/bold] [{status_color}]{status}[/{status_color}]")
+        console.print(f"[bold]Security Score:[/bold] {self.report_data['security_score']:.1f}%")
         console.print("\n")
 
         # Test Results
@@ -581,11 +532,7 @@ class ComplianceSummaryGenerator:
             for vuln in vulns:
                 severity = vuln["severity"]
                 severity_color = (
-                    "red"
-                    if severity == "HIGH"
-                    else "yellow"
-                    if severity == "MEDIUM"
-                    else "blue"
+                    "red" if severity == "HIGH" else "yellow" if severity == "MEDIUM" else "blue"
                 )
                 vuln_table.add_row(
                     f"[{severity_color}]{severity}[/{severity_color}]",
@@ -605,11 +552,7 @@ class ComplianceSummaryGenerator:
             for i, rec in enumerate(recs, 1):
                 priority = rec["priority"]
                 priority_color = (
-                    "red"
-                    if priority == "HIGH"
-                    else "yellow"
-                    if priority == "MEDIUM"
-                    else "blue"
+                    "red" if priority == "HIGH" else "yellow" if priority == "MEDIUM" else "blue"
                 )
 
                 console.print(

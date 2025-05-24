@@ -44,25 +44,25 @@ from app.infrastructure.persistence.sqlalchemy.unit_of_work.unit_of_work_factory
 )
 
 __all__ = [
-    # Unit of Work
-    "SQLAlchemyUnitOfWork",
-    "AsyncSQLAlchemyUnitOfWork",
-    "UnitOfWorkFactory",
     # Repositories
     "AppointmentRepository",
-    "SQLAlchemyAppointmentRepository",
+    "AsyncSQLAlchemyUnitOfWork",
+    "Base",
+    "DBSessionDep",
     # Database
     "Database",
     "DatabaseFactory",
+    "SQLAlchemyAppointmentRepository",
+    # Unit of Work
+    "SQLAlchemyUnitOfWork",
+    "UnitOfWorkFactory",
+    "ensure_all_models_registered",
     "get_database",
     "get_db_instance",
     "get_db_session",
-    "DBSessionDep",
-    "Base",
-    # Registry
-    "registry",
     "metadata",
     "register_model",
-    "ensure_all_models_registered",
+    # Registry
+    "registry",
     "validate_models",
 ]

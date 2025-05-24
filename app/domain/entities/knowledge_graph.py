@@ -5,6 +5,7 @@ Pure domain models with no external dependencies.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from typing import Any
 from uuid import UUID, uuid4
 
 
@@ -77,8 +78,8 @@ class KnowledgeGraphNode:
         cls,
         label: str,
         node_type: NodeType,
-        properties: dict = None,
-        source: str = None,
+        properties: dict[Any, Any] | None = None,
+        source: str | None = None,
         confidence: float = 1.0,
     ):
         """Factory method to create a new node."""
@@ -117,10 +118,10 @@ class KnowledgeGraphEdge:
         source_id: UUID,
         target_id: UUID,
         edge_type: EdgeType,
-        properties: dict = None,
-        source: str = None,
+        properties: dict[Any, Any] | None = None,
+        source: str | None = None,
         confidence: float = 1.0,
-        temporal_constraints: dict = None,
+        temporal_constraints: dict[Any, Any] | None = None,
     ):
         """Factory method to create a new edge."""
         return cls(
@@ -171,7 +172,7 @@ class TemporalKnowledgeGraph:
         if node_id not in self.nodes:
             raise ValueError(f"Node {node_id} not found in graph")
 
-        neighbors = {}
+        neighbors: dict[EdgeType, list[KnowledgeGraphNode]] = {}
 
         # Outgoing edges (source -> target)
         for edge in self.edges.values():
@@ -198,12 +199,12 @@ class TemporalKnowledgeGraph:
         subgraph = TemporalKnowledgeGraph(patient_id=self.patient_id)
 
         # Add nodes within the time range
-        for node_id, node in self.nodes.items():
+        for _node_id, node in self.nodes.items():
             if start_time <= node.created_at <= end_time:
                 subgraph.add_node(node)
 
         # Add edges within the time range
-        for edge_id, edge in self.edges.items():
+        for _edge_id, edge in self.edges.items():
             if start_time <= edge.created_at <= end_time:
                 # Only add the edge if both connected nodes exist in the subgraph
                 if edge.source_id in subgraph.nodes and edge.target_id in subgraph.nodes:
@@ -265,13 +266,13 @@ class TemporalKnowledgeGraph:
     def _extract_chains(self, edges: list[KnowledgeGraphEdge]) -> list[list[KnowledgeGraphEdge]]:
         """Helper method to extract chains of connected edges."""
         # Build an adjacency list representation
-        adjacency = {}
+        adjacency: dict[UUID, list[KnowledgeGraphEdge]] = {}
         for edge in edges:
             if edge.source_id not in adjacency:
                 adjacency[edge.source_id] = []
             adjacency[edge.source_id].append(edge)
 
-        chains = []
+        chains: list[list[KnowledgeGraphEdge]] = []
         for edge in edges:
             # Start a chain from each edge
             self._dfs_chain(edge, [], chains, adjacency)
@@ -285,7 +286,7 @@ class TemporalKnowledgeGraph:
         current_chain: list[KnowledgeGraphEdge],
         chains: list[list[KnowledgeGraphEdge]],
         adjacency: dict[UUID, list[KnowledgeGraphEdge]],
-    ):
+    ) -> None:
         """Depth-first search to find chains of edges."""
         current_chain.append(current_edge)
 
@@ -312,7 +313,9 @@ class BayesianBeliefNetwork:
     conditional_probabilities: dict[str, dict] = field(
         default_factory=dict
     )  # Variable -> parent configurations -> probabilities
-    evidence: dict[str, float] = field(default_factory=dict)  # Current evidence (variable -> value)
+    evidence: dict[str, str | float] = field(
+        default_factory=dict
+    )  # Current evidence (variable -> value)
     last_updated: datetime = field(default_factory=datetime.now)
 
     def add_variable(self, name: str, states: list[str], description: str | None = None) -> None:
@@ -438,7 +441,7 @@ class BayesianBeliefNetwork:
         visited = set()
         temp = set()
 
-        def visit(node):
+        def visit(node) -> None:
             if node in temp:
                 raise ValueError("Cycle detected in Bayesian network")
             if node in visited:
@@ -467,7 +470,7 @@ class BayesianBeliefNetwork:
         if not parents:
             return [{}]
 
-        configs = [{}]
+        configs: list[dict[str, str]] = [{}]
         for parent in parents:
             new_configs = []
             for config in configs:

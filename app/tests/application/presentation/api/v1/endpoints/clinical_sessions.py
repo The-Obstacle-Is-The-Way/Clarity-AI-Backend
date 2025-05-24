@@ -46,7 +46,7 @@ async def get_session_repo() -> IClinicalSessionRepository:
     mock_repo = AsyncMock(spec=IClinicalSessionRepository)
 
     # Configure mock methods as needed for testing
-    async def mock_get(sess_id):
+    async def mock_get(sess_id) -> None:
         return None
 
     async def mock_list(**kwargs):
@@ -189,15 +189,6 @@ async def list_clinical_sessions(
     """
     # TODO: Add authorization based on query params and user role
 
-    query_filters = {
-        "patient_id": patient_id,
-        "provider_id": provider_id,
-        "appointment_id": appointment_id,
-        "start_date": start_date,
-        "end_date": end_date,
-        "session_type": session_type,
-        # Pass limit/offset if repository handles pagination
-    }
 
     # Simplistic fetch - replace with specific repo calls based on params
     if patient_id:

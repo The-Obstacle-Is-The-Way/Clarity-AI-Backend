@@ -23,7 +23,7 @@ from app.domain.entities.neurotransmitter_mapping import (
 
 
 @pytest.mark.venv_only()
-def test_neurotransmitter_mapping_creation():
+def test_neurotransmitter_mapping_creation() -> None:
     """Test creating a new neurotransmitter mapping."""
     test_patient_id = uuid.uuid4()
     mapping = NeurotransmitterMapping(patient_id=test_patient_id)
@@ -34,7 +34,7 @@ def test_neurotransmitter_mapping_creation():
     assert mapping.patient_id == test_patient_id
 
 
-def test_add_receptor_profile():
+def test_add_receptor_profile() -> None:
     """Test adding receptor profiles to a mapping."""
     test_patient_id = uuid.uuid4()
     mapping = NeurotransmitterMapping(patient_id=test_patient_id)
@@ -76,7 +76,7 @@ def test_add_receptor_profile():
     assert profile2 in mapping.receptor_profiles
 
 
-def test_get_profiles_by_neurotransmitter():
+def test_get_profiles_by_neurotransmitter() -> None:
     """Test retrieving profiles by neurotransmitter."""
     test_patient_id = uuid.uuid4()
     mapping = NeurotransmitterMapping(patient_id=test_patient_id)
@@ -133,7 +133,7 @@ def test_get_profiles_by_neurotransmitter():
     assert gaba_profiles[0] == gaba_profile
 
 
-def test_get_profiles_by_brain_region():
+def test_get_profiles_by_brain_region() -> None:
     """Test retrieving profiles by brain region."""
     test_patient_id = uuid.uuid4()
     mapping = NeurotransmitterMapping(patient_id=test_patient_id)
@@ -202,7 +202,7 @@ def test_get_profiles_by_brain_region():
     assert hippocampus_profile in hippocampus_profiles
 
 
-def test_calculate_regional_activity():
+def test_calculate_regional_activity() -> None:
     """Test calculating regional activity levels."""
     test_patient_id = uuid.uuid4()
     mapping = NeurotransmitterMapping(patient_id=test_patient_id)
@@ -268,7 +268,7 @@ def test_calculate_regional_activity():
     assert abs(activity["net_activity"] - 0.562) < 0.001
 
 
-def test_create_default_mapping():
+def test_create_default_mapping() -> None:
     """Test creating a default neurotransmitter mapping."""
     test_patient_id = uuid.uuid4()
     mapping = create_default_neurotransmitter_mapping(patient_id=test_patient_id)
@@ -289,7 +289,7 @@ def test_create_default_mapping():
     assert len(pituitary_profiles) > 0  # Ensure PITUITARY region is included
 
 
-def test_receptor_profile_creation():
+def test_receptor_profile_creation() -> None:
     """Test creating and manipulating receptor profiles."""
     # Create a profile
     profile = ReceptorProfile(
