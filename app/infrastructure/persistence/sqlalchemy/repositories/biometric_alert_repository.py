@@ -514,8 +514,8 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
                 acknowledged_by_str = getattr(model, "acknowledged_by", None)
 
                 # Handle UUID conversion safely
-                patient_id = UUID(patient_id_str) if patient_id_str else None
-                acknowledged_by = UUID(acknowledged_by_str) if acknowledged_by_str else None
+                patient_id = UUID(str(patient_id_str)) if patient_id_str else None
+                acknowledged_by = UUID(str(acknowledged_by_str)) if acknowledged_by_str else None
 
                 return BiometricAlert(
                     alert_id=alert_id,
@@ -540,23 +540,23 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         # Normal case - convert model to entity with proper type handling
         try:
             # Handle UUID conversion safely
-            patient_id = UUID(model.patient_id) if model.patient_id else None
-            acknowledged_by = UUID(model.acknowledged_by) if model.acknowledged_by else None
+            patient_id = UUID(str(model.patient_id)) if model.patient_id else None
+            acknowledged_by = UUID(str(model.acknowledged_by)) if model.acknowledged_by else None
 
             # Create entity with proper field mapping
             return BiometricAlert(
-                alert_id=model.alert_id,  # Already a string in the model
+                alert_id=str(model.alert_id),  # Ensure string conversion
                 patient_id=patient_id,
-                rule_id=model.rule_id,
-                rule_name=model.rule_name,
+                rule_id=str(model.rule_id) if model.rule_id else None,
+                rule_name=str(model.rule_name) if model.rule_name else "",
                 priority=AlertPriority(model.priority)
                 if model.priority
                 else AlertPriority.INFORMATIONAL,
                 data_point=data_point_mock,
-                message=model.message,
-                context=model.context,
+                message=str(model.message) if model.message else "",
+                context=dict(model.context) if model.context else {},
                 created_at=model.created_at,
-                acknowledged=model.acknowledged if model.acknowledged is not None else False,
+                acknowledged=bool(model.acknowledged) if model.acknowledged is not None else False,
                 acknowledged_at=model.acknowledged_at,
                 acknowledged_by=acknowledged_by,
             )

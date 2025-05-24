@@ -4,6 +4,7 @@
 import json
 import logging
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 import sqlalchemy
@@ -47,8 +48,8 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
     def _to_entity(self, model: DigitalTwinModel) -> DigitalTwin:
         """Convert SQLAlchemy model to domain entity."""
         return DigitalTwin(
-            id=UUID(model.id),
-            patient_id=UUID(model.patient_id),
+            id=model.id if isinstance(model.id, UUID) else UUID(str(model.id)),
+            patient_id=model.patient_id if isinstance(model.patient_id, UUID) else UUID(str(model.patient_id)),
             created_at=model.created_at,
             last_updated=model.updated_at,  # Map model's updated_at
             version=model.version,
@@ -56,7 +57,7 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
             state=self._deserialize_state(model.state_json),
         )
 
-    def _serialize_config(self, config: DigitalTwinConfiguration) -> dict:
+    def _serialize_config(self, config: DigitalTwinConfiguration) -> dict[str, Any]:
         """Serialize Configuration dataclass to JSON-compatible dict."""
         # Convert dataclass to dict
         return config.__dict__
@@ -67,10 +68,10 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
             return DigitalTwinConfiguration()  # Return default if no data
         return DigitalTwinConfiguration(**config_json)
 
-    def _serialize_state(self, state: DigitalTwinState) -> dict:
+    def _serialize_state(self, state: DigitalTwinState) -> dict[str, Any]:
         """Serialize State dataclass to JSON-compatible dict."""
         # Convert dataclass to dict, handling datetime if necessary
-        state_dict = state.__dict__
+        state_dict = state.__dict__.copy()
         if state_dict.get("last_sync_time"):
             state_dict["last_sync_time"] = state_dict["last_sync_time"].isoformat()
         # Handle potential non-serializable predicted_phq9_trajectory
