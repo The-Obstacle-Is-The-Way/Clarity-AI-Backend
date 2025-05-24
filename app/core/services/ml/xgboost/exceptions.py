@@ -11,7 +11,7 @@ from typing import Any
 class XGBoostServiceError(Exception):
     """Base class for all XGBoost service exceptions."""
 
-    def __init__(self, message: str, **kwargs):
+    def __init__(self, message: str, **kwargs: Any) -> None:
         """
         Initialize a new XGBoost exception.
 
@@ -40,7 +40,7 @@ class XGBoostServiceError(Exception):
 class ValidationError(XGBoostServiceError):
     """Exception raised when request validation fails."""
 
-    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs):
+    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs: Any) -> None:
         """
         Initialize a validation error.
 
@@ -62,8 +62,8 @@ class InvalidInputError(XGBoostServiceError):
         field: str | None = None,
         value: Any = None,
         reason: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize an invalid input error.
 
@@ -85,8 +85,8 @@ class DataPrivacyError(XGBoostServiceError):
         message: str,
         field: str | None = None,
         phi_type: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize a data privacy error.
 
@@ -107,8 +107,8 @@ class ResourceNotFoundError(XGBoostServiceError):
         message: str,
         resource_type: str | None = None,
         resource_id: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize a resource not found error.
 
@@ -129,8 +129,8 @@ class ModelNotFoundError(ResourceNotFoundError):
         message: str,
         model_type: str | None = None,
         model_version: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize a model not found error.
 
@@ -160,8 +160,8 @@ class PredictionError(XGBoostServiceError):
         message: str,
         model_type: str | None = None,
         cause: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize a prediction error.
 
@@ -182,8 +182,8 @@ class ServiceConnectionError(XGBoostServiceError):
         message: str,
         service_name: str | None = None,
         cause: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize a service connection error.
 
@@ -199,7 +199,7 @@ class ServiceConnectionError(XGBoostServiceError):
 class ConfigurationError(XGBoostServiceError):
     """Exception raised when there is a configuration error."""
 
-    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs):
+    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs: Any) -> None:
         """
         Initialize a configuration error.
 
@@ -220,8 +220,8 @@ class ServiceConfigurationError(XGBoostServiceError):
         message: str,
         service_name: str | None = None,
         config_key: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize a service configuration error.
 
@@ -242,8 +242,8 @@ class ServiceUnavailableError(XGBoostServiceError):
         message: str,
         service_name: str | None = None,
         retry_after: int | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize a service unavailable error.
 
@@ -264,8 +264,8 @@ class ThrottlingError(XGBoostServiceError):
         message: str,
         service_name: str | None = None,
         retry_after: int | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize a throttling error.
 
@@ -287,8 +287,8 @@ class FeatureValidationError(ValidationError):
         feature_name: str | None = None,
         expected_type: str | None = None,
         actual_value: Any = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize a feature validation error.
 
@@ -317,8 +317,8 @@ class ModelInvocationError(XGBoostServiceError):
         model_type: str | None = None,
         endpoint_name: str | None = None,
         status_code: int | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize a model invocation error.
 
@@ -347,8 +347,8 @@ class ModelTimeoutError(XGBoostServiceError):
         model_type: str | None = None,
         endpoint_name: str | None = None,
         timeout_seconds: int | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize a model timeout error.
 
@@ -377,8 +377,8 @@ class SerializationError(XGBoostServiceError):
         data_type: str | None = None,
         format_type: str | None = None,
         cause: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize a serialization error.
 
@@ -403,8 +403,8 @@ class UnauthorizedError(XGBoostServiceError):
         user_id: str | None = None,
         resource_id: str | None = None,
         resource_type: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize an unauthorized error.
 
