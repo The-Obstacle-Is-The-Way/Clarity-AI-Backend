@@ -6,44 +6,79 @@
 app/
 ├── core/                  # Cross-cutting concerns and interfaces
 │   ├── config/            # Application configuration
+│   ├── domain/            # Core domain entities
+│   │   └── entities/      # Shared domain entities
 │   ├── exceptions/        # Base exceptions
-│   └── interfaces/        # Core interfaces
-│       ├── repositories/  # Repository interfaces
-│       ├── security/      # Security interfaces
-│       └── services/      # Service interfaces
+│   ├── interfaces/        # Core interfaces
+│   │   ├── repositories/  # Repository interfaces
+│   │   ├── security/      # Security interfaces
+│   │   └── services/      # Service interfaces
+│   ├── services/          # Core application services
+│   └── utils/             # Core utilities
 │
 ├── domain/                # Business domain layer
 │   ├── entities/          # Business entities
+│   ├── enums/             # Domain enumerations
 │   ├── exceptions/        # Domain-specific exceptions
+│   ├── interfaces/        # Domain interfaces (legacy - being moved to core)
 │   ├── services/          # Domain services
 │   └── value_objects/     # Immutable value objects
 │
 ├── application/           # Application services and use cases
 │   ├── dtos/              # Data transfer objects
 │   ├── exceptions/        # Application-specific exceptions
+│   ├── interfaces/        # Application interfaces
 │   ├── security/          # Security services
 │   ├── services/          # Application services
 │   └── use_cases/         # Business use cases
 │
 ├── infrastructure/        # External interfaces implementation
+│   ├── aws/               # AWS integrations
+│   ├── cache/             # Caching implementations
 │   ├── logging/           # Logging implementation
-│   ├── ml/                # Machine learning implementation
+│   ├── messaging/         # Message queue implementations
+│   ├── ml/                # Machine learning implementations
+│   │   ├── biometric_correlation/ # Biometric analysis
+│   │   ├── pat/           # PAT ML models
+│   │   ├── pharmacogenomics/ # Drug interaction models
+│   │   └── symptom_forecasting/ # Symptom prediction
 │   ├── persistence/       # Database implementation
 │   │   ├── models/        # ORM models
-│   │   └── repositories/  # Repository implementations
-│   └── security/          # Security implementation
+│   │   ├── repositories/  # Repository implementations
+│   │   └── sqlalchemy/    # SQLAlchemy specific implementations
+│   ├── rate_limiting/     # Rate limiting implementations
+│   ├── repositories/      # Infrastructure repository implementations
+│   ├── security/          # Security implementations
+│   │   ├── audit/         # Audit logging
+│   │   ├── auth/          # Authentication services
+│   │   ├── jwt/           # JWT handling
+│   │   └── phi/           # PHI protection
+│   └── services/          # Infrastructure services
 │
 ├── presentation/          # User interface layer
 │   ├── api/               # API implementation
 │   │   ├── dependencies/  # API dependencies
+│   │   ├── schemas/       # Request/response schemas
 │   │   └── v1/            # API version 1
-│   │       └── endpoints/ # API endpoints
-│   ├── middleware/        # HTTP middleware
-│   └── schemas/           # Request/response schemas
+│   │       ├── endpoints/ # API endpoint implementations
+│   │       └── routes/    # API route definitions
+│   └── middleware/        # HTTP middleware
 │
-└── tests/                 # Test suite
+└── tests/                 # Comprehensive test suite
+    ├── api/               # API-specific tests
+    ├── core/              # Core layer tests
+    ├── domain/            # Domain layer tests
+    ├── e2e/               # End-to-end tests
+    ├── enhanced/          # Enhanced test utilities
+    ├── fixtures/          # Test fixtures
+    ├── helpers/           # Test helper utilities
+    ├── infrastructure/    # Infrastructure tests
     ├── integration/       # Integration tests
-    └── unit/              # Unit tests
+    ├── mocks/             # Mock implementations
+    ├── security/          # Security-focused tests
+    ├── standalone/        # Standalone test utilities
+    ├── unit/              # Unit tests
+    └── utils/             # Test utilities
 ```
 
 ## Key Components
@@ -169,4 +204,3 @@ async def db_session():
     
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-```

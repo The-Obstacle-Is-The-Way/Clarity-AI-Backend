@@ -2,16 +2,25 @@
 
 ## API Structure
 
-The Clarity AI REST API follows a versioned structure with consistent patterns:
+The Clarity AI REST API follows a versioned structure with the following **currently implemented** endpoints:
 
 ```
 /api/v1/
-├── auth/                   # Authentication endpoints
-├── patients/               # Patient management
-├── biometric-alerts/       # Biometric alerting system
-├── digital-twin/           # Digital twin model API
-└── actigraphy/             # Actigraphy data processing
+├── auth/                   # Authentication endpoints (IMPLEMENTED)
+├── biometric-alerts/       # Biometric alerting system (IMPLEMENTED)
+├── biometric-alert-rules/  # Alert rule management (ENDPOINT EXISTS)
+├── analytics/              # Analytics data and events (IMPLEMENTED) 
+├── actigraphy/             # Actigraphy data processing (ROUTES EXIST)
+├── biometrics/             # Biometric data endpoints (ROUTES EXIST)
+├── ml/                     # Machine learning services (ROUTES EXIST)
+├── mentallama/             # MentaLLaMA AI integration (ROUTES EXIST)
+├── temporal-neurotransmitter/ # Temporal analysis (ROUTES EXIST)
+├── xgboost/                # XGBoost ML endpoints (ROUTES EXIST)
+├── digital-twins/          # Digital twin models (ROUTES EXIST)
+└── patients/               # Patient management (PLACEHOLDER ONLY)
 ```
+
+**Note**: Some endpoints listed have route definitions but may have incomplete implementations.
 
 ## Authentication
 
@@ -45,40 +54,6 @@ POST /api/v1/auth/logout
 ```
 
 Blacklists the current token for security.
-
-## Patient Endpoints
-
-### Get Patient
-
-```
-GET /api/v1/patients/{patient_id}
-```
-
-**Response:**
-```json
-{
-  "id": "123e4567-e89b-12d3-a456-426614174000",
-  "name": "John Doe",
-  "date_of_birth": "1980-01-01",
-  "status": "active",
-  "provider_id": "123e4567-e89b-12d3-a456-426614174001"
-}
-```
-
-### Create Patient
-
-```
-POST /api/v1/patients
-```
-
-**Request:**
-```json
-{
-  "name": "Jane Smith",
-  "date_of_birth": "1985-05-15",
-  "status": "active"
-}
-```
 
 ## Biometric Alert Endpoints
 

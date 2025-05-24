@@ -17,7 +17,6 @@ from app.core.domain.entities.alert import AlertPriority, AlertStatus, AlertType
 from app.core.domain.entities.user import User
 from app.core.interfaces.services.alert_service_interface import (
     AlertServiceInterface,
-    AlertSeverity,
 )
 from app.presentation.api.dependencies.auth import get_current_active_user
 from app.presentation.api.schemas.alert import (
@@ -37,7 +36,7 @@ router = APIRouter(
 async def get_alerts(
     status_param: AlertStatus
     | None = Query(None, alias="status", description="Filter by alert status"),
-    severity: AlertSeverity | None = Query(None, description="Filter by alert severity"),
+    severity: AlertPriority | None = Query(None, description="Filter by alert severity"),
     alert_type: AlertType | None = Query(None, description="Filter by alert type"),
     start_date: str | None = Query(None, description="Filter by start date (ISO format)"),
     end_date: str | None = Query(None, description="Filter by end date (ISO format)"),
@@ -419,8 +418,8 @@ class ManualAlertRequest(BaseModel):
     """Request schema for manually triggering an alert."""
 
     message: str = Field(..., min_length=1, max_length=500, description="Alert message content")
-    severity: AlertSeverity = Field(
-        default=AlertSeverity.MEDIUM, description="Alert severity level"
+    severity: AlertPriority = Field(
+        default=AlertPriority.MEDIUM, description="Alert severity level"
     )
     alert_type: AlertType = Field(default=AlertType.BIOMETRIC_ANOMALY, description="Type of alert")
     data: dict[str, Any] = Field(default_factory=dict, description="Additional alert data")
@@ -428,7 +427,7 @@ class ManualAlertRequest(BaseModel):
 
 @router.post("/patients/{patient_id}/trigger", response_model=dict[str, Any])
 async def trigger_alert_manually(
-    alert_data: ManualAlertRequest,
+    alert_data: ManualAlertRequest = Body(..., description="Alert data"),
     patient_id: UUID = Path(..., description="Patient ID"),
     alert_service: AlertServiceInterface = Depends(get_alert_service),
     current_user: User = Depends(get_current_active_user),
