@@ -5,7 +5,7 @@ Provides dependency functions to inject repositories and services required
 by the biometric alert endpoints.
 """
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends
 
@@ -58,11 +58,11 @@ async def get_event_processor() -> BiometricEventProcessor | None:
 
 
 # --- Type Hinted Dependencies --- #
-# Use 'any' for now until concrete implementations are provided
-AlertRepoDep = Annotated[any, Depends(get_alert_repository)]
-RuleRepoDep = Annotated[any, Depends(get_rule_repository)]
-TemplateRepoDep = Annotated[any, Depends(get_template_repository)]
-EventProcessorDep = Annotated[any, Depends(get_event_processor)]
+# Use 'Any' for now until concrete implementations are provided
+AlertRepoDep = Annotated[Any, Depends(get_alert_repository)]
+RuleRepoDep = Annotated[Any, Depends(get_rule_repository)]
+TemplateRepoDep = Annotated[Any, Depends(get_template_repository)]
+EventProcessorDep = Annotated[Any, Depends(get_event_processor)]
 
 __all__ = [
     "AlertRepoDep",
