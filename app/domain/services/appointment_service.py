@@ -7,6 +7,7 @@ rescheduling, and cancellation, as well as checking for conflicts.
 
 from datetime import datetime, timedelta
 from uuid import UUID
+from typing import Optional, Dict, Any
 
 from app.domain.entities.appointment import (
     Appointment,
@@ -66,12 +67,17 @@ class AppointmentService:
         self.max_appointments_per_day = max_appointments_per_day
         self.buffer_between_appointments = buffer_between_appointments
 
-    def get_appointment(self, appointment_id: UUID | str) -> Appointment:
+    async def get_appointment(
+        self, 
+        appointment_id: UUID, 
+        context: Optional[Dict[str, Any]] = None
+    ) -> Appointment:
         """
         Get an appointment by ID.
 
         Args:
             appointment_id: ID of the appointment
+            context: Optional context for HIPAA audit logging (user_id, action, etc.)
 
         Returns:
             Appointment entity
@@ -79,19 +85,20 @@ class AppointmentService:
         Raises:
             EntityNotFoundError: If the appointment is not found
         """
-        appointment = self.appointment_repository.get_by_id(appointment_id)
+        appointment = await self.appointment_repository.get_by_id(appointment_id)
 
         if not appointment:
             raise EntityNotFoundError(f"Appointment with ID {appointment_id} not found")
 
         return appointment
 
-    def get_appointments_for_patient(
+    async def get_appointments_for_patient(
         self,
-        patient_id: UUID | str,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
-        status: AppointmentStatus | str | None = None,
+        patient_id: UUID,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        status: Optional[AppointmentStatus] = None,
+        context: Optional[Dict[str, Any]] = None,
     ) -> list[Appointment]:
         """
         Get appointments for a patient.
@@ -101,6 +108,7 @@ class AppointmentService:
             start_date: Optional start date for filtering
             end_date: Optional end date for filtering
             status: Optional status for filtering
+            context: Optional context for HIPAA audit logging (user_id, action, etc.)
 
         Returns:
             List of appointments
@@ -109,26 +117,23 @@ class AppointmentService:
             EntityNotFoundError: If the patient is not found
         """
         # Check if patient exists
-        patient = self.patient_repository.get_by_id(patient_id)
+        patient = await self.patient_repository.get_by_id(patient_id, context)
 
         if not patient:
             raise EntityNotFoundError(f"Patient with ID {patient_id} not found")
 
-        # Convert string status to enum if necessary
-        if isinstance(status, str):
-            status = AppointmentStatus(status)
-
-        # Get appointments
-        return self.appointment_repository.get_by_patient_id(
+        # Get appointments using correct method name
+        return await self.appointment_repository.list_by_patient_id(
             patient_id, start_date, end_date, status
         )
 
-    def get_appointments_for_provider(
+    async def get_appointments_for_provider(
         self,
-        provider_id: UUID | str,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
-        status: AppointmentStatus | str | None = None,
+        provider_id: UUID,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        status: Optional[AppointmentStatus] = None,
+        context: Optional[Dict[str, Any]] = None,
     ) -> list[Appointment]:
         """
         Get appointments for a provider.
@@ -138,6 +143,7 @@ class AppointmentService:
             start_date: Optional start date for filtering
             end_date: Optional end date for filtering
             status: Optional status for filtering
+            context: Optional context for HIPAA audit logging (user_id, action, etc.)
 
         Returns:
             List of appointments
@@ -146,31 +152,28 @@ class AppointmentService:
             EntityNotFoundError: If the provider is not found
         """
         # Check if provider exists
-        provider = self.provider_repository.get_by_id(provider_id)
+        provider = await self.provider_repository.get_by_id(provider_id, context)
 
         if not provider:
             raise EntityNotFoundError(f"Provider with ID {provider_id} not found")
 
-        # Convert string status to enum if necessary
-        if isinstance(status, str):
-            status = AppointmentStatus(status)
-
-        # Get appointments
-        return self.appointment_repository.get_by_provider_id(
+        # Get appointments using correct method name
+        return await self.appointment_repository.list_by_provider_id(
             provider_id, start_date, end_date, status
         )
 
-    def create_appointment(
+    async def create_appointment(
         self,
-        patient_id: UUID | str,
-        provider_id: UUID | str,
+        patient_id: UUID,
+        provider_id: UUID,
         start_time: datetime,
-        end_time: datetime | None = None,
-        appointment_type: AppointmentType | str = AppointmentType.FOLLOW_UP,
-        priority: AppointmentPriority | str = AppointmentPriority.NORMAL,
-        location: str | None = None,
-        notes: str | None = None,
-        reason: str | None = None,
+        end_time: Optional[datetime] = None,
+        appointment_type: AppointmentType = AppointmentType.FOLLOW_UP,
+        priority: AppointmentPriority = AppointmentPriority.NORMAL,
+        location: Optional[str] = None,
+        notes: Optional[str] = None,
+        reason: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
     ) -> Appointment:
         """
         Create a new appointment.
@@ -185,6 +188,7 @@ class AppointmentService:
             location: Optional location of the appointment
             notes: Optional notes about the appointment
             reason: Optional reason for the appointment
+            context: Optional context for HIPAA audit logging (user_id, action, etc.)
 
         Returns:
             Created appointment
@@ -195,13 +199,13 @@ class AppointmentService:
             InvalidAppointmentTimeError: If the appointment time is invalid
         """
         # Check if patient exists
-        patient = self.patient_repository.get_by_id(patient_id)
+        patient = await self.patient_repository.get_by_id(patient_id, context)
 
         if not patient:
             raise EntityNotFoundError(f"Patient with ID {patient_id} not found")
 
         # Check if provider exists
-        provider = self.provider_repository.get_by_id(provider_id)
+        provider = await self.provider_repository.get_by_id(provider_id, context)
 
         if not provider:
             raise EntityNotFoundError(f"Provider with ID {provider_id} not found")
@@ -211,10 +215,10 @@ class AppointmentService:
             end_time = start_time + timedelta(minutes=self.default_appointment_duration)
 
         # Check for conflicts
-        self._check_for_conflicts(provider_id, start_time, end_time)
+        await self._check_for_conflicts(provider_id, start_time, end_time)
 
         # Check provider's daily appointment limit
-        self._check_daily_appointment_limit(provider_id, start_time)
+        await self._check_daily_appointment_limit(provider_id, start_time)
 
         # Create the appointment
         appointment = Appointment(
@@ -231,15 +235,16 @@ class AppointmentService:
         )
 
         # Save the appointment
-        return self.appointment_repository.save(appointment)
+        return await self.appointment_repository.save(appointment)
 
-    def reschedule_appointment(
+    async def reschedule_appointment(
         self,
-        appointment_id: UUID | str,
+        appointment_id: UUID,
         new_start_time: datetime,
-        new_end_time: datetime | None = None,
-        reason: str | None = None,
-        user_id: UUID | str | None = None,
+        new_end_time: Optional[datetime] = None,
+        reason: Optional[str] = None,
+        user_id: Optional[UUID] = None,
+        context: Optional[Dict[str, Any]] = None,
     ) -> Appointment:
         """
         Reschedule an appointment.
@@ -250,6 +255,7 @@ class AppointmentService:
             new_end_time: Optional new end time
             reason: Optional reason for rescheduling
             user_id: ID of the user performing the rescheduling
+            context: Optional context for HIPAA audit logging (user_id, action, etc.)
 
         Returns:
             Updated appointment
@@ -261,7 +267,7 @@ class AppointmentService:
             AppointmentConflictError: If there is a conflict with another appointment
         """
         # Get the appointment
-        appointment = self.get_appointment(appointment_id)
+        appointment = await self.get_appointment(appointment_id, context)
 
         # Set new end time if not provided
         if not new_end_time:
@@ -272,7 +278,7 @@ class AppointmentService:
         self._check_reschedule_notice_period(appointment)
 
         # Check for conflicts
-        self._check_for_conflicts(
+        await self._check_for_conflicts(
             appointment.provider_id, new_start_time, new_end_time, appointment_id
         )
 
@@ -280,13 +286,14 @@ class AppointmentService:
         appointment.reschedule(new_start_time, new_end_time, reason)
 
         # Save the appointment
-        return self.appointment_repository.save(appointment)
+        return await self.appointment_repository.save(appointment)
 
-    def cancel_appointment(
+    async def cancel_appointment(
         self,
-        appointment_id: UUID | str,
-        cancelled_by: UUID | str,
-        reason: str | None = None,
+        appointment_id: UUID,
+        cancelled_by: UUID,
+        reason: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
     ) -> Appointment:
         """
         Cancel an appointment.
@@ -295,6 +302,7 @@ class AppointmentService:
             appointment_id: ID of the appointment
             cancelled_by: ID of the user cancelling the appointment
             reason: Optional reason for cancellation
+            context: Optional context for HIPAA audit logging (user_id, action, etc.)
 
         Returns:
             Updated appointment
@@ -304,20 +312,25 @@ class AppointmentService:
             InvalidAppointmentStateError: If the appointment cannot be cancelled
         """
         # Get the appointment
-        appointment = self.get_appointment(appointment_id)
+        appointment = await self.get_appointment(appointment_id, context)
 
         # Cancel the appointment
         appointment.cancel(cancelled_by, reason)
 
         # Save the appointment
-        return self.appointment_repository.save(appointment)
+        return await self.appointment_repository.save(appointment)
 
-    def confirm_appointment(self, appointment_id: UUID | str) -> Appointment:
+    async def confirm_appointment(
+        self, 
+        appointment_id: UUID,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Appointment:
         """
         Confirm an appointment.
 
         Args:
             appointment_id: ID of the appointment
+            context: Optional context for HIPAA audit logging (user_id, action, etc.)
 
         Returns:
             Updated appointment
@@ -327,20 +340,25 @@ class AppointmentService:
             InvalidAppointmentStateError: If the appointment cannot be confirmed
         """
         # Get the appointment
-        appointment = self.get_appointment(appointment_id)
+        appointment = await self.get_appointment(appointment_id, context)
 
         # Confirm the appointment
         appointment.confirm()
 
         # Save the appointment
-        return self.appointment_repository.save(appointment)
+        return await self.appointment_repository.save(appointment)
 
-    def check_in_appointment(self, appointment_id: UUID | str) -> Appointment:
+    async def check_in_appointment(
+        self, 
+        appointment_id: UUID,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Appointment:
         """
         Check in an appointment.
 
         Args:
             appointment_id: ID of the appointment
+            context: Optional context for HIPAA audit logging (user_id, action, etc.)
 
         Returns:
             Updated appointment
@@ -350,20 +368,25 @@ class AppointmentService:
             InvalidAppointmentStateError: If the appointment cannot be checked in
         """
         # Get the appointment
-        appointment = self.get_appointment(appointment_id)
+        appointment = await self.get_appointment(appointment_id, context)
 
         # Check in the appointment
         appointment.check_in()
 
         # Save the appointment
-        return self.appointment_repository.save(appointment)
+        return await self.appointment_repository.save(appointment)
 
-    def start_appointment(self, appointment_id: UUID | str) -> Appointment:
+    async def start_appointment(
+        self, 
+        appointment_id: UUID,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Appointment:
         """
         Start an appointment.
 
         Args:
             appointment_id: ID of the appointment
+            context: Optional context for HIPAA audit logging (user_id, action, etc.)
 
         Returns:
             Updated appointment
@@ -373,20 +396,25 @@ class AppointmentService:
             InvalidAppointmentStateError: If the appointment cannot be started
         """
         # Get the appointment
-        appointment = self.get_appointment(appointment_id)
+        appointment = await self.get_appointment(appointment_id, context)
 
         # Start the appointment
         appointment.start()
 
         # Save the appointment
-        return self.appointment_repository.save(appointment)
+        return await self.appointment_repository.save(appointment)
 
-    def complete_appointment(self, appointment_id: UUID | str) -> Appointment:
+    async def complete_appointment(
+        self, 
+        appointment_id: UUID,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Appointment:
         """
         Complete an appointment.
 
         Args:
             appointment_id: ID of the appointment
+            context: Optional context for HIPAA audit logging (user_id, action, etc.)
 
         Returns:
             Updated appointment
@@ -396,20 +424,25 @@ class AppointmentService:
             InvalidAppointmentStateError: If the appointment cannot be completed
         """
         # Get the appointment
-        appointment = self.get_appointment(appointment_id)
+        appointment = await self.get_appointment(appointment_id, context)
 
         # Complete the appointment
         appointment.complete()
 
         # Save the appointment
-        return self.appointment_repository.save(appointment)
+        return await self.appointment_repository.save(appointment)
 
-    def mark_no_show(self, appointment_id: UUID | str) -> Appointment:
+    async def mark_no_show(
+        self, 
+        appointment_id: UUID,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Appointment:
         """
         Mark an appointment as a no-show.
 
         Args:
             appointment_id: ID of the appointment
+            context: Optional context for HIPAA audit logging (user_id, action, etc.)
 
         Returns:
             Updated appointment
@@ -419,24 +452,25 @@ class AppointmentService:
             InvalidAppointmentStateError: If the appointment cannot be marked as no-show
         """
         # Get the appointment
-        appointment = self.get_appointment(appointment_id)
+        appointment = await self.get_appointment(appointment_id, context)
 
         # Mark as no-show
         appointment.mark_no_show()
 
         # Save the appointment
-        return self.appointment_repository.save(appointment)
+        return await self.appointment_repository.save(appointment)
 
-    def schedule_follow_up(
+    async def schedule_follow_up(
         self,
-        appointment_id: UUID | str,
+        appointment_id: UUID,
         follow_up_start_time: datetime,
-        follow_up_end_time: datetime | None = None,
-        appointment_type: AppointmentType | str = AppointmentType.FOLLOW_UP,
-        priority: AppointmentPriority | str = AppointmentPriority.NORMAL,
-        location: str | None = None,
-        notes: str | None = None,
-        reason: str | None = None,
+        follow_up_end_time: Optional[datetime] = None,
+        appointment_type: AppointmentType = AppointmentType.FOLLOW_UP,
+        priority: AppointmentPriority = AppointmentPriority.NORMAL,
+        location: Optional[str] = None,
+        notes: Optional[str] = None,
+        reason: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
     ) -> Appointment:
         """
         Schedule a follow-up appointment.
@@ -450,6 +484,7 @@ class AppointmentService:
             location: Optional location of the appointment
             notes: Optional notes about the appointment
             reason: Optional reason for the appointment
+            context: Optional context for HIPAA audit logging (user_id, action, etc.)
 
         Returns:
             Created follow-up appointment
@@ -460,7 +495,7 @@ class AppointmentService:
             AppointmentConflictError: If there is a conflict with another appointment
         """
         # Get the original appointment
-        original_appointment = self.get_appointment(appointment_id)
+        original_appointment = await self.get_appointment(appointment_id, context)
 
         # Check if the original appointment is completed
         if original_appointment.status != AppointmentStatus.COMPLETED:
@@ -475,7 +510,7 @@ class AppointmentService:
             )
 
         # Check for conflicts
-        self._check_for_conflicts(
+        await self._check_for_conflicts(
             original_appointment.provider_id, follow_up_start_time, follow_up_end_time
         )
 
@@ -495,65 +530,76 @@ class AppointmentService:
         )
 
         # Save the follow-up appointment
-        follow_up_appointment = self.appointment_repository.save(follow_up_appointment)
+        follow_up_appointment = await self.appointment_repository.save(follow_up_appointment)
 
         # Update the original appointment
         original_appointment.schedule_follow_up(follow_up_appointment.id)
-        self.appointment_repository.save(original_appointment)
+        await self.appointment_repository.save(original_appointment)
 
         return follow_up_appointment
 
-    def send_reminder(self, appointment_id: UUID | str) -> Appointment:
+    async def send_reminder(
+        self, 
+        appointment_id: UUID,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Appointment:
         """
         Send a reminder for an appointment.
 
         Args:
             appointment_id: ID of the appointment
+            context: Optional context for HIPAA audit logging (user_id, action, etc.)
 
         Returns:
             Updated appointment
 
         Raises:
-            AppointmentNotFoundException: If the appointment is not found
+            EntityNotFoundError: If the appointment is not found
         """
         # Get the appointment
-        appointment = self.get_appointment(appointment_id)
+        appointment = await self.get_appointment(appointment_id, context)
 
         # Send reminder
         appointment.send_reminder()
 
         # Save the appointment
-        return self.appointment_repository.save(appointment)
+        return await self.appointment_repository.save(appointment)
 
-    def update_notes(self, appointment_id: UUID | str, notes: str) -> Appointment:
+    async def update_notes(
+        self, 
+        appointment_id: UUID, 
+        notes: str,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Appointment:
         """
         Update the notes for an appointment.
 
         Args:
             appointment_id: ID of the appointment
             notes: New notes
+            context: Optional context for HIPAA audit logging (user_id, action, etc.)
 
         Returns:
             Updated appointment
 
         Raises:
-            AppointmentNotFoundException: If the appointment is not found
+            EntityNotFoundError: If the appointment is not found
         """
         # Get the appointment
-        appointment = self.get_appointment(appointment_id)
+        appointment = await self.get_appointment(appointment_id, context)
 
         # Update notes
         appointment.update_notes(notes)
 
         # Save the appointment
-        return self.appointment_repository.save(appointment)
+        return await self.appointment_repository.save(appointment)
 
-    def _check_for_conflicts(
+    async def _check_for_conflicts(
         self,
-        provider_id: UUID | str,
+        provider_id: UUID,
         start_time: datetime,
         end_time: datetime,
-        exclude_appointment_id: UUID | str | None = None,
+        exclude_appointment_id: Optional[UUID] = None,
     ) -> None:
         """
         Check for conflicts with other appointments.
@@ -571,7 +617,7 @@ class AppointmentService:
         day_start = datetime(start_time.year, start_time.month, start_time.day)
         day_end = day_start + timedelta(days=1)
 
-        appointments = self.appointment_repository.get_by_provider_id(
+        appointments = await self.appointment_repository.list_by_provider_id(
             provider_id, day_start, day_end
         )
 
@@ -582,7 +628,7 @@ class AppointmentService:
         # Check for conflicts
         for appointment in appointments:
             # Skip the appointment being rescheduled
-            if exclude_appointment_id and str(appointment.id) == str(exclude_appointment_id):
+            if exclude_appointment_id and appointment.id == exclude_appointment_id:
                 continue
 
             # Skip cancelled appointments
@@ -605,7 +651,7 @@ class AppointmentService:
                     f"Appointment conflicts with existing appointment at {appointment.start_time}"
                 )
 
-    def _check_daily_appointment_limit(self, provider_id: UUID | str, date: datetime) -> None:
+    async def _check_daily_appointment_limit(self, provider_id: UUID, date: datetime) -> None:
         """
         Check if a provider has reached their daily appointment limit.
 
@@ -620,7 +666,7 @@ class AppointmentService:
         day_start = datetime(date.year, date.month, date.day)
         day_end = day_start + timedelta(days=1)
 
-        appointments = self.appointment_repository.get_by_provider_id(
+        appointments = await self.appointment_repository.list_by_provider_id(
             provider_id, day_start, day_end
         )
 
