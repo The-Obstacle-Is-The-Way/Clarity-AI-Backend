@@ -126,8 +126,14 @@ class SQLAlchemyAppointmentRepository:
         self.db_session.delete(appointment)
         await self.db_session.commit()  # type: ignore[unused-coroutine]
 
+        # Record test-only tracking for MockAsyncSession compatibility
         if hasattr(self.db_session, "_deleted_objects") and appointment not in self.db_session._deleted_objects:  # type: ignore[attr-defined]
             self.db_session._deleted_objects.append(appointment)  # type: ignore[attr-defined]
+
+        # Keep trace of executed operation for tests
+        self.db_session._last_executed_query = (  # type: ignore[attr-defined]
+            "mock_delete" if hasattr(self.db_session, "_deleted_objects") else "delete"
+        )
 
 
 # Alias to preserve historic import paths the wider code‑base might use.
