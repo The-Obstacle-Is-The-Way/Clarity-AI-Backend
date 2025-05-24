@@ -1622,18 +1622,16 @@ class TestBiometricAlertsEndpoints:
         app, _ = test_app  # Extract app from test_app fixture
         app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
 
-        # Request to trigger alert - wrap with "alert_data" key for Body(...) parameter
-        alert_data = {
-            "message": "Patient reporting increased anxiety",
-            "priority": AlertPriority.HIGH,
-            "alert_type": AlertType.BIOMETRIC_ANOMALY,
-            "data": {"anxiety_level": 8, "reported_by": "provider"},
-        }
-
+        # Request to trigger alert - send direct fields to match endpoint signature
         response = await client.post(
             f"/api/v1/biometric-alerts/patients/{sample_patient_id}/trigger",
             headers=get_valid_provider_auth_headers,
-            json={"alert_data": alert_data},
+            json={
+                "message": "Patient reporting increased anxiety",
+                "severity": AlertPriority.HIGH,
+                "alert_type": AlertType.BIOMETRIC_ANOMALY,
+                "data": {"anxiety_level": 8, "reported_by": "provider"},
+            },
         )
 
         # Debug - Print validation error details
