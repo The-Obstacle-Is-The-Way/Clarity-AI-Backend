@@ -8,7 +8,7 @@ following the Repository pattern from Domain-Driven Design to abstract data acce
 from abc import ABC, abstractmethod
 from uuid import UUID
 
-from app.domain.entities.user import User
+from app.core.domain.entities.user import User
 
 
 class UserRepository(ABC):
