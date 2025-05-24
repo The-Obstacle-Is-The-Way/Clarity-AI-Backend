@@ -45,7 +45,7 @@ class UserRepository(IUserRepository):
     For development/testing, it uses an in-memory store.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the user repository."""
         # In-memory storage for development/testing
         # In production, this would be replaced with a database connection

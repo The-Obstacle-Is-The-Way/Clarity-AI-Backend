@@ -34,7 +34,7 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
     using SQLAlchemy ORM.
     """
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession) -> None:
         """
         Initialize the repository with a database session.
 

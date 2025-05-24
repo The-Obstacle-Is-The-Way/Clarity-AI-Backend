@@ -21,7 +21,7 @@ class MockAuditLogRepository(IAuditLogRepository):
     This repository stores audit logs in memory and doesn't interact with a database.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the mock repository with an empty logs collection."""
         self.logs: dict[str, AuditLog] = {}
 

@@ -33,7 +33,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
     - Automatic cleanup of expired tokens
     """
 
-    def __init__(self, redis_service: RedisCacheService):
+    def __init__(self, redis_service: RedisCacheService) -> None:
         """
         Initialize the Redis token blacklist repository.
 

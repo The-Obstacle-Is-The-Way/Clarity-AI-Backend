@@ -40,7 +40,7 @@ class TokenBlacklistRepository(ITokenRepository):
     For production, this should be replaced with a Redis or database implementation.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the token blacklist repository."""
         # In-memory storage for blacklisted tokens
         # Structure: {token: expiry_datetime}

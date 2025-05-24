@@ -37,7 +37,7 @@ class DigitalTwinRepository:
     digital twin data in the database.
     """
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session) -> None:
         """
         Initialize the repository.
 

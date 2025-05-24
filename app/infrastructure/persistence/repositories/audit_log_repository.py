@@ -28,7 +28,7 @@ class AuditLogRepository(IAuditLogRepository):
     The repository follows the repository pattern to abstract persistence details.
     """
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession) -> None:
         """
         Initialize the audit log repository with a database session.
 
