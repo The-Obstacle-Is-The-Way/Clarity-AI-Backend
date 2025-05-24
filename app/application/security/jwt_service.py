@@ -24,7 +24,7 @@ The implementation follows Clean Architecture principles:
 import asyncio
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import jwt
@@ -49,7 +49,7 @@ from app.core.interfaces.services.audit_logger_interface import (
 
 def utcnow() -> datetime:
     """Return the current UTC datetime."""
-    return datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 
 class TokenPayload(BaseModel):
@@ -83,7 +83,7 @@ class JWTService:
         token_repo: ITokenRepository,
         blacklist_repo: ITokenBlacklistRepository,
         audit_logger: IAuditLogger,
-        settings: Settings = None,
+        settings: Settings | None = None,
     ):
         """
         Initialize the JWT service.
@@ -97,11 +97,11 @@ class JWTService:
         self.token_repo = token_repo
         self.blacklist_repo = blacklist_repo
         self.audit_logger = audit_logger
-        self.settings = settings or Settings()
+        self._settings = settings or Settings()
         self.algorithm = "HS256"  # HMAC with SHA-256
 
         # Validate that we have required secrets
-        if not self.settings.SECRET_KEY:
+        if not self._settings.SECRET_KEY:
             raise ValueError("SECRET_KEY is required")
 
     def create_access_token(
@@ -389,4 +389,4 @@ class JWTService:
     @property
     def settings(self) -> Settings:
         """Get the application settings."""
-        return Settings()
+        return self._settings

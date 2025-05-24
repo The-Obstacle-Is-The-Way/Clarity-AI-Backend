@@ -7,6 +7,7 @@ Follows clean architecture principles with proper dependency injection and SOLID
 import json
 import logging
 import uuid
+from datetime import timezone
 from typing import Any
 
 import boto3
@@ -704,9 +705,9 @@ class AWSXGBoostService(XGBoostInterface, Observable):
         Returns:
             ISO formatted timestamp
         """
-        from datetime import datetime
+        from datetime import datetime, timezone
 
-        return datetime.utcnow().isoformat()
+        return datetime.now(timezone.utc).isoformat()
 
     def _store_prediction_metadata(self, prediction_id: str, result: dict[str, Any]) -> None:
         """Store prediction metadata in DynamoDB.
