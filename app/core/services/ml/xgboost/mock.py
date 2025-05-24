@@ -12,8 +12,9 @@ import re
 import time
 import uuid
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Sequence
 
+from app.core.services.ml.xgboost.constants import ModelType
 from app.core.services.ml.xgboost.exceptions import (
     ConfigurationError,
     DataPrivacyError,
@@ -23,7 +24,6 @@ from app.core.services.ml.xgboost.exceptions import (
 )
 from app.core.services.ml.xgboost.interface import (
     EventType,
-    ModelType,
     Observer,
     PrivacyLevel,
     XGBoostInterface,
@@ -35,25 +35,216 @@ class MockXGBoostService(XGBoostInterface):
 
     @property
     def is_initialized(self) -> bool:
-        return True
+        """Check if the service is initialized."""
+        return getattr(self, '_initialized', True)
 
-    async def get_available_models(self) -> list[dict]:
+    async def get_available_models(self) -> list[dict[str, Any]]:
+        """Get list of available models."""
         return []
 
-    async def get_model_info(self, model_type: str) -> dict:
-        return {"model_type": model_type, "version": "mock", "info": "Mock model info"}
+    async def get_model_info(self, model_type: str | ModelType) -> dict[str, Any]:
+        """
+        Get information about an XGBoost model.
 
-    async def integrate_with_digital_twin(
-        self, patient_id: str, profile_id: str, prediction_id: str
-    ) -> dict:
-        return {
-            "patient_id": patient_id,
-            "profile_id": profile_id,
-            "prediction_id": prediction_id,
-            "status": "integrated (mock)",
+        Args:
+            model_type: Type of model to get info for
+
+        Returns:
+            Dictionary containing model metadata and capabilities
+
+        Raises:
+            ModelNotFoundError: If model not found
+        """
+        if not self.is_initialized:
+            raise ConfigurationError("Service not initialized", field="initialization")
+
+        # Simulate network latency
+        self._simulate_delay()
+
+        # Handle ModelType enum or string
+        if isinstance(model_type, ModelType):
+            model_name = model_type.value
+        else:
+            model_name = str(model_type)
+
+        # Check if model type is valid
+        valid_model_types = [model.value for model in ModelType]
+        normalized_type = model_name.lower().replace("_", "-")
+
+        if normalized_type not in valid_model_types:
+            raise ModelNotFoundError(f"Model not found: {model_type}", model_type=model_name)
+
+        # Generate features based on model type
+        features: list[str] = []
+
+        if "risk" in normalized_type:
+            features = [
+                "symptom_severity",
+                "medication_adherence",
+                "previous_episodes",
+                "social_support",
+                "stress_level",
+                "sleep_quality",
+                "substance_use",
+            ]
+        elif "medication" in normalized_type:
+            features = [
+                "previous_medication_response",
+                "age",
+                "weight_kg",
+                "symptom_severity",
+                "medication_adherence",
+                "comorbid_conditions",
+                "genetic_markers",
+            ]
+        elif "therapy" in normalized_type:
+            features = [
+                "previous_therapy_response",
+                "motivation",
+                "insight",
+                "social_support",
+                "symptom_severity",
+                "functional_impairment",
+            ]
+        elif "outcome" in normalized_type:
+            features = [
+                "baseline_severity",
+                "treatment_adherence",
+                "social_support",
+                "functional_status",
+                "comorbidity_burden",
+            ]
+
+        # Generate performance metrics
+        performance_metrics = {
+            "accuracy": round(0.75 + random.random() * 0.15, 2),
+            "precision": round(0.70 + random.random() * 0.20, 2),
+            "recall": round(0.70 + random.random() * 0.20, 2),
+            "f1_score": round(0.70 + random.random() * 0.20, 2),
+            "auc_roc": round(0.80 + random.random() * 0.15, 2),
         }
 
-    def __init__(self):
+        # Create result
+        result = {
+            "model_type": model_name,
+            "version": "1.0.0",
+            "last_updated": (datetime.now() - timedelta(days=30)).isoformat(),
+            "description": f"XGBoost model for {model_name}",
+            "features": features,
+            "performance_metrics": performance_metrics,
+            "hyperparameters": {
+                "n_estimators": 100,
+                "max_depth": 5,
+                "learning_rate": 0.1,
+                "subsample": 0.8,
+                "colsample_bytree": 0.8,
+            },
+            "status": "active",
+        }
+
+        return result
+
+    async def integrate_with_digital_twin(
+        self,
+        patient_id: str,
+        profile_id: str,
+        prediction_id: str,
+        additional_data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Integrate prediction with digital twin profile.
+
+        Args:
+            patient_id: Patient identifier
+            profile_id: Digital twin profile identifier
+            prediction_id: Prediction identifier
+            additional_data: Optional additional data for integration
+
+        Returns:
+            Integration result
+
+        Raises:
+            ResourceNotFoundError: If prediction not found
+            ValidationError: If parameters are invalid
+        """
+        if not self.is_initialized:
+            raise ConfigurationError("Service not initialized", field="initialization")
+
+        # Simulate network latency
+        self._simulate_delay()
+
+        # Check if prediction exists
+        if prediction_id not in self._predictions:
+            raise ResourceNotFoundError(
+                f"Prediction not found: {prediction_id}",
+                resource_type="prediction",
+                resource_id=prediction_id,
+            )
+
+        # Get prediction data
+        prediction = self._predictions[prediction_id]
+
+        # Verify patient ID
+        if prediction.get("patient_id") != patient_id:
+            raise ValidationError("Patient ID mismatch", field="patient_id", value=patient_id)
+
+        # Create or retrieve digital twin profile
+        profile = self._profiles.get(
+            profile_id,
+            {
+                "profile_id": profile_id,
+                "patient_id": patient_id,
+                "created_at": datetime.now().isoformat(),
+                "predictions": [],
+                "version": 1,
+            },
+        )
+
+        # Add prediction to profile
+        profile["predictions"].append(
+            {
+                "prediction_id": prediction_id,
+                "prediction_type": self._determine_prediction_type(prediction),
+                "integrated_at": datetime.now().isoformat(),
+                "additional_data": additional_data or {},
+            }
+        )
+
+        # Increment version
+        profile["version"] += 1
+
+        # Update last_updated
+        profile["last_updated"] = datetime.now().isoformat()
+
+        # Store updated profile
+        self._profiles[profile_id] = profile
+
+        # Create integration result
+        result = {
+            "profile_id": profile_id,
+            "patient_id": patient_id,
+            "prediction_id": prediction_id,
+            "status": "success",
+            "timestamp": datetime.now().isoformat(),
+            "recommendations_generated": True,
+            "statistics_updated": True,
+        }
+
+        # Notify observers
+        self._notify_observers(
+            EventType.PREDICTION_COMPLETE,
+            {
+                "integration_type": "digital_twin",
+                "patient_id": patient_id,
+                "profile_id": profile_id,
+                "prediction_id": prediction_id,
+                "status": "success",
+            },
+        )
+
+        return result
+
+    def __init__(self) -> None:
         """Initialize a new mock XGBoost service."""
         super().__init__()
 
@@ -75,7 +266,7 @@ class MockXGBoostService(XGBoostInterface):
         self._privacy_level = PrivacyLevel.STANDARD
 
         # PHI patterns for different privacy levels (simplified version)
-        self._phi_patterns = {
+        self._phi_patterns: dict[PrivacyLevel, list[re.Pattern[str]]] = {
             PrivacyLevel.STANDARD: [
                 re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),  # SSN
                 re.compile(r"\bMRN\s*\d{5,10}\b"),  # MRN
@@ -96,6 +287,9 @@ class MockXGBoostService(XGBoostInterface):
 
         # Logger
         self._logger = logging.getLogger(__name__)
+
+        # Mark as initialized
+        self._initialized = True
 
     def initialize(self, config: dict[str, Any]) -> None:
         """
@@ -201,7 +395,7 @@ class MockXGBoostService(XGBoostInterface):
             self._logger.debug(f"Observer unregistered for event type {event_type}")
 
     async def predict(
-        self, patient_id: str, features: dict[str, Any], model_type: str, **kwargs
+        self, patient_id: str, features: dict[str, Any], model_type: str, **kwargs: Any
     ) -> dict[str, Any]:
         """
         Generic prediction method required by MLServiceInterface.
@@ -258,7 +452,7 @@ class MockXGBoostService(XGBoostInterface):
 
         else:
             # Generic fallback prediction
-            self._simulate_processing_delay()
+            self._simulate_delay()
             prediction_id = str(uuid.uuid4())
 
             result = {
@@ -284,7 +478,7 @@ class MockXGBoostService(XGBoostInterface):
             return result
 
     async def predict_risk(
-        self, patient_id: str, risk_type: str, clinical_data: dict[str, Any], **kwargs
+        self, patient_id: str, risk_type: str, clinical_data: dict[str, Any], time_frame_days: int | None = None
     ) -> dict[str, Any]:
         """
         Predict risk for a patient.
@@ -293,7 +487,7 @@ class MockXGBoostService(XGBoostInterface):
             patient_id: ID of the patient
             risk_type: Type of risk to predict (e.g., suicide, readmission)
             clinical_data: Dictionary of clinical data for prediction
-            **kwargs: Additional arguments for prediction
+            time_frame_days: Optional time frame in days for the prediction
 
         Returns:
             Dictionary with prediction results
@@ -312,9 +506,11 @@ class MockXGBoostService(XGBoostInterface):
         self._check_phi_in_data(clinical_data)
 
         # Get prediction parameters
-        time_frame_days = kwargs.get("time_frame_days", 30)
-        kwargs.get("confidence_threshold", 0.7)
-        include_explainability = kwargs.get("include_explainability", False)
+        if time_frame_days is None:
+            time_frame_days = 30
+        
+        confidence_threshold = 0.7
+        include_explainability = False
 
         # Generate deterministic risk score based on patient_id, risk_type, and data
         risk_score = self._generate_deterministic_risk_score(
@@ -383,7 +579,7 @@ class MockXGBoostService(XGBoostInterface):
 
             # Add feature importances (using deterministic values based on feature name and risk_type)
             total_importance = 0.0
-            raw_importances = {}
+            raw_importances: dict[str, float] = {}
 
             for feature in feature_names:
                 # Hash the feature name with risk_type to get a deterministic value
@@ -432,7 +628,7 @@ class MockXGBoostService(XGBoostInterface):
 
         # Notify observers
         self._notify_observers(
-            EventType.PREDICTION,
+            EventType.PREDICTION_COMPLETE,
             {
                 "prediction_id": prediction_id,
                 "patient_id": patient_id,
@@ -450,7 +646,6 @@ class MockXGBoostService(XGBoostInterface):
         treatment_type: str,
         treatment_details: dict[str, Any],
         clinical_data: dict[str, Any],
-        **kwargs,
     ) -> dict[str, Any]:
         """
         Predict response to a psychiatric treatment.
@@ -460,7 +655,6 @@ class MockXGBoostService(XGBoostInterface):
             treatment_type: Type of treatment (e.g., medication_ssri)
             treatment_details: Treatment details
             clinical_data: Clinical data for prediction
-            **kwargs: Additional prediction parameters
 
         Returns:
             Treatment response prediction result
@@ -468,9 +662,9 @@ class MockXGBoostService(XGBoostInterface):
         Raises:
             ValidationError: If parameters are invalid
             DataPrivacyError: If PHI is detected in data
-            PredictionError: If prediction fails
         """
-        self._ensure_initialized()
+        if not self.is_initialized:
+            raise ConfigurationError("Service not initialized", field="initialization")
 
         # Simulate network latency
         self._simulate_delay()
@@ -487,7 +681,7 @@ class MockXGBoostService(XGBoostInterface):
 
         # Generate a deterministic efficacy score based on inputs
         efficacy_score = self._generate_deterministic_efficacy_score(
-            patient_id, treatment_type, treatment_details, clinical_data, **kwargs
+            patient_id, treatment_type, treatment_details, clinical_data
         )
 
         # Map score to response likelihood
@@ -505,7 +699,7 @@ class MockXGBoostService(XGBoostInterface):
             "features": self._extract_features(clinical_data),
             "treatment_features": self._extract_features(treatment_details),
             "timestamp": datetime.now().isoformat(),
-            "prediction_horizon": kwargs.get("prediction_horizon", "8_weeks"),
+            "prediction_horizon": "8_weeks",
         }
 
         # Add expected outcome
@@ -514,16 +708,17 @@ class MockXGBoostService(XGBoostInterface):
         )
 
         # Add side effect risk
-        result["side_effect_risk"] = self._generate_side_effect_risk(
+        side_effects = self._generate_side_effect_risk(
             treatment_type, treatment_details, clinical_data
         )
+        result["side_effect_risk"] = side_effects
 
         # Store prediction for later retrieval
         self._predictions[prediction_id] = result
 
         # Notify observers
         self._notify_observers(
-            EventType.PREDICTION,
+            EventType.PREDICTION_COMPLETE,
             {
                 "prediction_type": "treatment_response",
                 "treatment_type": treatment_type,
@@ -540,7 +735,8 @@ class MockXGBoostService(XGBoostInterface):
         outcome_timeframe: dict[str, Any],
         clinical_data: dict[str, Any],
         treatment_plan: dict[str, Any],
-        **kwargs,
+        social_determinants: dict[str, Any] | None = None,
+        comorbidities: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Predict treatment outcomes for a patient.
@@ -550,7 +746,8 @@ class MockXGBoostService(XGBoostInterface):
             outcome_timeframe: Timeframe for prediction (e.g., {"timeframe": "short_term"})
             clinical_data: Dictionary of clinical data for prediction
             treatment_plan: Dictionary describing the treatment plan
-            **kwargs: Additional arguments for prediction
+            social_determinants: Optional social determinants of health
+            comorbidities: Optional comorbid conditions
 
         Returns:
             Dictionary with prediction results
@@ -568,6 +765,10 @@ class MockXGBoostService(XGBoostInterface):
         # Check for PHI in data
         self._check_phi_in_data(clinical_data)
         self._check_phi_in_data(treatment_plan)
+        if social_determinants:
+            self._check_phi_in_data(social_determinants)
+        if comorbidities:
+            self._check_phi_in_data(comorbidities)
 
         # Extract parameters
         time_frame_days = outcome_timeframe.get("days", 90)
@@ -579,8 +780,8 @@ class MockXGBoostService(XGBoostInterface):
             elif outcome_timeframe["timeframe"] == "long_term":
                 time_frame_days = 180
 
-        include_trajectory = kwargs.get("include_trajectory", True)
-        outcome_type = kwargs.get("outcome_type", "recovery")
+        include_trajectory = True
+        outcome_type = "recovery"
 
         # Generate prediction ID
         prediction_id = f"outcome_{outcome_type}_{hashlib.md5(f'{patient_id}_{int(time.time())}'.encode()).hexdigest()[:8]}"
@@ -679,7 +880,7 @@ class MockXGBoostService(XGBoostInterface):
 
         # Notify observers
         self._notify_observers(
-            EventType.PREDICTION,
+            EventType.PREDICTION_COMPLETE,
             {
                 "prediction_id": prediction_id,
                 "patient_id": patient_id,
@@ -691,16 +892,16 @@ class MockXGBoostService(XGBoostInterface):
 
         return result
 
-    def get_feature_importance(
-        self, patient_id: str, model_type: str, prediction_id: str
+    async def get_feature_importance(
+        self, model_type: str | ModelType, prediction_id: str, patient_id: str | None = None
     ) -> dict[str, Any]:
         """
         Get feature importance for a prediction.
 
         Args:
-            patient_id: Patient identifier
             model_type: Type of model
             prediction_id: Prediction identifier
+            patient_id: Optional patient identifier for authorization
 
         Returns:
             Feature importance data
@@ -709,7 +910,8 @@ class MockXGBoostService(XGBoostInterface):
             ResourceNotFoundError: If prediction not found
             ValidationError: If parameters are invalid
         """
-        self._ensure_initialized()
+        if not self.is_initialized:
+            raise ConfigurationError("Service not initialized", field="initialization")
 
         # Simulate network latency
         self._simulate_delay()
@@ -725,8 +927,8 @@ class MockXGBoostService(XGBoostInterface):
         # Get prediction data
         prediction = self._predictions[prediction_id]
 
-        # Verify patient ID
-        if prediction.get("patient_id") != patient_id:
+        # Verify patient ID if provided
+        if patient_id and prediction.get("patient_id") != patient_id:
             raise ValidationError("Patient ID mismatch", field="patient_id", value=patient_id)
 
         # Generate feature importance
@@ -735,7 +937,7 @@ class MockXGBoostService(XGBoostInterface):
             features.update(prediction["treatment_features"])
 
         # Generate feature importance based on feature values
-        feature_importance = {}
+        feature_importance: dict[str, float] = {}
 
         # Sort features by name for consistent results
         sorted_features = sorted(features.items(), key=lambda x: x[0])
@@ -743,7 +945,7 @@ class MockXGBoostService(XGBoostInterface):
         # Generate mock feature importance
         for i, (feature, value) in enumerate(sorted_features):
             # Generate a deterministic importance value based on the feature name and value
-            if isinstance(value, int | float):
+            if isinstance(value, (int, float)):
                 # Normalize value to be between 0 and 1
                 normalized_value = min(max(value / 10.0, 0), 1)
                 importance = normalized_value * 0.8 + 0.2
@@ -769,11 +971,17 @@ class MockXGBoostService(XGBoostInterface):
             },
         }
 
+        # Handle ModelType enum or string
+        if isinstance(model_type, ModelType):
+            model_name = model_type.value
+        else:
+            model_name = str(model_type)
+
         # Create result
         result = {
             "prediction_id": prediction_id,
-            "patient_id": patient_id,
-            "model_type": model_type,
+            "patient_id": prediction.get("patient_id"),
+            "model_type": model_name,
             "feature_importance": feature_importance,
             "visualization": visualization,
             "timestamp": datetime.now().isoformat(),
@@ -781,193 +989,23 @@ class MockXGBoostService(XGBoostInterface):
 
         return result
 
-    def integrate_with_digital_twin(
-        self, patient_id: str, profile_id: str, prediction_id: str
-    ) -> dict[str, Any]:
+    async def healthcheck(self) -> dict[str, Any]:
         """
-        Integrate prediction with digital twin profile.
-
-        Args:
-            patient_id: Patient identifier
-            profile_id: Digital twin profile identifier
-            prediction_id: Prediction identifier
+        Check health status of XGBoost service.
 
         Returns:
-            Integration result
-
-        Raises:
-            ResourceNotFoundError: If prediction not found
-            ValidationError: If parameters are invalid
+            Dictionary containing service health status and dependencies
         """
-        self._ensure_initialized()
-
-        # Simulate network latency
-        self._simulate_delay()
-
-        # Check if prediction exists
-        if prediction_id not in self._predictions:
-            raise ResourceNotFoundError(
-                f"Prediction not found: {prediction_id}",
-                resource_type="prediction",
-                resource_id=prediction_id,
-            )
-
-        # Get prediction data
-        prediction = self._predictions[prediction_id]
-
-        # Verify patient ID
-        if prediction.get("patient_id") != patient_id:
-            raise ValidationError("Patient ID mismatch", field="patient_id", value=patient_id)
-
-        # Create or retrieve digital twin profile
-        profile = self._profiles.get(
-            profile_id,
-            {
-                "profile_id": profile_id,
-                "patient_id": patient_id,
-                "created_at": datetime.now().isoformat(),
-                "predictions": [],
-                "version": 1,
-            },
-        )
-
-        # Add prediction to profile
-        profile["predictions"].append(
-            {
-                "prediction_id": prediction_id,
-                "prediction_type": self._determine_prediction_type(prediction),
-                "integrated_at": datetime.now().isoformat(),
-            }
-        )
-
-        # Increment version
-        profile["version"] += 1
-
-        # Update last_updated
-        profile["last_updated"] = datetime.now().isoformat()
-
-        # Store updated profile
-        self._profiles[profile_id] = profile
-
-        # Create integration result
-        result = {
-            "profile_id": profile_id,
-            "patient_id": patient_id,
-            "prediction_id": prediction_id,
-            "status": "success",
+        return {
+            "status": "healthy",
+            "service": "mock_xgboost",
             "timestamp": datetime.now().isoformat(),
-            "recommendations_generated": True,
-            "statistics_updated": True,
-        }
-
-        # Notify observers
-        self._notify_observers(
-            EventType.INTEGRATION,
-            {
-                "integration_type": "digital_twin",
-                "patient_id": patient_id,
-                "profile_id": profile_id,
-                "prediction_id": prediction_id,
-                "status": "success",
+            "initialized": self.is_initialized,
+            "dependencies": {
+                "database": "healthy",
+                "model_registry": "healthy",
             },
-        )
-
-        return result
-
-    def get_model_info(self, model_type: str) -> dict[str, Any]:
-        """
-        Get information about a model.
-
-        Args:
-            model_type: Type of model
-
-        Returns:
-            Model information
-
-        Raises:
-            ModelNotFoundError: If model not found
-        """
-        self._ensure_initialized()
-
-        # Simulate network latency
-        self._simulate_delay()
-
-        # Check if model type is valid
-        valid_model_types = [model.value for model in ModelType]
-        normalized_type = model_type.lower().replace("_", "-")
-
-        if normalized_type not in valid_model_types:
-            raise ModelNotFoundError(f"Model not found: {model_type}", model_type=model_type)
-
-        # Generate features based on model type
-        features = []
-
-        if "risk" in normalized_type:
-            features = [
-                "symptom_severity",
-                "medication_adherence",
-                "previous_episodes",
-                "social_support",
-                "stress_level",
-                "sleep_quality",
-                "substance_use",
-            ]
-        elif "medication" in normalized_type:
-            features = [
-                "previous_medication_response",
-                "age",
-                "weight_kg",
-                "symptom_severity",
-                "medication_adherence",
-                "comorbid_conditions",
-                "genetic_markers",
-            ]
-        elif "therapy" in normalized_type:
-            features = [
-                "previous_therapy_response",
-                "motivation",
-                "insight",
-                "social_support",
-                "symptom_severity",
-                "functional_impairment",
-            ]
-        elif "outcome" in normalized_type:
-            features = [
-                "baseline_severity",
-                "treatment_adherence",
-                "social_support",
-                "functional_status",
-                "comorbidity_burden",
-            ]
-
-        # Generate performance metrics
-        performance_metrics = {
-            "accuracy": round(0.75 + random.random() * 0.15, 2),
-            "precision": round(0.70 + random.random() * 0.20, 2),
-            "recall": round(0.70 + random.random() * 0.20, 2),
-            "f1_score": round(0.70 + random.random() * 0.20, 2),
-            "auc_roc": round(0.80 + random.random() * 0.15, 2),
         }
-
-        # Create result
-        result = {
-            "model_type": model_type,
-            "version": "1.0.0",
-            "last_updated": (datetime.now() - timedelta(days=30)).isoformat(),
-            "description": f"XGBoost model for {model_type}",
-            "features": features,
-            "performance_metrics": performance_metrics,
-            "hyperparameters": {
-                "n_estimators": 100,
-                "max_depth": 5,
-                "learning_rate": 0.1,
-                "subsample": 0.8,
-                "colsample_bytree": 0.8,
-            },
-            "status": "active",
-        }
-
-        return result
 
     def _simulate_delay(self) -> None:
         """Simulate network latency."""
@@ -1016,13 +1054,13 @@ class MockXGBoostService(XGBoostInterface):
             return
 
         # Get patterns for current privacy level
-        patterns = []
+        patterns: list[re.Pattern[str]] = []
         for level in PrivacyLevel:
             if level.value <= self._privacy_level.value and level in self._phi_patterns:
                 patterns.extend(self._phi_patterns[level])
 
         # Check each key and value in the data
-        phi_found = []
+        phi_found: list[str] = []
 
         for _key, value in data.items():
             # Check values for PHI
@@ -1036,7 +1074,7 @@ class MockXGBoostService(XGBoostInterface):
                 try:
                     self._check_phi_in_data(value)
                 except DataPrivacyError as e:
-                    phi_found.extend(e.pattern_types)
+                    phi_found.extend(getattr(e, 'pattern_types', []))
 
         # If PHI found, raise exception
         if phi_found:
@@ -1047,7 +1085,7 @@ class MockXGBoostService(XGBoostInterface):
             )
 
     def _generate_deterministic_risk_score(
-        self, patient_id: str, risk_type: str, clinical_data: dict[str, Any], **kwargs
+        self, patient_id: str, risk_type: str, clinical_data: dict[str, Any], time_frame_days: int
     ) -> float:
         """
         Generate a deterministic risk score based on inputs.
@@ -1056,7 +1094,7 @@ class MockXGBoostService(XGBoostInterface):
             patient_id: Patient identifier
             risk_type: Type of risk
             clinical_data: Clinical data
-            **kwargs: Additional parameters
+            time_frame_days: Time frame in days
 
         Returns:
             Risk score between 0.0 and 1.0
@@ -1077,22 +1115,22 @@ class MockXGBoostService(XGBoostInterface):
 
         if "medication_adherence" in clinical_data:
             adherence = clinical_data["medication_adherence"]
-            if isinstance(adherence, int | float) and adherence <= 0.7:
+            if isinstance(adherence, (int, float)) and adherence <= 0.7:
                 modifiers += 0.15 * (1 - adherence)
 
         if "symptom_severity" in clinical_data:
             severity = clinical_data["symptom_severity"]
-            if isinstance(severity, int | float):
+            if isinstance(severity, (int, float)):
                 modifiers += 0.2 * min(severity, 10) / 10
 
         if "stress_level" in clinical_data:
             stress = clinical_data["stress_level"]
-            if isinstance(stress, int | float):
+            if isinstance(stress, (int, float)):
                 modifiers += 0.1 * min(stress, 10) / 10
 
         if "social_support" in clinical_data:
             support = clinical_data["social_support"]
-            if isinstance(support, int | float):
+            if isinstance(support, (int, float)):
                 modifiers -= 0.1 * min(support, 10) / 10  # Negative modifier (reduces risk)
 
         # Risk type specific factors
@@ -1123,7 +1161,6 @@ class MockXGBoostService(XGBoostInterface):
         treatment_type: str,
         treatment_details: dict[str, Any],
         clinical_data: dict[str, Any],
-        **kwargs,
     ) -> float:
         """
         Generate a deterministic efficacy score based on inputs.
@@ -1133,7 +1170,6 @@ class MockXGBoostService(XGBoostInterface):
             treatment_type: Type of treatment
             treatment_details: Treatment details
             clinical_data: Clinical data
-            **kwargs: Additional parameters
 
         Returns:
             Efficacy score between 0.0 and 1.0
@@ -1154,14 +1190,14 @@ class MockXGBoostService(XGBoostInterface):
             previous_response = clinical_data.get("previous_medication_response", {})
             if treatment_details.get("medication") in previous_response:
                 response_value = previous_response[treatment_details["medication"]]
-                if isinstance(response_value, int | float):
+                if isinstance(response_value, (int, float)):
                     modifiers += 0.2 * min(response_value, 10) / 10
 
             # Appropriateness of dose
             if "dose_mg" in treatment_details and "weight_kg" in clinical_data:
                 dose = treatment_details["dose_mg"]
                 weight = clinical_data["weight_kg"]
-                if isinstance(dose, int | float) and isinstance(weight, int | float):
+                if isinstance(dose, (int, float)) and isinstance(weight, (int, float)):
                     # Very simplified dose appropriateness check
                     dose_per_kg = dose / weight
                     if dose_per_kg < 0.01 or dose_per_kg > 0.5:
@@ -1169,7 +1205,7 @@ class MockXGBoostService(XGBoostInterface):
 
             # Medication adherence history
             adherence = clinical_data.get("medication_adherence", 0.5)
-            if isinstance(adherence, int | float):
+            if isinstance(adherence, (int, float)):
                 modifiers += 0.1 * min(adherence, 1.0)
 
         elif "therapy" in treatment_type:
@@ -1178,7 +1214,7 @@ class MockXGBoostService(XGBoostInterface):
             therapy_type = treatment_type.split("_")[1] if "_" in treatment_type else "unknown"
             if therapy_type in previous_response:
                 response_value = previous_response[therapy_type]
-                if isinstance(response_value, int | float):
+                if isinstance(response_value, (int, float)):
                     modifiers += 0.2 * min(response_value, 10) / 10
 
             # Session frequency
@@ -1190,12 +1226,12 @@ class MockXGBoostService(XGBoostInterface):
 
             # Patient motivation
             motivation = clinical_data.get("motivation_for_therapy", 5)
-            if isinstance(motivation, int | float):
+            if isinstance(motivation, (int, float)):
                 modifiers += 0.15 * min(motivation, 10) / 10
 
         # Common factors
         symptom_duration = clinical_data.get("symptom_duration_months", 6)
-        if isinstance(symptom_duration, int | float):
+        if isinstance(symptom_duration, (int, float)):
             # Longer duration may predict poorer response
             modifiers -= 0.05 * min(symptom_duration, 24) / 24
 
@@ -1246,14 +1282,14 @@ class MockXGBoostService(XGBoostInterface):
 
         # Baseline severity
         severity = clinical_data.get("symptom_severity", 5)
-        if isinstance(severity, int | float):
+        if isinstance(severity, (int, float)):
             # Higher severity might predict greater improvement (more room to improve)
             # but also might be harder to treat
             modifiers += 0.05 * (min(severity, 10) / 10) * 2 - 0.1
 
         # Treatment adherence
         adherence = clinical_data.get("treatment_adherence", 0.7)
-        if isinstance(adherence, int | float):
+        if isinstance(adherence, (int, float)):
             modifiers += 0.15 * min(adherence, 1.0)
 
         # Time frame effect
@@ -1291,7 +1327,7 @@ class MockXGBoostService(XGBoostInterface):
 
             # Social support is important for quality of life
             social_support = clinical_data.get("social_support", 5)
-            if isinstance(social_support, int | float):
+            if isinstance(social_support, (int, float)):
                 modifiers += 0.1 * min(social_support, 10) / 10
 
         # Clamp the final score between 0.0 and 1.0
@@ -1354,9 +1390,9 @@ class MockXGBoostService(XGBoostInterface):
             return {}
 
         # Skip nested dictionaries and lists, just use top-level fields
-        features = {}
+        features: dict[str, Any] = {}
         for key, value in data.items():
-            if isinstance(value, str | int | float | bool):
+            if isinstance(value, (str, int, float, bool)):
                 features[key] = value
 
         return features
@@ -1375,7 +1411,7 @@ class MockXGBoostService(XGBoostInterface):
         Returns:
             List of supporting evidence items
         """
-        evidence = []
+        evidence: list[dict[str, Any]] = []
 
         # Add evidence based on risk type and clinical data
         if risk_type == "suicide":
@@ -1571,7 +1607,7 @@ class MockXGBoostService(XGBoostInterface):
 
         # Adjust for severity
         severity = clinical_data.get("symptom_severity", 5)
-        if isinstance(severity, int | float):
+        if isinstance(severity, (int, float)):
             severity_factor = 1.0
             if severity > 7:
                 # Higher severity might show more dramatic improvement
@@ -1628,7 +1664,7 @@ class MockXGBoostService(XGBoostInterface):
         Returns:
             Dictionary of side effect risks
         """
-        side_effects = {"common": [], "rare": []}
+        side_effects: dict[str, list[dict[str, Any]]] = {"common": [], "rare": []}
 
         if "medication" in treatment_type:
             if "ssri" in treatment_type:
@@ -1755,7 +1791,7 @@ class MockXGBoostService(XGBoostInterface):
             num_points = 8  # Monthly for longer periods
 
         # Generate trajectory points
-        trajectory_points = []
+        trajectory_points: list[dict[str, Any]] = []
 
         # Starting point is always current state (0% improvement)
         trajectory_points.append(
@@ -1814,7 +1850,7 @@ class MockXGBoostService(XGBoostInterface):
         # Base details from outcome score
         final_improvement = int(outcome_score * 100)
 
-        details = {"overall_improvement": f"{final_improvement}%", "domains": []}
+        details: dict[str, Any] = {"overall_improvement": f"{final_improvement}%", "domains": []}
 
         # Add domains based on outcome type
         if outcome_type == "symptom":
@@ -1878,21 +1914,21 @@ class MockXGBoostService(XGBoostInterface):
             ]
 
         # Add recommendations based on outcome
-        details["recommendations"] = []
+        recommendations: list[str] = []
 
         if outcome_score < 0.4:
-            details["recommendations"].append(
-                "Consider adjusting treatment plan for better outcomes"
-            )
-            details["recommendations"].append("More frequent monitoring recommended")
+            recommendations.append("Consider adjusting treatment plan for better outcomes")
+            recommendations.append("More frequent monitoring recommended")
         elif outcome_score < 0.7:
-            details["recommendations"].append("Current treatment plan appears adequate")
-            details["recommendations"].append("Regular follow-up recommended to ensure progress")
+            recommendations.append("Current treatment plan appears adequate")
+            recommendations.append("Regular follow-up recommended to ensure progress")
         else:
-            details["recommendations"].append("Treatment plan appears highly effective")
-            details["recommendations"].append(
+            recommendations.append("Treatment plan appears highly effective")
+            recommendations.append(
                 "Maintenance strategy should be developed for sustained outcomes"
             )
+
+        details["recommendations"] = recommendations
 
         return details
 
@@ -1985,7 +2021,7 @@ class MockXGBoostService(XGBoostInterface):
                     field="treatment_details.frequency",
                 )
 
-    def _validate_outcome_params(self, outcome_timeframe: dict[str, int]) -> None:
+    def _validate_outcome_params(self, outcome_timeframe: dict[str, Any]) -> None:
         """
         Validate outcome prediction parameters.
 
