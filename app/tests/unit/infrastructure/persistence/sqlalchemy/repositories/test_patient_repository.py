@@ -509,7 +509,7 @@ class TestPatientRepository:
         mock_db_session.execute.return_value.scalars.return_value.all.return_value = (
             mock_patient_models
         )
-        retrieved_entities = await patient_repository.get_all(limit=10, offset=0)
+        retrieved_entities = await patient_repository.list_all(limit=10, offset=0)
         mock_db_session.execute.assert_awaited_once()
         assert len(retrieved_entities) == len(sample_patient_list_data)
         for entity, model_mock in zip(retrieved_entities, mock_patient_models, strict=False):
