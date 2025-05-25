@@ -683,111 +683,7 @@ class AWSXGBoostService(XGBoostInterface):
             self._logger.error(f"Failed to get model info: {e!s}")
             raise ServiceConnectionError(f"Failed to get model info: {e!s}")
 
-    async def healthcheck(self) -> dict[str, Any]:
-        """
-        Perform a health check of the XGBoost service.
-
-        Returns:
-            Health check results with status (HEALTHY, DEGRADED, UNHEALTHY)
-        """
-        await self._ensure_initialized()
-
-        try:
-            health_status: dict[str, Any] = {
-                "status": "HEALTHY",
-                "components": {
-                    "sagemaker": "HEALTHY",
-                    "s3": "HEALTHY",
-                    "dynamodb": "HEALTHY",
-                },
-                "details": {"endpoints": []},
-            }
-
-            # Check S3 bucket
-            try:
-                s3 = self._aws_factory.get_s3_service()
-                if s3 is None:
-                    raise ServiceConnectionError("Failed to get S3 service")
-
-                if not self._bucket_name:
-                    raise ConfigurationError("S3 bucket name not configured")
-
-                bucket_exists = s3.check_bucket_exists(self._bucket_name)
-                health_status["components"]["s3"] = "HEALTHY" if bucket_exists else "UNHEALTHY"
-                if not bucket_exists:
-                    health_status["status"] = "DEGRADED"
-            except Exception as e:
-                health_status["components"]["s3"] = "UNHEALTHY"
-                health_status["status"] = "DEGRADED"
-                self._logger.error(f"S3 health check failed: {e}")
-
-            # Check DynamoDB table
-            try:
-                dynamodb = self._aws_factory.get_dynamodb_service()
-                if dynamodb is None:
-                    raise ServiceConnectionError("Failed to get DynamoDB service")
-
-                if not self._dynamodb_table_name:
-                    raise ConfigurationError("DynamoDB table name not configured")
-
-                dynamodb.scan_table(self._dynamodb_table_name)
-                health_status["components"]["dynamodb"] = "HEALTHY"
-            except Exception as e:
-                health_status["components"]["dynamodb"] = "UNHEALTHY"
-                health_status["status"] = "DEGRADED"
-                self._logger.error(f"DynamoDB health check failed: {e}")
-
-            # Check SageMaker endpoints
-            try:
-                sagemaker = self._aws_factory.get_sagemaker_service()
-                if sagemaker is None:
-                    raise ServiceConnectionError("Failed to get SageMaker service")
-
-                endpoints_response = sagemaker.list_endpoints()
-                # Handle both dict response (with "Endpoints" key) and direct list response
-                endpoints = (
-                    endpoints_response.get("Endpoints", [])
-                    if isinstance(endpoints_response, dict)
-                    else endpoints_response
-                )
-
-                prefix = self._endpoint_prefix or ""
-                endpoints_list = []
-                endpoint_statuses = []
-
-                for endpoint in endpoints:
-                    endpoint_name = endpoint.get("EndpointName", "")
-                    if prefix and endpoint_name.startswith(prefix):
-                        status = endpoint.get("EndpointStatus", "Unknown")
-                        endpoints_list.append({"name": endpoint_name, "status": status})
-                        endpoint_statuses.append(status)
-
-                health_status["details"]["endpoints"] = endpoints_list
-
-                # If no endpoints are in service, consider degraded
-                if "InService" not in endpoint_statuses and endpoints_list:
-                    health_status["components"]["sagemaker"] = "DEGRADED"
-                    health_status["status"] = "DEGRADED"
-            except Exception as e:
-                health_status["components"]["sagemaker"] = "UNHEALTHY"
-                health_status["status"] = "DEGRADED"
-                self._logger.error(f"SageMaker health check failed: {e}")
-
-            return health_status
-
-        except Exception as e:
-            self._logger.error(f"Health check failed: {e}")
-            return {
-                "status": "UNHEALTHY",
-                "components": {
-                    "sagemaker": "UNKNOWN",
-                    "s3": "UNKNOWN",
-                    "dynamodb": "UNKNOWN",
-                },
-                "error": str(e),
-            }
-
-async def integrate_with_digital_twin(
+    async def integrate_with_digital_twin(
         self,
         patient_id: str,
         profile_id: str,
@@ -898,101 +794,6 @@ async def integrate_with_digital_twin(
             ResourceNotFoundError,
             DataPrivacyError,
             ServiceConnectionError,
-def _validate_integration_params(self, patient_id: str, profile_id: str, prediction_id: str) -> None:
-        """Validate digital twin integration parameters."""
-        if not patient_id or not isinstance(patient_id, str):
-            raise ValidationError(
-                "Patient ID must be a non-empty string",
-                field="patient_id",
-                value=patient_id,
-            )
-
-        if not profile_id or not isinstance(profile_id, str):
-            raise ValidationError(
-                "Profile ID must be a non-empty string",
-                field="profile_id",
-                value=profile_id,
-            )
-
-        if not prediction_id or not isinstance(prediction_id, str):
-            raise ValidationError(
-                "Prediction ID must be a non-empty string",
-                field="prediction_id",
-                value=prediction_id,
-            )
-
-    async def _retrieve_prediction_data(self, prediction_id: str, patient_id: str) -> dict[str, Any]:
-        """Retrieve prediction data from DynamoDB for integration."""
-        if self._dynamodb is None:
-            raise ServiceConnectionError("DynamoDB service not available")
-
-        if not self._dynamodb_table_name:
-            raise ConfigurationError("DynamoDB table name not configured")
-
-        try:
-            response = self._dynamodb.get_item(
-                table_name=self._dynamodb_table_name,
-                key={"prediction_id": prediction_id, "patient_id": patient_id},
-            )
-
-            if "Item" not in response:
-                raise ResourceNotFoundError(f"Prediction not found for ID: {prediction_id}")
-
-            return response["Item"]
-
-        except Exception as e:
-            self._logger.error(f"Failed to retrieve prediction data: {e}")
-            raise ServiceConnectionError(f"Failed to retrieve prediction data: {e!s}") from e
-
-    async def _execute_digital_twin_integration(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Execute the actual digital twin integration."""
-        # Mock implementation for now - in real implementation this would
-        # integrate with the actual digital twin service
-        return {
-            "updated": True,
-            "metadata": {
-                "integration_timestamp": payload["timestamp"],
-                "integration_method": "xgboost_prediction",
-                "data_elements_updated": ["risk_scores", "treatment_recommendations"],
-            },
-            "recommendations": [
-                "Monitor patient for next 7 days",
-                "Schedule follow-up assessment",
-                "Review medication adherence",
-            ],
-        }
-
-    async def _store_integration_result(
-        self,
-        integration_id: str,
-        patient_id: str,
-        profile_id: str,
-        prediction_id: str,
-        result: dict[str, Any],
-    ) -> None:
-        """Store integration result for audit and tracking."""
-        if self._dynamodb is None:
-            self._logger.warning("DynamoDB service not available, skipping integration storage")
-            return
-
-        # Use a separate table for integration results
-        integration_table = f"{self._dynamodb_table_name}-integrations"
-
-        item = {
-            "integration_id": integration_id,
-            "patient_id": patient_id,
-            "profile_id": profile_id,
-            "prediction_id": prediction_id,
-            "timestamp": now_utc().isoformat(),
-            "result": json.dumps(result),
-            "ttl": int(time.time()) + (90 * 24 * 60 * 60),  # 90 days TTL for HIPAA compliance
-        }
-
-        try:
-            self._dynamodb.put_item(integration_table, item)
-            self._logger.info(f"Stored integration result {integration_id} for patient {patient_id}")
-        except Exception as e:
-            self._logger.error(f"Failed to store integration result: {e}")
         ) as e:
             # Expected exceptions, log and re-raise
             self._logger.warning(
@@ -1030,6 +831,111 @@ def _validate_integration_params(self, patient_id: str, profile_id: str, predict
                 },
             )
             raise ServiceConnectionError(f"Unexpected error in digital twin integration: {e!s}") from e
+
+    async def healthcheck(self) -> dict[str, Any]:
+        """
+        Perform a health check of the XGBoost service.
+
+        Returns:
+            Health check results with status (HEALTHY, DEGRADED, UNHEALTHY)
+        """
+        await self._ensure_initialized()
+
+        try:
+            health_status: dict[str, Any] = {
+                "status": "HEALTHY",
+                "components": {
+                    "sagemaker": "HEALTHY",
+                    "s3": "HEALTHY",
+                    "dynamodb": "HEALTHY",
+                },
+                "details": {"endpoints": []},
+            }
+
+            # Check S3 bucket
+            try:
+                s3 = self._aws_factory.get_s3_service()
+                if s3 is None:
+                    raise ServiceConnectionError("Failed to get S3 service")
+
+                if not self._bucket_name:
+                    raise ConfigurationError("S3 bucket name not configured")
+
+                bucket_exists = s3.check_bucket_exists(self._bucket_name)
+                health_status["components"]["s3"] = "HEALTHY" if bucket_exists else "UNHEALTHY"
+                if not bucket_exists:
+                    health_status["status"] = "DEGRADED"
+            except Exception as e:
+                health_status["components"]["s3"] = "UNHEALTHY"
+                health_status["status"] = "DEGRADED"
+                self._logger.error(f"S3 health check failed: {e}")
+
+            # Check DynamoDB table
+            try:
+                dynamodb = self._aws_factory.get_dynamodb_service()
+                if dynamodb is None:
+                    raise ServiceConnectionError("Failed to get DynamoDB service")
+
+                if not self._dynamodb_table_name:
+                    raise ConfigurationError("DynamoDB table name not configured")
+
+                dynamodb.scan_table(self._dynamodb_table_name)
+                health_status["components"]["dynamodb"] = "HEALTHY"
+            except Exception as e:
+                health_status["components"]["dynamodb"] = "UNHEALTHY"
+                health_status["status"] = "DEGRADED"
+                self._logger.error(f"DynamoDB health check failed: {e}")
+
+            # Check SageMaker endpoints
+            try:
+                sagemaker = self._aws_factory.get_sagemaker_service()
+                if sagemaker is None:
+                    raise ServiceConnectionError("Failed to get SageMaker service")
+
+                endpoints_response = sagemaker.list_endpoints()
+                # Handle both dict response (with "Endpoints" key) and direct list response
+                endpoints = (
+                    endpoints_response.get("Endpoints", [])
+                    if isinstance(endpoints_response, dict)
+                    else endpoints_response
+                )
+
+                prefix = self._endpoint_prefix or ""
+                endpoints_list = []
+                endpoint_statuses = []
+
+                for endpoint in endpoints:
+                    endpoint_name = endpoint.get("EndpointName", "")
+                    if prefix and endpoint_name.startswith(prefix):
+                        status = endpoint.get("EndpointStatus", "Unknown")
+                        endpoints_list.append({"name": endpoint_name, "status": status})
+                        endpoint_statuses.append(status)
+
+                health_status["details"]["endpoints"] = endpoints_list
+
+                # If no endpoints are in service, consider degraded
+                if "InService" not in endpoint_statuses and endpoints_list:
+                    health_status["components"]["sagemaker"] = "DEGRADED"
+                    health_status["status"] = "DEGRADED"
+            except Exception as e:
+                health_status["components"]["sagemaker"] = "UNHEALTHY"
+                health_status["status"] = "DEGRADED"
+                self._logger.error(f"SageMaker health check failed: {e}")
+
+            return health_status
+
+        except Exception as e:
+            self._logger.error(f"Health check failed: {e}")
+            return {
+                "status": "UNHEALTHY",
+                "components": {
+                    "sagemaker": "UNKNOWN",
+                    "s3": "UNKNOWN",
+                    "dynamodb": "UNKNOWN",
+                },
+                "error": str(e),
+            }
+
     async def register_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Register an observer for a specific event type.
@@ -1143,6 +1049,102 @@ def _validate_integration_params(self, patient_id: str, profile_id: str, predict
                     },
                 }
             )
+
+    def _validate_integration_params(self, patient_id: str, profile_id: str, prediction_id: str) -> None:
+        """Validate digital twin integration parameters."""
+        if not patient_id or not isinstance(patient_id, str):
+            raise ValidationError(
+                "Patient ID must be a non-empty string",
+                field="patient_id",
+                value=patient_id,
+            )
+
+        if not profile_id or not isinstance(profile_id, str):
+            raise ValidationError(
+                "Profile ID must be a non-empty string",
+                field="profile_id",
+                value=profile_id,
+            )
+
+        if not prediction_id or not isinstance(prediction_id, str):
+            raise ValidationError(
+                "Prediction ID must be a non-empty string",
+                field="prediction_id",
+                value=prediction_id,
+            )
+
+    async def _retrieve_prediction_data(self, prediction_id: str, patient_id: str) -> dict[str, Any]:
+        """Retrieve prediction data from DynamoDB for integration."""
+        if self._dynamodb is None:
+            raise ServiceConnectionError("DynamoDB service not available")
+
+        if not self._dynamodb_table_name:
+            raise ConfigurationError("DynamoDB table name not configured")
+
+        try:
+            response = self._dynamodb.get_item(
+                table_name=self._dynamodb_table_name,
+                key={"prediction_id": prediction_id, "patient_id": patient_id},
+            )
+
+            if "Item" not in response:
+                raise ResourceNotFoundError(f"Prediction not found for ID: {prediction_id}")
+
+            return response["Item"]
+
+        except Exception as e:
+            self._logger.error(f"Failed to retrieve prediction data: {e}")
+            raise ServiceConnectionError(f"Failed to retrieve prediction data: {e!s}") from e
+
+    async def _execute_digital_twin_integration(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Execute the actual digital twin integration."""
+        # Mock implementation for now - in real implementation this would
+        # integrate with the actual digital twin service
+        return {
+            "updated": True,
+            "metadata": {
+                "integration_timestamp": payload["timestamp"],
+                "integration_method": "xgboost_prediction",
+                "data_elements_updated": ["risk_scores", "treatment_recommendations"],
+            },
+            "recommendations": [
+                "Monitor patient for next 7 days",
+                "Schedule follow-up assessment",
+                "Review medication adherence",
+            ],
+        }
+
+    async def _store_integration_result(
+        self,
+        integration_id: str,
+        patient_id: str,
+        profile_id: str,
+        prediction_id: str,
+        result: dict[str, Any],
+    ) -> None:
+        """Store integration result for audit and tracking."""
+        if self._dynamodb is None:
+            self._logger.warning("DynamoDB service not available, skipping integration storage")
+            return
+
+        # Use a separate table for integration results
+        integration_table = f"{self._dynamodb_table_name}-integrations"
+
+        item = {
+            "integration_id": integration_id,
+            "patient_id": patient_id,
+            "profile_id": profile_id,
+            "prediction_id": prediction_id,
+            "timestamp": now_utc().isoformat(),
+            "result": json.dumps(result),
+            "ttl": int(time.time()) + (90 * 24 * 60 * 60),  # 90 days TTL for HIPAA compliance
+        }
+
+        try:
+            self._dynamodb.put_item(integration_table, item)
+            self._logger.info(f"Stored integration result {integration_id} for patient {patient_id}")
+        except Exception as e:
+            self._logger.error(f"Failed to store integration result: {e}")
 
     def _validate_risk_prediction_params(
         self, patient_id: str, risk_type: str, clinical_data: dict[str, Any]
