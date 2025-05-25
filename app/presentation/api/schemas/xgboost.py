@@ -113,7 +113,7 @@ class RiskPredictionRequest(BaseModelConfig):
     @property
     def duration_months(self) -> int:
         """Extract duration_months from clinical_data."""
-        return self.clinical_data.get("duration_months", 6)
+        return int(self.clinical_data.get("duration_months", 6))
 
     @property
     def features(self) -> dict[str, Any]:
@@ -181,6 +181,8 @@ class ModelInfoResponse(BaseModelConfig):
     supports_features: list[str]
     description: str
     performance_metrics: PerformanceMetrics | None = None
+    
+    model_config = ConfigDict(protected_namespaces=())
 
 
 class SideEffectRisk(BaseModelConfig):
@@ -327,6 +329,8 @@ class XGBoostPredictionResponse(BaseModelConfig):
     feature_importance: dict[str, float] | None = Field(
         None, description="Feature importance scores, if available"
     )
+    
+    model_config = ConfigDict(protected_namespaces=())
 
 
 class FeatureImportanceResponse(BaseModelConfig):
@@ -342,3 +346,5 @@ class FeatureImportanceResponse(BaseModelConfig):
     explanation_method: str = Field(
         default="SHAP", description="Method used to calculate feature importance"
     )
+    
+    model_config = ConfigDict(protected_namespaces=())

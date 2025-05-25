@@ -22,7 +22,7 @@ from app.core.interfaces.repositories.user_repository_interface import IUserRepo
 from app.core.interfaces.services.jwt_service import JWTServiceInterface
 
 # Import User entity for type hinting
-from app.domain.entities.user import User
+from app.core.domain.entities.user import User
 from app.domain.exceptions.token_exceptions import (
     InvalidTokenException,
     TokenExpiredException,

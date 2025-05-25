@@ -273,7 +273,7 @@ class JWTService(IJwtService):
             # Add to blacklist repository if available
             if self.token_blacklist_repository:
                 await self.token_blacklist_repository.add_to_blacklist(
-                    jti, expires_at, reason="Explicitly blacklisted"
+                    jti, expires_at
                 )
 
             # Add to in-memory blacklist

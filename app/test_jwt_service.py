@@ -8,11 +8,11 @@ import asyncio
 from datetime import datetime, timedelta
 from uuid import uuid4
 
-from app.infrastructure.repositories.memory_token_blacklist_repository import (
+from infrastructure.repositories.memory_token_blacklist_repository import (
     MemoryTokenBlacklistRepository,
 )
-from app.infrastructure.security.jwt.jwt_service import JWTService
-from app.domain.exceptions import TokenBlacklistedException as TokenBlacklistedError
+from infrastructure.security.jwt.jwt_service import JWTService
+from domain.exceptions import TokenBlacklistedException as TokenBlacklistedError
 
 
 async def test_jwt_service() -> None:
@@ -48,22 +48,22 @@ async def test_jwt_service() -> None:
     print(f"Creating tokens for user: {user_id}")
 
     # Create access token
-    access_token = jwt_service.create_access_token(subject=user_id)
+    access_token = await jwt_service.create_access_token(user_id=user_id)
     print(f"Access token: {access_token[:20]}...")
 
     # Create refresh token
-    refresh_token = jwt_service.create_refresh_token(subject=user_id)
+    refresh_token = await jwt_service.create_refresh_token(user_id=user_id)
     print(f"Refresh token: {refresh_token[:20]}...")
 
     # Decode and validate tokens
-    access_payload = jwt_service.decode_token(access_token)
+    access_payload = await jwt_service.verify_token(access_token)
     print(f"Access token payload: {access_payload}")
 
-    refresh_payload = jwt_service.decode_token(refresh_token)
+    refresh_payload = jwt_service.verify_refresh_token(refresh_token)
     print(f"Refresh token payload: {refresh_payload}")
 
     # Test refresh token
-    new_access_token = jwt_service.refresh_access_token(refresh_token)
+    new_access_token = await jwt_service.refresh_access_token(refresh_token)
     print(f"New access token: {new_access_token[:20]}...")
 
     # Test token blacklisting
