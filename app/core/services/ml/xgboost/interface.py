@@ -2,6 +2,7 @@
 XGBoost ML Service Interface.
 """
 
+import abc
 from enum import Enum
 from typing import Any
 
@@ -15,6 +16,7 @@ from app.domain.interfaces.ml_service_interface import MLServiceInterface
 class XGBoostInterface(MLServiceInterface):
     """Interface for XGBoost ML Service implementation."""
 
+    @abc.abstractmethod
     async def predict_risk(
         self,
         patient_id: str,
@@ -36,6 +38,7 @@ class XGBoostInterface(MLServiceInterface):
         """
         pass
 
+    @abc.abstractmethod
     async def predict_treatment_response(
         self,
         patient_id: str,
@@ -57,6 +60,7 @@ class XGBoostInterface(MLServiceInterface):
         """
         pass
 
+    @abc.abstractmethod
     async def predict_outcome(
         self,
         patient_id: str,
@@ -82,6 +86,7 @@ class XGBoostInterface(MLServiceInterface):
         """
         pass
 
+    @abc.abstractmethod
     async def get_model_info(self, model_type: str | ModelType) -> dict[str, Any]:
         """
         Get information about an XGBoost model.
@@ -94,6 +99,7 @@ class XGBoostInterface(MLServiceInterface):
         """
         pass
 
+    @abc.abstractmethod
     async def get_feature_importance(
         self,
         model_type: str | ModelType,
@@ -113,6 +119,7 @@ class XGBoostInterface(MLServiceInterface):
         """
         pass
 
+    @abc.abstractmethod
     async def integrate_with_digital_twin(
         self,
         patient_id: str,
@@ -134,6 +141,7 @@ class XGBoostInterface(MLServiceInterface):
         """
         pass
 
+    @abc.abstractmethod
     async def healthcheck(self) -> dict[str, Any]:
         """
         Check health status of XGBoost service.
