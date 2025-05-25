@@ -85,8 +85,8 @@ def mock_biometric_correlation_service():
 def mock_pharmacogenomics_service():
     """Create a mock pharmacogenomics service."""
     service = AsyncMock()
-    service.analyze_medication_response = AsyncMock()
-    service.analyze_medication_response.return_value = {
+    service.predict_medication_responses = AsyncMock()
+    service.predict_medication_responses.return_value = {
         "medication_efficacy": [
             {
                 "medication": "fluoxetine",
@@ -218,7 +218,7 @@ async def test_generate_comprehensive_patient_insights(integration_service, pati
     # Verify all components were called
     integration_service.symptom_forecasting_service.forecast_symptoms.assert_called_once()
     integration_service.biometric_correlation_service.analyze_correlations.assert_called_once()
-    integration_service.pharmacogenomics_service.analyze_medication_response.assert_called_once()
+    integration_service.pharmacogenomics_service.predict_medication_responses.assert_called_once()
     integration_service.recommendation_engine.generate_recommendations.assert_called_once()
 
     # Verify insights structure

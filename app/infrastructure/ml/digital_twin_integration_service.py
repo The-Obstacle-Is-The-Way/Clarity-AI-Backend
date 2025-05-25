@@ -7,31 +7,39 @@ to provide a unified interface for digital twin functionality.
 
 import logging
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 # Core imports
+from app.core.interfaces.repositories.patient_repository_interface import IPatientRepository
 from app.domain.entities.digital_twin.digital_twin import DigitalTwin
-from app.domain.interfaces.ml_services import IDigitalTwinIntegrationService
+from app.domain.interfaces.ml.extended_digital_twin_service import IExtendedDigitalTwinIntegrationService
+from app.domain.interfaces.ml.recommendation_engine import IRecommendationEngine
+from app.domain.interfaces.ml_services import (
+    IBiometricCorrelationService,
+    IDigitalTwinIntegrationService,
+    IPharmacogenomicsService,
+    ISymptomForecastingService,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
+class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
     """
     Service that integrates multiple ML microservices to provide comprehensive
     patient insights through a digital twin.
     
-    This class implements the IDigitalTwinIntegrationService interface from the domain layer.
+    This class implements the IExtendedDigitalTwinIntegrationService interface from the domain layer.
     """
 
     def __init__(
         self,
-        symptom_forecasting_service: Any,
-        biometric_correlation_service: Any,
-        pharmacogenomics_service: Any,
-        recommendation_engine: Any,
-        patient_repository: Any = None,
+        symptom_forecasting_service: ISymptomForecastingService,
+        biometric_correlation_service: IBiometricCorrelationService,
+        pharmacogenomics_service: IPharmacogenomicsService,
+        recommendation_engine: IRecommendationEngine,
+        patient_repository: IPatientRepository | None = None,
     ):
         """
         Initialize the integration service with its dependencies.
@@ -50,45 +58,149 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
         self.patient_repository = patient_repository
         self._digital_twins: dict[UUID, DigitalTwin] = {}  # Cache for digital twins
         logger.info("Digital Twin Integration Service initialized")
+        
+    def _ensure_uuid(self, id_value: str | UUID | None) -> UUID | None:
+        """
+        Convert string ID to UUID if needed.
+        
+        Args:
+            id_value: ID value as string or UUID
+            
+        Returns:
+            UUID object if conversion successful, None otherwise
+        """
+        if id_value is None:
+            return None
+        if isinstance(id_value, str):
+            try:
+                return UUID(id_value)
+            except ValueError:
+                logger.error(f"Invalid UUID string: {id_value}")
+                return None
+        return id_value
 
-    async def create_digital_twin(self, patient_id: UUID, init_data: dict[str, Any] | None = None) -> DigitalTwin:
+    def _digital_twin_to_dict(self, twin: DigitalTwin) -> dict[str, Any]:
+        """Convert a DigitalTwin object to a dictionary."""
+        return {
+            "id": str(twin.id),
+            "patient_id": str(twin.patient_id),
+            "created_at": twin.created_at.isoformat(),
+            "updated_at": twin.last_updated.isoformat(),
+            "version": twin.version,
+            "state": {
+                "last_sync_time": twin.state.last_sync_time.isoformat() if twin.state.last_sync_time else None,
+                "overall_risk_level": twin.state.overall_risk_level,
+                "dominant_symptoms": twin.state.dominant_symptoms,
+                "current_treatment_effectiveness": twin.state.current_treatment_effectiveness
+            },
+            "configuration": {
+                "simulation_granularity_hours": twin.configuration.simulation_granularity_hours,
+                "prediction_models_enabled": twin.configuration.prediction_models_enabled,
+                "data_sources_enabled": twin.configuration.data_sources_enabled,
+                "alert_thresholds": twin.configuration.alert_thresholds,
+            },
+        }
+
+    async def create_digital_twin(
+        self,
+        patient_id: UUID,
+        initial_data: dict[str, Any] | None = None,
+        model_configuration: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Create a new digital twin for a patient.
 
         Args:
             patient_id: Patient identifier
-            init_data: Optional initialization data
+            initial_data: Optional initialization data
+            model_configuration: Optional configuration for the Digital Twin models
 
         Returns:
-            New DigitalTwin instance
+            Dictionary containing creation status and digital twin ID if successful
         """
-        init_data = init_data or {}
-        digital_twin = DigitalTwin(
-            id=uuid4(),
-            patient_id=patient_id,
-            created_at=datetime.now(),
-            last_updated=datetime.now(),
-            **init_data,
-        )
-        self._digital_twins[digital_twin.id] = digital_twin
-        logger.info(f"Created digital twin {digital_twin.id} for patient {patient_id}")
-        return digital_twin
+        try:
+            # Check if a digital twin already exists for this patient
+            existing_twin_data = await self.get_digital_twin(patient_id=patient_id)
+            if existing_twin_data:
+                return {
+                    "success": True,
+                    "digital_twin_id": existing_twin_data["id"],
+                    "message": "Digital twin already exists for this patient"
+                }
 
-    async def get_digital_twin(self, digital_twin_id: UUID) -> DigitalTwin | None:
+            # Combine initial_data and model_configuration
+            init_data = initial_data or {}
+            if model_configuration:
+                init_data["configuration"] = model_configuration
+
+            # Create the digital twin
+            digital_twin = DigitalTwin(
+                id=uuid4(),
+                patient_id=patient_id,
+                created_at=datetime.now(),
+                last_updated=datetime.now(),
+                **init_data,
+            )
+            self._digital_twins[digital_twin.id] = digital_twin
+            logger.info(f"Created digital twin {digital_twin.id} for patient {patient_id}")
+            
+            return {
+                "success": True,
+                "digital_twin_id": str(digital_twin.id),
+                "created_at": digital_twin.created_at.isoformat(),
+                "patient_id": str(patient_id)
+            }
+        except Exception as e:
+            logger.error(f"Error creating digital twin: {e}")
+            return {
+                "success": False,
+                "error": f"Error creating digital twin: {str(e)}"
+            }
+
+    async def _get_twin_by_id(self, twin_id: UUID) -> DigitalTwin | None:
+        """Internal method to get a digital twin by ID."""
+        if twin_id in self._digital_twins:
+            return self._digital_twins[twin_id]
+        logger.warning(f"Digital twin not found: {twin_id}")
+        return None
+
+    async def get_digital_twin(
+        self, twin_id: UUID | None = None, patient_id: UUID | None = None
+    ) -> dict[str, Any] | None:
         """
-        Retrieve a digital twin by its ID.
+        Retrieve a Digital Twin by ID or patient ID.
 
         Args:
-            digital_twin_id: Digital twin identifier
+            twin_id: Optional unique identifier for the Digital Twin
+            patient_id: Optional unique identifier for the patient
 
         Returns:
-            DigitalTwin instance if found, None otherwise
+            The Digital Twin record if found, None otherwise
         """
-        if digital_twin_id in self._digital_twins:
-            twin: DigitalTwin = self._digital_twins[digital_twin_id]
-            return twin
-        logger.warning(f"Digital twin not found: {digital_twin_id}")
-        return None
+        # Check parameters
+        if twin_id is None and patient_id is None:
+            logger.error("Either twin_id or patient_id must be provided")
+            return None
+
+        try:
+            # Try to get by twin_id first if provided
+            if twin_id is not None:
+                twin = await self._get_twin_by_id(twin_id)
+                if twin:
+                    return self._digital_twin_to_dict(twin)
+
+            # If not found by twin_id or twin_id not provided, try patient_id
+            if patient_id is not None:
+                twin = await self.get_digital_twin_by_patient(patient_id)
+                if twin:
+                    return self._digital_twin_to_dict(twin)
+
+            # Not found
+            logger.warning(f"Digital twin not found for twin_id={twin_id}, patient_id={patient_id}")
+            return None
+        except Exception as e:
+            logger.error(f"Error retrieving digital twin: {e}")
+            return None
 
     async def get_digital_twin_by_patient(self, patient_id: UUID) -> DigitalTwin | None:
         """
@@ -119,10 +231,17 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
             Dictionary containing update status
         """
         # Find the digital twin for this patient
-        digital_twin = await self.get_digital_twin_by_patient(patient_id)
-        if not digital_twin:
+        twin_data = await self.get_digital_twin(patient_id=patient_id)
+        if not twin_data:
             logger.warning(f"Cannot update non-existent digital twin for patient: {patient_id}")
             return {"success": False, "error": "Digital twin not found"}
+
+        # Get the actual digital twin object
+        twin_id = UUID(twin_data["id"])
+        digital_twin = await self._get_twin_by_id(twin_id)
+        if not digital_twin:
+            logger.error(f"Digital twin object not found for ID: {twin_id}")
+            return {"success": False, "error": "Digital twin object not found"}
 
         # Extract updates from patient data
         updates = {}
@@ -146,29 +265,35 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
             "updated_at": digital_twin.last_updated.isoformat()
         }
 
-    async def simulate_intervention(self, digital_twin_id: UUID, intervention: dict[str, Any]) -> dict[str, Any]:
+    async def simulate_intervention(
+        self,
+        twin_id: UUID,
+        intervention: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Simulate the effect of an intervention on a digital twin.
 
         Args:
-            digital_twin_id: Digital twin identifier
+            twin_id: Digital twin identifier
             intervention: Intervention details
 
         Returns:
             Dictionary containing simulation results
         """
-        if digital_twin_id not in self._digital_twins:
-            logger.warning(f"Cannot simulate on non-existent digital twin: {digital_twin_id}")
+        # Get the digital twin
+        twin = await self._get_twin_by_id(twin_id)
+        if not twin:
+            logger.warning(f"Cannot simulate on non-existent digital twin: {twin_id}")
             return {"error": "Digital twin not found"}
 
-        digital_twin = self._digital_twins[digital_twin_id]
+        digital_twin = twin
 
         # Example simulation logic
         intervention_type = intervention.get("type", "unknown")
         intervention_params = intervention.get("params", {})
 
         result = {
-            "digital_twin_id": str(digital_twin_id),
+            "digital_twin_id": str(digital_twin.id),
             "patient_id": str(digital_twin.patient_id),
             "intervention_type": intervention_type,
             "simulation_time": datetime.now().isoformat(),
@@ -182,16 +307,20 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
                 med_dose = intervention_params.get("dose")
 
                 if med_name and med_dose:
-                    response = await self.pharmacogenomics_service.analyze_medication_response(
+                    # Use predict_medication_responses instead of analyze_medication_response
+                    response = await self.pharmacogenomics_service.predict_medication_responses(
                         patient_id=digital_twin.patient_id,
-                        medication_name=med_name,
-                        dose=med_dose,
+                        patient_data={"medication": med_name, "dose": med_dose},
+                        medications=[med_name],
                     )
 
+                    # Extract the medication response from the prediction results
+                    med_response = response.get("medication_predictions", {}).get(med_name, {})
+                    
                     result["projected_outcomes"] = {
-                        "efficacy": response.get("efficacy", {"score": 0.0}),
-                        "side_effects": response.get("side_effects", []),
-                        "projected_symptom_changes": response.get("symptom_changes", {}),
+                        "efficacy": med_response.get("efficacy", {"score": 0.0}),
+                        "side_effects": med_response.get("side_effects", []),
+                        "projected_symptom_changes": med_response.get("symptom_changes", {}),
                     }
             except Exception as e:
                 logger.error(f"Error simulating medication effect: {e}")
@@ -205,7 +334,7 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
                 "projected_symptom_changes": {"anxiety": -0.3, "depression": -0.25},
             }
 
-        logger.info(f"Simulated {intervention_type} intervention on digital twin {digital_twin_id}")
+        logger.info(f"Simulated {intervention_type} intervention on digital twin {digital_twin.id}")
         return result
 
     async def generate_comprehensive_patient_insights(
@@ -226,16 +355,15 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
         # Sanitize the patient data to ensure no PHI is present
         sanitized_data = self._sanitize_patient_data(patient_data)
 
-        # Initialize the results dictionary
-        result = {}
+        # Initialize the results dictionary with proper type annotation
+        result: dict[str, Any] = {}
         error_occurred = False
 
         # Try to get symptom forecasting insights
         try:
             forecast_result = await self.symptom_forecasting_service.forecast_symptoms(
-                patient_id=str(patient_id),
-                symptom_history=sanitized_data.get("symptom_history", {}),
-                mental_health_indicators=sanitized_data.get("mental_health_indicators", {}),
+                patient_id=patient_id,
+                data=sanitized_data.get("symptom_history", {}),
             )
             # Only add to result if successful
             result["symptom_forecasting"] = forecast_result
@@ -247,9 +375,9 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
         # Try to get biometric correlation insights
         try:
             correlation_result = await self.biometric_correlation_service.analyze_correlations(
-                patient_id=str(patient_id),
-                biometric_data=sanitized_data.get("biometric_data", {}),
-                symptom_history=sanitized_data.get("symptom_history", {}),
+                patient_id=patient_id,
+                biometric_data=sanitized_data.get("biometric_data", []),
+                mental_health_indicators=sanitized_data.get("mental_health_indicators", []),
             )
             # Only add to result if successful
             result["biometric_correlation"] = correlation_result
@@ -259,10 +387,9 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
 
         # Try to get pharmacogenomics insights
         try:
-            pharma_result = await self.pharmacogenomics_service.analyze_medication_response(
-                patient_id=str(patient_id),
-                genetic_markers=sanitized_data.get("genetic_markers", {}),
-                medications=sanitized_data.get("medications", []),
+            pharma_result = await self.pharmacogenomics_service.predict_medication_responses(
+                patient_id=patient_id,
+                patient_data=sanitized_data,
             )
             # Only add to result if successful
             result["pharmacogenomics"] = pharma_result
@@ -273,8 +400,9 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
         # Generate integrated recommendations if we have enough data
         if len(result) > 0:
             try:
-                recommendations = await self.recommendation_engine.generate_recommendations(
-                    patient_id=str(patient_id), insights=result
+                # The recommendation_engine.generate_recommendations returns list[dict[str, Any]]
+                recommendations: list[dict[str, Any]] = await self.recommendation_engine.generate_recommendations(
+                    patient_id=patient_id, insights=result
                 )
                 result["integrated_recommendations"] = recommendations
             except Exception as e:
@@ -283,6 +411,7 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
 
         # Add error status if any service failed
         if error_occurred:
+            # Add error information to the result dictionary
             result["partial_results"] = True
             result["error"] = "One or more services failed to generate insights"
 
@@ -345,8 +474,8 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
         """
         logger.info(f"Getting digital twin status for patient {patient_id}")
         
-        digital_twin = await self.get_digital_twin_by_patient(patient_id)
-        if not digital_twin:
+        twin_data = await self.get_digital_twin(patient_id=patient_id)
+        if not twin_data:
             logger.warning(f"No digital twin found for patient {patient_id}")
             return {
                 "exists": False,
@@ -354,20 +483,9 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
                 "message": "No digital twin exists for this patient"
             }
             
-        return {
-            "exists": True,
-            "patient_id": str(patient_id),
-            "digital_twin_id": str(digital_twin.id),
-            "created_at": digital_twin.created_at.isoformat(),
-            "updated_at": digital_twin.last_updated.isoformat(),
-            "version": digital_twin.version,
-            "state": {
-                "last_sync_time": digital_twin.state.last_sync_time.isoformat() if digital_twin.state.last_sync_time else None,
-                "overall_risk_level": digital_twin.state.overall_risk_level,
-                "dominant_symptoms": digital_twin.state.dominant_symptoms,
-                "current_treatment_effectiveness": digital_twin.state.current_treatment_effectiveness
-            }
-        }
+        # Add the exists flag to the twin data
+        twin_data["exists"] = True
+        return twin_data
     async def get_historical_insights(
         self, patient_id: UUID, start_date: datetime, end_date: datetime
     ) -> dict[str, Any]:
@@ -397,8 +515,8 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
             }
             
         # Get the digital twin
-        digital_twin = await self.get_digital_twin_by_patient(patient_id)
-        if not digital_twin:
+        twin_data = await self.get_digital_twin(patient_id=patient_id)
+        if not twin_data:
             logger.warning(f"No digital twin found for patient {patient_id}")
             return {
                 "error": "No digital twin exists for this patient",
@@ -453,10 +571,10 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
         # Generate symptom forecast if requested
         if options.get("include_symptom_forecast", True):
             try:
-                forecast = await self.symptom_forecasting_service.generate_forecast(
-                    patient_id=str(patient_id),
-                    days=options.get("forecast_days", 14),
-                    conditions=patient_data.get("conditions", []),
+                forecast = await self.symptom_forecasting_service.forecast_symptoms(
+                    patient_id=patient_id,
+                    data={"conditions": patient_data.get("conditions", [])},
+                    horizon=options.get("forecast_days", 14),
                 )
                 insights["symptom_forecast"] = forecast
             except Exception as e:
@@ -466,9 +584,12 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
         # Generate biometric correlations if requested
         if options.get("include_biometric_correlations", True):
             try:
+                biometric_data = patient_data.get("biometric_data", [])
+                mental_health_data = patient_data.get("mental_health_indicators", [])
                 correlations = await self.biometric_correlation_service.analyze_correlations(
-                    patient_id=str(patient_id),
-                    lookback_days=options.get("biometric_lookback_days", 30),
+                    patient_id=patient_id,
+                    biometric_data=biometric_data,
+                    mental_health_indicators=mental_health_data,
                 )
                 insights["biometric_correlations"] = correlations
             except Exception as e:
@@ -478,10 +599,9 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
         # Generate medication predictions if requested
         if options.get("include_medication_predictions", True):
             try:
-                medications = patient_data.get("medications", [])
-                predictions = await self.pharmacogenomics_service.analyze_medication_response(
-                    patient_id=str(patient_id),
-                    medications=medications,
+                predictions = await self.pharmacogenomics_service.predict_medication_responses(
+                    patient_id=patient_id,
+                    patient_data=patient_data,
                 )
                 insights["medication_predictions"] = predictions
             except Exception as e:
@@ -633,7 +753,7 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
             raise ValueError("Patient repository not available")
 
         try:
-            patient = await self.patient_repository.get_by_id(patient_id)
+            patient = await self.patient_repository.get_patient(patient_id)
             if not patient:
                 raise ValueError(f"Patient not found: {patient_id}")
             return patient if isinstance(patient, dict) else {"id": str(patient_id), "data": patient}
@@ -656,7 +776,7 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
             return {"id": patient_id}
 
         try:
-            patient = await self.patient_repository.get_by_id(patient_id)
+            patient = await self.patient_repository.get_patient(patient_id)
             if not patient:
                 logger.warning(f"Patient not found: {patient_id}")
                 return {"id": str(patient_id)}

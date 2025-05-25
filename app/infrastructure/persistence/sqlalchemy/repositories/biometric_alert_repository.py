@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.utils.logging import get_logger
 from app.domain.exceptions import EntityNotFoundError, RepositoryError
+from app.domain.entities.biometric_alert import AlertStatusEnum
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 from app.domain.services.biometric_event_processor import AlertPriority, BiometricAlert
 from app.domain.utils.datetime_utils import now_utc
@@ -59,7 +60,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
 
             # Use modern SQLAlchemy 2.0 pattern with execute and select
             query = select(BiometricAlertModel).where(
-                BiometricAlertModel.alert_id == alert_model_id
+                BiometricAlertModel.id == alert_model_id
             )
             result = await self.session.execute(query)
             existing_model = result.scalar_one_or_none()
@@ -127,7 +128,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             self.logger.debug(f"Retrieving alert by ID: {alert_id}")
 
             # Use modern SQLAlchemy 2.0 pattern with execute and select
-            query = select(BiometricAlertModel).where(BiometricAlertModel.alert_id == str(alert_id))
+            query = select(BiometricAlertModel).where(BiometricAlertModel.id == str(alert_id))
 
             try:
                 # Execute query and get scalar result
@@ -202,7 +203,11 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
 
             # Apply optional filters
             if acknowledged is not None:
-                query = query.where(BiometricAlertModel.acknowledged == acknowledged)
+                # Check if acknowledged based on status
+                if acknowledged:
+                    query = query.where(BiometricAlertModel.status == AlertStatusEnum.ACKNOWLEDGED)
+                else:
+                    query = query.where(BiometricAlertModel.status != AlertStatusEnum.ACKNOWLEDGED)
             if start_date:
                 query = query.where(BiometricAlertModel.created_at >= start_date)
             if end_date:
@@ -284,7 +289,8 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         """
         try:
             # Build the query for unacknowledged alerts
-            query = select(BiometricAlertModel).where(not BiometricAlertModel.acknowledged)
+            # Unacknowledged alerts have status NEW
+            query = select(BiometricAlertModel).where(BiometricAlertModel.status == AlertStatusEnum.NEW)
 
             if patient_id:
                 query = query.where(BiometricAlertModel.patient_id == str(patient_id))
@@ -326,7 +332,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         """
         try:
             # Use modern SQLAlchemy 2.0 pattern with execute and select
-            query = select(BiometricAlertModel).where(BiometricAlertModel.alert_id == str(alert_id))
+            query = select(BiometricAlertModel).where(BiometricAlertModel.id == str(alert_id))
             result = await self.session.execute(query)
             alert_model = result.scalar_one_or_none()
 
@@ -334,12 +340,15 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
                 raise EntityNotFoundError(f"Biometric alert with ID {alert_id} not found")
 
             # Update the model
-            alert_model.acknowledged = acknowledged
-            if acknowledged and acknowledged_by:
-                alert_model.acknowledged_by = str(acknowledged_by)
+            # Update the status based on acknowledgment
+            if acknowledged:
+                alert_model.status = AlertStatusEnum.ACKNOWLEDGED
+                if acknowledged_by:
+                    alert_model.acknowledged_by_user_id = acknowledged_by
                 alert_model.acknowledged_at = now_utc()
-            elif not acknowledged:
-                alert_model.acknowledged_by = None
+            else:
+                alert_model.status = AlertStatusEnum.NEW
+                alert_model.acknowledged_by_user_id = None
                 alert_model.acknowledged_at = None
 
             # Save changes
@@ -372,10 +381,10 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         """
         try:
             # Use modern SQLAlchemy 2.0 pattern with execute and select
-            query = select(func.count(BiometricAlertModel.alert_id)).where(
+            query = select(func.count(BiometricAlertModel.id)).where(
                 and_(
                     BiometricAlertModel.patient_id == str(patient_id),
-                    not BiometricAlertModel.acknowledged,
+                    BiometricAlertModel.status == AlertStatusEnum.NEW,
                 )
             )
 
@@ -405,7 +414,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         """
         try:
             # Use modern SQLAlchemy 2.0 pattern with execute and select
-            query = select(BiometricAlertModel).where(BiometricAlertModel.alert_id == str(alert_id))
+            query = select(BiometricAlertModel).where(BiometricAlertModel.id == str(alert_id))
             result = await self.session.execute(query)
             alert_model = result.scalar_one_or_none()
 
@@ -442,7 +451,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             RepositoryError: If there's an error counting the alerts
         """
         try:
-            query = select(func.count(BiometricAlertModel.alert_id)).where(
+            query = select(func.count(BiometricAlertModel.id)).where(
                 BiometricAlertModel.patient_id == str(patient_id)
             )
             query = self._apply_filters_for_count(query, acknowledged, start_date, end_date)
@@ -468,7 +477,11 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             The filtered query
         """
         if acknowledged is not None:
-            query = query.where(BiometricAlertModel.acknowledged == acknowledged)
+            # Check if acknowledged based on status
+            if acknowledged:
+                query = query.where(BiometricAlertModel.status == AlertStatusEnum.ACKNOWLEDGED)
+            else:
+                query = query.where(BiometricAlertModel.status != AlertStatusEnum.ACKNOWLEDGED)
         if start_date:
             query = query.where(BiometricAlertModel.created_at >= start_date)
         if end_date:
@@ -477,7 +490,11 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
 
     def _apply_filters_for_count(self, query, acknowledged, start_date, end_date):
         if acknowledged is not None:
-            query = query.where(BiometricAlertModel.acknowledged == acknowledged)
+            # Check if acknowledged based on status
+            if acknowledged:
+                query = query.where(BiometricAlertModel.status == AlertStatusEnum.ACKNOWLEDGED)
+            else:
+                query = query.where(BiometricAlertModel.status != AlertStatusEnum.ACKNOWLEDGED)
         if start_date:
             query = query.where(BiometricAlertModel.created_at >= start_date)
         if end_date:
