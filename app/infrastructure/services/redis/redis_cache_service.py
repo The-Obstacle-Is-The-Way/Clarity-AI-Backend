@@ -7,7 +7,7 @@ distributed operations.
 """
 
 import json
-from typing import Any
+from typing import Any, cast
 
 import redis.asyncio as redis  # Already correct, no change needed, but confirming
 from redis.asyncio.connection import ConnectionPool
@@ -133,9 +133,9 @@ class RedisCacheService(CacheService):
             client = await self._get_redis()
 
             if ttl is not None:
-                return await client.setex(prefixed_key, ttl, value)
+                return cast(bool, await client.setex(prefixed_key, ttl, value))
             else:
-                return await client.set(prefixed_key, value)
+                return cast(bool, await client.set(prefixed_key, value))
 
         except RedisError as e:
             self._logger.error(f"Redis error in set operation: {e!s}")
@@ -158,7 +158,7 @@ class RedisCacheService(CacheService):
 
         try:
             client = await self._get_redis()
-            result = await client.delete(prefixed_key)
+            result = cast(int, await client.delete(prefixed_key))
             return result > 0
 
         except RedisError as e:
@@ -183,7 +183,7 @@ class RedisCacheService(CacheService):
 
         try:
             client = await self._get_redis()
-            return await client.incrby(prefixed_key, increment)
+            return cast(int, await client.incrby(prefixed_key, increment))
 
         except RedisError as e:
             self._logger.error(f"Redis error in increment operation: {e!s}")
@@ -208,7 +208,7 @@ class RedisCacheService(CacheService):
 
         try:
             client = await self._get_redis()
-            return await client.expire(prefixed_key, seconds)
+            return cast(bool, await client.expire(prefixed_key, seconds))
 
         except RedisError as e:
             self._logger.error(f"Redis error in expire operation: {e!s}")
@@ -231,7 +231,7 @@ class RedisCacheService(CacheService):
 
         try:
             client = await self._get_redis()
-            result = await client.hgetall(prefixed_key)
+            result = cast(dict[str, str], await client.hgetall(prefixed_key))
 
             # Parse JSON values where possible
             parsed_result = {}
@@ -303,7 +303,7 @@ class RedisCacheService(CacheService):
 
         try:
             client = await self._get_redis()
-            result = await client.exists(prefixed_key)
+            result = cast(int, await client.exists(prefixed_key))
             return result > 0
 
         except RedisError as e:
@@ -325,7 +325,7 @@ class RedisCacheService(CacheService):
 
         try:
             client = await self._get_redis()
-            return await client.ttl(prefixed_key)
+            return cast(int, await client.ttl(prefixed_key))
 
         except RedisError as e:
             self._logger.error(f"Redis error in ttl operation: {e!s}")

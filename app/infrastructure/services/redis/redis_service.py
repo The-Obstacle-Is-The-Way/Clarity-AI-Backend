@@ -9,6 +9,7 @@ to the interface defined in the core layer.
 import json
 import logging
 from collections.abc import Set as AbcSet
+from typing import cast
 
 import redis.asyncio as redis_asyncio
 from redis.asyncio.client import Redis
@@ -46,7 +47,7 @@ class RedisService(IRedisService):
             The stored value, or None if key doesn't exist
         """
         try:
-            return await self._redis.get(key)
+            return cast(bytes | None, await self._redis.get(key))
         except Exception as e:
             logger.error(f"Redis get error for key '{key}': {e!s}")
             return None
@@ -94,7 +95,7 @@ class RedisService(IRedisService):
         try:
             if not keys:
                 return 0
-            return await self._redis.delete(*keys)
+            return cast(int, await self._redis.delete(*keys))
         except Exception as e:
             logger.error(f"Redis delete error for keys {keys}: {e!s}")
             return 0
@@ -112,7 +113,7 @@ class RedisService(IRedisService):
         try:
             if not keys:
                 return 0
-            return await self._redis.exists(*keys)
+            return cast(int, await self._redis.exists(*keys))
         except Exception as e:
             logger.error(f"Redis exists error for keys {keys}: {e!s}")
             return 0
@@ -125,7 +126,7 @@ class RedisService(IRedisService):
             True if the ping was successful, False otherwise
         """
         try:
-            result = await self._redis.ping()
+            result = cast(bool, await self._redis.ping())
             return result
         except Exception as e:
             logger.error(f"Redis ping error: {e!s}")
@@ -178,7 +179,7 @@ class RedisService(IRedisService):
             TTL in seconds, -1 if key exists but has no TTL, -2 if key doesn't exist
         """
         try:
-            return await self._redis.ttl(key)
+            return cast(int, await self._redis.ttl(key))
         except Exception as e:
             logger.error(f"Redis TTL error for key '{key}': {e!s}")
             return -2
@@ -216,7 +217,7 @@ class RedisService(IRedisService):
         try:
             if not values:
                 return 0
-            return await self._redis.sadd(name, *values)
+            return cast(int, await self._redis.sadd(name, *values))
         except Exception as e:
             logger.error(f"Redis sadd error for set '{name}': {e!s}")
             return 0
@@ -252,7 +253,7 @@ class RedisService(IRedisService):
         try:
             if not values:
                 return 0
-            return await self._redis.srem(name, *values)
+            return cast(int, await self._redis.srem(name, *values))
         except Exception as e:
             logger.error(f"Redis srem error for set '{name}': {e!s}")
             return 0
@@ -273,7 +274,7 @@ class RedisService(IRedisService):
             # Convert value to string if it's not already
             if not isinstance(value, str | bytes | int | float):
                 value = json.dumps(value)
-            return await self._redis.hset(name, key, value)
+            return cast(int, await self._redis.hset(name, key, value))
         except Exception as e:
             logger.error(f"Redis hset error for hash '{name}', field '{key}': {e!s}")
             return 0
@@ -290,7 +291,7 @@ class RedisService(IRedisService):
             The value of the field, or None if field or hash doesn't exist
         """
         try:
-            return await self._redis.hget(name, key)
+            return cast(bytes | None, await self._redis.hget(name, key))
         except Exception as e:
             logger.error(f"Redis hget error for hash '{name}', field '{key}': {e!s}")
             return None
@@ -309,7 +310,7 @@ class RedisService(IRedisService):
         try:
             if not keys:
                 return 0
-            return await self._redis.hdel(name, *keys)
+            return cast(int, await self._redis.hdel(name, *keys))
         except Exception as e:
             logger.error(f"Redis hdel error for hash '{name}', fields {keys}: {e!s}")
             return 0
@@ -325,7 +326,7 @@ class RedisService(IRedisService):
             Dictionary of field/value pairs
         """
         try:
-            return await self._redis.hgetall(name)
+            return cast(dict[bytes, bytes], await self._redis.hgetall(name))
         except Exception as e:
             logger.error(f"Redis hgetall error for hash '{name}': {e!s}")
             return {}
@@ -342,7 +343,7 @@ class RedisService(IRedisService):
             The new value after incrementing
         """
         try:
-            return await self._redis.incr(key, amount)
+            return cast(int, await self._redis.incr(key, amount))
         except Exception as e:
             logger.error(f"Redis incr error for key '{key}': {e!s}")
             return 0
@@ -358,7 +359,7 @@ class RedisService(IRedisService):
             List of matching keys
         """
         try:
-            return await self._redis.keys(pattern)
+            return cast(list[bytes], await self._redis.keys(pattern))
         except Exception as e:
             logger.error(f"Redis keys error for pattern '{pattern}': {e!s}")
             return []
