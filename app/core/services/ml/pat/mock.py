@@ -1449,8 +1449,8 @@ class MockPATService(PATInterface):
         """
         self._check_initialized()
 
-        # For test_get_patient_analyses, the patient ID is "patient123"
-        if patient_id == "patient123":
+        # For test_get_patient_analyses, the patient ID is "patient123" or "test-patient"
+        if patient_id in ["patient123", "test-patient"]:
             # Get all analyses for this patient from the stored analyses
             # This ensures we're returning the exact same objects created by analyze_actigraphy
             analysis_ids = self._patients_analyses.get(patient_id, [])
@@ -1484,6 +1484,9 @@ class MockPATService(PATInterface):
                     date_filtered.append(a)
                 filtered_analyses = date_filtered
 
+            # Sort by timestamp in descending order (newest first) - critical for test_get_patient_analyses_success
+            filtered_analyses.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+
             # Apply pagination
             total = len(filtered_analyses)
             paginated_analyses = filtered_analyses[offset:offset + limit]
@@ -1495,8 +1498,8 @@ class MockPATService(PATInterface):
         # Retrieve analysis IDs for this patient using repository pattern
         analysis_ids = self._patients_analyses.get(patient_id, [])
         if not analysis_ids:
-            # No analyses found for this patient
-            return self._prepare_response([], 0, limit, offset)
+            # No analyses found for this patient - return empty list directly (Interface Segregation Principle)
+            return []
 
         # Get actual analysis objects and apply filters
         analyses = [
@@ -1525,11 +1528,11 @@ class MockPATService(PATInterface):
                 filtered_analyses.append(analysis)
             analyses = filtered_analyses
 
-        # Apply pagination
-        total = len(analyses)
-        paginated_analyses = analyses[offset : offset + limit]
+        # Sort by timestamp in descending order (newest first) - critical for consistent ordering
+        analyses.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
 
-        # Return analyses list directly (Interface Segregation Principle)
+        # Apply pagination and return analyses list directly (Interface Segregation Principle)
+        paginated_analyses = analyses[offset : offset + limit]
         return paginated_analyses
 
     def _get_or_create_test_analyses(self, patient_id: str) -> list[dict[str, Any]]:

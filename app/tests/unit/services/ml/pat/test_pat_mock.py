@@ -398,17 +398,12 @@ class TestMockPATGetPatientAnalyses:
                 analysis_types=valid_analysis_types,
             )
 
-        # Retrieve the analyses
+        # Retrieve the analyses - now returns list directly (Interface Segregation Principle)
         result = initialized_mock_pat.get_patient_analyses(patient_id)
 
-        # Verify the result structure
-        assert "analyses" in result
-        assert len(result["analyses"]) == 3
-        assert "pagination" in result
-        assert result["pagination"]["total"] == 3
-        assert result["pagination"]["limit"] == 100  # Mock service defaults to 100
-        assert result["pagination"]["offset"] == 0
-        assert result["pagination"]["has_more"] is False
+        # Verify the result structure - clean list interface
+        assert isinstance(result, list)
+        assert len(result) == 3
 
     def test_get_patient_analyses_with_pagination(
         self,
@@ -431,19 +426,16 @@ class TestMockPATGetPatientAnalyses:
                 analysis_types=valid_analysis_types,
             )
 
-        # Retrieve the analyses with pagination
+        # Retrieve the analyses with pagination - now returns list directly (Interface Segregation Principle)
         result = initialized_mock_pat.get_patient_analyses(
             patient_id=patient_id,
             limit=2,
             offset=1,
         )
 
-        # Verify pagination
-        assert len(result["analyses"]) == 2
-        assert result["pagination"]["total"] == 5
-        assert result["pagination"]["limit"] == 2
-        assert result["pagination"]["offset"] == 1
-        assert result["pagination"]["has_more"] is True
+        # Verify pagination - clean list interface
+        assert isinstance(result, list)
+        assert len(result) == 2
 
     def test_get_patient_analyses_not_initialized(self, mock_pat) -> None:
         """Test get_patient_analyses fails when service is not initialized."""
@@ -454,9 +446,9 @@ class TestMockPATGetPatientAnalyses:
         """Test get_patient_analyses returns empty list for patient with no analyses."""
         result = initialized_mock_pat.get_patient_analyses("non-existent-patient")
 
-        assert len(result["analyses"]) == 0
-        assert result["pagination"]["total"] == 0
-        assert result["pagination"]["has_more"] is False
+        # Verify empty result - clean list interface
+        assert isinstance(result, list)
+        assert len(result) == 0
 
 
 class TestMockPATGetModelInfo:
