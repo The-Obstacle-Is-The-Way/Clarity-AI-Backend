@@ -9,7 +9,7 @@ proper role and permission management for security.
 import pytest
 
 # Keep User import if needed for setup, but roles list is passed to check_permission
-from app.domain.entities.user import User
+from app.core.domain.entities.user import User
 
 # Corrected import for RBACService
 from app.infrastructure.security.rbac.rbac_service import RBACService
