@@ -9,6 +9,7 @@ import random
 import uuid
 from datetime import datetime, timedelta
 from enum import Enum, auto
+from typing import Any
 from uuid import UUID
 
 import numpy as np
@@ -95,6 +96,9 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
 
         # Baseline activity levels for each region and neurotransmitter
         self.baseline_levels: dict[BrainRegion, dict[Neurotransmitter, float]] = {}
+        
+        # Track event chains for temporal analysis
+        self.event_chains: dict[str, Any] = {}
 
         # Initialize baselines with default values
         self._initialize_baselines()
@@ -107,8 +111,9 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
                 # Default baseline is 0.5 (normalized range 0-1)
                 # Adjust based on whether the region produces this neurotransmitter
                 produces = False
-                if nt in self.production_map:
-                    produces = region in self.production_map[nt]
+                # Safely check if the region produces this neurotransmitter
+                if region in self.production_map and nt in self.production_map[region]:
+                    produces = True
 
                 # Regions that produce a neurotransmitter have slightly higher baseline
                 self.baseline_levels[region][nt] = 0.6 if produces else 0.4
@@ -324,7 +329,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
             return result
 
         # Initialize result structure for static propagation
-        cascade_effects = {}
+        cascade_effects: dict[BrainRegion, dict[Neurotransmitter, float]] = {}
 
         # Initialize queue for breadth-first traversal
         # Each entry is (region, neurotransmitter, effect_size, depth)
@@ -386,11 +391,11 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
                         # Check if there are receptors for both neurotransmitters
                         has_source_receptors = any(
                             p.neurotransmitter == nt
-                            for p in self.get_receptor_profiles_for_region(connected_region)
+                            for p in self.get_receptor_profiles(brain_region=connected_region)
                         )
                         has_target_receptors = any(
                             p.neurotransmitter == other_nt
-                            for p in self.get_receptor_profiles_for_region(connected_region)
+                            for p in self.get_receptor_profiles(brain_region=connected_region)
                         )
 
                         if has_source_receptors and has_target_receptors:
@@ -552,10 +557,10 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
 
     def analyze_temporal_response(
         self,
-        sequence: TemporalSequence = None,
+        sequence: TemporalSequence | None = None,
         patient_id: UUID | None = None,
-        brain_region: BrainRegion = None,
-        neurotransmitter: Neurotransmitter = None,
+        brain_region: BrainRegion | None = None,
+        neurotransmitter: Neurotransmitter | None = None,
         time_series_data: list[tuple[datetime, float]] | None = None,
         baseline_period: tuple[datetime, datetime] | None = None,
     ) -> NeurotransmitterEffect:
@@ -580,7 +585,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         # Mode 2: Analyzing raw time series data
         if time_series_data and brain_region and neurotransmitter:
             return self._analyze_raw_time_series(
-                patient_id=patient_id,
+                patient_id=patient_id if patient_id else uuid.uuid4(),
                 brain_region=brain_region,
                 neurotransmitter=neurotransmitter,
                 time_series_data=time_series_data,
@@ -594,7 +599,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
             )
 
         # Initialize results
-        results = {"trends": {}, "patterns": {}, "correlations": {}, "statistics": {}}
+        results: dict[str, dict[str, Any]] = {"trends": {}, "patterns": {}, "correlations": {}, "statistics": {}}
 
         # Extract data as numpy array for analysis
         np.array(sequence.values)
@@ -898,7 +903,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
     def simulate_treatment_response(
         self,
         brain_region: BrainRegion,
-        target_neurotransmitter: Neurotransmitter = None,
+        target_neurotransmitter: Neurotransmitter | None = None,
         treatment_effect: float = 0.5,
         timestamps: list[datetime] | None = None,
         affected_neurotransmitters: dict[Neurotransmitter, float] | None = None,
@@ -1129,37 +1134,19 @@ def extend_neurotransmitter_mapping(
     # Create a new temporal mapping instance
     temporal_mapping = TemporalNeurotransmitterMapping(patient_id=effective_patient_id)
     # Initialize event chains container for extended mapping
+    # The event_chains attribute is now initialized in __init__
     temporal_mapping.event_chains = {}
 
-    # Copy attributes from the base mapping only if they exist to avoid AttributeError in tests
-    if hasattr(base_mapping, "brain_regions"):
-        temporal_mapping.brain_regions = (
-            set(base_mapping.brain_regions)
-            if isinstance(base_mapping.brain_regions, set | list)
-            else set()
-        )
-
-    if hasattr(base_mapping, "neurotransmitters"):
-        temporal_mapping.neurotransmitters = base_mapping.neurotransmitters.copy()
-
+    # Copy receptor profiles from base mapping
     if hasattr(base_mapping, "receptor_profiles"):
         # Reference base mapping profiles to keep in sync
         temporal_mapping.receptor_profiles = base_mapping.receptor_profiles
 
-    if hasattr(base_mapping, "interactions"):
-        temporal_mapping.interactions = base_mapping.interactions.copy()
-
-    # Build the lookup maps AFTER copying profiles and interactions
+    # Build the lookup maps AFTER copying profiles
     temporal_mapping._build_lookup_maps()
 
-    # Copy other relevant attributes if necessary (e.g., metadata)
-    # temporal_mapping.metadata = base_mapping.metadata.copy()
-
-    # Copy production map (Corrected attribute name)
+    # Copy production map
     if hasattr(base_mapping, "production_map"):
-        # Ensure the target attribute exists (it should after super().__init__)
-        if not hasattr(temporal_mapping, "production_map"):
-            temporal_mapping.production_map = {}
         for key, value in base_mapping.production_map.items():
             # Directly assign the set, assuming value is Set[Neurotransmitter]
             temporal_mapping.production_map[key] = value
@@ -1167,32 +1154,6 @@ def extend_neurotransmitter_mapping(
     # Copy brain region connectivity if available
     if hasattr(base_mapping, "brain_region_connectivity"):
         temporal_mapping.brain_region_connectivity = base_mapping.brain_region_connectivity
-
-    # Check if the attribute exists before copying
-    if hasattr(base_mapping, "brain_regions") and base_mapping.brain_regions is not None:
-        # Assuming brain_regions should be a set or list of BrainRegion enums
-        # Ensure it's copied correctly, converting to set if necessary
-        if isinstance(base_mapping.brain_regions, set | list):
-            temporal_mapping.brain_regions = set(base_mapping.brain_regions)  # Ensure it's a set
-        else:
-            # Handle unexpected type if necessary, or default to empty set
-            logger.warning(
-                f"Unexpected type for base_mapping.brain_regions: {type(base_mapping.brain_regions)}. Initializing empty set."
-            )
-            temporal_mapping.brain_regions = set()
-
-    else:
-        # Initialize the attribute by deriving it from the copied maps and profiles
-        # Use the already copied maps on temporal_mapping
-        derived_regions = set(temporal_mapping.receptor_map.keys()) | set(
-            temporal_mapping.production_map.keys()
-        )
-
-        # Add regions from receptor profiles if they exist
-        if hasattr(temporal_mapping, "receptor_profiles"):
-            derived_regions.update(p.brain_region for p in temporal_mapping.receptor_profiles)
-
-        temporal_mapping.brain_regions = derived_regions  # Store the derived set
 
     # Initialize temporal-specific attributes (already done in __init__)
     # Re-initialize baselines based on copied production map?
@@ -1286,8 +1247,12 @@ def _simulate_cascade_effects(self, sequence_name, simulation_duration_hours, ti
     return {"result_sequence": result_seq, "event_chain": chain}
 
 
-# Attach missing methods to TemporalNeurotransmitterMapping
-TemporalNeurotransmitterMapping.add_temporal_sequence = _add_temporal_sequence
-TemporalNeurotransmitterMapping.add_neurotransmitter_connection = _add_neurotransmitter_connection
-TemporalNeurotransmitterMapping.calculate_receptor_response = _calculate_receptor_response
-TemporalNeurotransmitterMapping.simulate_cascade_effects = _simulate_cascade_effects
+# Add missing methods to TemporalNeurotransmitterMapping class
+setattr(TemporalNeurotransmitterMapping, "add_temporal_sequence", _add_temporal_sequence)
+setattr(TemporalNeurotransmitterMapping, "add_neurotransmitter_connection", _add_neurotransmitter_connection)
+setattr(TemporalNeurotransmitterMapping, "calculate_receptor_response", _calculate_receptor_response)
+setattr(TemporalNeurotransmitterMapping, "simulate_cascade_effects", _simulate_cascade_effects)
+
+# Add logger for use in the module
+import logging
+logger = logging.getLogger(__name__)

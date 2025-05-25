@@ -191,8 +191,8 @@ class NeurotransmitterMapping:
         # For test compatibility: list of receptor profiles
         self.receptor_profiles: list[ReceptorProfile] = []
 
-        # Maps BrainRegion to dict of Neurotransmitter -> ReceptorProfile
-        self.receptor_map: dict[BrainRegion, dict[Neurotransmitter, ReceptorProfile]] = {}
+        # Maps BrainRegion to dict of Neurotransmitter -> float
+        self.receptor_map: dict[BrainRegion, dict[Neurotransmitter, float]] = {}
 
         # Maps BrainRegion to list of Neurotransmitters it produces
         self.production_map: dict[BrainRegion, set[Neurotransmitter]] = {}
@@ -364,10 +364,7 @@ class NeurotransmitterMapping:
         Returns:
             List of brain regions that produce the neurotransmitter
         """
-        if neurotransmitter in self.production_map:
-            return self.production_map[neurotransmitter]
-
-        regions = []
+        regions: list[BrainRegion] = []
         for region, neurotransmitters in self.production_map.items():
             if isinstance(region, BrainRegion) and neurotransmitter in neurotransmitters:
                 regions.append(region)
@@ -450,12 +447,9 @@ class NeurotransmitterMapping:
         # Confidence interval
         confidence_interval = (max(0.0, effect_size - 0.1), min(1.0, effect_size + 0.1))
 
-        # Statistical significance
-        is_statistically_significant = p_value < 0.05
-
         # Clinical significance based on effect size and receptor density
         clinical_significance = ClinicalSignificance.NONE
-        if is_statistically_significant:
+        if p_value < 0.05:
             if effect_size >= 0.7:
                 clinical_significance = ClinicalSignificance.SIGNIFICANT
             elif effect_size >= 0.5:
@@ -472,8 +466,8 @@ class NeurotransmitterMapping:
             p_value=p_value,
             confidence_interval=confidence_interval,
             clinical_significance=clinical_significance,
-            is_statistically_significant=is_statistically_significant,
             brain_region=brain_region,
+            sample_size=20,  # Default sample size for baseline analysis
         )
 
         return effect
@@ -496,9 +490,8 @@ class NeurotransmitterMapping:
             # Use max effect magnitude for simplified mapping
             effect = profile.calculate_effect_magnitude()
             if neurotransmitter in self.receptor_map[region]:
-                self.receptor_map[region][neurotransmitter] = max(
-                    self.receptor_map[region][neurotransmitter], effect
-                )
+                current_effect = self.receptor_map[region][neurotransmitter]
+                self.receptor_map[region][neurotransmitter] = max(current_effect, effect)
             else:
                 self.receptor_map[region][neurotransmitter] = effect
 

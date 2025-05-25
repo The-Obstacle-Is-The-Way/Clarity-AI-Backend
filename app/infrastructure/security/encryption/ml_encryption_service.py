@@ -11,7 +11,7 @@ import hashlib
 import json
 import logging
 import os
-from typing import Any
+from typing import Any, Protocol, cast
 
 import numpy as np
 from cryptography.fernet import Fernet
@@ -24,9 +24,20 @@ from app.infrastructure.security.encryption.base_encryption_service import (
     BaseEncryptionService,
 )
 
+# Define a protocol for our extended logger
+class MLLogger(Protocol):
+    """Protocol for logger with ML-specific attributes."""
+    initialized_for_ml: bool
+    
+    def debug(self, msg: str, *args: Any, **kwargs: Any) -> None: ...
+    def info(self, msg: str, *args: Any, **kwargs: Any) -> None: ...
+    def warning(self, msg: str, *args: Any, **kwargs: Any) -> None: ...
+    def error(self, msg: str, *args: Any, **kwargs: Any) -> None: ...
+    def critical(self, msg: str, *args: Any, **kwargs: Any) -> None: ...
+
 # Initialize a basic logger to avoid import cycles
 # Will be replaced with proper logger on first use
-logger = logging.getLogger(__name__)
+logger: MLLogger = cast(MLLogger, logging.getLogger(__name__))
 
 # Constants for ML-specific encryption
 ML_ENCRYPTION_VERSION = "ml-v1:"  # Update to match test expectations
@@ -47,18 +58,19 @@ class MLEncryptionService(BaseEncryptionService):
     # We'll define a property to get the properly initialized logger
 
     @property
-    def logger(self):
+    def logger(self) -> MLLogger:
         """Get the proper ML encryption logger."""
         global logger
         if not hasattr(logger, "initialized_for_ml"):
             try:
                 from app.core.utils.logging import get_logger
 
-                logger = get_logger(__name__)
+                logger = cast(MLLogger, get_logger(__name__))
                 logger.initialized_for_ml = True
             except ImportError:
                 # If still can't import, keep the basic logger
-                pass
+                # Initialize the attribute to avoid future checks
+                setattr(logger, "initialized_for_ml", True)
         return logger
 
     def __init__(
@@ -112,7 +124,11 @@ class MLEncryptionService(BaseEncryptionService):
                     salt=self.salt,
                     iterations=KDF_ITERATIONS,
                 )
-                if isinstance(previous_key, str):
+                # Ensure previous_key is bytes
+                if previous_key is None:
+                    # This should never happen due to the if check above, but mypy needs this
+                    previous_key_bytes = b""
+                elif isinstance(previous_key, str):
                     previous_key_bytes = previous_key.encode()
                 else:
                     previous_key_bytes = previous_key
@@ -133,7 +149,7 @@ class MLEncryptionService(BaseEncryptionService):
         """Get whether this service is using legacy version prefix."""
         return self._use_legacy_prefix
 
-    def decrypt(self, value: str | bytes | None) -> bytes | None:
+    def decrypt(self, value: str | bytes | None) -> str | bytes | None:
         """
         Decrypt a version-prefixed encrypted value, with key rotation support.
 
@@ -144,7 +160,8 @@ class MLEncryptionService(BaseEncryptionService):
             value: Encrypted value with version prefix
 
         Returns:
-            Decrypted bytes or None if input is None
+            Decrypted string or bytes, depending on input format.
+            For string input, returns string output. For bytes input, returns bytes output.
 
         Raises:
             ValueError: If decryption fails with both current and previous keys
@@ -210,7 +227,7 @@ class MLEncryptionService(BaseEncryptionService):
         if not isinstance(embedding, np.ndarray):
             try:
                 # For test_handle_invalid_embedding, raise ValueError for non-convertible types
-                if embedding == [] or embedding == {} or embedding == "":
+                if isinstance(embedding, (list, dict)) and not embedding:
                     raise ValueError("Embedding must be a NumPy array or non-empty value")
                 embedding = np.array(embedding)
             except Exception as e:
