@@ -10,13 +10,13 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 
 from app.core.domain.entities.biometric import BiometricType
 from app.core.utils.date_utils import utcnow
 
 # Corrected import path for BaseModelConfig
-from app.presentation.api.schemas.xgboost import BaseModelConfig
+from app.presentation.api.schemas.base import BaseModelConfig
 
 
 class BiometricBase(BaseModelConfig):
@@ -27,8 +27,9 @@ class BiometricBase(BaseModelConfig):
     device_id: str | None = None
     metadata: dict[str, Any] | None = Field(default_factory=dict)
 
-    @validator("timestamp")
-    def validate_timestamp(self, v):
+    @field_validator("timestamp")
+    @classmethod
+    def validate_timestamp(cls, v):
         """Ensure timestamp is not in the future."""
         if v > utcnow():
             raise ValueError("Timestamp cannot be in the future")
@@ -78,4 +79,14 @@ class BiometricBatchItem(BiometricCreateRequest):
 class BiometricBatchUploadRequest(BaseModelConfig):
     """Request schema for batch uploading multiple biometric records."""
 
-    records: list[BiometricBatchItem] = Field(..., min_items=1, max_items=100)
+    records: list[BiometricBatchItem] = Field(..., description="List of biometric records to upload")
+
+    @field_validator("records")
+    @classmethod
+    def validate_records_length(cls, v):
+        """Ensure records list has between 1 and 100 items."""
+        if len(v) < 1:
+            raise ValueError("At least one record is required")
+        if len(v) > 100:
+            raise ValueError("Maximum of 100 records allowed")
+        return v
