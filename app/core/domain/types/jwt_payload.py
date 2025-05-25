@@ -14,6 +14,13 @@ from pydantic import BaseModel, Field
 
 from app.domain.enums.token_type import TokenType
 
+# Define PHI fields as a constant
+PHI_FIELDS = [
+    "name", "email", "dob", "ssn", "address", "phone_number", "birth_date",
+    "social_security", "medical_record_number", "first_name", "last_name",
+    "date_of_birth", "phone", "patient_id", "provider_id"
+]
+
 
 class JWTPayloadBase(BaseModel):
     """Base JWT payload with standard claims."""
@@ -119,6 +126,11 @@ def create_access_token_payload(
             extracted_permissions = additional_claims.pop("permissions")
         # If permissions are in both places, we've already prioritized the explicit parameter
 
+    # Filter out PHI fields from additional_claims
+    filtered_claims = {}
+    if additional_claims:
+        filtered_claims = {k: v for k, v in additional_claims.items() if k not in PHI_FIELDS}
+    
     return AccessTokenPayload(
         sub=subject,
         iat=now,
@@ -130,7 +142,7 @@ def create_access_token_payload(
         permissions=extracted_permissions,
         username=username,
         session_id=session_id,
-        custom_fields=additional_claims or {},
+        custom_fields=filtered_claims,
     )
 
 
@@ -167,6 +179,11 @@ def create_refresh_token_payload(
         int(expires_at.timestamp()) if expires_at else now + (7 * 24 * 60 * 60)
     )  # 7 days default
 
+    # Filter out PHI fields from additional_claims
+    filtered_claims = {}
+    if additional_claims:
+        filtered_claims = {k: v for k, v in additional_claims.items() if k not in PHI_FIELDS}
+    
     return RefreshTokenPayload(
         sub=subject,
         iat=now,
@@ -175,7 +192,7 @@ def create_refresh_token_payload(
         iss=issuer,
         aud=audience,
         original_iat=original_iat,
-        custom_fields=additional_claims or {},
+        custom_fields=filtered_claims,
     )
 
 
@@ -235,7 +252,7 @@ def payload_from_dict(data: dict[str, Any]) -> JWTPayload:
     if "role" in data and data["role"] not in roles:
         roles.append(data["role"])
 
-    # Collect custom fields (everything not in standard claims)
+    # Collect custom fields (everything not in standard claims or PHI fields)
     standard_claims = {
         "sub",
         "iat",
@@ -252,7 +269,8 @@ def payload_from_dict(data: dict[str, Any]) -> JWTPayload:
         "original_iat",
         "permissions",
     }
-    custom_fields = {k: v for k, v in data.items() if k not in standard_claims}
+    custom_fields = {k: v for k, v in data.items()
+                    if k not in standard_claims and k not in PHI_FIELDS}
 
     # Extract permissions (handle both string and list formats)
     permissions_data = data.get("permissions", [])
