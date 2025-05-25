@@ -7,7 +7,7 @@ HIPAA security standards and best practices for healthcare applications.
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 from jose.exceptions import ExpiredSignatureError, JWTError
@@ -316,7 +316,7 @@ class JWTService(IJwtService):
             try:
                 return UUID(subject)
             except ValueError:
-                return subject
+                return cast(str, subject)
 
         except Exception as e:
             logger.error(f"Error extracting token identity: {e}")
@@ -409,7 +409,7 @@ class JWTService(IJwtService):
         # Check repository first
         if self.token_blacklist_repository:
             try:
-                return await self.token_blacklist_repository.is_blacklisted(jti)
+                return cast(bool, await self.token_blacklist_repository.is_blacklisted(jti))
             except Exception as e:
                 logger.warning(f"Error checking blacklist repository: {e}")
 

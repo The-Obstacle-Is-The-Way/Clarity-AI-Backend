@@ -1319,14 +1319,14 @@ class JWTServiceImpl(IJwtService):
         if auth_header:
             parts = auth_header.split()
             if len(parts) == 2 and parts[0].lower() == "bearer":
-                return parts[1]
+                return cast(str, parts[1])
                 
         # Check for token in cookies
         if hasattr(request, "cookies"):
             # Check for token in various cookie names
             for cookie_name in ["token", "access_token", "jwt"]:
                 if cookie_name in request.cookies:
-                    return request.cookies[cookie_name]
+                    return cast(str, request.cookies[cookie_name])
             
         return None
         
