@@ -41,9 +41,8 @@ class MedicationDosage:
 
     def __post_init__(self) -> None:
         """Validate the dosage values"""
-        if self.value <= 0:
-            raise ValueError("Dosage value must be positive")
-
+        self.validate_dosage()
+        
         if self.frequency_per_day <= 0:
             raise ValueError("Frequency must be positive")
 
@@ -60,7 +59,7 @@ class MedicationDosage:
         if self.value < 0:
             raise ValueError("Dosage amount cannot be negative")
 
-        if self.unit not in DosageUnit:
+        if not isinstance(self.unit, DosageUnit):
             raise ValueError(
                 f"Invalid dosage unit. Must be one of: {', '.join([unit.value for unit in DosageUnit])}"
             )

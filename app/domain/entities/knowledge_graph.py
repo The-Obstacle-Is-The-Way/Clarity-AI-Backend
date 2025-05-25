@@ -5,8 +5,10 @@ Pure domain models with no external dependencies.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, TypeVar, Generic
 from uuid import UUID, uuid4
+
+T = TypeVar('T', bound=Enum)
 
 
 class EdgeType(Enum):
@@ -41,8 +43,19 @@ class NodeType(Enum):
     PHYSIOLOGICAL_STATE = "physiological_state"
 
 
-def ensure_enum_value(value, enum_class):
-    """Convert string to enum value if necessary, or keep as enum value."""
+def ensure_enum_value(value: str | T, enum_class: type[T]) -> T:
+    """Convert string to enum value if necessary, or keep as enum value.
+    
+    Args:
+        value: The value to convert, either a string or an enum value
+        enum_class: The enum class to convert to
+        
+    Returns:
+        The enum value
+        
+    Raises:
+        ValueError: If the string cannot be converted to an enum value
+    """
     if isinstance(value, str):
         try:
             return enum_class(value)
@@ -51,8 +64,8 @@ def ensure_enum_value(value, enum_class):
             try:
                 return enum_class[value]
             except KeyError:
-                # Return the original string if all conversions fail
-                return value
+                # Raise ValueError if all conversions fail
+                raise ValueError(f"Cannot convert '{value}' to {enum_class.__name__}")
     return value
 
 
@@ -69,7 +82,7 @@ class KnowledgeGraphNode:
     confidence: float = 1.0  # 0.0 to 1.0
     source: str | None = None  # e.g., "PAT", "MentalLLaMA", "XGBoost", "clinician"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Ensure proper enum conversion after initialization."""
         self.node_type = ensure_enum_value(self.node_type, NodeType)
 
@@ -78,10 +91,10 @@ class KnowledgeGraphNode:
         cls,
         label: str,
         node_type: NodeType,
-        properties: dict[Any, Any] | None = None,
+        properties: dict[str, Any] | None = None,
         source: str | None = None,
         confidence: float = 1.0,
-    ):
+    ) -> "KnowledgeGraphNode":
         """Factory method to create a new node."""
         return cls(
             id=uuid4(),
@@ -106,9 +119,9 @@ class KnowledgeGraphEdge:
     last_updated: datetime = field(default_factory=datetime.now)
     confidence: float = 1.0  # 0.0 to 1.0
     source: str | None = None  # e.g., "PAT", "MentalLLaMA", "XGBoost", "clinician"
-    temporal_constraints: dict | None = None  # Temporal constraints on this edge
+    temporal_constraints: dict[str, Any] | None = None  # Temporal constraints on this edge
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Ensure proper enum conversion after initialization."""
         self.edge_type = ensure_enum_value(self.edge_type, EdgeType)
 
@@ -118,11 +131,11 @@ class KnowledgeGraphEdge:
         source_id: UUID,
         target_id: UUID,
         edge_type: EdgeType,
-        properties: dict[Any, Any] | None = None,
+        properties: dict[str, Any] | None = None,
         source: str | None = None,
         confidence: float = 1.0,
-        temporal_constraints: dict[Any, Any] | None = None,
-    ):
+        temporal_constraints: dict[str, Any] | None = None,
+    ) -> "KnowledgeGraphEdge":
         """Factory method to create a new edge."""
         return cls(
             id=uuid4(),

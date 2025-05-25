@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import date
+from typing import Any
 from uuid import UUID, uuid4
 
 
@@ -36,7 +37,7 @@ class PsychiatricAssessment:
         assessment_date_str = str(self.assessment_date)
         return f"PsychiatricAssessment(date={assessment_date_str}, diagnosis='{self.diagnosis}', severity='{self.severity}')"
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, str | date | None]:
         """Convert to dictionary."""
         return {
             "assessment_date": self.assessment_date.isoformat()
@@ -49,7 +50,7 @@ class PsychiatricAssessment:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "PsychiatricAssessment":
+    def from_dict(cls, data: dict[str, Any]) -> "PsychiatricAssessment":
         """Create a PsychiatricAssessment from a dictionary."""
         # Handle date conversion if the date is a string
         assessment_date = data["assessment_date"]

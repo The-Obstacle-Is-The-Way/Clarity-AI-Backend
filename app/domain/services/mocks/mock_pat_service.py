@@ -34,7 +34,7 @@ class MockPATService(PATService):
         self._assessments: dict[UUID, list[AssessmentResult]] = {}
 
     def get_assessment_questions(
-        self, patient_id: UUID, assessment_type: AssessmentType
+        self, patient_id: UUID, assessment_type: str
     ) -> list[dict[str, Any]]:
         """
         Get a list of assessment questions for a patient.
@@ -46,6 +46,13 @@ class MockPATService(PATService):
         Returns:
             List of question dictionaries
         """
+        # Convert string to AssessmentType enum
+        try:
+            assessment_enum = AssessmentType(assessment_type)
+        except ValueError:
+            # Return empty list for unknown assessment types
+            return []
+            
         # Mock questions for different assessment types
         questions = {
             AssessmentType.PHQ9: [
@@ -94,12 +101,12 @@ class MockPATService(PATService):
             ],
         }
 
-        return questions.get(assessment_type, [])
+        return questions.get(assessment_enum, [])
 
     def submit_assessment(
         self,
         patient_id: UUID,
-        assessment_type: AssessmentType,
+        assessment_type: str,
         responses: dict[str, int | float | str],
     ) -> AssessmentResult:
         """
@@ -113,11 +120,34 @@ class MockPATService(PATService):
         Returns:
             AssessmentResult with scores
         """
+        # Convert string to AssessmentType enum
+        try:
+            assessment_enum = AssessmentType(assessment_type)
+        except ValueError:
+            # For unknown assessment types, use a default enum value
+            # Since we can't create an AssessmentResult with a string type,
+            # we'll use PHQ9 as a fallback and note the issue in severity
+            return AssessmentResult(
+                id=uuid4(),
+                patient_id=patient_id,
+                assessment_type=AssessmentType.PHQ9,  # Use a valid enum as fallback
+                timestamp=datetime.now(UTC),
+                raw_score=0,
+                normalized_score=0,
+                severity=f"Unknown assessment type: {assessment_type}",
+                responses=responses,
+            )
+            
+        # Initialize default values
+        raw_score: float = 0.0
+        normalized_score: float = 0.0
+        severity = "Unknown"
+        
         # Calculate scores based on assessment type
-        if assessment_type == AssessmentType.PHQ9:
+        if assessment_enum == AssessmentType.PHQ9:
             # For PHQ-9, sum the scores (0-27 range)
             raw_score = sum(int(score) for score in responses.values())
-            normalized_score = min(100, raw_score * 3.7)  # Scale to 0-100
+            normalized_score = min(100.0, raw_score * 3.7)  # Scale to 0-100
 
             # Determine severity
             if raw_score < 5:
@@ -131,10 +161,10 @@ class MockPATService(PATService):
             else:
                 severity = "Severe"
 
-        elif assessment_type == AssessmentType.GAD7:
+        elif assessment_enum == AssessmentType.GAD7:
             # For GAD-7, sum the scores (0-21 range)
             raw_score = sum(int(score) for score in responses.values())
-            normalized_score = min(100, raw_score * 4.76)  # Scale to 0-100
+            normalized_score = min(100.0, raw_score * 4.76)  # Scale to 0-100
 
             # Determine severity
             if raw_score < 5:
@@ -146,9 +176,9 @@ class MockPATService(PATService):
             else:
                 severity = "Severe"
 
-        elif assessment_type == AssessmentType.MOOD:
+        elif assessment_enum == AssessmentType.MOOD:
             # For mood, average the scores (1-10 range)
-            raw_score = sum(int(score) for score in responses.values()) / len(responses)
+            raw_score = sum(float(score) for score in responses.values()) / len(responses)
             normalized_score = raw_score * 10  # Scale to 0-100
 
             # Determine severity
@@ -158,16 +188,13 @@ class MockPATService(PATService):
                 severity = "Moderate"
             else:
                 severity = "Poor"
-        else:
-            raw_score = 0
-            normalized_score = 0
-            severity = "Unknown"
+        # Note: We don't need an else block here as we've already initialized default values
 
         # Create result
         result = AssessmentResult(
             id=uuid4(),
             patient_id=patient_id,
-            assessment_type=assessment_type,
+            assessment_type=assessment_enum,  # Use the enum value, not the string
             timestamp=datetime.now(UTC),
             raw_score=raw_score,
             normalized_score=normalized_score,
@@ -186,7 +213,7 @@ class MockPATService(PATService):
     def get_assessment_history(
         self,
         patient_id: UUID,
-        assessment_type: AssessmentType | None = None,
+        assessment_type: str | None = None,
         limit: int = 10,
     ) -> list[AssessmentResult]:
         """
@@ -207,7 +234,12 @@ class MockPATService(PATService):
 
         # Filter by assessment type if specified
         if assessment_type:
-            results = [r for r in results if r.assessment_type == assessment_type]
+            try:
+                assessment_enum = AssessmentType(assessment_type)
+                results = [r for r in results if r.assessment_type == assessment_enum]
+            except ValueError:
+                # Return empty list for unknown assessment types
+                return []
 
         # Sort by timestamp (newest first) and limit
         return sorted(results, key=lambda r: r.timestamp, reverse=True)[:limit]
@@ -215,7 +247,7 @@ class MockPATService(PATService):
     def get_trend_analysis(
         self,
         patient_id: UUID,
-        assessment_type: AssessmentType,
+        assessment_type: str,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
     ) -> dict[str, Any]:
@@ -232,7 +264,20 @@ class MockPATService(PATService):
             Dictionary with trend analysis results
         """
         results = self.get_assessment_history(patient_id)
-        results = [r for r in results if r.assessment_type == assessment_type]
+        
+        # Convert string to AssessmentType enum
+        try:
+            assessment_enum = AssessmentType(assessment_type)
+            results = [r for r in results if r.assessment_type == assessment_enum]
+        except ValueError:
+            # Return empty result for unknown assessment types
+            return {
+                "trend": "invalid_assessment_type",
+                "average_score": None,
+                "min_score": None,
+                "max_score": None,
+                "scores_by_date": {},
+            }
 
         # Filter by date range if specified
         if start_date:
@@ -281,7 +326,7 @@ class MockPATService(PATService):
     def generate_random_assessments(
         self,
         patient_id: UUID,
-        assessment_type: AssessmentType,
+        assessment_type: str,
         count: int = 5,
         days_between: int = 7,
     ) -> list[AssessmentResult]:
@@ -300,23 +345,32 @@ class MockPATService(PATService):
         results = []
         base_date = datetime.now(UTC) - timedelta(days=count * days_between)
 
+        # Convert string to AssessmentType enum once before the loop
+        try:
+            assessment_enum = AssessmentType(assessment_type)
+        except ValueError:
+            # Return empty list for unknown assessment types
+            return []
+        
         for i in range(count):
             timestamp = base_date + timedelta(days=i * days_between)
-
+            
             # Generate random responses based on assessment type
-            if assessment_type == AssessmentType.PHQ9:
+            # Use explicit type annotation to help MyPy understand the type
+            responses: dict[str, int | float | str] = {}
+            
+            if assessment_enum == AssessmentType.PHQ9:
+                # Convert to the more general type to satisfy MyPy
                 responses = {f"phq{j}": self.rng.randint(0, 3) for j in range(1, 10)}
-            elif assessment_type == AssessmentType.GAD7:
+            elif assessment_enum == AssessmentType.GAD7:
                 responses = {f"gad{j}": self.rng.randint(0, 3) for j in range(1, 8)}
-            elif assessment_type == AssessmentType.MOOD:
+            elif assessment_enum == AssessmentType.MOOD:
                 responses = {f"mood{j}": self.rng.randint(1, 10) for j in range(1, 3)}
-            else:
-                responses = {}
 
             # Submit the assessment to get a result
             result = self.submit_assessment(
                 patient_id=patient_id,
-                assessment_type=assessment_type,
+                assessment_type=assessment_type,  # Use the original string parameter
                 responses=responses,
             )
 
