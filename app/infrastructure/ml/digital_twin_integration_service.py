@@ -460,7 +460,7 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
                 )
                 insights["symptom_forecast"] = forecast
             except Exception as e:
-                logger.error(f"Error generating symptom forecast: {str(e)}")
+                logger.error(f"Error generating symptom forecast: {e!s}")
                 errors["symptom_forecast"] = str(e)
         
         # Generate biometric correlations if requested
@@ -472,7 +472,7 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
                 )
                 insights["biometric_correlations"] = correlations
             except Exception as e:
-                logger.error(f"Error analyzing biometric correlations: {str(e)}")
+                logger.error(f"Error analyzing biometric correlations: {e!s}")
                 errors["biometric_correlations"] = str(e)
         
         # Generate medication predictions if requested
@@ -485,7 +485,7 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
                 )
                 insights["medication_predictions"] = predictions
             except Exception as e:
-                logger.error(f"Error analyzing medication response: {str(e)}")
+                logger.error(f"Error analyzing medication response: {e!s}")
                 errors["medication_predictions"] = str(e)
         
         # Generate integrated recommendations
@@ -493,7 +493,7 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
             recommendations = await self._generate_integrated_recommendations(insights)
             insights["integrated_recommendations"] = recommendations
         except Exception as e:
-            logger.error(f"Error generating integrated recommendations: {str(e)}")
+            logger.error(f"Error generating integrated recommendations: {e!s}")
             errors["integrated_recommendations"] = str(e)
         
         # Add errors to insights if any occurred
