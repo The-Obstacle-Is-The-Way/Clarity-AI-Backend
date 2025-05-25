@@ -234,7 +234,7 @@ class MLEncryptionService(BaseEncryptionService):
         # Convert to list for JSON serialization and encrypt
         return self.encrypt_embeddings(embedding.tolist())
 
-    def decrypt_embedding(self, encrypted_embedding: str) -> np.ndarray:
+    def decrypt_embedding(self, encrypted_embedding: str) -> np.ndarray[Any, Any] | None:
         """
         Decrypt an encrypted embedding.
 
