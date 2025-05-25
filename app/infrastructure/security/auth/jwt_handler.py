@@ -49,7 +49,7 @@ def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = 
     # Encode the token
     try:
         encoded_jwt = jwt.encode(
-            to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
+            to_encode, settings.JWT_SECRET_KEY.get_secret_value(), algorithm=settings.JWT_ALGORITHM
         )
         return encoded_jwt
     except Exception as e:
@@ -83,7 +83,7 @@ def create_refresh_token(data: dict[str, Any], expires_delta: timedelta | None =
     # Encode the token
     try:
         encoded_jwt = jwt.encode(
-            to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
+            to_encode, settings.JWT_SECRET_KEY.get_secret_value(), algorithm=settings.JWT_ALGORITHM
         )
         return encoded_jwt
     except Exception as e:
@@ -107,7 +107,7 @@ def decode_token(token: str) -> dict[str, Any]:
     settings = get_settings()
 
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY.get_secret_value(), algorithms=[settings.JWT_ALGORITHM])
         return payload
     except JWTError as e:
         logger.warning(f"JWT token validation failed: {e}")
