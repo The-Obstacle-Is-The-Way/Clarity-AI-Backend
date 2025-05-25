@@ -503,7 +503,9 @@ class MLEncryptionService(BaseEncryptionService):
                         # Log warning and continue with original value
                         self.logger.warning(f"Decryption returned None for field {key}")
                         result[key] = value
-                    elif decrypted.startswith("[") or decrypted.startswith("{"):
+                        continue
+                        
+                    if decrypted.startswith("[") or decrypted.startswith("{"):
                         try:
                             # Parse as JSON
                             parsed = json.loads(decrypted)
@@ -785,33 +787,31 @@ class MLEncryptionService(BaseEncryptionService):
                             processed_items.append(item)
                     result[key] = processed_items
                 else:
-                    # Simple list - try to decrypt if it looks encrypted
-                    # Check if value is a string and starts with version prefix
-                    if isinstance(value, str) and value.startswith(self.VERSION_PREFIX):
-                        try:
-                            decrypted_json = self.decrypt_string(value)
-                            if decrypted_json is not None:
-                                try:
-                                    result[key] = json.loads(decrypted_json)
-                                except json.JSONDecodeError:
-                                    # If not valid JSON, keep as decrypted string
-                                    result[key] = decrypted_json
-                            else:
-                                result[key] = value
-                        except ValueError:
-                            # If decryption fails, keep as original
-                            result[key] = value
-                    else:
-                        result[key] = value
+                    # Simple list - try to decrypt each item if it looks encrypted
+                    processed_items = []
+                    for item in value:
+                        if isinstance(item, str) and item.startswith(self.VERSION_PREFIX):
+                            try:
+                                decrypted_json = self.decrypt_string(item)
+                                if decrypted_json is not None:
+                                    try:
+                                        processed_items.append(json.loads(decrypted_json))
+                                    except json.JSONDecodeError:
+                                        # If not valid JSON, keep as decrypted string
+                                        processed_items.append(decrypted_json)
+                                else:
+                                    processed_items.append(item)
+                            except ValueError:
+                                # If decryption fails, keep as original
+                                processed_items.append(item)
+                        else:
+                            processed_items.append(item)
+                    result[key] = processed_items
             # Handle string values that look encrypted
             elif isinstance(value, str) and value.startswith(self.VERSION_PREFIX):
                 try:
                     decrypted = self.decrypt_string(value)
-                    if decrypted is not None:
-                        result[key] = decrypted
-                    else:
-                        # Keep original value if decryption returns None
-                        result[key] = value
+                    result[key] = decrypted if decrypted is not None else value
                 except ValueError:
                     # If decryption fails, keep original
                     result[key] = value
