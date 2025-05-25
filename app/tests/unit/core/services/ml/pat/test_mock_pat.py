@@ -324,18 +324,12 @@ class TestMockPAT:
         # Retrieve analyses for the patient
         result = mock_pat.get_patient_analyses("test-patient")
 
-        # Verify response structure
-        assert "analyses" in result
-        assert "total" in result
-        assert "limit" in result
-        assert "offset" in result
-
-        # Verify that we got the correct number of analyses
-        assert len(result["analyses"]) == 3
-        assert result["total"] == 3
+        # Verify clean interface - returns list directly (Interface Segregation Principle)
+        assert isinstance(result, list)
+        assert len(result) == 3
 
         # Verify that the analyses are sorted by timestamp (newest first)
-        timestamps = [analysis["timestamp"] for analysis in result["analyses"]]
+        timestamps = [analysis["timestamp"] for analysis in result]
         assert timestamps == sorted(timestamps, reverse=True)
 
     def test_get_patient_analyses_with_pagination(
@@ -354,21 +348,20 @@ class TestMockPAT:
                 analysis_types=["sleep"],
             )
 
-        # Retrieve analyses with pagination
+        # Retrieve analyses with pagination - clean interface returns list directly
         result = mock_pat.get_patient_analyses("test-patient", limit=2, offset=1)
 
-        # Verify pagination
-        assert len(result["analyses"]) == 2
-        assert result["total"] == 5
-        assert result["limit"] == 2
-        assert result["offset"] == 1
+        # Verify clean interface with pagination applied
+        assert isinstance(result, list)
+        assert len(result) == 2  # Pagination limit applied
 
     def test_get_patient_analyses_empty(self, mock_pat) -> None:
         """Test retrieval of patient analyses when none exist."""
         result = mock_pat.get_patient_analyses("non-existent-patient")
 
-        assert len(result["analyses"]) == 0
-        assert result["total"] == 0
+        # Clean interface returns empty list directly
+        assert isinstance(result, list)
+        assert len(result) == 0
 
     def test_get_model_info(self, mock_pat) -> None:
         """Test getting model information."""
