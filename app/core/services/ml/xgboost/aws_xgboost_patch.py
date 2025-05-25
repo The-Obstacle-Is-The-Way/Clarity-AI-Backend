@@ -6,7 +6,7 @@ modified in the AWSXGBoostService class to fix test failures.
 """
 
 import json
-from typing import Any
+from typing import Any, List
 
 from app.core.services.ml.xgboost.exceptions import (
     ConfigurationError,
@@ -120,7 +120,7 @@ async def predict_risk(
 
     # Invoke endpoint
     try:
-        response = await self._invoke_endpoint(endpoint_name, payload)
+        response: dict[str, Any] = await self._invoke_endpoint(endpoint_name, payload)
         return response
     except Exception as e:
         self._logger.error(f"Error predicting risk: {e!s}")
@@ -196,7 +196,8 @@ async def _invoke_endpoint(self, endpoint_name: str, payload: dict[str, Any]) ->
         # Log prediction (for audit purposes)
         self._log_prediction(endpoint_name, payload, result)
 
-        return result
+        result_typed: dict[str, Any] = result
+        return result_typed
     except Exception as e:
         self._logger.error(f"Error invoking endpoint {endpoint_name}: {e!s}")
         raise
@@ -212,7 +213,8 @@ async def healthcheck(self) -> dict[str, Any]:
     self._ensure_initialized()
 
     try:
-        health_status = {
+        # Explicitly type the health_status to avoid Collection[str] indexing issues
+        health_status: dict[str, Any] = {
             "status": "healthy",
             "components": {
                 "sagemaker": {"status": "healthy"},
@@ -248,15 +250,17 @@ async def healthcheck(self) -> dict[str, Any]:
             response = self._sagemaker.list_endpoints()
 
             prefix = self._endpoint_prefix or ""
-            endpoints = []
-            endpoint_statuses = []
+            endpoints: List[dict[str, str]] = []
+            endpoint_statuses: List[str] = []
 
-            for endpoint in response.get("Endpoints", []):
-                endpoint_name = endpoint.get("EndpointName", "")
-                if prefix and endpoint_name.startswith(prefix):
-                    status = endpoint.get("EndpointStatus", "Unknown")
-                    endpoints.append({"name": endpoint_name, "status": status})
-                    endpoint_statuses.append(status)
+            endpoints_list = response.get("Endpoints", [])
+            if endpoints_list:
+                for endpoint in endpoints_list:
+                    endpoint_name = endpoint.get("EndpointName", "")
+                    if prefix and endpoint_name.startswith(prefix):
+                        status = endpoint.get("EndpointStatus", "Unknown")
+                        endpoints.append({"name": endpoint_name, "status": status})
+                        endpoint_statuses.append(status)
 
             health_status["details"]["endpoints"] = endpoints
 
