@@ -35,12 +35,13 @@ class PatientRead(PatientBase):
         None, description="ID of the user who created the patient record"
     )
 
-    @property
     @computed_field
     def name(self) -> str:
         return f"{self.first_name} {self.last_name}"
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 
 # Create a specific response for patient creation as a separate model (not inheriting from PatientRead)
@@ -60,9 +61,10 @@ class PatientCreateResponse(BaseModel):
     created_by: uuid.UUID = Field(..., description="ID of the user who created the patient record")
     
     # Add the computed field for name
-    @property
     @computed_field
     def name(self) -> str:
         return f"{self.first_name} {self.last_name}"
     
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True
+    )
