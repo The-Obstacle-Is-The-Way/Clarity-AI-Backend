@@ -8,6 +8,7 @@ representing critical information that requires attention from clinicians or pat
 from datetime import datetime
 from enum import Enum
 from typing import Any
+from uuid import UUID
 
 
 class AlertType(str, Enum):
@@ -64,14 +65,14 @@ class Alert:
 
     def __init__(
         self,
-        id: str | None,
+        id: UUID | None,
         alert_type: AlertType,
         timestamp: datetime,
         status: AlertStatus,
         priority: AlertPriority,
         message: str,
         data: dict[str, Any],
-        user_id: str,
+        user_id: UUID,
         resolved_at: datetime | None = None,
         resolution_notes: str | None = None,
     ):

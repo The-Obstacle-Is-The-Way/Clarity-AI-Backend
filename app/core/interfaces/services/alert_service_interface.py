@@ -33,7 +33,7 @@ class AlertServiceInterface(ABC):
     @abstractmethod
     async def create_alert(
         self,
-        patient_id: str,
+        patient_id: UUID,
         alert_type: str,
         severity: AlertPriority,
         description: str,
@@ -59,7 +59,7 @@ class AlertServiceInterface(ABC):
     @abstractmethod
     async def get_alerts(
         self,
-        patient_id: str | None = None,
+        patient_id: UUID | None = None,
         alert_type: str | None = None,
         severity: AlertPriority | None = None,
         status: str | None = None,
@@ -89,10 +89,10 @@ class AlertServiceInterface(ABC):
     @abstractmethod
     async def update_alert_status(
         self,
-        alert_id: str,
+        alert_id: UUID,
         status: str,
         resolution_notes: str | None = None,
-        resolved_by: str | None = None,
+        resolved_by: UUID | None = None,
     ) -> tuple[bool, str | None]:
         """
         Update the status of an alert.
@@ -111,7 +111,7 @@ class AlertServiceInterface(ABC):
     @abstractmethod
     async def evaluate_biometric_data(
         self,
-        patient_id: str | UUID,
+        patient_id: UUID,
         data_type: str,
         data_value: Any,
         timestamp: datetime | None = None,
@@ -132,7 +132,7 @@ class AlertServiceInterface(ABC):
 
     @abstractmethod
     async def get_alert_summary(
-        self, patient_id: str, start_time: datetime, end_time: datetime
+        self, patient_id: UUID, start_time: datetime, end_time: datetime
     ) -> dict[str, Any]:
         """
         Get a summary of alerts for a patient within a time range.
@@ -148,29 +148,29 @@ class AlertServiceInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_rule_by_id(self, rule_id: str) -> BiometricAlertRule | None:
+    async def get_rule_by_id(self, rule_id: UUID) -> BiometricAlertRule | None:
         """Get a rule by its ID."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def create_rule(self, rule_data: BiometricAlertRule) -> BiometricAlertRule:
         """Create a new alert rule."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def update_rule(
-        self, rule_id: str, rule_data: BiometricAlertRule
+        self, rule_id: UUID, rule_data: BiometricAlertRule
     ) -> BiometricAlertRule | None:
         """Update an existing alert rule."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
-    async def list_rules(self, user_id: str | None = None) -> list[BiometricAlertRule]:
+    async def list_rules(self, user_id: UUID | None = None) -> list[BiometricAlertRule]:
         """List alert rules, optionally filtered by user."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
-    async def validate_access(self, user_id: str, patient_id: str) -> bool:
+    async def validate_access(self, user_id: UUID, patient_id: UUID) -> bool:
         """
         Validate if a user has access to a patient's alerts.
         
@@ -184,10 +184,10 @@ class AlertServiceInterface(ABC):
         Raises:
             PermissionError: If access is denied
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
-    async def get_alert_by_id(self, alert_id: str, user_id: str | None = None) -> Alert | None:
+    async def get_alert_by_id(self, alert_id: UUID, user_id: UUID | None = None) -> Alert | None:
         """
         Get a specific alert by ID with access validation.
         
@@ -201,4 +201,4 @@ class AlertServiceInterface(ABC):
         Raises:
             PermissionError: If user doesn't have access to this alert
         """
-        pass
+        raise NotImplementedError
