@@ -12,6 +12,16 @@ from pydantic import BaseModel
 from app.core.services.ml.xgboost.constants import ModelType
 from app.domain.interfaces.ml_service_interface import MLServiceInterface
 
+# Explicit exports for proper module interface
+__all__ = [
+    "XGBoostInterface",
+    "ModelType",
+    "ModelMetadata",
+    "EventType",
+    "Observer",
+    "PrivacyLevel"
+]
+
 
 class XGBoostInterface(MLServiceInterface):
     """Interface for XGBoost ML Service implementation."""
