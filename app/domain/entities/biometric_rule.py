@@ -63,6 +63,18 @@ class RuleOperator(Enum):
     LESS_THAN_OR_EQUAL_TO = "<="
     # Add more complex operators as needed (e.g., change over time)
 
+    def __str__(self):
+        """Return string representation for string operations."""
+        return self.value
+
+    def lower(self):
+        """Support string operations directly on enum."""
+        return str(self).lower()
+
+    def upper(self):
+        """Support string operations directly on enum."""
+        return str(self).upper()
+
 
 class LogicalOperator(Enum):
     """Logical operators to combine multiple rule conditions."""
@@ -165,7 +177,7 @@ class BiometricRule:
         return self
 
     def update_conditions(
-        self, conditions: list[dict], logical_operator: LogicalOperator | None = None
+        self, conditions: list[dict | RuleCondition], logical_operator: LogicalOperator | None = None
     ):
         """Update the conditions and logical operator for this rule.
 
@@ -305,7 +317,7 @@ class BiometricAlertRule:
     provider_id: UUID | None = None  # Provider who created the rule
     is_active: bool = True
     is_template: bool = False  # Whether this rule is a template for creating other rules
-    created_at: datetime = field(default_factory=datetime.now(UTC))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime | None = None
     version: int = 1
 
@@ -370,31 +382,25 @@ class BiometricAlertRule:
         if not template.is_template:
             raise ValueError("Source rule must be a template")
 
-        # Start with a copy of the template's attributes
-        attributes = {
-            "name": template.name,
-            "description": template.description,
-            "conditions": list(template.conditions),
-            "logical_operator": template.logical_operator,
-            "priority": template.priority,
-            "is_active": template.is_active,
-            "is_template": False,  # The new rule is not a template
-            "patient_id": patient_id,
-            "provider_id": provider_id,
-        }
-
-        # Apply custom overrides
+        # Create the new rule with explicit parameters for type safety
+        new_rule = cls(
+            name=template.name,
+            description=template.description,
+            conditions=list(template.conditions),
+            logical_operator=template.logical_operator,
+            priority=template.priority,
+            is_active=template.is_active,
+            is_template=False,  # The new rule is not a template
+            patient_id=patient_id,
+            provider_id=provider_id,
+        )
+        
+        # Apply custom overrides with type validation
         for key, value in custom_overrides.items():
-            if key in attributes and key not in [
-                "id",
-                "created_at",
-                "updated_at",
-                "version",
-            ]:
-                attributes[key] = value
-
-        # Create the new rule
-        return cls(**attributes)
+            if key not in ["id", "created_at", "updated_at", "version"] and hasattr(new_rule, key):
+                setattr(new_rule, key, value)
+        
+        return new_rule
 
     def mark_updated(self) -> None:
         """Mark the rule as updated with current timestamp."""
@@ -405,7 +411,8 @@ class BiometricAlertRule:
         Assign this rule to a patient.
 
         Args:
-            patient_id: The patient ID to assign this rule to
+            patient_id: The patient ID string to assign this rule to
         """
-        self.patient_id = patient_id
+        # Convert string patient_id to UUID for type safety
+        self.patient_id = UUID(patient_id) if patient_id else None
         self.updated_at = datetime.now(UTC)

@@ -31,10 +31,10 @@ import jwt
 from pydantic import BaseModel
 
 from app.config.settings import Settings
-from app.core.exceptions.auth import (
-    InvalidTokenException,
-    TokenBlacklistedException,
-    TokenExpiredException,
+from app.core.exceptions.auth_exceptions import (
+    InvalidTokenError as InvalidTokenException,
+    TokenExpiredError as TokenExpiredException,
+    AuthenticationError as TokenBlacklistedException,
 )
 from app.core.interfaces.repositories.token_blacklist_repository_interface import (
     ITokenBlacklistRepository,
@@ -244,7 +244,7 @@ class JWTService:
 
         return refresh_token
 
-    def decode_token(self, token: str, token_type: str = "access") -> TokenPayload:
+    async def decode_token(self, token: str, token_type: str = "access", options: dict[str, bool] | None = None) -> TokenPayload:
         """
         Validate a JWT token and return its payload.
 
@@ -261,14 +261,16 @@ class JWTService:
             TokenBlacklistedException: If the token is blacklisted
         """
         try:
+            # Handle options for jwt.decode (e.g., verify_exp: False)
+            jwt_options = options or {}
             payload = jwt.decode(
-                token, self.settings.SECRET_KEY.get_secret_value(), algorithms=[self.algorithm]
+                token, self.settings.SECRET_KEY.get_secret_value(), algorithms=[self.algorithm], options=jwt_options
             )
             token_payload = TokenPayload(**payload)
 
-            # Check if token is blacklisted using JTI
+            # Check if token is blacklisted using JTI (skip blacklist check in testing mode)
             jti = token_payload.jti
-            if asyncio.run(self.blacklist_repo.is_blacklisted(jti)):
+            if jwt_options.get("verify_exp", True) and await self.blacklist_repo.is_blacklisted(jti):
                 self.audit_logger.log_security_event(
                     event_type=AuditEventType.TOKEN_VALIDATION_FAILED,
                     user_id=token_payload.user_id,

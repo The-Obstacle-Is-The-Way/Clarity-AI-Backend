@@ -1113,35 +1113,30 @@ def jwt_service_patch():
     import logging
     import uuid
     from datetime import datetime, timezone
+    from unittest.mock import patch
 
     from jose import jwt as jose_jwt
 
-    from app.infrastructure.security.jwt.jwt_service import (
-        JWTService,
-    )
+    from app.application.security.jwt_service import JWTService, TokenPayload
 
     logger = logging.getLogger(__name__)
-
-    # Save the original method
-    original_decode_token = JWTService.decode_token
 
     # Dummy key for test tokens
     test_secret_key = "test_secret_key_for_testing_only"
 
-    def patched_decode_token(self, token: str, options: dict | None = None) -> dict[str, Any]:
+    async def patched_decode_token(self, token: str, token_type: str = "access", options: dict[str, bool] | None = None) -> TokenPayload:
         """
         Patched version of decode_token that accepts test tokens without verification.
         For non-test tokens, falls back to the original implementation.
 
         Args:
             token: JWT token string
+            token_type: The type of token ('access' or 'refresh')
             options: Options for token verification, including {"verify_exp": False} to skip expiration check
         """
         if not token:
-            # Match original behavior
-            from app.domain.exceptions import AuthenticationError
-
-            raise AuthenticationError("Token is missing")
+            from app.core.exceptions.auth_exceptions import InvalidTokenError
+            raise InvalidTokenError("Token is missing")
 
         # If options is provided with verify_exp=False, we'll skip expiration verification
         skip_exp_verification = options and options.get("verify_exp") is False
@@ -1149,13 +1144,10 @@ def jwt_service_patch():
         try:
             # Try to decode without verification to check if it's a test token
             try:
-                # Always bypass signature verification for test tokens, but use provided options for exp verification if available
                 decode_options = {
                     "verify_signature": False,
                     "verify_aud": False,
-                    "verify_exp": False
-                    if skip_exp_verification
-                    else False,  # Always False for initial check
+                    "verify_exp": False,  # Always False for initial check
                     "verify_iss": False,
                 }
 
@@ -1166,13 +1158,16 @@ def jwt_service_patch():
                 )
             except Exception as e:
                 logger.warning(f"Failed to decode token even without verification: {e}")
-                # If we can't even decode it unverified, use original method
-                return original_decode_token(self, token, options)
+                # If we can't even decode it unverified, call original method
+                # But we need to call it properly on the instance
+                original_method = JWTService.__dict__['decode_token']
+                return await original_method(self, token, token_type, options)
 
             # Check if this seems like a test token
             is_test_token = (
                 ("iss" in unverified_payload and unverified_payload.get("iss") == "test-issuer")
                 or ("sub" in unverified_payload and "test" in unverified_payload.get("sub", ""))
+                or ("testing" in unverified_payload and unverified_payload.get("testing") is True)
                 or (getattr(self, "settings", None) and getattr(self.settings, "TESTING", False))
             )
 
@@ -1182,63 +1177,42 @@ def jwt_service_patch():
                 )
 
                 # Ensure required fields exist
-                if "roles" not in unverified_payload:
-                    unverified_payload["roles"] = ["patient"]
                 if "sub" not in unverified_payload:
                     unverified_payload["sub"] = f"test-user-{uuid.uuid4()}"
-                if "type" not in unverified_payload:
-                    unverified_payload["type"] = "access"
-
-                # Set default expiration if missing (1 hour from now)
-                if "exp" not in unverified_payload:
-                    unverified_payload["exp"] = int(datetime.now(timezone.utc).timestamp()) + 3600
-
-                # Set defaults for other required fields if missing
-                if "iat" not in unverified_payload:
-                    unverified_payload["iat"] = int(datetime.now(timezone.utc).timestamp())
                 if "jti" not in unverified_payload:
                     unverified_payload["jti"] = str(uuid.uuid4())
-
-                # Map token type string to enum
-                token_type_str = unverified_payload.get("type", "access")
-                token_type_enum = (
-                    TokenType.REFRESH if token_type_str.lower() == "refresh" else TokenType.ACCESS
-                )
+                if "iat" not in unverified_payload:
+                    unverified_payload["iat"] = int(datetime.now(timezone.utc).timestamp())
+                if "exp" not in unverified_payload:
+                    unverified_payload["exp"] = int(datetime.now(timezone.utc).timestamp()) + 3600
+                if "iss" not in unverified_payload:
+                    unverified_payload["iss"] = "test-issuer"
+                if "aud" not in unverified_payload:
+                    unverified_payload["aud"] = "test-audience"
+                if "token_type" not in unverified_payload:
+                    unverified_payload["token_type"] = token_type
+                if "user_id" not in unverified_payload:
+                    unverified_payload["user_id"] = unverified_payload["sub"]
+                if "email" not in unverified_payload:
+                    unverified_payload["email"] = f"test@example.com"
+                if "permissions" not in unverified_payload:
+                    unverified_payload["permissions"] = []
+                if "session_id" not in unverified_payload:
+                    unverified_payload["session_id"] = str(uuid.uuid4())
 
                 # Create and return TokenPayload
-                return TokenPayload(
-                    sub=unverified_payload.get("sub"),
-                    roles=unverified_payload.get("roles", []),
-                    exp=unverified_payload.get(
-                        "exp", int(datetime.now(timezone.utc).timestamp()) + 3600
-                    ),
-                    iat=unverified_payload.get("iat", int(datetime.now(timezone.utc).timestamp())),
-                    jti=unverified_payload.get("jti", str(uuid.uuid4())),
-                    iss=unverified_payload.get("iss", "test-issuer"),
-                    aud=unverified_payload.get("aud", "test-audience"),
-                    type=token_type_enum,
-                    # Map username to name if it exists
-                    name=unverified_payload.get("username", "")
-                    or unverified_payload.get("name", ""),
-                    email=unverified_payload.get("email", ""),
-                    permissions=unverified_payload.get("permissions", []),
-                    # Add user_id to match the sub field
-                    user_id=unverified_payload.get("sub"),
-                )
+                return TokenPayload(**unverified_payload)
+                
         except Exception as e:
             logger.warning(f"Error in patched decode_token: {e}", exc_info=True)
 
         # Fall back to original implementation for non-test tokens or if test token processing fails
-        return original_decode_token(self, token, options)
+        original_method = JWTService.__dict__['decode_token']
+        return await original_method(self, token, token_type, options)
 
-    # Apply the patch
-    JWTService.decode_token = patched_decode_token
-
-    # Yield to allow tests to run
-    yield
-
-    # Restore the original method
-    JWTService.decode_token = original_decode_token
+    # Use patch.object to properly patch the instance method
+    with patch.object(JWTService, 'decode_token', patched_decode_token):
+        yield
 
 
 @pytest.fixture(scope="module")
