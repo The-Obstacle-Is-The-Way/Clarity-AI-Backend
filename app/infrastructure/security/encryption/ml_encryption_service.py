@@ -197,7 +197,7 @@ class MLEncryptionService(BaseEncryptionService):
                 # No previous key available
                 raise
 
-    def encrypt_embedding(self, embedding: np.ndarray | list[float]) -> str:
+    def encrypt_embedding(self, embedding: Any) -> str:
         """
         Encrypt a single embedding vector.
 
@@ -280,11 +280,11 @@ class MLEncryptionService(BaseEncryptionService):
             # Handle other exceptions
             raise ValueError(f"Error decrypting embedding: {e!s}")
 
-    def encrypt_tensors(self, tensors: dict[str, np.ndarray]) -> dict[str, str | None]:
+    def encrypt_tensors(self, tensors: dict[str, np.ndarray | None]) -> dict[str, str | None]:
         """Alias for encrypt_tensors method to match tests."""
         return self._encrypt_tensors_impl(tensors)
 
-    def _encrypt_tensors_impl(self, tensors: dict[str, np.ndarray]) -> dict[str, str | None]:
+    def _encrypt_tensors_impl(self, tensors: dict[str, np.ndarray | None]) -> dict[str, str | None]:
         """Implementation of encrypt_tensors to avoid recursive calls."""
         if tensors is None:
             raise ValueError("Cannot encrypt None tensors")
@@ -292,7 +292,6 @@ class MLEncryptionService(BaseEncryptionService):
         result: dict[str, str | None] = {}
         for key, tensor in tensors.items():
             if tensor is None:
-                # Handle None values
                 result[key] = None
             else:
                 # Convert tensor to list for serialization
@@ -301,7 +300,7 @@ class MLEncryptionService(BaseEncryptionService):
 
         return result
 
-    def decrypt_tensors(self, encrypted_tensors: dict[str, str]) -> dict[str, np.ndarray | None]:
+    def decrypt_tensors(self, encrypted_tensors: dict[str, str | None]) -> dict[str, np.ndarray | None]:
         """
         Decrypt a dictionary of encrypted tensors.
 
@@ -319,16 +318,16 @@ class MLEncryptionService(BaseEncryptionService):
             if encrypted_tensor is None:
                 # Handle None values
                 result[key] = None
-            else:
-                # Decrypt and convert back to NumPy array
-                tensor_json = self.decrypt_string(encrypted_tensor)
-                tensor_list = json.loads(tensor_json)
-                
-                # Validate the decoded data is a list or array-like structure
-                if not isinstance(tensor_list, (list, tuple)) and not hasattr(tensor_list, '__iter__'):
-                    raise ValueError(f"Decrypted tensor data for key '{key}' is not array-like: {type(tensor_list).__name__}")
-                
-                result[key] = np.array(tensor_list)
+                continue
+            # Decrypt and convert back to NumPy array
+            tensor_json = self.decrypt_string(encrypted_tensor)
+            tensor_list = json.loads(tensor_json)
+            
+            # Validate the decoded data is a list or array-like structure
+            if not isinstance(tensor_list, (list, tuple)) and not hasattr(tensor_list, '__iter__'):
+                raise ValueError(f"Decrypted tensor data for key '{key}' is not array-like: {type(tensor_list).__name__}")
+            
+            result[key] = np.array(tensor_list)
 
         return result
 
@@ -502,11 +501,9 @@ class MLEncryptionService(BaseEncryptionService):
                     decrypted = self.decrypt_string(value)
                     if decrypted is None:
                         # Log warning and continue with original value
-                        logger.warning(f"Decryption returned None for field {key}")
+                        self.logger.warning(f"Decryption returned None for field {key}")
                         result[key] = value
-                        continue
-                        
-                    if decrypted.startswith("[") or decrypted.startswith("{"):
+                    elif decrypted.startswith("[") or decrypted.startswith("{"):
                         try:
                             # Parse as JSON
                             parsed = json.loads(decrypted)
