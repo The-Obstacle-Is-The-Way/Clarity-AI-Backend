@@ -19,9 +19,9 @@ from pydantic import BaseModel, Field
 from app.core.config.settings import Settings
 from app.core.domain.entities.user import User
 from app.core.domain.types.jwt_payload import (
+    PHI_FIELDS,
     JWTPayload,
     RefreshTokenPayload,
-    PHI_FIELDS,
     create_access_token_payload,
     create_refresh_token_payload,
     payload_from_dict,
@@ -154,8 +154,8 @@ class TokenPayload(BaseModel):
             data['sub'] = "default-subject-for-tests"
         
         # Ensure role is properly transferred (for backward compatibility)
-        if hasattr(payload, 'role') and getattr(payload, 'role') is not None:
-            data['role'] = getattr(payload, 'role')
+        if hasattr(payload, 'role') and payload.role is not None:
+            data['role'] = payload.role
                 
         # Ensure custom fields are properly transferred
         for field in ['session_id', 'family_id', 'custom_key']:
@@ -975,7 +975,7 @@ class JWTServiceImpl(IJwtService):
                     # Use the correct method name for the mock
                     self.audit_logger.log_security_event(
                         event_type="TOKEN_VERIFICATION",  # Use string instead of enum
-                        description=f"Token verified successfully",
+                        description="Token verified successfully",
                         user_id=payload.sub if payload.sub else "unknown",
                         metadata={
                             "token_type": payload.type,
