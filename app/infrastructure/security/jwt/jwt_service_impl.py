@@ -6,6 +6,7 @@ and handling JWT token creation, validation, and management for HIPAA compliance
 """
 
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, ClassVar, cast
 from uuid import UUID, uuid4
@@ -663,13 +664,15 @@ class JWTServiceImpl(IJwtService):
         Returns:
             JWT access token as a string
         """
-        # Extract user_id and roles from data or parameters
+        # Extract user_id, roles, and permissions from data or parameters
         user_id = None
         roles = None
+        permissions = None
         
         if data:
             user_id = data.get("sub") or data.get("subject")
             roles = data.get("roles")
+            permissions = data.get("permissions")
         
         if subject and not user_id:
             user_id = subject
@@ -690,6 +693,11 @@ class JWTServiceImpl(IJwtService):
             expire = now + timedelta(minutes=float(self._access_token_expire_minutes))
         
         # Create token payload using domain type factory
+        # Prepare additional claims
+        additional_claims = {}
+        if permissions:
+            additional_claims["permissions"] = permissions
+        
         payload = create_access_token_payload(
             subject=subject_str,
             roles=roles or [],
@@ -698,6 +706,7 @@ class JWTServiceImpl(IJwtService):
             token_id=str(uuid4()),
             issuer=self._token_issuer,
             audience=self._token_audience,
+            additional_claims=additional_claims,
         )
         
         # Encode the token
@@ -1090,8 +1099,11 @@ class JWTServiceImpl(IJwtService):
                 return parts[1]
                 
         # Check for token in cookies
-        if hasattr(request, "cookies") and "token" in request.cookies:
-            return request.cookies["token"]
+        if hasattr(request, "cookies"):
+            # Check for token in various cookie names
+            for cookie_name in ["token", "access_token", "jwt"]:
+                if cookie_name in request.cookies:
+                    return request.cookies[cookie_name]
             
         return None
         
@@ -1106,10 +1118,44 @@ class JWTServiceImpl(IJwtService):
         Returns:
             Dictionary with error details
         """
+        # Sanitize message to remove PHI
+        sanitized_message = self._sanitize_error_message(message) if message else "Unauthorized"
+        
         return {
-            "status": "error",
-            "code": 401,
-            "error": error_type,
-            "message": message or "Unauthorized",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "status_code": 401,
+            "body": {
+                "status": "error",
+                "error": error_type,
+                "error_type": error_type,
+                "message": sanitized_message,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
         }
+        
+    def _sanitize_error_message(self, message: str) -> str:
+        """
+        Sanitize error message to remove PHI.
+        
+        Args:
+            message: Error message to sanitize
+            
+        Returns:
+            Sanitized message
+        """
+        # List of patterns to redact
+        patterns = [
+            # UUIDs
+            r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+            # Emails
+            r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+            # SSNs
+            r'\d{3}-\d{2}-\d{4}',
+            # Names (simple pattern)
+            r'(?:Dr\.|Mr\.|Mrs\.|Ms\.) [A-Z][a-z]+ [A-Z][a-z]+',
+        ]
+        
+        sanitized = message
+        for pattern in patterns:
+            sanitized = re.sub(pattern, '[REDACTED]', sanitized)
+            
+        return sanitized
