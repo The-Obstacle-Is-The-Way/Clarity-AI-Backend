@@ -34,8 +34,8 @@ class IndentationFixer:
         self.tests_dir = project_root / "app" / "tests"
         self.dry_run = dry_run
         self.verbose = verbose
-        self.fixed_files = []
-        self.failed_files = []
+        self.fixed_files: list[Path] = []
+        self.failed_files: list[tuple[Path, str]] = []
 
         # Control statements that require indented blocks
         self.control_statements = [

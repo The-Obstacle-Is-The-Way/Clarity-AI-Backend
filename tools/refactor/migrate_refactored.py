@@ -40,14 +40,14 @@ IMPORT_REPLACEMENTS = [
 ]
 
 
-def ensure_directory_exists(path):
+def ensure_directory_exists(path: Path) -> None:
     """Create directory if it doesn't exist."""
     if not path.exists():
         path.mkdir(parents=True, exist_ok=True)
         print(f"Created directory: {path}")
 
 
-def copy_file_with_updated_imports(src_file, dest_file):
+def copy_file_with_updated_imports(src_file: Path, dest_file: Path) -> Path:
     """Copy file and update imports."""
     # Create destination directory if needed
     ensure_directory_exists(dest_file.parent)
@@ -68,7 +68,7 @@ def copy_file_with_updated_imports(src_file, dest_file):
     return dest_file
 
 
-def find_target_dir(src_path):
+def find_target_dir(src_path: Path) -> Path | None:
     """Find the appropriate target directory for a given source path."""
     best_match = None
     max_match_len = 0
@@ -93,7 +93,7 @@ def find_target_dir(src_path):
     return best_match
 
 
-def process_directory(src_dir, processed_files):
+def process_directory(src_dir: Path, processed_files: list[Path]) -> None:
     """Process all files in source directory and subdirectories."""
     if not src_dir.exists() or not src_dir.is_dir():
         print(f"Source directory doesn't exist: {src_dir}")
@@ -114,7 +114,7 @@ def process_directory(src_dir, processed_files):
             process_directory(item, processed_files)
 
 
-def ensure_all_init_files(dir_mapping):
+def ensure_all_init_files(dir_mapping: dict[Path, Path]) -> None:
     """Ensure all target directories have __init__.py files."""
     for target_dir in dir_mapping.values():
         # Create all parent directories
@@ -128,11 +128,11 @@ def ensure_all_init_files(dir_mapping):
             print(f"Created __init__.py: {init_file}")
 
 
-def update_imports_in_backend(processed_files):
+def update_imports_in_backend(processed_files: list[Path]) -> None:
     """Update imports in all Python files in the backend directory."""
     # Find all Python files in backend
     backend_dir = BASE_DIR / "backend"
-    all_py_files = []
+    all_py_files: list[Path] = []
     for root, _, files in os.walk(backend_dir):
         for file in files:
             if file.endswith(".py"):
@@ -168,7 +168,7 @@ def main():
     print("Creating target directories and __init__.py files...")
     ensure_all_init_files(DIR_MAPPING)
 
-    processed_files = []
+    processed_files: list[Path] = []
 
     # Process all directories in REFACTORED_DIR
     if REFACTORED_DIR.exists():
