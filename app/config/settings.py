@@ -68,7 +68,10 @@ class MentalLlamaSettings(BaseSettings):
     def parse_model_mappings(cls, v: str | dict) -> dict[str, str]:
         if isinstance(v, str):
             try:
-                return json.loads(v)
+                parsed = json.loads(v)
+                if isinstance(parsed, dict):
+                    return parsed
+                raise ValueError("Invalid JSON format for MENTALLAMA_MODEL_MAPPINGS: expected dict")
             except json.JSONDecodeError:
                 raise ValueError("Invalid JSON string for MENTALLAMA_MODEL_MAPPINGS")
         return v
@@ -250,7 +253,10 @@ class Settings(BaseSettings):
             if v.startswith("[") and v.endswith("]"):
                 try:
                     # Try parsing as JSON list
-                    return json.loads(v)
+                    parsed = json.loads(v)
+                    if isinstance(parsed, list):
+                        return [str(item) for item in parsed]
+                    raise ValueError("Invalid JSON format: expected list")
                 except json.JSONDecodeError:
                     # Fallback to comma-separated if JSON fails
                     return [origin.strip() for origin in v.strip("[]").split(",") if origin.strip()]
@@ -276,7 +282,10 @@ class Settings(BaseSettings):
     def parse_phi_whitelist(cls, v: str | dict | None) -> dict[str, list[str]] | None:
         if isinstance(v, str):
             try:
-                return json.loads(v)
+                parsed = json.loads(v)
+                if isinstance(parsed, dict):
+                    return parsed
+                raise ValueError("Invalid JSON format for PHI_WHITELIST_PATTERNS: expected dict")
             except json.JSONDecodeError:
                 raise ValueError("Invalid JSON string for PHI_WHITELIST_PATTERNS")
         return v
@@ -287,7 +296,10 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             if v.startswith("[") and v.endswith("]"):
                 try:
-                    return json.loads(v)
+                    parsed = json.loads(v)
+                    if isinstance(parsed, list):
+                        return [str(item) for item in parsed]
+                    raise ValueError("Invalid JSON format: expected list")
                 except json.JSONDecodeError:
                     return [path.strip() for path in v.strip("[]").split(",") if path.strip()]
             else:
@@ -469,7 +481,7 @@ class Settings(BaseSettings):
                     username=values.get("POSTGRES_USER"),
                     password=password_str,
                     host=values.get("POSTGRES_SERVER"),
-                    port=str(values.get("POSTGRES_PORT", 5432)),
+                    port=values.get("POSTGRES_PORT", 5432),
                     path=f"{values.get('POSTGRES_DB') or ''}",
                 )
                 url_parts = [str(dsn)]
@@ -510,15 +522,8 @@ def get_settings() -> Settings:
     try:
         # Settings class automatically loads from .env based on its model_config
         settings = Settings()
-        # Crucial: Check if DATABASE_URL is None *after* loading and assembly attempt
-        if settings.DATABASE_URL is None:
-            print(
-                "CRITICAL WARNING: DATABASE_URL is None after settings load. Check .env files and assembly logic."
-            )
-            # Decide whether to raise an error here or let the DB connection fail later
-            # raise ValueError("DATABASE_URL is not configured.")
-        else:
-            print(f"Settings loaded. DATABASE_URL resolved to: {settings.DATABASE_URL}")
+        # Settings loaded successfully, log the DATABASE_URL for verification
+        print(f"Settings loaded. DATABASE_URL resolved to: {settings.DATABASE_URL}")
         return settings
     except Exception as e:
         print(f"CRITICAL ERROR loading settings: {e}")

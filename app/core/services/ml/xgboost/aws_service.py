@@ -787,6 +787,249 @@ class AWSXGBoostService(XGBoostInterface):
                 "error": str(e),
             }
 
+async def integrate_with_digital_twin(
+        self,
+        patient_id: str,
+        profile_id: str,
+        prediction_id: str,
+        additional_data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Integrate XGBoost prediction with digital twin profile.
+
+        This method follows SOLID principles and HIPAA compliance by:
+        - Single Responsibility: Focuses solely on digital twin integration
+        - Dependency Inversion: Uses injected AWS services through factory pattern
+        - HIPAA Compliance: Validates no PHI exposure, maintains audit trails
+
+        Args:
+            patient_id: Unique identifier for the patient
+            profile_id: Unique identifier for the digital twin profile
+            prediction_id: Unique identifier for the prediction to integrate
+            additional_data: Optional additional data for integration
+
+        Returns:
+            Dictionary containing integration results with metadata
+
+        Raises:
+            ValidationError: If parameters are invalid
+            ResourceNotFoundError: If prediction or profile not found
+            DataPrivacyError: If PHI is detected in data
+            ServiceConnectionError: If AWS services cannot be connected to
+        """
+        await self._ensure_initialized()
+
+        # Validate inputs following Interface Segregation Principle
+        self._validate_integration_params(patient_id, profile_id, prediction_id)
+
+        # Generate integration ID for tracking and audit
+        integration_id = f"int-{uuid.uuid4()}"
+        timestamp = now_utc()
+
+        try:
+            # Retrieve the prediction data from DynamoDB
+            prediction_data = await self._retrieve_prediction_data(prediction_id, patient_id)
+            
+            # Validate no PHI in additional data (HIPAA compliance)
+            if additional_data:
+                await self._validate_no_phi(additional_data)
+
+            # Prepare integration payload following clean architecture
+            integration_payload = {
+                "integration_id": integration_id,
+                "patient_id": patient_id,
+                "profile_id": profile_id,
+                "prediction_id": prediction_id,
+                "prediction_data": prediction_data,
+                "additional_data": additional_data or {},
+                "timestamp": timestamp.isoformat(),
+            }
+
+            # Perform the digital twin integration
+            integration_result = await self._execute_digital_twin_integration(integration_payload)
+
+            # Store integration result for audit and tracking
+            await self._store_integration_result(
+                integration_id=integration_id,
+                patient_id=patient_id,
+                profile_id=profile_id,
+                prediction_id=prediction_id,
+                result=integration_result,
+            )
+
+            # Add comprehensive audit log for HIPAA compliance
+            await self._add_audit_log(
+                action="integrate_with_digital_twin",
+                patient_id=patient_id,
+                model_type="digital_twin_integration",
+                prediction_id=prediction_id,
+                integration_id=integration_id,
+                profile_id=profile_id,
+            )
+
+            # Notify observers of successful integration (Observer pattern)
+            await self._notify_observers(
+                EventType.PREDICTION_COMPLETE,
+                {
+                    "integration_id": integration_id,
+                    "patient_id": patient_id,
+                    "profile_id": profile_id,
+                    "prediction_id": prediction_id,
+                    "status": "success",
+                    "action": "digital_twin_integration",
+                },
+            )
+
+            # Return clean result following DRY principle
+            return {
+                "integration_id": integration_id,
+                "patient_id": patient_id,
+                "profile_id": profile_id,
+                "prediction_id": prediction_id,
+                "status": "success",
+                "timestamp": timestamp.isoformat(),
+                "digital_twin_updated": integration_result.get("updated", False),
+                "integration_metadata": integration_result.get("metadata", {}),
+                "next_steps": integration_result.get("recommendations", []),
+            }
+
+        except (
+            ValidationError,
+            ResourceNotFoundError,
+            DataPrivacyError,
+            ServiceConnectionError,
+def _validate_integration_params(self, patient_id: str, profile_id: str, prediction_id: str) -> None:
+        """Validate digital twin integration parameters."""
+        if not patient_id or not isinstance(patient_id, str):
+            raise ValidationError(
+                "Patient ID must be a non-empty string",
+                field="patient_id",
+                value=patient_id,
+            )
+
+        if not profile_id or not isinstance(profile_id, str):
+            raise ValidationError(
+                "Profile ID must be a non-empty string",
+                field="profile_id",
+                value=profile_id,
+            )
+
+        if not prediction_id or not isinstance(prediction_id, str):
+            raise ValidationError(
+                "Prediction ID must be a non-empty string",
+                field="prediction_id",
+                value=prediction_id,
+            )
+
+    async def _retrieve_prediction_data(self, prediction_id: str, patient_id: str) -> dict[str, Any]:
+        """Retrieve prediction data from DynamoDB for integration."""
+        if self._dynamodb is None:
+            raise ServiceConnectionError("DynamoDB service not available")
+
+        if not self._dynamodb_table_name:
+            raise ConfigurationError("DynamoDB table name not configured")
+
+        try:
+            response = self._dynamodb.get_item(
+                table_name=self._dynamodb_table_name,
+                key={"prediction_id": prediction_id, "patient_id": patient_id},
+            )
+
+            if "Item" not in response:
+                raise ResourceNotFoundError(f"Prediction not found for ID: {prediction_id}")
+
+            return response["Item"]
+
+        except Exception as e:
+            self._logger.error(f"Failed to retrieve prediction data: {e}")
+            raise ServiceConnectionError(f"Failed to retrieve prediction data: {e!s}") from e
+
+    async def _execute_digital_twin_integration(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Execute the actual digital twin integration."""
+        # Mock implementation for now - in real implementation this would
+        # integrate with the actual digital twin service
+        return {
+            "updated": True,
+            "metadata": {
+                "integration_timestamp": payload["timestamp"],
+                "integration_method": "xgboost_prediction",
+                "data_elements_updated": ["risk_scores", "treatment_recommendations"],
+            },
+            "recommendations": [
+                "Monitor patient for next 7 days",
+                "Schedule follow-up assessment",
+                "Review medication adherence",
+            ],
+        }
+
+    async def _store_integration_result(
+        self,
+        integration_id: str,
+        patient_id: str,
+        profile_id: str,
+        prediction_id: str,
+        result: dict[str, Any],
+    ) -> None:
+        """Store integration result for audit and tracking."""
+        if self._dynamodb is None:
+            self._logger.warning("DynamoDB service not available, skipping integration storage")
+            return
+
+        # Use a separate table for integration results
+        integration_table = f"{self._dynamodb_table_name}-integrations"
+
+        item = {
+            "integration_id": integration_id,
+            "patient_id": patient_id,
+            "profile_id": profile_id,
+            "prediction_id": prediction_id,
+            "timestamp": now_utc().isoformat(),
+            "result": json.dumps(result),
+            "ttl": int(time.time()) + (90 * 24 * 60 * 60),  # 90 days TTL for HIPAA compliance
+        }
+
+        try:
+            self._dynamodb.put_item(integration_table, item)
+            self._logger.info(f"Stored integration result {integration_id} for patient {patient_id}")
+        except Exception as e:
+            self._logger.error(f"Failed to store integration result: {e}")
+        ) as e:
+            # Expected exceptions, log and re-raise
+            self._logger.warning(
+                f"Digital twin integration error for patient {patient_id}, "
+                f"profile {profile_id}, prediction {prediction_id}: {e!s}"
+            )
+            await self._notify_observers(
+                EventType.ERROR,
+                {
+                    "integration_id": integration_id,
+                    "patient_id": patient_id,
+                    "profile_id": profile_id,
+                    "prediction_id": prediction_id,
+                    "error": str(e),
+                    "error_type": e.__class__.__name__,
+                },
+            )
+            raise
+
+        except Exception as e:
+            # Unexpected exception, log and wrap
+            self._logger.error(
+                f"Unexpected error in digital twin integration for patient {patient_id}: {e!s}",
+                exc_info=True,
+            )
+            await self._notify_observers(
+                EventType.ERROR,
+                {
+                    "integration_id": integration_id,
+                    "patient_id": patient_id,
+                    "profile_id": profile_id,
+                    "prediction_id": prediction_id,
+                    "error": str(e),
+                    "error_type": "UnexpectedError",
+                },
+            )
+            raise ServiceConnectionError(f"Unexpected error in digital twin integration: {e!s}") from e
     async def register_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Register an observer for a specific event type.
