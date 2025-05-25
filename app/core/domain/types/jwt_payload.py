@@ -54,6 +54,7 @@ class AccessTokenPayload(JWTPayloadBase):
     type: TokenType = Field(default=TokenType.ACCESS, description="Token type (always ACCESS)")
     username: str | None = Field(None, description="Username for display purposes")
     session_id: str | None = Field(None, description="Session identifier")
+    permissions: list[str] = Field(default_factory=list, description="User permissions")
 
     # Common role field for backward compatibility
     @property
@@ -77,6 +78,7 @@ JWTPayload = AccessTokenPayload | RefreshTokenPayload
 def create_access_token_payload(
     subject: str,
     roles: list[str] | None = None,
+    permissions: list[str] | None = None,
     username: str | None = None,
     session_id: str | None = None,
     issued_at: datetime | None = None,
@@ -91,6 +93,7 @@ def create_access_token_payload(
     Args:
         subject: User identifier
         roles: List of user roles
+        permissions: List of user permissions
         username: Username for display
         session_id: Session identifier
         issued_at: Token issue timestamp
@@ -109,6 +112,13 @@ def create_access_token_payload(
     now = int(time.time()) if issued_at is None else int(issued_at.timestamp())
     exp_time = int(expires_at.timestamp()) if expires_at else now + (15 * 60)  # 15 min default
 
+    # Extract permissions from additional_claims if provided there
+    extracted_permissions = permissions or []
+    if additional_claims and "permissions" in additional_claims:
+        if not extracted_permissions:
+            extracted_permissions = additional_claims.pop("permissions")
+        # If permissions are in both places, we've already prioritized the explicit parameter
+
     return AccessTokenPayload(
         sub=subject,
         iat=now,
@@ -117,6 +127,7 @@ def create_access_token_payload(
         iss=issuer,
         aud=audience,
         roles=roles or [],
+        permissions=extracted_permissions,
         username=username,
         session_id=session_id,
         custom_fields=additional_claims or {},
@@ -239,8 +250,18 @@ def payload_from_dict(data: dict[str, Any]) -> JWTPayload:
         "session_id",
         "refresh",
         "original_iat",
+        "permissions",
     }
     custom_fields = {k: v for k, v in data.items() if k not in standard_claims}
+
+    # Extract permissions (handle both string and list formats)
+    permissions_data = data.get("permissions", [])
+    if isinstance(permissions_data, str):
+        permissions = [permissions_data]
+    elif isinstance(permissions_data, list):
+        permissions = permissions_data
+    else:
+        permissions = []
 
     # Create appropriate payload type
     if token_type == TokenType.REFRESH:
@@ -264,6 +285,7 @@ def payload_from_dict(data: dict[str, Any]) -> JWTPayload:
             iss=issuer,
             aud=audience,
             roles=roles,
+            permissions=permissions,
             username=data.get("username"),
             session_id=data.get("session_id"),
             custom_fields=custom_fields,
