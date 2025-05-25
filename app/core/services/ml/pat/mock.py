@@ -820,7 +820,7 @@ class MockPATService(PATInterface):
         activity_levels = self._generate_activity_levels()
 
         # Build result object that exactly matches test expectations
-        result = {
+        result: dict[str, Any] = {
             "analysis_id": analysis_id,
             "patient_id": patient_id,
             "timestamp": timestamp,  # Key field expected by tests
@@ -870,8 +870,9 @@ class MockPATService(PATInterface):
         # Add general metrics to the 'results' field as expected by some tests
         metrics_data: dict[str, Any] = result.get("metrics", {})
         if "general" in metrics_data:
-            general_metrics: Any = result["metrics"]["general"]
-            result["results"]["general"] = general_metrics
+            general_metrics: Any = metrics_data["general"]
+            results_dict: dict[str, Any] = result["results"]
+            results_dict["general"] = general_metrics
 
         self.analyses[analysis_id] = result
 
@@ -1583,8 +1584,8 @@ class MockPATService(PATInterface):
         }
 
         # Store the analyses with explicit type annotations
-        analysis_id_1: str = result1["analysis_id"]
-        analysis_id_2: str = result2["analysis_id"]
+        analysis_id_1: str = str(result1["analysis_id"])
+        analysis_id_2: str = str(result2["analysis_id"])
         
         self._analyses[analysis_id_1] = result1
         self._analyses[analysis_id_2] = result2
@@ -2126,7 +2127,7 @@ class MockPATService(PATInterface):
 
     def _generate_mock_interpretation(self, analysis_types: list[str]) -> dict[str, Any]:
         """Generate mock interpretation for actigraphy analysis."""
-        interpretation = {"summary": "Mock interpretation of actigraphy data"}
+        interpretation: dict[str, Any] = {"summary": "Mock interpretation of actigraphy data"}
 
         # Add analysis type-specific interpretations
         if any(atype in ["sleep", "sleep_quality", "sleep_analysis"] for atype in analysis_types):
