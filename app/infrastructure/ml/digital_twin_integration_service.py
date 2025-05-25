@@ -419,7 +419,7 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
         }
         
     async def generate_comprehensive_insights(
-        self, patient_id: str, options: dict[str, Any] = dict()
+        self, patient_id: UUID, options: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
         Generate comprehensive patient insights by integrating multiple ML services.
@@ -436,13 +436,14 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
         Returns:
             A dictionary containing comprehensive patient insights
         """
+        options = options or {}
             
         # Get patient data
-        patient_data = await self._get_patient_data(UUID(patient_id))
+        patient_data = await self._get_patient_data(patient_id)
         
         # Initialize insights dictionary
         insights: dict[str, Any] = {
-            "patient_id": patient_id,
+            "patient_id": str(patient_id),
             "generated_at": datetime.now().isoformat(),
         }
         
@@ -453,7 +454,7 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
         if options.get("include_symptom_forecast", True):
             try:
                 forecast = await self.symptom_forecasting_service.generate_forecast(
-                    patient_id=patient_id,
+                    patient_id=str(patient_id),
                     days=options.get("forecast_days", 14),
                     conditions=patient_data.get("conditions", []),
                 )
@@ -466,7 +467,7 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
         if options.get("include_biometric_correlations", True):
             try:
                 correlations = await self.biometric_correlation_service.analyze_correlations(
-                    patient_id=patient_id,
+                    patient_id=str(patient_id),
                     lookback_days=options.get("biometric_lookback_days", 30),
                 )
                 insights["biometric_correlations"] = correlations
@@ -479,7 +480,7 @@ class DigitalTwinIntegrationService(IDigitalTwinIntegrationService):
             try:
                 medications = patient_data.get("medications", [])
                 predictions = await self.pharmacogenomics_service.analyze_medication_response(
-                    patient_id=patient_id,
+                    patient_id=str(patient_id),
                     medications=medications,
                 )
                 insights["medication_predictions"] = predictions

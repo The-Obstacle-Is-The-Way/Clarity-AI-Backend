@@ -52,24 +52,35 @@ class MockMentalLLaMAService(MockMentaLLaMA):
         """Detect depression indicators in text."""
         return super().detect_depression(text, options)
 
-    def assess_risk(self, text: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
+    def assess_risk(self, text: str, risk_type: str | None = None, options: dict[str, Any] | None = None) -> dict[str, Any]:
         """Assess risk factors in text."""
-        return super().assess_risk(text, options)
+        return super().assess_risk(text, risk_type, options)
 
     def generate_digital_twin(
         self,
-        user_profile: dict[str, Any],
-        clinical_data: dict[str, Any] | None = None,
+        text_data: list[str] | None = None,
+        demographic_data: dict[str, Any] | None = None,
+        medical_history: dict[str, Any] | None = None,
+        treatment_history: dict[str, Any] | None = None,
         options: dict[str, Any] | None = None,
+        patient_id: str | None = None,
     ) -> dict[str, Any]:
-        """Generate a digital twin based on user profile and clinical data."""
-        return super().generate_digital_twin(user_profile, clinical_data, options)
+        """
+        Generate a digital twin based on user profile and clinical data.
+        
+        This implementation adapts the service interface to match the parent class signature.
+        """
+        # For backward compatibility with old code that might call this with the old signature
+        # We don't actually need to check the type here since we're just passing through
+        return super().generate_digital_twin(
+            text_data, demographic_data, medical_history, treatment_history, options, patient_id
+        )
 
     def create_digital_twin_session(
-        self, digital_twin_id: str, options: dict[str, Any] | None = None
+        self, twin_id: str, session_type: str = "therapy", options: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """Create a new session with a digital twin."""
-        return super().create_digital_twin_session(digital_twin_id, options)
+        return super().create_digital_twin_session(twin_id, session_type, options)
 
     def get_digital_twin_session(self, session_id: str) -> dict[str, Any]:
         """Get session information for a digital twin session."""
@@ -81,6 +92,6 @@ class MockMentalLLaMAService(MockMentaLLaMA):
         """Send a message to a digital twin session."""
         return super().send_message_to_session(session_id, message, options)
 
-    def end_digital_twin_session(self, session_id: str) -> dict[str, Any]:
+    def end_digital_twin_session(self, session_id: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
         """End a digital twin session."""
-        return super().end_digital_twin_session(session_id)
+        return super().end_digital_twin_session(session_id, options)
