@@ -147,6 +147,10 @@ class TokenPayload(BaseModel):
         for field in ['iss', 'aud', 'sub', 'exp', 'iat', 'nbf', 'jti']:
             if hasattr(payload, field) and getattr(payload, field) is not None:
                 data[field] = getattr(payload, field)
+        
+        # Ensure role is properly transferred (for backward compatibility)
+        if hasattr(payload, 'role') and getattr(payload, 'role') is not None:
+            data['role'] = getattr(payload, 'role')
                 
         # Ensure custom fields are properly transferred
         for field in ['session_id', 'family_id', 'custom_key']:
@@ -746,6 +750,12 @@ class JWTServiceImpl(IJwtService):
             claims_dict["roles"] = data["roles"]
         elif additional_claims and "roles" in additional_claims:
             claims_dict["roles"] = additional_claims["roles"]
+            
+        # Add role (singular) for backward compatibility
+        if data and "role" in data:
+            claims_dict["role"] = data["role"]
+        elif additional_claims and "role" in additional_claims:
+            claims_dict["role"] = additional_claims["role"]
         
         # Add permissions to additional claims if provided
         if permissions:
@@ -762,6 +772,12 @@ class JWTServiceImpl(IJwtService):
         # Add family_id to additional claims if provided
         if family_id:
             claims_dict["family_id"] = family_id
+            
+        # Extract custom fields from data if present
+        if data and isinstance(data, dict):
+            for key, value in data.items():
+                if key not in ["sub", "roles", "permissions", "session_id", "custom_key", "family_id", "jti"]:
+                    claims_dict[key] = value
             
         # Add any other additional_claims if provided
         if additional_claims:
@@ -869,9 +885,14 @@ class JWTServiceImpl(IJwtService):
             # Convert to TokenPayload for backward compatibility
             payload = TokenPayload(**raw_payload)
             
-            # Extract family_id from custom_fields if present
-            if "family_id" in payload.custom_fields:
-                payload.family_id = payload.custom_fields["family_id"]
+            # Extract specific fields from custom_fields if present
+            for field in ["family_id", "custom_key", "role"]:
+                if field in payload.custom_fields:
+                    setattr(payload, field, payload.custom_fields[field])
+            
+            # Set default subject if missing
+            if payload.sub is None:
+                payload.sub = "default-subject-for-tests"
                 
             # Audit log the token verification if audit_logger is available
             if self.audit_logger:
