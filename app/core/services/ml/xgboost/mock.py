@@ -13,6 +13,7 @@ import time
 import uuid
 from datetime import datetime, timedelta
 from typing import Any, Sequence
+from uuid import UUID
 
 from app.core.services.ml.xgboost.constants import ModelType
 from app.core.services.ml.xgboost.exceptions import (
@@ -231,7 +232,7 @@ class MockXGBoostService(XGBoostInterface):
         }
 
         # Notify observers
-        self._notify_observers(
+        await self._notify_observers(
             EventType.PREDICTION_COMPLETE,
             {
                 "integration_type": "digital_twin",
@@ -353,7 +354,7 @@ class MockXGBoostService(XGBoostInterface):
             self._initialized = True
 
             # Notify observers
-            self._notify_observers(EventType.INITIALIZATION, {"status": "initialized"})
+            await self._notify_observers(EventType.INITIALIZATION, {"status": "initialized"})
 
             self._logger.info("Mock XGBoost service initialized successfully")
         except Exception as e:
@@ -395,7 +396,7 @@ class MockXGBoostService(XGBoostInterface):
             self._logger.debug(f"Observer unregistered for event type {event_type}")
 
     async def predict(
-        self, patient_id: str, features: dict[str, Any], model_type: str, **kwargs: Any
+        self, patient_id: UUID, features: dict[str, Any], model_type: str, **kwargs: Any
     ) -> dict[str, Any]:
         """
         Generic prediction method required by MLServiceInterface.
@@ -575,7 +576,7 @@ class MockXGBoostService(XGBoostInterface):
             # Extract feature names from clinical_data
             feature_names = list(clinical_data.keys())
             # Generate explainability dictionary with feature importances
-            explainability = {"method": "SHAP", "feature_importance": {}}
+            explainability: dict[str, Any] = {"method": "SHAP", "feature_importance": {}}
 
             # Add feature importances (using deterministic values based on feature name and risk_type)
             total_importance = 0.0
@@ -879,7 +880,7 @@ class MockXGBoostService(XGBoostInterface):
         self._predictions[prediction_id] = result
 
         # Notify observers
-        self._notify_observers(
+        await self._notify_observers(
             EventType.PREDICTION_COMPLETE,
             {
                 "prediction_id": prediction_id,
@@ -1012,7 +1013,7 @@ class MockXGBoostService(XGBoostInterface):
         if self._mock_delay_ms > 0:
             time.sleep(self._mock_delay_ms / 1000)
 
-    def _notify_observers(self, event_type: EventType, data: dict[str, Any]) -> None:
+    async def _notify_observers(self, event_type: EventType, data: dict[str, Any]) -> None:
         """
         Notify observers of an event.
 
@@ -1028,7 +1029,7 @@ class MockXGBoostService(XGBoostInterface):
         if event_key in self._observers:
             for observer in self._observers[event_key]:
                 try:
-                    observer.update(event_type, data)
+                    await observer.update(event_type, data)
                 except Exception as e:
                     self._logger.error(f"Error notifying observer: {e}")
 
@@ -1036,7 +1037,7 @@ class MockXGBoostService(XGBoostInterface):
         if "*" in self._observers:
             for observer in self._observers["*"]:
                 try:
-                    observer.update(event_type, data)
+                    await observer.update(event_type, data)
                 except Exception as e:
                     self._logger.error(f"Error notifying wildcard observer: {e}")
 
@@ -1532,7 +1533,7 @@ class MockXGBoostService(XGBoostInterface):
         Returns:
             Dictionary of risk factors
         """
-        risk_factors = {"contributing_factors": [], "protective_factors": []}
+        risk_factors: dict[str, Any] = {"contributing_factors": [], "protective_factors": []}
 
         # Add contributing factors based on clinical data
         if clinical_data.get("previous_episodes", 0) > 0:
