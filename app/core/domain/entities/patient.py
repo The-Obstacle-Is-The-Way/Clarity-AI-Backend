@@ -72,7 +72,8 @@ class Patient(BaseModel):
     )
     address: Address | None = Field(None, description="Patient's primary address")
     contact_info: ContactInfo = Field(
-        default_factory=lambda: ContactInfo(), description="Detailed contact information object"
+        default_factory=lambda: ContactInfo(email=None, phone=None, email_secondary=None),
+        description="Detailed contact information object"
     )
     emergency_contact: EmergencyContact | None = Field(
         None, description="Patient's emergency contact"
