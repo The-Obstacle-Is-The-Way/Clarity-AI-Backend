@@ -163,7 +163,7 @@ class RedisService(IRedisService):
             True if successful, False otherwise
         """
         try:
-            return await self._redis.expire(key, seconds)
+            return cast(bool, await self._redis.expire(key, seconds))
         except Exception as e:
             logger.error(f"Redis expire error for key '{key}': {e!s}")
             return False
