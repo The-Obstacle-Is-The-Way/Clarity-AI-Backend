@@ -11,20 +11,19 @@ from functools import lru_cache
 from typing import Any, Self
 
 from pydantic import (
-    ConfigDict,
     Field,
     PostgresDsn,
     SecretStr,
     field_validator,
     model_validator,
 )
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # --- ML Settings Sub-Models ---
 
 
 class MentalLlamaSettings(BaseSettings):
-    model_config = ConfigDict(
+    model_config = SettingsConfigDict(
         env_prefix="MENTALLAMA_", protected_namespaces=("settings_",)
     )  # Prefix for env vars
 
@@ -76,7 +75,7 @@ class MentalLlamaSettings(BaseSettings):
 
 
 class PATSettings(BaseSettings):
-    model_config = ConfigDict(env_prefix="PAT_", protected_namespaces=("settings_",))
+    model_config = SettingsConfigDict(env_prefix="PAT_", protected_namespaces=("settings_",))
 
     model_path: str = Field(
         default="/models/pat/pat-medium", json_schema_extra={"env": "MODEL_PATH"}
@@ -90,7 +89,7 @@ class PATSettings(BaseSettings):
 
 
 class XGBoostSettings(BaseSettings):
-    model_config = ConfigDict(env_prefix="XGBOOST_", protected_namespaces=("settings_",))
+    model_config = SettingsConfigDict(env_prefix="XGBOOST_", protected_namespaces=("settings_",))
 
     # Example: Define paths for different XGBoost models
     treatment_response_model_path: str = Field(
@@ -120,7 +119,7 @@ class XGBoostSettings(BaseSettings):
 
 
 class LSTMSettings(BaseSettings):
-    model_config = ConfigDict(env_prefix="LSTM_", protected_namespaces=("settings_",))
+    model_config = SettingsConfigDict(env_prefix="LSTM_", protected_namespaces=("settings_",))
 
     biometric_correlation_model_path: str = Field(
         default="/models/lstm/biometric_correlation.pkl",
@@ -129,7 +128,7 @@ class LSTMSettings(BaseSettings):
 
 
 class PHIDetectionSettings(BaseSettings):
-    model_config = ConfigDict(
+    model_config = SettingsConfigDict(
         env_prefix="PHI_DETECTION_", protected_namespaces=("settings_",)
     )  # Changed prefix to avoid clash
 
@@ -333,13 +332,6 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = Field(default=5432, json_schema_extra={"env": "POSTGRES_PORT"})
     DB_POOL_SIZE: int = Field(default=5, json_schema_extra={"env": "DB_POOL_SIZE"})
     DB_MAX_OVERFLOW: int = Field(default=10, json_schema_extra={"env": "DB_MAX_OVERFLOW"})
-    DATABASE_ECHO: bool = Field(
-        default=False, json_schema_extra={"env": "DATABASE_ECHO"}
-    )  # Added DB Echo
-    DATABASE_SSL_MODE: str | None = Field(
-        default=None, json_schema_extra={"env": "DATABASE_SSL_MODE"}
-    )  # Added SSL
-    DATABASE_SSL_CA: str | None = Field(default=None, json_schema_extra={"env": "DATABASE_SSL_CA"})
 
     @model_validator(mode="after")
     def _set_debug_env(self) -> Self:
@@ -379,9 +371,6 @@ class Settings(BaseSettings):
         """Alias for DATABASE_URL for compatibility."""
         return self.DATABASE_URL
 
-    DATABASE_SSL_VERIFY: bool | None = Field(
-        default=None, json_schema_extra={"env": "DATABASE_SSL_VERIFY"}
-    )
     DATABASE_ENCRYPTION_ENABLED: bool = Field(
         default=False, json_schema_extra={"env": "DATABASE_ENCRYPTION_ENABLED"}
     )
@@ -450,7 +439,6 @@ class Settings(BaseSettings):
     DEBUG: bool = Field(
         default=False, json_schema_extra={"env": "DEBUG"}
     )  # General debug flag moved here
-    TESTING: bool = Field(default=False, json_schema_extra={"env": "TESTING"})  # Add TESTING flag
 
     # Audit Log Settings
     AUDIT_LOG_LEVEL: str = Field(default="INFO", json_schema_extra={"env": "AUDIT_LOG_LEVEL"})
@@ -503,7 +491,7 @@ class Settings(BaseSettings):
         values.pop("SQLALCHEMY_DATABASE_URI", None)
         return values
 
-    model_config = ConfigDict(
+    model_config = SettingsConfigDict(
         case_sensitive=True,
         env_file_encoding="utf-8",
         env_nested_delimiter="__",
