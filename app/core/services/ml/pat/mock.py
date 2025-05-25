@@ -1430,7 +1430,7 @@ class MockPATService(PATInterface):
         start_date: str | None = None,
         end_date: str | None = None,
         **kwargs: Any,
-    ) -> dict[str, Any]:
+    ) -> list[dict[str, Any]]:
         """Get analyses for a specific patient with optional filtering.
         
         Args:
@@ -1484,19 +1484,12 @@ class MockPATService(PATInterface):
                     date_filtered.append(a)
                 filtered_analyses = date_filtered
 
-            # Test for special case: verify_analysis_date
-            if getattr(self, "_verify_dates", False):
-                # Return paginated response for this specific test case
-                return self._prepare_response(
-                    filtered_analyses, len(filtered_analyses), limit, offset
-                )
-
             # Apply pagination
             total = len(filtered_analyses)
             paginated_analyses = filtered_analyses[offset:offset + limit]
 
-            # Always return standardized response format
-            return self._prepare_response(paginated_analyses, total, limit, offset)
+            # Return analyses list directly (Interface Segregation Principle)
+            return paginated_analyses
 
         # Regular implementation for other patient IDs
         # Retrieve analysis IDs for this patient using repository pattern
@@ -1536,8 +1529,8 @@ class MockPATService(PATInterface):
         total = len(analyses)
         paginated_analyses = analyses[offset : offset + limit]
 
-        # Return formatted response
-        return self._prepare_response(paginated_analyses, total, limit, offset)
+        # Return analyses list directly (Interface Segregation Principle)
+        return paginated_analyses
 
     def _get_or_create_test_analyses(self, patient_id: str) -> list[dict[str, Any]]:
         """Create or retrieve test analyses for a specific patient.
