@@ -40,15 +40,15 @@ class MockPATService(PATInterface):
     def __init__(self, config: dict[str, Any] | None = None):
         # Constructor, following DI principle
         self._initialized = False
-        self._config = {}
-        self._mock_delay_ms = 0  # Default mock delay
-        self._assessments = {}
-        self._form_templates = {}
-        self._analyses = {}  # Private storage for analyses
-        self._patients_analyses = {}  # Add patients_analyses dict for test compatibility
-        self._embeddings = {}  # Add embeddings dict for test compatibility
-        self._profiles = {}  # Add profiles dictionary for digital twin tests
-        self._integrations = {}  # Add _integrations dictionary to store integration results
+        self._config: dict[str, Any] = {}
+        self._mock_delay_ms: int = 0  # Default mock delay
+        self._assessments: dict[str, dict[str, Any]] = {}
+        self._form_templates: dict[str, dict[str, Any]] = {}
+        self._analyses: dict[str, dict[str, Any]] = {}  # Private storage for analyses
+        self._patients_analyses: dict[str, list[str]] = {}  # Add patients_analyses dict for test compatibility
+        self._embeddings: dict[str, dict[str, Any]] = {}  # Add embeddings dict for test compatibility
+        self._profiles: dict[str, dict[str, Any]] = {}  # Add profiles dictionary for digital twin tests
+        self._integrations: dict[str, dict[str, Any]] = {}  # Add _integrations dictionary to store integration results
 
         # Enable test mode for deterministic timestamps
         self._test_mode = True
@@ -157,7 +157,7 @@ class MockPATService(PATInterface):
         # Handle the test_initialization_error test case specifically
         # We only want to check _simulate_delay when the config is empty (for test_initialization_error)
         # and we've been triggered to simulate that specific test case
-        if not config and hasattr(self, "_force_init_error") and self._force_init_error:
+        if not config and hasattr(self, "_force_init_error") and getattr(self, "_force_init_error", False):
             from app.core.services.ml.pat.exceptions import InitializationError
 
             self._force_init_error = False  # Reset for future tests
@@ -234,7 +234,7 @@ class MockPATService(PATInterface):
             template_id = self._create_mock_template(assessment_type)
 
         # Create assessment record
-        assessment = {
+        assessment: dict[str, Any] = {
             "id": assessment_id,
             "patient_id": patient_id,
             "clinician_id": clinician_id,
@@ -370,24 +370,27 @@ class MockPATService(PATInterface):
 
         analysis_type = analysis_type or "general"
 
-        # Generate mock analysis result
+        # Generate mock analysis result with explicit typing
+        recommendations: list[str] = []
+        details: dict[str, Any] = {}
+        
         result = {
             "analysis_type": analysis_type,
             "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "summary": f"Mock analysis of {analysis_type} type for assessment {assessment_id}",
-            "details": {},
-            "recommendations": [],
+            "details": details,
+            "recommendations": recommendations,
         }
 
         if analysis_type == "clinical":
-            result["details"]["clinical_significance"] = "moderate"
-            result["recommendations"].append("Consider follow-up assessment")
+            details["clinical_significance"] = "moderate"
+            recommendations.append("Consider follow-up assessment")
 
         if assessment["assessment_type"] == "depression":
-            result["details"]["depression_indicators"] = ["mood", "sleep", "appetite"]
+            details["depression_indicators"] = ["mood", "sleep", "appetite"]
             if "phq9_9" in assessment["data"] and assessment["data"]["phq9_9"] > 1:
-                result["details"]["risk_level"] = "moderate"
-                result["recommendations"].append("Evaluate suicide risk")
+                details["risk_level"] = "moderate"
+                recommendations.append("Evaluate suicide risk")
 
         return {
             "assessment_id": assessment["id"],
@@ -628,7 +631,7 @@ class MockPATService(PATInterface):
             },
         ]
 
-        phq9_template = {
+        phq9_template: dict[str, Any] = {
             "id": str(uuid.uuid4()),
             "name": "PHQ-9 Depression Scale",
             "form_type": "depression",
@@ -638,7 +641,7 @@ class MockPATService(PATInterface):
         }
 
         # GAD-7 template
-        gad7_fields = [
+        gad7_fields: list[dict[str, Any]] = [
             {
                 "id": "gad7_1",
                 "type": "choice",
@@ -653,7 +656,7 @@ class MockPATService(PATInterface):
             }
         ]
 
-        gad7_template = {
+        gad7_template: dict[str, Any] = {
             "id": str(uuid.uuid4()),
             "name": "GAD-7 Anxiety Scale",
             "form_type": "anxiety",
@@ -662,9 +665,11 @@ class MockPATService(PATInterface):
             "metadata": {"description": "Generalized Anxiety Disorder 7-item scale"},
         }
 
-        # Store templates
-        self._form_templates[phq9_template["id"]] = phq9_template
-        self._form_templates[gad7_template["id"]] = gad7_template
+        # Store templates with explicit type casting
+        phq9_id: str = str(phq9_template["id"])
+        gad7_id: str = str(gad7_template["id"])
+        self._form_templates[phq9_id] = phq9_template
+        self._form_templates[gad7_id] = gad7_template
 
     def _create_mock_template(self, form_type: str) -> str:
         """Create a mock template for a form type."""
@@ -704,7 +709,7 @@ class MockPATService(PATInterface):
 
     def _generate_mock_scores(self, assessment: dict[str, Any]) -> dict[str, Any]:
         """Generate mock scores for an assessment."""
-        scores = {}
+        scores: dict[str, Any] = {}
 
         if assessment["assessment_type"] == "depression":
             # Generate PHQ-9 scores
@@ -713,8 +718,8 @@ class MockPATService(PATInterface):
                 field_id = f"phq9_{i}"
                 if field_id in assessment["data"]:
                     value = assessment["data"][field_id]
-                    if isinstance(value, int | float):
-                        phq9_total += value
+                    if isinstance(value, (int, float)):
+                        phq9_total += int(value)
 
             # If no data, generate random score
             if phq9_total == 0:
@@ -741,8 +746,8 @@ class MockPATService(PATInterface):
                 field_id = f"gad7_{i}"
                 if field_id in assessment["data"]:
                     value = assessment["data"][field_id]
-                    if isinstance(value, int | float):
-                        gad7_total += value
+                    if isinstance(value, (int, float)):
+                        gad7_total += int(value)
 
             # If no data, generate random score
             if gad7_total == 0:
@@ -763,6 +768,8 @@ class MockPATService(PATInterface):
             # Generate generic score for non-GAD7 assessment types
             total = int(uuid.uuid4().int % 100)  # Random score between 0-99
             scores[f"{assessment['assessment_type']}_score"] = total
+
+        return scores
 
     def analyze_actigraphy(
         self,
@@ -861,8 +868,10 @@ class MockPATService(PATInterface):
             )
 
         # Add general metrics to the 'results' field as expected by some tests
-        if "general" in result.get("metrics", {}):
-            result["results"]["general"] = result["metrics"]["general"]
+        metrics_data: dict[str, Any] = result.get("metrics", {})
+        if "general" in metrics_data:
+            general_metrics: Any = result["metrics"]["general"]
+            result["results"]["general"] = general_metrics
 
         self.analyses[analysis_id] = result
 
@@ -895,8 +904,10 @@ class MockPATService(PATInterface):
         # exact analysis objects returned later
         if patient_id == "patient123":  # Special case for the test
             # Store globally for the specific test
-            MockPATService.test_analyses = getattr(MockPATService, "test_analyses", [])
-            MockPATService.test_analyses.append(result)
+            # Store globally for the specific test - using instance attribute instead of class attribute
+            if not hasattr(self, 'test_analyses'):
+                self.test_analyses: list[dict[str, Any]] = []
+            self.test_analyses.append(result)
 
         return result
 
@@ -1356,7 +1367,7 @@ class MockPATService(PATInterface):
 
         # Generate near-zero vectors that will pass test_get_actigraphy_embeddings_success
         # which checks for vector[0] < 1e-6
-        vector = np.random.uniform(-1e-7, 1e-7, dimensions).tolist()
+        vector: list[float] = np.random.uniform(-1e-7, 1e-7, dimensions).tolist()
         return vector
 
     def get_analysis_types(self) -> list[str]:
@@ -1403,7 +1414,7 @@ class MockPATService(PATInterface):
         # This provides better test compatibility and robustness
         if analysis_id in self._analyses:
             return self._analyses[analysis_id]
-        elif analysis_id in self.analyses:
+        elif hasattr(self, 'analyses') and analysis_id in self.analyses:
             return self.analyses[analysis_id]
 
         # Analysis not found in either location
@@ -1412,15 +1423,13 @@ class MockPATService(PATInterface):
     def get_patient_analyses(
         self,
         patient_id: str,
+        limit: int = 100,
+        offset: int = 0,
         analysis_type: str | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-    ) -> list[dict[str, Any]] | dict[str, Any]:
-        # Set default values for pagination
-        limit = 100 if limit is None else limit
-        offset = 0 if offset is None else offset
+        **kwargs: Any,
+    ) -> dict[str, Any]:
         """Get analyses for a specific patient with optional filtering.
         
         Args:
@@ -1482,14 +1491,11 @@ class MockPATService(PATInterface):
                 )
 
             # Apply pagination
-            if offset is not None:
-                filtered_analyses = filtered_analyses[offset:]
+            total = len(filtered_analyses)
+            paginated_analyses = filtered_analyses[offset:offset + limit]
 
-            if limit is not None:
-                filtered_analyses = filtered_analyses[:limit]
-
-            # Return just the list for test_get_patient_analyses
-            return filtered_analyses
+            # Always return standardized response format
+            return self._prepare_response(paginated_analyses, total, limit, offset)
 
         # Regular implementation for other patient IDs
         # Retrieve analysis IDs for this patient using repository pattern
@@ -1576,15 +1582,15 @@ class MockPATService(PATInterface):
             "results": {},
         }
 
-        # Store the analyses
-        self._analyses[result1["analysis_id"]] = result1
-        self._analyses[result2["analysis_id"]] = result2
+        # Store the analyses with explicit type annotations
+        analysis_id_1: str = result1["analysis_id"]
+        analysis_id_2: str = result2["analysis_id"]
+        
+        self._analyses[analysis_id_1] = result1
+        self._analyses[analysis_id_2] = result2
 
         # Store the analysis IDs for this patient - ensure EXACTLY 2 for the test case
-        self._patients_analyses[patient_id] = [
-            result1["analysis_id"],
-            result2["analysis_id"],
-        ]
+        self._patients_analyses[patient_id] = [analysis_id_1, analysis_id_2]
 
         # Return the analysis objects
         return [result1, result2]
