@@ -503,7 +503,6 @@ class MLEncryptionService(BaseEncryptionService):
                         # Log warning and continue with original value
                         self.logger.warning(f"Decryption returned None for field {key}")
                         result[key] = value
-                        continue
                         
                     if decrypted.startswith("[") or decrypted.startswith("{"):
                         try:

@@ -79,7 +79,7 @@ class NotFoundException(BaseAppException):
     that does not exist in the system.
     """
 
-    def __init__(self, entity_type: str, identifier: Any, **kwargs) -> None:
+    def __init__(self, entity_type: str, identifier: Any, **kwargs: Any) -> None:
         """
         Initialize not found exception with entity information.
 

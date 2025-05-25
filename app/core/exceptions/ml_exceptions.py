@@ -12,7 +12,7 @@ from app.core.exceptions.base_exceptions import ApplicationError
 class MLServiceError(ApplicationError):
     """Base exception for ML service errors."""
 
-    def __init__(self, message: str = "ML service error", *args, **kwargs):
+    def __init__(self, message: str = "ML service error", *args, **kwargs: Any):
         """
         Initialize ML service error.
 
@@ -25,7 +25,7 @@ class MLServiceError(ApplicationError):
 class PHIDetectionError(MLServiceError):
     """Exception raised for errors in PHI detection."""
 
-    def __init__(self, message: str = "Error in PHI detection", *args, **kwargs):
+    def __init__(self, message: str = "Error in PHI detection", *args, **kwargs: Any):
         """
         Initialize PHI detection error.
 
@@ -43,7 +43,7 @@ class PHISecurityError(MLServiceError):
     such as detection failures that could lead to PHI leakage.
     """
 
-    def __init__(self, message: str = "PHI security error detected", *args, **kwargs):
+    def __init__(self, message: str = "PHI security error detected", *args, **kwargs: Any):
         """
         Initialize PHI security error.
 
@@ -68,7 +68,7 @@ class MentalLLaMAServiceError(MLServiceError):
         status_code: int | None = None,
         details: dict[str, Any] | None = None,
         *args,
-        **kwargs,
+        **kwargs: Any,
     ):
         """
         Initialize MentalLLaMA service error.
@@ -106,7 +106,7 @@ class MentalLLaMAInferenceError(MLServiceError):
         input_data: dict[str, Any] | None = None,
         details: dict[str, Any] | None = None,
         *args,
-        **kwargs,
+        **kwargs: Any,
     ):
         """
         Initialize MentalLLaMA inference error.
@@ -130,7 +130,7 @@ class MentalLLaMAInferenceError(MLServiceError):
 class XGBoostServiceError(MLServiceError):
     """Exception raised for errors in XGBoost service."""
 
-    def __init__(self, message: str = "Error in XGBoost service", *args, **kwargs):
+    def __init__(self, message: str = "Error in XGBoost service", *args, **kwargs: Any):
         """
         Initialize XGBoost service error.
 
@@ -148,7 +148,7 @@ class InvalidRequestError(MLServiceError):
         message: str = "Invalid request parameters",
         parameter: str | None = None,
         *args,
-        **kwargs,
+        **kwargs: Any,
     ):
         """
         Initialize invalid request error.
@@ -168,7 +168,7 @@ class InvalidRequestError(MLServiceError):
 class ModelNotFoundError(MLServiceError):
     """Exception raised when a requested ML model cannot be found."""
 
-    def __init__(self, model_id: str | None = None, *args, **kwargs):
+    def __init__(self, model_id: str | None = None, *args, **kwargs: Any):
         """
         Initialize model not found error.
 
@@ -187,7 +187,7 @@ class ModelNotFoundError(MLServiceError):
 class ServiceUnavailableError(MLServiceError):
     """Exception raised when an ML service is unavailable or uninitialized."""
 
-    def __init__(self, service_name: str | None = None, reason: str | None = None, *args, **kwargs):
+    def __init__(self, service_name: str | None = None, reason: str | None = None, *args, **kwargs: Any):
         """
         Initialize service unavailable error.
 
@@ -210,7 +210,7 @@ class ServiceUnavailableError(MLServiceError):
 class DigitalTwinError(MLServiceError):
     """Exception raised for errors specific to Digital Twin operations."""
 
-    def __init__(self, message: str = "Error in Digital Twin operation", *args, **kwargs):
+    def __init__(self, message: str = "Error in Digital Twin operation", *args, **kwargs: Any):
         """
         Initialize Digital Twin error.
 
