@@ -1,10 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
 
-# This import is based on what conftest.py was using for User in mocks, may need adjustment
-# depending on the actual User type expected by get_current_active_user dependency.
-# from app.core.domain.entities.user import User
-# For now, assume the modern Pydantic User from app.domain.entities is preferred for new code:
-from app.domain.entities.user import User
+# Use the correct import path for User entity to avoid deprecation warnings
+from app.core.domain.entities.user import User
 
 # Schemas (actual paths might differ, these are placeholders based on common patterns)
 # from app.presentation.api.schemas.analytics_schemas import AnalyticsEventData, AnalyticsEventBatchData

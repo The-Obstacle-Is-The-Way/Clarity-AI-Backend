@@ -100,7 +100,7 @@ class AlertRuleCreate(AlertRuleBase):
     """Model for creating a new alert rule."""
 
     patient_id: UUID = Field(..., description="Patient this rule applies to")
-    conditions: list[RuleConditionBase] = Field(..., description="Rule conditions", min_items=1)
+    conditions: list[RuleConditionBase] = Field(..., description="Rule conditions", min_length=1)
 
 
 class TemplateCustomization(BaseModel):
@@ -265,9 +265,7 @@ class AlertRuleTemplateResponse(BaseModel):
     default_priority: str = Field("medium", description="Default priority for alerts")
     customizable_fields: list[str] = Field([], description="Fields that can be customized")
 
-    class Config:
-        """Pydantic model configuration."""
-
+    model_config = ConfigDict(
         json_schema_extra = {
             "example": {
                 "template_id": "high_heart_rate",
@@ -287,3 +285,4 @@ class AlertRuleTemplateResponse(BaseModel):
                 "customizable_fields": ["threshold_value", "priority"],
             }
         }
+    )

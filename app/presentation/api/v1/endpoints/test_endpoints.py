@@ -75,19 +75,19 @@ async def test_hello():
     return {"message": "Hello from test API"}
 
 
-@router.get("/error")
+@router.get("/error", response_model=None)
 async def test_error() -> NoReturn:
     """Test endpoint that raises an HTTP exception."""
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Test error")
 
 
-@router.get("/runtime-error")
+@router.get("/runtime-error", response_model=None)
 async def test_runtime_error() -> NoReturn:
     """Test endpoint that raises a RuntimeError with sensitive information that should be masked."""
     raise RuntimeError("This is a sensitive internal error detail that should be masked")
 
 
-@router.get("/value-error")
+@router.get("/value-error", response_model=None)
 async def test_value_error() -> NoReturn:
     """Test endpoint that raises a ValueError."""
     raise ValueError("This is a test ValueError")

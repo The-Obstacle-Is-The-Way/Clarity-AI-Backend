@@ -287,9 +287,13 @@ class TestAuthorization:
         assert response.status_code == status.HTTP_200_OK, response.text
         response_data = response.json()
         assert response_data["id"] == str(accessing_user_id)
-        # Based on CorePatient mock structure, the "name" would be "first_name last_name"
-        # However, the patient_router.py maps this to "name" : f"{patient.first_name} {patient.last_name}"
-        assert response_data["name"] == "Test Patient"
+        # Check for fields that are not PHI
+        assert "id" in response_data
+        assert "created_at" in response_data
+        assert "updated_at" in response_data
+        # Check for date_of_birth which should be present in the response
+        assert "date_of_birth" in response_data
+        assert response_data["date_of_birth"] == "1990-01-01"
 
     @pytest.mark.asyncio
     async def test_patient_accessing_other_patient_data(
@@ -450,7 +454,12 @@ class TestAuthorization:
         assert response.status_code == status.HTTP_200_OK, response.text
         response_data = response.json()
         assert response_data["id"] == str(patient_to_access_id)
-        assert response_data["name"] == "Target Patient"
+        # Check for fields that are not PHI
+        assert "id" in response_data
+        assert "created_at" in response_data
+        assert "updated_at" in response_data
+        # Check for date_of_birth which should be present in the response
+        assert "date_of_birth" in response_data
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(

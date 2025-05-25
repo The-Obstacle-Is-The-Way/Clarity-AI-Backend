@@ -42,11 +42,10 @@ class JWTPayloadBase(BaseModel):
         default_factory=dict, description="Additional custom claims"
     )
 
-    class Config:
-        """Pydantic configuration."""
-
-        use_enum_values = True
-        arbitrary_types_allowed = True
+    model_config = {
+        "use_enum_values": True,
+        "arbitrary_types_allowed": True,
+    }
 
     def __getattr__(self, name: str) -> Any:
         """Allow attribute access to custom fields for backward compatibility."""
@@ -233,8 +232,9 @@ def payload_from_dict(data: dict[str, Any]) -> JWTPayload:
 
     # Extract standard claims
     subject = data.get("sub", "default-subject-for-tests")
-    issued_at = data.get("iat", int(datetime.now().timestamp()))
-    expires_at = data.get("exp", int(datetime.now().timestamp()) + 3600)
+    from datetime import timezone
+    issued_at = data.get("iat", int(datetime.now(timezone.utc).timestamp()))
+    expires_at = data.get("exp", int(datetime.now(timezone.utc).timestamp()) + 3600)
     token_id = data.get("jti", str(UUID(int=0).hex))
     issuer = data.get("iss")
     audience = data.get("aud")

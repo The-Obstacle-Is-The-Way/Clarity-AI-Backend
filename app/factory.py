@@ -29,6 +29,7 @@ from app.core.interfaces.services.jwt_service import JWTServiceInterface as IJWT
 from app.core.interfaces.services.redis_service_interface import IRedisService
 from app.core.logging_config import LOGGING_CONFIG
 from app.infrastructure.security.jwt.jwt_service import get_jwt_service
+from app.infrastructure.security.patches.jose_patch import patch_jose_jwt
 from app.infrastructure.security.rate_limiting.service_impl import get_rate_limiter_service
 from app.infrastructure.services.redis.redis_service import (
     create_redis_service,
@@ -196,7 +197,10 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
             # Ensure we have a valid JWT service with proper secret key
             jwt_service: IJWTService = get_jwt_service(current_settings)
             fastapi_app.state.jwt_service = jwt_service  # Store the JWT service in app state
-            logger.info("JWT service initialized successfully and stored in app state.")
+            
+            # Apply patch to fix datetime.utcnow() deprecation warnings in jose.jwt
+            patch_jose_jwt()
+            logger.info("JWT service initialized and jose.jwt patched to use timezone-aware datetime.")
         except Exception as e:
             logger.error(
                 "LIFESPAN_JWT_INIT_FAILURE: Failed to initialize JWT service: %s",
