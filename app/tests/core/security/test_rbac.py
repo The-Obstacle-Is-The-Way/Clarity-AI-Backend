@@ -9,10 +9,13 @@ proper role and permission management for security.
 import pytest
 
 # Keep User import if needed for setup, but roles list is passed to check_permission
-from app.core.domain.entities.user import User, UserRole
+from app.core.domain.entities.user import User
 
 # Corrected import for RBACService
 from app.infrastructure.security.rbac.rbac_service import RBACService
+
+# Import the Role enum used by RBAC service
+from app.infrastructure.security.rbac.roles import Role
 
 
 @pytest.mark.venv_only()
@@ -31,36 +34,36 @@ class TestRoleBasedAccessControl:
         self.admin_user = User(
             id="admin-id",
             email="admin@example.com",
-            full_name="Admin User",
+            first_name="Admin",
+            last_name="User",
             roles=[Role.ADMIN],  # Ensure roles is a list
-            hashed_password="hashed_password",
             is_active=True,
         )
 
         self.clinician_user = User(
             id="clinician-id",
             email="clinician@example.com",
-            full_name="Clinician User",
+            first_name="Clinician",
+            last_name="User",
             roles=[Role.CLINICIAN],
-            hashed_password="hashed_password",
             is_active=True,
         )
 
         self.patient_user = User(
             id="patient-id",
             email="patient@example.com",
-            full_name="Patient User",
-            roles=[Role.USER],
-            hashed_password="hashed_password",
+            first_name="Patient",
+            last_name="User",
+            roles=[Role.USER],  # USER role corresponds to patient in RBAC
             is_active=True,
         )
 
         self.researcher_user = User(
             id="researcher-id",
             email="researcher@example.com",
-            full_name="Researcher User",
+            first_name="Researcher",
+            last_name="User",
             roles=[Role.RESEARCHER],
-            hashed_password="hashed_password",
             is_active=True,
         )
 
