@@ -387,7 +387,8 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
 
         # Try to get pharmacogenomics insights
         try:
-            pharma_result = await self.pharmacogenomics_service.analyze_medication_response(
+            # Use predict_medication_responses as expected by tests
+            pharma_result = await self.pharmacogenomics_service.predict_medication_responses(
                 patient_id=patient_id,
                 patient_data=sanitized_data,
             )
