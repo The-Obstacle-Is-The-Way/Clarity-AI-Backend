@@ -125,13 +125,8 @@ class MLEncryptionService(BaseEncryptionService):
                     iterations=KDF_ITERATIONS,
                 )
                 # Ensure previous_key is bytes
-                if previous_key is None:
-                    # This should never happen due to the if check above, but mypy needs this
-                    previous_key_bytes = b""
-                elif isinstance(previous_key, str):
-                    previous_key_bytes = previous_key.encode()
-                else:
-                    previous_key_bytes = previous_key
+                # We know previous_key is not None here due to the outer if check
+                previous_key_bytes = previous_key.encode() if isinstance(previous_key, str) else previous_key
                 derived_key = base64.urlsafe_b64encode(kdf.derive(previous_key_bytes))
                 self._previous_cipher = Fernet(derived_key)
             except Exception as e:
@@ -202,12 +197,12 @@ class MLEncryptionService(BaseEncryptionService):
                 # No previous key available
                 raise
 
-    def encrypt_embedding(self, embedding: np.ndarray) -> str:
+    def encrypt_embedding(self, embedding: np.ndarray | list[float]) -> str:
         """
         Encrypt a single embedding vector.
 
         Args:
-            embedding: NumPy embedding vector
+            embedding: NumPy embedding vector or list of floats
 
         Returns:
             Encrypted embedding string
@@ -215,23 +210,26 @@ class MLEncryptionService(BaseEncryptionService):
         Raises:
             ValueError: If input is not a valid array
         """
-        # Handle None case  
+        # Handle None case
         if embedding is None:
             raise ValueError("Embedding cannot be None")
 
         # Check for valid embedding - strings must raise ValueError
         if isinstance(embedding, str):
-            raise ValueError(f"Embedding must be a NumPy array, got string: {embedding[:20]}...")
+            # String inputs are not valid embeddings
+            raise ValueError(f"Embedding must be a NumPy array or list, got string: {embedding[:20]}...")
 
-        # Check for valid embedding
+        # Convert to numpy array if needed
         if not isinstance(embedding, np.ndarray):
+            # For test_handle_invalid_embedding, raise ValueError for non-convertible types
+            if isinstance(embedding, (list, dict)) and not embedding:
+                raise ValueError("Embedding must be a NumPy array or non-empty value")
+            
+            # Try to convert to numpy array
             try:
-                # For test_handle_invalid_embedding, raise ValueError for non-convertible types
-                if isinstance(embedding, (list, dict)) and not embedding:
-                    raise ValueError("Embedding must be a NumPy array or non-empty value")
                 embedding = np.array(embedding)
             except Exception as e:
-                raise ValueError(f"Embedding must be a NumPy array: {e!s}")
+                raise ValueError(f"Embedding must be a NumPy array or list of floats: {e!s}")
 
         # Convert to list for JSON serialization and encrypt
         return self.encrypt_embeddings(embedding.tolist())
@@ -282,18 +280,19 @@ class MLEncryptionService(BaseEncryptionService):
             # Handle other exceptions
             raise ValueError(f"Error decrypting embedding: {e!s}")
 
-    def encrypt_tensors(self, tensors: dict[str, np.ndarray]) -> dict[str, str]:
+    def encrypt_tensors(self, tensors: dict[str, np.ndarray]) -> dict[str, str | None]:
         """Alias for encrypt_tensors method to match tests."""
         return self._encrypt_tensors_impl(tensors)
 
-    def _encrypt_tensors_impl(self, tensors: dict[str, np.ndarray]) -> dict[str, str]:
+    def _encrypt_tensors_impl(self, tensors: dict[str, np.ndarray]) -> dict[str, str | None]:
         """Implementation of encrypt_tensors to avoid recursive calls."""
         if tensors is None:
             raise ValueError("Cannot encrypt None tensors")
 
-        result = {}
+        result: dict[str, str | None] = {}
         for key, tensor in tensors.items():
             if tensor is None:
+                # Handle None values
                 result[key] = None
             else:
                 # Convert tensor to list for serialization
@@ -302,7 +301,7 @@ class MLEncryptionService(BaseEncryptionService):
 
         return result
 
-    def decrypt_tensors(self, encrypted_tensors: dict[str, str]) -> dict[str, np.ndarray]:
+    def decrypt_tensors(self, encrypted_tensors: dict[str, str]) -> dict[str, np.ndarray | None]:
         """
         Decrypt a dictionary of encrypted tensors.
 
@@ -310,19 +309,25 @@ class MLEncryptionService(BaseEncryptionService):
             encrypted_tensors: Dictionary of tensor name to encrypted string
 
         Returns:
-            Dictionary with decrypted tensors as NumPy arrays
+            Dictionary with decrypted tensors as NumPy arrays or None values
         """
         if encrypted_tensors is None:
             raise ValueError("Cannot decrypt None tensors")
 
-        result = {}
+        result: dict[str, np.ndarray | None] = {}
         for key, encrypted_tensor in encrypted_tensors.items():
             if encrypted_tensor is None:
+                # Handle None values
                 result[key] = None
             else:
                 # Decrypt and convert back to NumPy array
                 tensor_json = self.decrypt_string(encrypted_tensor)
                 tensor_list = json.loads(tensor_json)
+                
+                # Validate the decoded data is a list or array-like structure
+                if not isinstance(tensor_list, (list, tuple)) and not hasattr(tensor_list, '__iter__'):
+                    raise ValueError(f"Decrypted tensor data for key '{key}' is not array-like: {type(tensor_list).__name__}")
+                
                 result[key] = np.array(tensor_list)
 
         return result
@@ -345,7 +350,7 @@ class MLEncryptionService(BaseEncryptionService):
         if ml_data is None:
             raise ValueError("Cannot encrypt None ML data")
 
-        result = {}
+        result: dict[str, Any] = {}
 
         # List of fields that should always be encrypted (potential PHI)
         sensitive_fields = {
@@ -374,7 +379,7 @@ class MLEncryptionService(BaseEncryptionService):
                     # For nested dictionaries, encrypt all values
                     result[key] = {
                         k: self.encrypt_string(v)
-                        if isinstance(v, str | int | float)
+                        if isinstance(v, (str, int, float))
                         else self.encrypt_string(json.dumps(v))
                         for k, v in value.items()
                     }
@@ -401,7 +406,10 @@ class MLEncryptionService(BaseEncryptionService):
             elif key == "embeddings":
                 if isinstance(value, dict):
                     # For dictionary of embeddings, encrypt each one
-                    result[key] = {k: self.encrypt_embeddings(v) for k, v in value.items()}
+                    encrypted_dict: dict[str, str] = {}
+                    for k, v in value.items():
+                        encrypted_dict[k] = self.encrypt_embeddings(v)
+                    result[key] = encrypted_dict
                 else:
                     # For single embedding value
                     result[key] = self.encrypt_embeddings(value)
@@ -441,7 +449,7 @@ class MLEncryptionService(BaseEncryptionService):
         if encrypted_ml_data is None:
             raise ValueError("Cannot decrypt None ML data")
 
-        result = {}
+        result: dict[str, Any] = {}
 
         # Handle different field types based on naming and content
         for key, value in encrypted_ml_data.items():
@@ -449,28 +457,40 @@ class MLEncryptionService(BaseEncryptionService):
             if isinstance(value, dict):
                 # Check if it's an encrypted embedding dictionary
                 if key == "embeddings":
-                    result[key] = {
-                        k: np.array(json.loads(self.decrypt_string(v)))
-                        if v and isinstance(v, str) and v.startswith(self.VERSION_PREFIX)
-                        else v
-                        for k, v in value.items()
-                    }
+                    embedding_dict: dict[str, np.ndarray] = {}
+                    for k, v in value.items():
+                        if v and isinstance(v, str) and v.startswith(self.VERSION_PREFIX):
+                            decrypted = self.decrypt_string(v)
+                            if decrypted:
+                                embedding_dict[k] = np.array(json.loads(decrypted))
+                        else:
+                            # Handle non-encrypted or None values
+                            if isinstance(v, np.ndarray):
+                                embedding_dict[k] = v
+                            else:
+                                # Skip or handle invalid values
+                                logger.warning(f"Skipping invalid embedding value for key {k}")
+                    result[key] = embedding_dict
                 elif key == "metadata":
                     # Metadata may have encrypted fields
-                    result[key] = {
-                        k: self.decrypt_string(v)
-                        if v and isinstance(v, str) and v.startswith(self.VERSION_PREFIX)
-                        else v
-                        for k, v in value.items()
-                    }
+                    metadata_dict: dict[str, Any] = {}
+                    for k, v in value.items():
+                        if v and isinstance(v, str) and v.startswith(self.VERSION_PREFIX):
+                            decrypted = self.decrypt_string(v)
+                            metadata_dict[k] = decrypted
+                        else:
+                            metadata_dict[k] = v
+                    result[key] = metadata_dict
                 elif key == "patient_data":
                     # Patient data is fully encrypted
-                    result[key] = {
-                        k: self.decrypt_string(v)
-                        if v and isinstance(v, str) and v.startswith(self.VERSION_PREFIX)
-                        else v
-                        for k, v in value.items()
-                    }
+                    patient_dict: dict[str, Any] = {}
+                    for k, v in value.items():
+                        if v and isinstance(v, str) and v.startswith(self.VERSION_PREFIX):
+                            decrypted = self.decrypt_string(v)
+                            patient_dict[k] = decrypted
+                        else:
+                            patient_dict[k] = v
+                    result[key] = patient_dict
                 else:
                     # Default dictionary handling
                     result[key] = value
@@ -480,6 +500,12 @@ class MLEncryptionService(BaseEncryptionService):
                 try:
                     # Try to decrypt and parse as JSON if possible
                     decrypted = self.decrypt_string(value)
+                    if decrypted is None:
+                        # Log warning and continue with original value
+                        logger.warning(f"Decryption returned None for field {key}")
+                        result[key] = value
+                        continue
+                        
                     if decrypted.startswith("[") or decrypted.startswith("{"):
                         try:
                             # Parse as JSON
@@ -491,7 +517,7 @@ class MLEncryptionService(BaseEncryptionService):
                             elif key == "embeddings":
                                 # Convert to numpy array if it's a list of numbers
                                 if isinstance(parsed, list) and all(
-                                    isinstance(x, int | float) for x in parsed
+                                    isinstance(x, (int, float)) for x in parsed
                                 ):
                                     result[key] = np.array(parsed)
                                 else:
@@ -666,7 +692,7 @@ class MLEncryptionService(BaseEncryptionService):
             "discharge",
         ]
 
-        result = {}
+        result: dict[str, Any] = {}
 
         for key, value in data.items():
             # Check if field looks like PHI based on name
@@ -683,23 +709,42 @@ class MLEncryptionService(BaseEncryptionService):
             elif isinstance(value, list):
                 if any(isinstance(item, dict) for item in value):
                     # If list contains dicts, process each one
-                    result[key] = [
-                        self.encrypt_phi_safe_data(item)
-                        if isinstance(item, dict)
-                        else self.encrypt_string(item)
-                        if is_phi
-                        else item
-                        for item in value
-                    ]
+                    processed_items: list[Any] = []
+                    for item in value:
+                        if isinstance(item, dict):
+                            processed_items.append(self.encrypt_phi_safe_data(item))
+                        elif is_phi:
+                            encrypted = self.encrypt_string(item)
+                            if encrypted is not None:
+                                processed_items.append(encrypted)
+                            else:
+                                processed_items.append(item)
+                        else:
+                            processed_items.append(item)
+                    result[key] = processed_items
                 else:
                     # Simple list - encrypt whole thing if PHI field
-                    result[key] = self.encrypt_string(json.dumps(value)) if is_phi else value
+                    if is_phi:
+                        encrypted = self.encrypt_string(json.dumps(value))
+                        if encrypted is not None:
+                            result[key] = encrypted
+                        else:
+                            result[key] = value
+                    else:
+                        result[key] = value
             # Handle numpy array values - always encrypt
             elif isinstance(value, np.ndarray):
                 result[key] = self.encrypt_embedding(value)
             # Handle simple values
             else:
-                result[key] = self.encrypt_string(value) if is_phi else value
+                if is_phi:
+                    encrypted = self.encrypt_string(value)
+                    if encrypted is not None:
+                        result[key] = encrypted
+                    else:
+                        result[key] = value
+                else:
+                    result[key] = value
 
         return result
 
@@ -718,7 +763,7 @@ class MLEncryptionService(BaseEncryptionService):
         if data is None:
             raise ValueError("Cannot decrypt None PHI data")
 
-        result = {}
+        result: dict[str, Any] = {}
 
         for key, value in data.items():
             # Handle dict values recursively
@@ -728,29 +773,48 @@ class MLEncryptionService(BaseEncryptionService):
             elif isinstance(value, list):
                 if any(isinstance(item, dict) for item in value):
                     # If list contains dicts, process each one
-                    result[key] = [
-                        self.decrypt_phi_safe_data(item)
-                        if isinstance(item, dict)
-                        else self.decrypt_string(item)
-                        if isinstance(item, str) and item.startswith(self.VERSION_PREFIX)
-                        else item
-                        for item in value
-                    ]
+                    processed_items: list[Any] = []
+                    for item in value:
+                        if isinstance(item, dict):
+                            processed_items.append(self.decrypt_phi_safe_data(item))
+                        elif isinstance(item, str) and item.startswith(self.VERSION_PREFIX):
+                            decrypted = self.decrypt_string(item)
+                            if decrypted is not None:
+                                processed_items.append(decrypted)
+                            else:
+                                # Add item to processed items
+                                processed_items.append(item)
+                        else:
+                            processed_items.append(item)
+                    result[key] = processed_items
                 else:
                     # Simple list - try to decrypt if it looks encrypted
+                    # Check if value is a string and starts with version prefix
                     if isinstance(value, str) and value.startswith(self.VERSION_PREFIX):
                         try:
                             decrypted_json = self.decrypt_string(value)
-                            result[key] = json.loads(decrypted_json)
-                        except (json.JSONDecodeError, ValueError):
-                            # If not valid JSON, keep as decrypted string
+                            if decrypted_json is not None:
+                                try:
+                                    result[key] = json.loads(decrypted_json)
+                                except json.JSONDecodeError:
+                                    # If not valid JSON, keep as decrypted string
+                                    result[key] = decrypted_json
+                            else:
+                                result[key] = value
+                        except ValueError:
+                            # If decryption fails, keep as original
                             result[key] = value
                     else:
                         result[key] = value
             # Handle string values that look encrypted
             elif isinstance(value, str) and value.startswith(self.VERSION_PREFIX):
                 try:
-                    result[key] = self.decrypt_string(value)
+                    decrypted = self.decrypt_string(value)
+                    if decrypted is not None:
+                        result[key] = decrypted
+                    else:
+                        # Keep original value if decryption returns None
+                        result[key] = value
                 except ValueError:
                     # If decryption fails, keep original
                     result[key] = value
@@ -781,29 +845,32 @@ class MLEncryptionService(BaseEncryptionService):
             if isinstance(embeddings, np.ndarray):
                 embeddings_list = embeddings.tolist()
             else:
+                # Ensure embeddings is a list or tuple for serialization
+                if not isinstance(embeddings, (list, tuple)):
+                    raise ValueError(
+                        f"Cannot serialize embeddings of type {type(embeddings).__name__}, expected list, tuple, or numpy.ndarray"
+                    )
                 embeddings_list = embeddings
-
-            # Validate the embeddings are valid data types for serialization
-            if not isinstance(embeddings_list, list | tuple):
-                raise ValueError(
-                    f"Cannot serialize embeddings of type {type(embeddings_list).__name__}"
-                )
 
             # Convert to JSON
             embeddings_json = json.dumps(embeddings_list)
 
             # Encrypt with standard method
-            return self.encrypt_string(embeddings_json)
+            encrypted = self.encrypt_string(embeddings_json)
+            if encrypted is None:
+                raise ValueError("Encryption failed: returned None")
+            
+            return encrypted
         except Exception as e:
             logger.error(f"Embedding encryption failed: {e!s}")
             raise ValueError(f"Failed to encrypt embeddings: {e!s}")
 
-    def decrypt_embeddings(self, encrypted_embeddings: str) -> list[float]:
+    def decrypt_embeddings(self, encrypted_embeddings: str | bytes) -> list[float]:
         """
         Decrypt an encrypted embedding list.
 
         Args:
-            encrypted_embeddings: Encrypted embedding string
+            encrypted_embeddings: Encrypted embedding string or bytes
 
         Returns:
             List of float values
@@ -828,8 +895,17 @@ class MLEncryptionService(BaseEncryptionService):
             # Try decryption with primary key first
             decrypted_json = self.decrypt_string(encrypted_embeddings)
 
-            # Convert JSON to Python list
-            return json.loads(decrypted_json)
+            # Convert JSON to Python list and validate it's a list of floats
+            result = json.loads(decrypted_json)
+            if not isinstance(result, list):
+                raise ValueError(f"Decrypted data is not a list: {type(result).__name__}")
+            
+            # Ensure all elements are numeric
+            for i, val in enumerate(result):
+                if not isinstance(val, (int, float)):
+                    raise ValueError(f"Element at index {i} is not a number: {type(val).__name__}")
+            
+            return result
 
         except ValueError as e:
             # If we have a previous key and the primary key failed, try with the previous key
@@ -845,7 +921,10 @@ class MLEncryptionService(BaseEncryptionService):
                     decrypted_json = temp_service.decrypt_string(encrypted_embeddings)
 
                     # Convert JSON to Python list
-                    return json.loads(decrypted_json)
+                    result = json.loads(decrypted_json)
+                    if not isinstance(result, list):
+                        raise ValueError(f"Decrypted data is not a list: {type(result).__name__}")
+                    return result
 
                 except Exception as inner_e:
                     # Both keys failed, propagate the original error
@@ -937,14 +1016,24 @@ class MLEncryptionService(BaseEncryptionService):
             encrypted_metadata = payload["metadata"]
 
             # Decrypt both components
-            model_bytes = self.decrypt(encrypted_model_data)
+            decrypted_model = self.decrypt(encrypted_model_data)
+            if decrypted_model is None:
+                raise ValueError("Model decryption failed: got None result")
+            
+            # Ensure we have bytes
+            model_bytes = decrypted_model if isinstance(decrypted_model, bytes) else decrypted_model.encode()
+            
             metadata_json = self.decrypt_string(encrypted_metadata)
+            if metadata_json is None:
+                raise ValueError("Metadata decryption failed: got None result")
+                
             metadata = json.loads(metadata_json)
 
             # Verify checksum
-            calculated_checksum = hashlib.sha256(model_bytes).hexdigest()
-            if calculated_checksum != metadata["checksum"]:
-                raise ValueError("Model checksum verification failed. Model may be corrupted.")
+            if model_bytes is not None:
+                calculated_checksum = hashlib.sha256(model_bytes).hexdigest()
+                if calculated_checksum != metadata["checksum"]:
+                    raise ValueError("Model checksum verification failed. Model may be corrupted.")
 
             return model_bytes, metadata
         except json.JSONDecodeError:
@@ -976,7 +1065,11 @@ class MLEncryptionService(BaseEncryptionService):
                 raise ValueError(f"Cannot serialize tensor of type {type(tensor_list).__name__}")
 
             # Encrypt the serialized tensor
-            return self.encrypt_string(json.dumps(tensor_list))
+            encrypted = self.encrypt_string(json.dumps(tensor_list))
+            if encrypted is None:
+                raise ValueError("Encryption failed: returned None")
+                
+            return encrypted
         except Exception as e:
             logger.error(f"Tensor encryption failed: {e!s}")
             raise ValueError(f"Failed to encrypt tensor: {e!s}")
