@@ -11,7 +11,8 @@ from uuid import uuid4
 from app.infrastructure.repositories.memory_token_blacklist_repository import (
     MemoryTokenBlacklistRepository,
 )
-from app.infrastructure.security.jwt.jwt_service import JWTService, TokenBlacklistedError
+from app.infrastructure.security.jwt.jwt_service import JWTService
+from app.domain.exceptions import TokenBlacklistedException as TokenBlacklistedError
 
 
 async def test_jwt_service() -> None:
@@ -30,7 +31,17 @@ async def test_jwt_service() -> None:
 
     # Create repositories and service
     blacklist_repo = MemoryTokenBlacklistRepository()
-    jwt_service = JWTService(settings=MockSettings(), token_blacklist_repository=blacklist_repo)
+    mock_settings = MockSettings()
+    jwt_service = JWTService(
+        secret_key=mock_settings.JWT_SECRET_KEY,
+        algorithm=mock_settings.JWT_ALGORITHM,
+        access_token_expire_minutes=mock_settings.ACCESS_TOKEN_EXPIRE_MINUTES,
+        refresh_token_expire_days=mock_settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS,
+        issuer=mock_settings.JWT_ISSUER,
+        audience=mock_settings.JWT_AUDIENCE,
+        settings=mock_settings,
+        token_blacklist_repository=blacklist_repo
+    )
 
     # Test token creation
     user_id = str(uuid4())
