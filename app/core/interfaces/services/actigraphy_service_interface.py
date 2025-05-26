@@ -23,7 +23,7 @@ class ActigraphyServiceInterface(Protocol):
         readings: list[dict[str, Any]],
         device_info: dict[str, Any] | None = None,
         analysis_types: list[str] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """
         Analyze actigraphy data to extract relevant features and patterns.
@@ -41,7 +41,7 @@ class ActigraphyServiceInterface(Protocol):
         ...
 
     async def get_embeddings(
-        self, patient_id: str, readings: list[dict[str, Any]] | None = None, **kwargs
+        self, patient_id: str, readings: list[dict[str, Any]] | None = None, **kwargs: Any
     ) -> dict[str, Any]:
         """
         Generate embeddings from actigraphy data for use in machine learning models.

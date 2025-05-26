@@ -5,7 +5,7 @@ Fix indentation and other issues in the PHI auditor script.
 import re
 
 
-def fix_phi_auditor_class():
+def fix_phi_auditor_class() -> bool:
     """Fix indentation and method issues in the PHIAuditor class."""
     with open("scripts/run_hipaa_phi_audit.py") as f:
         lines = f.readlines()

@@ -38,7 +38,7 @@ class XGBoostInterface(ABC):
 
     @abstractmethod
     def predict(
-        self, patient_id: str, features: dict[str, Any], model_type: str, **kwargs
+        self, patient_id: str, features: dict[str, Any], model_type: str, **kwargs: Any
     ) -> dict[str, Any]:
         """
         Generic prediction method required for all ML services.
@@ -62,7 +62,7 @@ class XGBoostInterface(ABC):
         features: dict[str, Any] | None = None,
         clinical_data: dict[str, Any] | None = None,
         time_frame_days: int | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """
         Predict risk level using a risk model.
@@ -87,7 +87,7 @@ class XGBoostInterface(ABC):
         treatment_type: str,
         treatment_details: dict[str, Any],
         clinical_data: dict[str, Any],
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """
         Predict response to a psychiatric treatment.
@@ -111,7 +111,7 @@ class XGBoostInterface(ABC):
         outcome_timeframe: dict[str, int],
         clinical_data: dict[str, Any],
         treatment_plan: dict[str, Any],
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """
         Predict clinical outcomes based on treatment plan.

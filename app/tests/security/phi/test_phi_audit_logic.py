@@ -10,6 +10,7 @@ including special handling for test directories and files.
 import os
 import shutil
 import tempfile
+from typing import Any
 
 import pytest
 
@@ -167,7 +168,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         finally:
             shutil.rmtree(temp_dir)
 
-    def test_strict_mode_disables_special_handling(self, monkeypatch) -> None:
+    def test_strict_mode_disables_special_handling(self, monkeypatch: Any) -> None:
         """Test that strict mode disables special handling for test files and clean_app directories."""
         import shutil
         import tempfile
@@ -194,7 +195,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
                 )
 
             # Create an auditor with strict_mode=True
-            strict_auditor = MockPHIAuditor(app_dir=clean_app_dir, strict_mode=True)
+            strict_auditor = MockPHIAuditor(app_dir=clean_app_dir, strict_mode=True)  # type: ignore[no-untyped-call]
 
             # Add mock issues
             strict_auditor.findings = {
@@ -209,7 +210,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
             ), "Audit should fail in strict mode even in clean_app directory"
 
             # Create a non-strict auditor for comparison
-            regular_auditor = MockPHIAuditor(app_dir=clean_app_dir, strict_mode=False)
+            regular_auditor = MockPHIAuditor(app_dir=clean_app_dir, strict_mode=False)  # type: ignore[no-untyped-call]
             regular_auditor.findings = strict_auditor.findings.copy()
 
             # Verify regular mode passes in clean_app directory
@@ -277,10 +278,10 @@ class TestPHIAuditLogic(BaseSecurityTest):
         result.is_test_file = True
         result.is_allowed_phi_test = True
         # Add PHI manually to the result (simulate)
-        result.has_phi = True
+        setattr(result, 'has_phi', True)  # Dynamic attribute setting
         result.is_allowed = True
         # Verify result has PHI but is allowed
-        assert result.has_phi is True, "Result should have PHI"
+        assert getattr(result, 'has_phi', False) is True, "Result should have PHI"
         assert result.is_allowed is True, "PHI should be allowed in test file"
 
     def test_run_audit_with_clean_app_directory(self) -> None:

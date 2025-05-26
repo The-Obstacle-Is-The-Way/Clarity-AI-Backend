@@ -160,7 +160,7 @@ def update_imports_in_backend(processed_files: list[Path]) -> None:
             print(f"Error processing {file_path}: {e}")
 
 
-def main():
+def main() -> None:
     """Execute the migration process."""
     print("Starting refactored code migration...")
 
