@@ -86,7 +86,7 @@ class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
     )  # Serialized list of data points that triggered the alert
     alert_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # Renamed from metadata
 
-    triggering_event_details: Mapped[dict | None] = mapped_column(MutableDict.as_mutable(JSON), nullable=True)
+    triggering_event_details: Mapped[dict | None] = mapped_column(MutableDict.as_mutable(JSON()), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     patient = relationship("Patient")  # Add backref in Patient model if needed

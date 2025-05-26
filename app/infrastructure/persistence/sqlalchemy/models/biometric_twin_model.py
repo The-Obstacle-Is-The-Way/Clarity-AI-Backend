@@ -122,9 +122,9 @@ class BiometricTimeseriesDataModel(Base, TimestampMixin):
     timestamp: Mapped[datetime.datetime] = mapped_column(DateTime, default=now_utc, nullable=False, index=True)
     value_numeric: Mapped[float | None] = mapped_column(Float, nullable=True)
     value_string: Mapped[str | None] = mapped_column(String, nullable=True)
-    value_json: Mapped[dict | None] = mapped_column(MutableDict.as_mutable(JSON), nullable=True)
+    value_json: Mapped[dict | None] = mapped_column(MutableDict.as_mutable(JSON()), nullable=True)
     unit: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    metadata_: Mapped[dict | None] = mapped_column("metadata", MutableDict.as_mutable(JSON), nullable=True)
+    metadata_: Mapped[dict | None] = mapped_column("metadata", MutableDict.as_mutable(JSON()), nullable=True)
 
     biometric_twin = relationship("BiometricTwinModel", back_populates="timeseries_data")
 

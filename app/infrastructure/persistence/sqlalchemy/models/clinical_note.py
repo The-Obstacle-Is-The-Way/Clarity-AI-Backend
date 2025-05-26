@@ -78,7 +78,7 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
         nullable=True
     )
     tags: Mapped[Optional[dict]] = mapped_column(
-        MutableDict.as_mutable(JSON), 
+        MutableDict.as_mutable(JSON()),
         nullable=True
     )
     version: Mapped[int] = mapped_column(
