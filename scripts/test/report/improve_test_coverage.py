@@ -164,7 +164,7 @@ class CoverageAnalyzer:
     def _calculate_priority(self, module: str, data: dict[str, Any]) -> float:
         """Calculate priority for testing a module based on importance and current coverage."""
         # Base priority on number of statements (larger modules = higher priority)
-        priority = data["statements"] * 0.1
+        priority = float(data["statements"]) * 0.1
 
         # Increase priority for critical modules
         critical_modules = [

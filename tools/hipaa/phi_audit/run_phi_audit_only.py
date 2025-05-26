@@ -26,6 +26,9 @@ def run_phi_audit_tests():
         # Import the module dynamically
         fix_module_path = os.path.join(os.getcwd(), "ultimate_phi_fix.py")
         spec = importlib.util.spec_from_file_location("ultimate_phi_fix", fix_module_path)
+        if spec is None or spec.loader is None:
+            print("❌ Failed to load ultimate_phi_fix module")
+            return False
         fix_module = importlib.util.module_from_spec(spec)
         sys.modules["ultimate_phi_fix"] = fix_module
         spec.loader.exec_module(fix_module)

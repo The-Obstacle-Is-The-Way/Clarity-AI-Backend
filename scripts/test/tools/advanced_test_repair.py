@@ -11,6 +11,7 @@ import re
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import Dict
 
 
 class TestRepairTool:
@@ -337,7 +338,7 @@ class TestRepairTool:
             Dictionary with counts of fixed, failed, and skipped files
         """
         files_with_errors = []
-        error_types = {}
+        error_types: Dict[str, int] = {}
 
         # First pass: Identify files with syntax errors
         for file_path in test_files:
@@ -405,9 +406,8 @@ class TestRepairTool:
 def main():
     """Main function."""
     # Determine the project root
-    if os.environ.get("PROJECT_ROOT"):
-        project_root = os.environ.get("PROJECT_ROOT")
-    else:
+    project_root = os.environ.get("PROJECT_ROOT")
+    if project_root is None:
         # Try to determine project root from current directory
         current_dir = Path.cwd()
         if "backend" in str(current_dir):

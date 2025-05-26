@@ -87,7 +87,7 @@ def generate_coverage_report():
     print(f"You can view it by opening: file://{html_dir}/index.html")
 
     # Parse overall coverage percentage
-    coverage_percentage = 0
+    coverage_percentage = 0.0
     for line in result.stdout.split("\n"):
         if "TOTAL" in line and "%" in line:
             parts = line.split()

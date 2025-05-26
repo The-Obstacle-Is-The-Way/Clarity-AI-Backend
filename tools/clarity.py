@@ -11,7 +11,7 @@ import argparse
 import importlib
 import logging
 import sys
-from typing import Any
+from typing import Any, cast
 
 # Configure logging with no sensitive information
 logging.basicConfig(
@@ -90,7 +90,7 @@ def run_command(command: str, args: list[str]) -> int:
 
         # Run the function
         sys.argv = [command_info["module"]] + args
-        return func()
+        return cast(int, func())
 
     except ImportError as e:
         logger.error(f"Failed to import {command_info['module']}: {e!s}")
@@ -134,7 +134,7 @@ def show_full_help(command: str) -> int:
         func = getattr(module, command_info["function"])
 
         # Run the function
-        return func()
+        return cast(int, func())
 
     except Exception as e:
         logger.error(f"Error showing help for {command}: {e!s}")

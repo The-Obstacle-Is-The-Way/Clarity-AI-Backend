@@ -325,7 +325,7 @@ class JWTService(IJwtService):
     def _create_token(self, claims: dict[str, Any]) -> str:
         """Create a JWT token with the given claims."""
         try:
-            return jwt_encode(claims, self.secret_key, algorithm=self.algorithm)
+            return cast(str, jwt_encode(claims, self.secret_key, algorithm=self.algorithm))
         except Exception as e:
             logger.error(f"Error creating token: {e}")
             raise InvalidTokenError(f"Token creation failed: {e}")

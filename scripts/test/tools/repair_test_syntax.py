@@ -52,7 +52,7 @@ class TestSyntaxRepair:
         print(f"Project root: {self.project_root}")
         print(f"Tests directory: {self.tests_dir}")
 
-    def find_test_files(self, start_dir: Path = None) -> list[Path]:
+    def find_test_files(self, start_dir: Path | None = None) -> list[Path]:
         """
         Find all Python test files in the given directory.
 
@@ -284,7 +284,7 @@ class TestSyntaxRepair:
         else:
             return "other"
 
-    def repair_all(self, start_dir: Path = None, dry_run: bool = False) -> None:
+    def repair_all(self, start_dir: Path | None = None, dry_run: bool = False) -> None:
         """
         Find and repair syntax errors in all test files.
 

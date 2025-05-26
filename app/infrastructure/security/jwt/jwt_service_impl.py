@@ -354,11 +354,11 @@ class JWTServiceImpl(IJwtService):
             )
             
             # Encode the token
-            encoded_jwt = jwt_encode(
+            encoded_jwt = cast(str, jwt_encode(
                 payload.model_dump(exclude_none=True),
                 self._secret_key,
                 algorithm=self._algorithm,
-            )
+            ))
             
             # Audit log the token creation
             if self.audit_logger:
@@ -415,11 +415,11 @@ class JWTServiceImpl(IJwtService):
             )
             
             # Encode the token
-            encoded_jwt = jwt_encode(
+            encoded_jwt = cast(str, jwt_encode(
                 payload.model_dump(exclude_none=True),
                 self._secret_key,
                 algorithm=self._algorithm,
-            )
+            ))
             
             # Audit log the token creation
             if self.audit_logger:
@@ -526,11 +526,11 @@ class JWTServiceImpl(IJwtService):
         )
         
         # Encode the token
-        encoded_jwt = jwt_encode(
+        encoded_jwt = cast(str, jwt_encode(
             payload.model_dump(exclude_none=True),
             self._secret_key,
             algorithm=self._algorithm,
-        )
+        ))
         
         # Log token creation (but don't use async logger)
         logger.info(f"Refresh token created for user {subject_str}")
@@ -843,11 +843,11 @@ class JWTServiceImpl(IJwtService):
             payload_dict["role"] = claims_dict["role"]
             
         # Encode the token
-        encoded_jwt = jwt_encode(
+        encoded_jwt = cast(str, jwt_encode(
             payload_dict,
             self._secret_key,
             algorithm=self._algorithm,
-        )
+        ))
         
         # Log token creation (but don't use async logger)
         logger.info(f"Access token created for user {subject_str}")
