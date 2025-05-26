@@ -344,7 +344,7 @@ class TestRepairTool:
         for file_path in test_files:
             has_error, error_message, error_type = self.check_syntax(file_path)
 
-            if has_error:
+            if has_error and error_type is not None:
                 files_with_errors.append(file_path)
                 error_types[error_type] = error_types.get(error_type, 0) + 1
                 print(f"Found error in {file_path}: {error_message}")
