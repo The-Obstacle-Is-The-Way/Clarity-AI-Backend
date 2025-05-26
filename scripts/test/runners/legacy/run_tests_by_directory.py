@@ -14,6 +14,7 @@ import argparse
 import os
 import subprocess
 import sys
+from typing import Optional
 
 
 # ANSI colors for terminal output
@@ -80,8 +81,8 @@ def run_tests(
     verbose: bool = False,
     failfast: bool = False,
     ci_mode: bool = False,
-    report_name: str = None,
-    coverage_dir: str = None,
+    report_name: Optional[str] = None,
+    coverage_dir: Optional[str] = None,
 ) -> int:
     """Run tests in the specified directory."""
     project_root = get_project_root()
@@ -121,10 +122,10 @@ def run_tests(
     return result.returncode
 
 
-def main():
+def main() -> int:
     """Main function."""
     args = parse_args()
-    results = []
+    results: list[tuple[str, Optional[int]]] = []
 
     print(f"\n{Colors.BLUE}{'=' * 80}{Colors.NC}")
     print(f"{Colors.BLUE}{Colors.BOLD}Novamind Backend Test Runner{Colors.NC}")
