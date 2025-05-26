@@ -9,7 +9,7 @@ import base64
 import time
 import uuid
 from enum import Enum
-from typing import Any
+from typing import Any, Callable, Protocol
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
@@ -77,6 +77,26 @@ class MessageNotFoundException(SecureMessagingException):
     pass
 
 
+class EncryptionServiceProtocol(Protocol):
+    """Protocol for encryption service dependencies."""
+    
+    def encrypt_file(self, data: str) -> str: ...
+    def decrypt_file(self, encrypted_data: str) -> str: ...
+    def encrypt(self, data: str) -> str: ...
+    def decrypt(self, encrypted_data: str) -> str: ...
+    
+    # Allow dynamic field encryption/decryption methods
+    encrypt_field: Callable[[str], str]
+    decrypt_field: Callable[[str], str]
+
+
+class MessageRepositoryProtocol(Protocol):
+    """Protocol for message repository dependencies."""
+    
+    async def save(self, message: dict[str, Any]) -> dict[str, Any]: ...
+    async def get_by_id(self, message_id: str) -> dict[str, Any] | None: ...
+
+
 class SecureMessagingService:
     """
     Service for secure messaging between patients and providers.
@@ -87,7 +107,7 @@ class SecureMessagingService:
 
     def __init__(
         self,
-        encryption_service,
+        encryption_service: EncryptionServiceProtocol,
         key_size: int = 2048,
         symmetric_key_ttl_seconds: int = 86400,  # 24 hours
     ):
@@ -109,7 +129,7 @@ class SecureMessagingService:
         if not hasattr(self.encryption_service, "decrypt_field"):
             self.encryption_service.decrypt_field = self.encryption_service.decrypt
 
-    def generate_key_pair(self) -> tuple:
+    def generate_key_pair(self) -> tuple[bytes, bytes]:
         """
         Generate a new RSA key pair.
 
@@ -154,12 +174,16 @@ class SecureMessagingService:
         """
         try:
             # Load the public key
-            public_key = serialization.load_pem_public_key(
+            loaded_public_key = serialization.load_pem_public_key(
                 recipient_public_key, backend=default_backend()
             )
+            
+            # Ensure we have an RSA public key for encryption
+            if not isinstance(loaded_public_key, rsa.RSAPublicKey):
+                raise MessageEncryptionException("Only RSA public keys are supported for encryption")
 
             # Encrypt the symmetric key
-            encrypted_key = public_key.encrypt(
+            encrypted_key = loaded_public_key.encrypt(
                 symmetric_key,
                 padding.OAEP(
                     mgf=padding.MGF1(algorithm=hashes.SHA256()),
@@ -192,7 +216,10 @@ class SecureMessagingService:
                 private_key, password=None, backend=default_backend()
             )
 
-            # Decrypt the symmetric key
+            # Decrypt the symmetric key - ensure we have an RSA key
+            if not isinstance(key, rsa.RSAPrivateKey):
+                raise MessageDecryptionException("Invalid key type for decryption. Expected RSA private key.")
+                
             symmetric_key = key.decrypt(
                 encrypted_key,
                 padding.OAEP(
@@ -385,7 +412,7 @@ class SecureMessagingService:
 
         return message
 
-    def send_message(self, message: dict[str, Any], message_repository) -> dict[str, Any]:
+    def send_message(self, message: dict[str, Any], message_repository: MessageRepositoryProtocol) -> dict[str, Any]:
         """
         Send a message.
 
@@ -410,7 +437,7 @@ class SecureMessagingService:
         except Exception as e:
             raise MessageSendException(f"Failed to send message: {e!s}")
 
-    async def mark_as_delivered(self, message_id: str, message_repository) -> dict[str, Any]:
+    async def mark_as_delivered(self, message_id: str, message_repository: MessageRepositoryProtocol) -> dict[str, Any]:
         """
         Mark a message as delivered.
 
@@ -438,11 +465,12 @@ class SecureMessagingService:
             message["updated_at"] = message["delivered_at"]
 
             # Save the message
-            return await message_repository.save(message)
+            result = await message_repository.save(message)
+            return result
         except Exception as e:
             raise SecureMessagingException(f"Failed to mark message as delivered: {e!s}")
 
-    async def mark_as_read(self, message_id: str, message_repository) -> dict[str, Any]:
+    async def mark_as_read(self, message_id: str, message_repository: MessageRepositoryProtocol) -> dict[str, Any]:
         """
         Mark a message as read.
 
@@ -470,12 +498,13 @@ class SecureMessagingService:
             message["updated_at"] = message["read_at"]
 
             # Save the message
-            return await message_repository.save(message)
+            saved_message: dict[str, Any] = await message_repository.save(message)
+            return saved_message
         except Exception as e:
             raise SecureMessagingException(f"Failed to mark message as read: {e!s}")
 
     async def delete_message(
-        self, message_id: str, user_id: str, message_repository
+        self, message_id: str, user_id: str, message_repository: MessageRepositoryProtocol
     ) -> dict[str, Any]:
         """
         Delete a message.
@@ -512,6 +541,7 @@ class SecureMessagingService:
             message["updated_at"] = message["deleted_at"]
 
             # Save the message
-            return await message_repository.save(message)
+            saved_message: dict[str, Any] = await message_repository.save(message)
+            return saved_message
         except Exception as e:
             raise SecureMessagingException(f"Failed to delete message: {e!s}")
