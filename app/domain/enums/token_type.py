@@ -17,7 +17,7 @@ class TokenType(str, Enum):
     API = "api"  # For long-lived API tokens with restricted permissions
 
 
-def get_token_type(token_type_str):
+def get_token_type(token_type_str: str) -> TokenType:
     for token_type in TokenType:
         if token_type.value == token_type_str:
             return token_type

@@ -7,6 +7,7 @@ security requirements.
 """
 
 import abc
+from types import TracebackType
 from typing import Any, ContextManager
 
 
@@ -30,7 +31,12 @@ class UnitOfWork(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         """
         Exit the unit of work context, committing or rolling back the transaction.
 

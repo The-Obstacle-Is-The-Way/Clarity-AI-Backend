@@ -7,8 +7,8 @@ including connection pooling, credentials, and other database-specific options.
 
 from urllib.parse import quote_plus
 
-from pydantic import ConfigDict, field_validator
-from pydantic_settings import BaseSettings
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class DatabaseSettings(BaseSettings):
@@ -45,7 +45,7 @@ class DatabaseSettings(BaseSettings):
     AUTO_MIGRATE: bool = True
 
     # Pydantic v2 configuration
-    model_config = ConfigDict(
+    model_config = SettingsConfigDict(
         env_file=".env",
         env_prefix="DB_",
         case_sensitive=True,

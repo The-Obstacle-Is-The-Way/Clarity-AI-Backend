@@ -412,7 +412,7 @@ class SecureMessagingService:
 
         return message
 
-    def send_message(self, message: dict[str, Any], message_repository: MessageRepositoryProtocol) -> dict[str, Any]:
+    async def send_message(self, message: dict[str, Any], message_repository: MessageRepositoryProtocol) -> dict[str, Any]:
         """
         Send a message.
 
@@ -433,7 +433,7 @@ class SecureMessagingService:
             message["updated_at"] = message["sent_at"]
 
             # Save the message
-            return message_repository.save(message)
+            return await message_repository.save(message)
         except Exception as e:
             raise MessageSendException(f"Failed to send message: {e!s}")
 

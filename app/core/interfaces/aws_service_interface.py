@@ -86,7 +86,7 @@ class SageMakerRuntimeServiceInterface(ABC):
 
     @abstractmethod
     def invoke_endpoint(
-        self, endpoint_name: str, content_type: str, body: bytes, **kwargs
+        self, endpoint_name: str, content_type: str, body: bytes, **kwargs: Any
     ) -> dict[str, Any]:
         """Invoke a SageMaker endpoint."""
         pass
@@ -120,7 +120,7 @@ class BedrockServiceInterface(ABC):
         pass
 
     @abstractmethod
-    def invoke_model(self, model_id: str, body: dict[str, Any], **kwargs) -> dict[str, Any]:
+    def invoke_model(self, model_id: str, body: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
         """Invoke a foundation model."""
         pass
 
@@ -135,7 +135,7 @@ class BedrockRuntimeServiceInterface(ABC):
         body: str | dict[str, Any] | bytes,
         content_type: str | None = None,
         accept: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """Invoke a foundation model."""
         pass
@@ -147,7 +147,7 @@ class BedrockRuntimeServiceInterface(ABC):
         body: str | dict[str, Any] | bytes,
         content_type: str | None = None,
         accept: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """Invoke a foundation model with streaming response."""
         pass
