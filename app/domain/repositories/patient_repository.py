@@ -1,28 +1,24 @@
 """
 Interface for the Patient Repository.
 """
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from uuid import UUID
 from typing import Optional, Dict, Any
 
+from app.core.interfaces.repositories.base_repository import BaseRepositoryInterface
 from app.domain.entities.patient import Patient
 
 
 # Rename class to match import in DI container -> Renaming back to PatientRepository
-class PatientRepository(ABC):  # Renamed from PatientRepositoryInterface
+class PatientRepository(BaseRepositoryInterface[Patient]):  # Renamed from PatientRepositoryInterface
     """Abstract base class defining the patient repository interface."""
 
     @abstractmethod
-    async def get_by_id(
-        self, 
-        patient_id: UUID, 
-        context: Optional[Dict[str, Any]] = None
-    ) -> Optional[Patient]:
+    async def get_by_id(self, entity_id: str | UUID) -> Patient | None:
         """Retrieve a patient by their ID.
         
         Args:
-            patient_id: Unique identifier for the patient
-            context: Optional context for HIPAA audit logging (user_id, action, etc.)
+            entity_id: Unique identifier for the patient
             
         Returns:
             Patient entity if found, None otherwise
@@ -30,16 +26,11 @@ class PatientRepository(ABC):  # Renamed from PatientRepositoryInterface
         pass
 
     @abstractmethod
-    async def create(
-        self, 
-        patient: Patient, 
-        context: Optional[Dict[str, Any]] = None
-    ) -> Patient:
+    async def create(self, entity: Patient) -> Patient:
         """Create a new patient record.
         
         Args:
-            patient: Patient entity to create
-            context: Optional context for HIPAA audit logging (user_id, action, etc.)
+            entity: Patient entity to create
             
         Returns:
             Created patient entity with populated ID and timestamps
@@ -47,33 +38,26 @@ class PatientRepository(ABC):  # Renamed from PatientRepositoryInterface
         pass
 
     @abstractmethod
-    async def update(
-        self, 
-        patient: Patient, 
-        context: Optional[Dict[str, Any]] = None
-    ) -> Optional[Patient]:
+    async def update(self, entity: Patient) -> Patient:
         """Update an existing patient record.
         
         Args:
-            patient: Patient entity with updated data
-            context: Optional context for HIPAA audit logging (user_id, action, etc.)
+            entity: Patient entity with updated data
             
         Returns:
-            Updated patient entity if successful, None if patient not found
+            Updated patient entity
+            
+        Raises:
+            EntityNotFoundError: If the patient doesn't exist
         """
         pass
 
     @abstractmethod
-    async def delete(
-        self, 
-        patient_id: UUID, 
-        context: Optional[Dict[str, Any]] = None
-    ) -> bool:
+    async def delete(self, entity_id: str | UUID) -> bool:
         """Delete a patient record by their ID.
         
         Args:
-            patient_id: Unique identifier for the patient to delete
-            context: Optional context for HIPAA audit logging (user_id, action, etc.)
+            entity_id: Unique identifier for the patient to delete
             
         Returns:
             True if deletion was successful, False if patient not found
@@ -81,21 +65,27 @@ class PatientRepository(ABC):  # Renamed from PatientRepositoryInterface
         pass
 
     @abstractmethod
-    async def list_all(
-        self, 
-        limit: int = 100, 
-        offset: int = 0,
-        context: Optional[Dict[str, Any]] = None
-    ) -> list[Patient]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[Patient]:
         """List all patients with pagination.
         
         Args:
+            skip: Number of patients to skip for pagination
             limit: Maximum number of patients to return
-            offset: Number of patients to skip for pagination
-            context: Optional context for HIPAA audit logging (user_id, action, etc.)
             
         Returns:
             List of patient entities
+        """
+        pass
+
+    @abstractmethod
+    async def count(self, **filters) -> int:
+        """Count the number of patients matching the given filters.
+        
+        Args:
+            **filters: Optional filtering criteria
+            
+        Returns:
+            The count of matching patients
         """
         pass
 

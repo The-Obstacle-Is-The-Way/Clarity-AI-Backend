@@ -117,8 +117,10 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
             logger.error(f"Unexpected error adding DigitalTwin: {e}", exc_info=True)
             raise
 
-    async def get_by_id(self, twin_id: UUID) -> DigitalTwin | None:
+    async def get_by_id(self, entity_id: str | UUID) -> DigitalTwin | None:
         """Get a digital twin by its unique ID."""
+        # Convert to UUID if string provided, maintain SQLAlchemy compatibility
+        twin_id = UUID(entity_id) if isinstance(entity_id, str) else entity_id
         stmt = select(DigitalTwinModel).where(DigitalTwinModel.id == str(twin_id))
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
@@ -160,8 +162,10 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
             logger.error(f"Error updating DigitalTwin ID {model.id}: {e}", exc_info=True)
             raise
 
-    async def delete(self, twin_id: UUID) -> bool:
+    async def delete(self, entity_id: str | UUID) -> bool:
         """Delete a digital twin by its ID."""
+        # Convert to UUID if string provided, maintain SQLAlchemy compatibility
+        twin_id = UUID(entity_id) if isinstance(entity_id, str) else entity_id
         model = await self.session.get(DigitalTwinModel, str(twin_id))
         if model:
             await self.session.delete(model)

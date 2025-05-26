@@ -421,6 +421,49 @@ class PatientRepositoryImpl(PatientRepository):
 
         return await self._with_session(_list_all_operation)
 
+    async def count(
+        self,
+        context: Optional[dict[str, Any]] = None,
+        **filters
+    ) -> int:
+        """Count patients matching the given filters."""
+        self.logger.debug(f"Attempting to count patients with filters: {filters}")
+        
+        # Log HIPAA audit if context provided
+        if context:
+            user_id = context.get('user_id')
+            action = context.get('action', 'count_patients')
+            self.logger.info(f"HIPAA Audit: User {user_id} performing {action} with filters {filters}")
+
+        async def _count_operation(session: AsyncSession) -> int:
+            try:
+                stmt = select(PatientModel)
+                
+                # Apply filters if provided
+                for key, value in filters.items():
+                    if hasattr(PatientModel, f"_{key}"):
+                        stmt = stmt.where(getattr(PatientModel, f"_{key}") == value)
+                    elif hasattr(PatientModel, key):
+                        stmt = stmt.where(getattr(PatientModel, key) == value)
+                
+                # Convert to count query
+                from sqlalchemy import func
+                count_stmt = select(func.count()).select_from(stmt.subquery())
+                result = await session.execute(count_stmt)
+                count = result.scalar() or 0
+                
+                self.logger.debug(f"Patient count with filters {filters}: {count}")
+                return count
+                
+            except SQLAlchemyError as e:
+                self.logger.error(f"Database error counting patients with filters {filters}: {e}", exc_info=True)
+                raise PersistenceError(f"Database error counting patients.") from e
+            except Exception as e:
+                self.logger.error(f"Unexpected error counting patients with filters {filters}: {e}", exc_info=True)
+                raise PersistenceError(f"Unexpected error counting patients.") from e
+
+        return await self._with_session(_count_operation)
+
     async def get_by_email(
         self, 
         email: str,
