@@ -5,6 +5,7 @@ This module provides a mock implementation of the XGBoost service
 for testing, development, and demonstration purposes.
 """
 
+import asyncio
 import hashlib
 import logging
 import random
@@ -60,7 +61,7 @@ class MockXGBoostService(XGBoostInterface):
             raise ConfigurationError("Service not initialized", field="initialization")
 
         # Simulate network latency
-        self._simulate_delay()
+        await self._simulate_delay()
 
         # Handle ModelType enum or string
         if isinstance(model_type, ModelType):
@@ -172,7 +173,7 @@ class MockXGBoostService(XGBoostInterface):
             raise ConfigurationError("Service not initialized", field="initialization")
 
         # Simulate network latency
-        self._simulate_delay()
+        await self._simulate_delay()
 
         # Check if prediction exists
         if prediction_id not in self._predictions:
@@ -292,9 +293,14 @@ class MockXGBoostService(XGBoostInterface):
         # Mark as initialized
         self._initialized = True
 
-    def initialize(self, config: dict[str, Any]) -> None:
-        """
-        Initialize the mock XGBoost service with configuration.
+    async def _simulate_delay(self) -> None:
+        """Simulate processing delay for realistic mock behavior."""
+        import asyncio
+        if hasattr(self, '_mock_delay_ms'):
+            await asyncio.sleep(self._mock_delay_ms / 1000.0)
+
+    async def initialize(self, config: dict[str, Any]) -> None:
+        """Initialize the mock XGBoost service with configuration.
 
         Args:
             config: Configuration dictionary
@@ -303,52 +309,35 @@ class MockXGBoostService(XGBoostInterface):
             ConfigurationError: If configuration is invalid
         """
         try:
-            # Configure logging
-            log_level = config.get("log_level", "INFO")
-            numeric_level = getattr(logging, log_level.upper(), None)
-            if not isinstance(numeric_level, int):
-                raise ConfigurationError(
-                    f"Invalid log level: {log_level}",
-                    field="log_level",
-                    value=log_level,
-                )
-
-            self._logger.setLevel(numeric_level)
-
-            # Set mock delay
-            self._mock_delay_ms = config.get("mock_delay_ms", 200)
-
-            # Set risk level distribution
+            self._logger.info("Initializing mock XGBoost service...")
+            
+            # Validate configuration
+            if not isinstance(config, dict):
+                raise ConfigurationError("Configuration must be a dictionary")
+            
+            # Apply configuration
+            if "mock_delay_ms" in config:
+                self._mock_delay_ms = config["mock_delay_ms"]
+            
             if "risk_level_distribution" in config:
                 self._risk_level_distribution = config["risk_level_distribution"]
-
-                # Validate distribution
-                required_levels = {"very_low", "low", "moderate", "high", "very_high"}
-                if not all(level in self._risk_level_distribution for level in required_levels):
+            
+            if "privacy_level" in config:
+                privacy_level = config["privacy_level"]
+                if isinstance(privacy_level, str):
+                    try:
+                        privacy_level = PrivacyLevel[privacy_level.upper()]
+                    except KeyError:
+                        raise ConfigurationError(
+                            f"Invalid privacy level: {privacy_level}. "
+                            f"Valid values are: {', '.join([pl.name for pl in PrivacyLevel])}"
+                        )
+                elif not isinstance(privacy_level, PrivacyLevel):
                     raise ConfigurationError(
-                        "Risk level distribution must include all risk levels",
-                        field="risk_level_distribution",
-                        value=self._risk_level_distribution,
+                        "Privacy level must be a string or PrivacyLevel enum"
                     )
-
-                # Ensure values sum to approximately 100
-                total = sum(self._risk_level_distribution.values())
-                if not (99 <= total <= 101):  # Allow some rounding error
-                    raise ConfigurationError(
-                        f"Risk level distribution must sum to 100, got {total}",
-                        field="risk_level_distribution",
-                        value=self._risk_level_distribution,
-                    )
-
-            # Set privacy level
-            privacy_level = config.get("privacy_level", PrivacyLevel.STANDARD)
-            if not isinstance(privacy_level, PrivacyLevel):
-                raise ConfigurationError(
-                    f"Invalid privacy level: {privacy_level}",
-                    field="privacy_level",
-                    value=privacy_level,
-                )
-            self._privacy_level = privacy_level
+                
+                self._privacy_level = privacy_level
 
             # Mark as initialized
             self._initialized = True
@@ -366,656 +355,8 @@ class MockXGBoostService(XGBoostInterface):
                     f"Failed to initialize mock XGBoost service: {e!s}", details=str(e)
                 )
 
-    def register_observer(self, event_type: EventType | str, observer: Observer) -> None:
-        """
-        Register an observer for a specific event type.
-
-        Args:
-            event_type: Type of event to observe, or "*" for all events
-            observer: Observer to register
-        """
-        event_key = event_type
-        if event_key not in self._observers:
-            self._observers[event_key] = set()
-        self._observers[event_key].add(observer)
-        self._logger.debug(f"Observer registered for event type {event_type}")
-
-    def unregister_observer(self, event_type: EventType | str, observer: Observer) -> None:
-        """
-        Unregister an observer for a specific event type.
-
-        Args:
-            event_type: Type of event to stop observing
-            observer: Observer to unregister
-        """
-        event_key = event_type
-        if event_key in self._observers:
-            self._observers[event_key].discard(observer)
-            if not self._observers[event_key]:
-                del self._observers[event_key]
-            self._logger.debug(f"Observer unregistered for event type {event_type}")
-
-    async def predict(
-        self, patient_id: UUID, features: dict[str, Any], model_type: str, **kwargs: Any
-    ) -> dict[str, Any]:
-        """
-        Generic prediction method required by MLServiceInterface.
-
-        Args:
-            patient_id: ID of the patient
-            features: Dictionary of features for prediction
-            model_type: Type of model to use for prediction
-            **kwargs: Additional arguments for prediction
-
-        Returns:
-            Dictionary with prediction results
-        """
-        # Choose the appropriate specialized prediction method based on model_type
-        if model_type.lower() == "risk":
-            risk_type = kwargs.get("risk_type", "general")
-            clinical_data = features
-            time_frame_days = kwargs.get("time_frame_days", 30)
-
-            return await self.predict_risk(
-                patient_id=patient_id,
-                risk_type=risk_type,
-                clinical_data=clinical_data,
-                time_frame_days=time_frame_days,
-            )
-
-        elif model_type.lower() == "treatment_response":
-            treatment_type = kwargs.get("treatment_type", "medication")
-            treatment_details = kwargs.get("treatment_details", {})
-            clinical_data = features
-
-            return await self.predict_treatment_response(
-                patient_id=patient_id,
-                treatment_type=treatment_type,
-                treatment_details=treatment_details,
-                clinical_data=clinical_data,
-            )
-
-        elif model_type.lower() == "outcome":
-            outcome_timeframe = kwargs.get("outcome_timeframe", {"timeframe": "short_term"})
-            clinical_data = features
-            treatment_plan = kwargs.get("treatment_plan", {})
-            social_determinants = kwargs.get("social_determinants")
-            comorbidities = kwargs.get("comorbidities")
-
-            return await self.predict_outcome(
-                patient_id=patient_id,
-                outcome_timeframe=outcome_timeframe,
-                clinical_data=clinical_data,
-                treatment_plan=treatment_plan,
-                social_determinants=social_determinants,
-                comorbidities=comorbidities,
-            )
-
-        else:
-            # Generic fallback prediction
-            self._simulate_delay()
-            prediction_id = str(uuid.uuid4())
-
-            result = {
-                "prediction_id": prediction_id,
-                "patient_id": patient_id,
-                "model_type": model_type,
-                "timestamp": datetime.now().isoformat(),
-                "result": {
-                    "score": round(random.uniform(0.1, 0.9), 2),
-                    "confidence": round(random.uniform(0.6, 0.9), 2),
-                    "explanation": f"Generic mock prediction for model type: {model_type}",
-                },
-                "model_info": {
-                    "name": f"mock_{model_type.lower()}_model",
-                    "version": "1.0.0",
-                    "last_updated": datetime.now().isoformat(),
-                },
-            }
-
-            # Store the prediction
-            self._predictions[prediction_id] = result
-
-            return result
-
-    async def predict_risk(
-        self, patient_id: str, risk_type: str, clinical_data: dict[str, Any], time_frame_days: int | None = None
-    ) -> dict[str, Any]:
-        """
-        Predict risk for a patient.
-
-        Args:
-            patient_id: ID of the patient
-            risk_type: Type of risk to predict (e.g., suicide, readmission)
-            clinical_data: Dictionary of clinical data for prediction
-            time_frame_days: Optional time frame in days for the prediction
-
-        Returns:
-            Dictionary with prediction results
-
-        Raises:
-            ValidationError: If input parameters are invalid
-            DataPrivacyError: If inputs contain potential PHI
-        """
-        # Simulate network delay
-        self._simulate_delay()
-
-        # Validate risk type
-        self._validate_risk_type(risk_type)
-
-        # Check for PHI in data
-        self._check_phi_in_data(clinical_data)
-
-        # Get prediction parameters
-        if time_frame_days is None:
-            time_frame_days = 30
-        
-        confidence_threshold = 0.7
-        include_explainability = False
-
-        # Generate deterministic risk score based on patient_id, risk_type, and data
-        risk_score = self._generate_deterministic_risk_score(
-            patient_id=patient_id,
-            risk_type=risk_type,
-            clinical_data=clinical_data,
-            time_frame_days=time_frame_days,
-        )
-
-        # Map risk score to risk level
-        risk_level = self._map_score_to_risk_level(risk_score)
-
-        # Generate confidence level (normally high for mock)
-        confidence = 0.85 + (risk_score * 0.1)  # Higher confidence for extreme scores
-        confidence = min(0.98, max(0.7, confidence))  # Clamp between 0.7 and 0.98
-
-        # Generate prediction ID
-        prediction_id = f"risk_{risk_type}_{hashlib.md5(f'{patient_id}_{int(time.time())}'.encode()).hexdigest()[:8]}"
-
-        # Create base result
-        result = {
-            "prediction_id": prediction_id,
-            "patient_id": patient_id,
-            "risk_type": risk_type,
-            "risk_score": risk_score,
-            "risk_probability": risk_score,  # Add risk_probability field that matches risk_score
-            "risk_level": risk_level,
-            "confidence": confidence,
-            "time_frame_days": time_frame_days,
-            "timestamp": datetime.now().isoformat(),
-            "model_version": "mock-1.0",
-        }
-
-        # Add supporting evidence
-        supporting_evidence = self._generate_supporting_evidence(
-            risk_type=risk_type, risk_level=risk_level, clinical_data=clinical_data
-        )
-        result["supporting_evidence"] = supporting_evidence
-
-        # Add risk factors
-        risk_factors = self._generate_risk_factors(risk_type=risk_type, clinical_data=clinical_data)
-        result["risk_factors"] = risk_factors
-
-        # Add recommendations
-        result["recommendations"] = [
-            {
-                "priority": "high" if risk_level in ["high", "very_high"] else "medium",
-                "action": f"Consider {'immediate intervention' if risk_level == 'very_high' else 'increased monitoring'}",
-                "rationale": f"Based on {risk_level} risk level and clinical factors",
-                "category": "clinical",
-            },
-            {
-                "priority": "medium",
-                "action": f"Evaluate {risk_type.replace('_', ' ')} risk factors",
-                "rationale": "Address modifiable risk factors",
-                "category": "preventive",
-            },
-        ]
-
-        # Add explainability data if requested
-        if include_explainability:
-            # Extract feature names from clinical_data
-            feature_names = list(clinical_data.keys())
-            # Generate explainability dictionary with feature importances
-            explainability: dict[str, Any] = {"method": "SHAP", "feature_importance": {}}
-
-            # Add feature importances (using deterministic values based on feature name and risk_type)
-            total_importance = 0.0
-            raw_importances: dict[str, float] = {}
-
-            for feature in feature_names:
-                # Hash the feature name with risk_type to get a deterministic value
-                feature_hash = int(hashlib.md5(f"{feature}_{risk_type}".encode()).hexdigest(), 16)
-                importance = (feature_hash % 100) / 100.0
-                raw_importances[feature] = importance
-                total_importance += importance
-
-            # Normalize importances to sum to 1.0
-            for feature, importance in raw_importances.items():
-                explainability["feature_importance"][feature] = (
-                    importance / total_importance if total_importance > 0 else 0.0
-                )
-
-            result["explainability"] = explainability
-
-        # Add visualization data
-        result["visualization_data"] = {
-            "risk_threshold": 0.7,  # Configurable threshold
-            "risk_distribution": {
-                "very_low": self._risk_level_distribution["very_low"] / 100,
-                "low": self._risk_level_distribution["low"] / 100,
-                "moderate": self._risk_level_distribution["moderate"] / 100,
-                "high": self._risk_level_distribution["high"] / 100,
-                "very_high": self._risk_level_distribution["very_high"] / 100,
-            },
-            "historical_trend": [
-                {
-                    "date": (datetime.now() - timedelta(days=30)).isoformat(),
-                    "risk_score": max(0.1, risk_score - 0.2),
-                },
-                {
-                    "date": (datetime.now() - timedelta(days=20)).isoformat(),
-                    "risk_score": max(0.1, risk_score - 0.1),
-                },
-                {
-                    "date": (datetime.now() - timedelta(days=10)).isoformat(),
-                    "risk_score": risk_score,
-                },
-                {"date": datetime.now().isoformat(), "risk_score": risk_score},
-            ],
-        }
-
-        # Store prediction for later retrieval
-        self._predictions[prediction_id] = result
-
-        # Notify observers
-        self._notify_observers(
-            EventType.PREDICTION_COMPLETE,
-            {
-                "prediction_id": prediction_id,
-                "patient_id": patient_id,
-                "risk_type": risk_type,
-                "risk_level": risk_level,
-                "timestamp": result["timestamp"],
-            },
-        )
-
-        return result
-
-    async def predict_treatment_response(
-        self,
-        patient_id: str,
-        treatment_type: str,
-        treatment_details: dict[str, Any],
-        clinical_data: dict[str, Any],
-    ) -> dict[str, Any]:
-        """
-        Predict response to a psychiatric treatment.
-
-        Args:
-            patient_id: Patient identifier
-            treatment_type: Type of treatment (e.g., medication_ssri)
-            treatment_details: Treatment details
-            clinical_data: Clinical data for prediction
-
-        Returns:
-            Treatment response prediction result
-
-        Raises:
-            ValidationError: If parameters are invalid
-            DataPrivacyError: If PHI is detected in data
-        """
-        if not self.is_initialized:
-            raise ConfigurationError("Service not initialized", field="initialization")
-
-        # Simulate network latency
-        self._simulate_delay()
-
-        # Validate parameters
-        self._validate_treatment_type(treatment_type, treatment_details)
-
-        # Check for PHI in data
-        self._check_phi_in_data(clinical_data)
-        self._check_phi_in_data(treatment_details)
-
-        # Generate prediction ID
-        prediction_id = f"treatment-{uuid.uuid4()}"
-
-        # Generate a deterministic efficacy score based on inputs
-        efficacy_score = self._generate_deterministic_efficacy_score(
-            patient_id, treatment_type, treatment_details, clinical_data
-        )
-
-        # Map score to response likelihood
-        response_likelihood = self._map_score_to_response_level(efficacy_score)
-
-        # Create prediction result
-        result = {
-            "prediction_id": prediction_id,
-            "patient_id": patient_id,
-            "treatment_type": treatment_type,
-            "treatment_details": treatment_details,
-            "response_likelihood": response_likelihood,
-            "efficacy_score": efficacy_score,
-            "confidence": round(0.5 + efficacy_score * 0.4, 2),
-            "features": self._extract_features(clinical_data),
-            "treatment_features": self._extract_features(treatment_details),
-            "timestamp": datetime.now().isoformat(),
-            "prediction_horizon": "8_weeks",
-        }
-
-        # Add expected outcome
-        result["expected_outcome"] = self._generate_expected_outcome(
-            treatment_type, efficacy_score, clinical_data
-        )
-
-        # Add side effect risk
-        side_effects = self._generate_side_effect_risk(
-            treatment_type, treatment_details, clinical_data
-        )
-        result["side_effect_risk"] = side_effects
-
-        # Store prediction for later retrieval
-        self._predictions[prediction_id] = result
-
-        # Notify observers
-        self._notify_observers(
-            EventType.PREDICTION_COMPLETE,
-            {
-                "prediction_type": "treatment_response",
-                "treatment_type": treatment_type,
-                "patient_id": patient_id,
-                "prediction_id": prediction_id,
-            },
-        )
-
-        return result
-
-    async def predict_outcome(
-        self,
-        patient_id: str,
-        outcome_timeframe: dict[str, Any],
-        clinical_data: dict[str, Any],
-        treatment_plan: dict[str, Any],
-        social_determinants: dict[str, Any] | None = None,
-        comorbidities: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        """
-        Predict treatment outcomes for a patient.
-
-        Args:
-            patient_id: ID of the patient
-            outcome_timeframe: Timeframe for prediction (e.g., {"timeframe": "short_term"})
-            clinical_data: Dictionary of clinical data for prediction
-            treatment_plan: Dictionary describing the treatment plan
-            social_determinants: Optional social determinants of health
-            comorbidities: Optional comorbid conditions
-
-        Returns:
-            Dictionary with prediction results
-
-        Raises:
-            ValidationError: If input parameters are invalid
-            DataPrivacyError: If inputs contain potential PHI
-        """
-        # Simulate network delay
-        self._simulate_delay()
-
-        # Validate parameters
-        self._validate_outcome_params(outcome_timeframe)
-
-        # Check for PHI in data
-        self._check_phi_in_data(clinical_data)
-        self._check_phi_in_data(treatment_plan)
-        if social_determinants:
-            self._check_phi_in_data(social_determinants)
-        if comorbidities:
-            self._check_phi_in_data(comorbidities)
-
-        # Extract parameters
-        time_frame_days = outcome_timeframe.get("days", 90)
-        if "timeframe" in outcome_timeframe:
-            if outcome_timeframe["timeframe"] == "short_term":
-                time_frame_days = 30
-            elif outcome_timeframe["timeframe"] == "medium_term":
-                time_frame_days = 90
-            elif outcome_timeframe["timeframe"] == "long_term":
-                time_frame_days = 180
-
-        include_trajectory = True
-        outcome_type = "recovery"
-
-        # Generate prediction ID
-        prediction_id = f"outcome_{outcome_type}_{hashlib.md5(f'{patient_id}_{int(time.time())}'.encode()).hexdigest()[:8]}"
-
-        # Generate deterministic outcome score
-        outcome_score = self._generate_deterministic_outcome_score(
-            patient_id=patient_id,
-            time_frame_days=time_frame_days,
-            clinical_data=clinical_data,
-            treatment_plan=treatment_plan,
-            outcome_type=outcome_type,
-        )
-
-        # Generate confidence (normally high for mock)
-        confidence = 0.80 + (outcome_score * 0.15)  # Higher confidence for more extreme scores
-        confidence = min(0.95, max(0.75, confidence))  # Clamp between 0.75 and 0.95
-
-        # Create base result
-        result = {
-            "prediction_id": prediction_id,
-            "patient_id": patient_id,
-            "outcome_type": outcome_type,
-            "probability": outcome_score,
-            "confidence": confidence,
-            "time_frame": outcome_timeframe,
-            "timestamp": datetime.now().isoformat(),
-            "model_version": "mock-1.0",
-        }
-
-        # Generate outcome details
-        outcome_details = self._generate_outcome_details(
-            outcome_type=outcome_type,
-            outcome_score=outcome_score,
-            clinical_data=clinical_data,
-            treatment_plan=treatment_plan,
-        )
-        result["outcome_details"] = outcome_details
-
-        # Add contributing factors
-        result["contributing_factors"] = {
-            "positive": [
-                {
-                    "factor": "medication_adherence",
-                    "impact": "high",
-                    "description": "Regular medication adherence improves outcomes",
-                },
-                {
-                    "factor": "therapy_engagement",
-                    "impact": "medium",
-                    "description": "Consistent therapy attendance supports recovery",
-                },
-            ],
-            "negative": [
-                {
-                    "factor": "stress_levels",
-                    "impact": "medium",
-                    "description": "Ongoing stressors may slow progress",
-                }
-            ],
-        }
-
-        # Add recommendations
-        result["recommendations"] = [
-            {
-                "priority": "high",
-                "action": f"Continue {treatment_plan.get('therapy_type', 'current therapy')}",
-                "rationale": "Shows positive response trajectory",
-                "category": "treatment",
-            },
-            {
-                "priority": "medium",
-                "action": "Monitor medication side effects",
-                "rationale": "Ensure continued adherence",
-                "category": "monitoring",
-            },
-        ]
-
-        # Add trajectory data if requested
-        if include_trajectory:
-            trajectory = self._generate_outcome_trajectory(
-                outcome_type=outcome_type,
-                outcome_score=outcome_score,
-                time_frame_days=time_frame_days,
-            )
-            result["visualization_data"] = {
-                "trajectory": trajectory,
-                "benchmark": {
-                    "population_mean": 0.65,
-                    "similar_cases_mean": 0.7,
-                    "optimal_response": 0.85,
-                },
-            }
-
-        # Store prediction for later retrieval
-        self._predictions[prediction_id] = result
-
-        # Notify observers
-        await self._notify_observers(
-            EventType.PREDICTION_COMPLETE,
-            {
-                "prediction_id": prediction_id,
-                "patient_id": patient_id,
-                "outcome_type": outcome_type,
-                "probability": outcome_score,
-                "timestamp": result["timestamp"],
-            },
-        )
-
-        return result
-
-    async def get_feature_importance(
-        self, model_type: str | ModelType, prediction_id: str, patient_id: str | None = None
-    ) -> dict[str, Any]:
-        """
-        Get feature importance for a prediction.
-
-        Args:
-            model_type: Type of model
-            prediction_id: Prediction identifier
-            patient_id: Optional patient identifier for authorization
-
-        Returns:
-            Feature importance data
-
-        Raises:
-            ResourceNotFoundError: If prediction not found
-            ValidationError: If parameters are invalid
-        """
-        if not self.is_initialized:
-            raise ConfigurationError("Service not initialized", field="initialization")
-
-        # Simulate network latency
-        self._simulate_delay()
-
-        # Check if prediction exists
-        if prediction_id not in self._predictions:
-            raise ResourceNotFoundError(
-                f"Prediction not found: {prediction_id}",
-                resource_type="prediction",
-                resource_id=prediction_id,
-            )
-
-        # Get prediction data
-        prediction = self._predictions[prediction_id]
-
-        # Verify patient ID if provided
-        if patient_id and prediction.get("patient_id") != patient_id:
-            raise ValidationError("Patient ID mismatch", field="patient_id", value=patient_id)
-
-        # Generate feature importance
-        features = prediction.get("features", {})
-        if "treatment_features" in prediction:
-            features.update(prediction["treatment_features"])
-
-        # Generate feature importance based on feature values
-        feature_importance: dict[str, float] = {}
-
-        # Sort features by name for consistent results
-        sorted_features = sorted(features.items(), key=lambda x: x[0])
-
-        # Generate mock feature importance
-        for i, (feature, value) in enumerate(sorted_features):
-            # Generate a deterministic importance value based on the feature name and value
-            if isinstance(value, (int, float)):
-                # Normalize value to be between 0 and 1
-                normalized_value = min(max(value / 10.0, 0), 1)
-                importance = normalized_value * 0.8 + 0.2
-            elif isinstance(value, bool):
-                importance = 0.7 if value else 0.3
-            else:
-                # Generate a hash based on the feature name for deterministic results
-                hash_value = int(hashlib.md5(feature.encode()).hexdigest(), 16) % 100
-                importance = hash_value / 100.0
-
-            # Occasionally make some features negative to show that they reduce risk
-            if i % 3 == 0:
-                importance = -importance
-
-            feature_importance[feature] = round(importance, 3)
-
-        # Create visualization data
-        visualization = {
-            "type": "bar_chart",
-            "data": {
-                "labels": list(feature_importance.keys()),
-                "values": list(feature_importance.values()),
-            },
-        }
-
-        # Handle ModelType enum or string
-        if isinstance(model_type, ModelType):
-            model_name = model_type.value
-        else:
-            model_name = str(model_type)
-
-        # Create result
-        result = {
-            "prediction_id": prediction_id,
-            "patient_id": prediction.get("patient_id"),
-            "model_type": model_name,
-            "feature_importance": feature_importance,
-            "visualization": visualization,
-            "timestamp": datetime.now().isoformat(),
-        }
-
-        return result
-
-    async def healthcheck(self) -> dict[str, Any]:
-        """
-        Check health status of XGBoost service.
-
-        Returns:
-            Dictionary containing service health status and dependencies
-        """
-        return {
-            "status": "healthy",
-            "service": "mock_xgboost",
-            "timestamp": datetime.now().isoformat(),
-            "initialized": self.is_initialized,
-            "dependencies": {
-                "database": "healthy",
-                "model_registry": "healthy",
-            },
-        }
-
-    def _simulate_delay(self) -> None:
-        """Simulate network latency."""
-        if self._mock_delay_ms > 0:
-            time.sleep(self._mock_delay_ms / 1000)
-
     async def _notify_observers(self, event_type: EventType, data: dict[str, Any]) -> None:
-        """
-        Notify observers of an event.
+        """Notify observers of an event.
 
         Args:
             event_type: Type of event

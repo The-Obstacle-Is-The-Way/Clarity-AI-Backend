@@ -27,7 +27,7 @@ class Address:
         zip_code: str | None = None,
         country: str = "US",
         line1: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Initialize Address with backward compatibility for 'line1' parameter."""
         # Handle legacy 'line1' parameter
