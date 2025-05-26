@@ -92,7 +92,7 @@ class RoleBasedAccessControl:
                 # Unknown role string – return False as permission not found
                 return False
         else:
-            key = role
+            key = role  # type: ignore[unreachable]
 
         return permission in _PERMISSION_MATRIX.get(key, [])
 

@@ -166,16 +166,16 @@ def main() -> int:
     print(f"{Colors.BLUE}{Colors.BOLD}Test Summary{Colors.NC}")
     print(f"{Colors.BLUE}{'=' * 60}{Colors.NC}")
 
-    for name, result in results:
-        if result is None:
+    for name, exit_code in results:
+        if exit_code is None:
             print(f"{Colors.YELLOW}• {name}: SKIPPED{Colors.NC}")
-        elif result == 0:
+        elif exit_code == 0:
             print(f"{Colors.GREEN}✓ {name}: PASSED{Colors.NC}")
         else:
             print(f"{Colors.RED}✗ {name}: FAILED{Colors.NC}")
 
     # Return non-zero status if any test suite failed
-    failed_suites = [result for _, result in results if result is not None and result != 0]
+    failed_suites = [exit_code for _, exit_code in results if exit_code is not None and exit_code != 0]
     return 1 if failed_suites else 0
 
 

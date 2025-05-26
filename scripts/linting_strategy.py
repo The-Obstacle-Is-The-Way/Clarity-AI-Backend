@@ -22,6 +22,7 @@ import subprocess
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+from typing import Any, Dict
 
 # Configure paths
 PROJECT_ROOT = Path(__file__).parent.parent.absolute()
@@ -108,7 +109,7 @@ def assessment_phase() -> None:
     lint_report_path = PROJECT_ROOT / "lint_report.json"
     typing_report_path = PROJECT_ROOT / "typing_report.json"
 
-    summary = {
+    summary: Dict[str, Any] = {
         "timestamp": datetime.now().isoformat(),
         "linting": {},
         "typing": {},

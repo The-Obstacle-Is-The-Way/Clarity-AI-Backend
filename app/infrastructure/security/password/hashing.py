@@ -5,8 +5,6 @@ This module uses passlib with bcrypt for robust password hashing and verificatio
 aligning with HIPAA Security Rule requirements for access control.
 """
 
-from typing import cast
-
 from passlib.context import CryptContext
 
 # Define the password context using bcrypt
@@ -29,7 +27,7 @@ def verify_password(plain_password: str | None, hashed_password: str | None) -> 
         return False
 
     try:
-        return cast(bool, pwd_context.verify(plain_password, hashed_password))
+        return pwd_context.verify(plain_password, hashed_password)
     except Exception:
         # Handle any exceptions by returning False
         return False
@@ -45,4 +43,4 @@ def get_password_hash(password: str) -> str:
     Returns:
         Hashed password string
     """
-    return cast(str, pwd_context.hash(password))
+    return pwd_context.hash(password)

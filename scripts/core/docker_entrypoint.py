@@ -11,6 +11,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 # Define execution constants
 TEST_RESULTS_DIR = Path("/app/test-results")
@@ -100,7 +101,7 @@ class DockerTestOrchestrator:
         print(f"Database dependency check timed out after {timeout}s")
         return False
 
-    def run_tests(self, test_level: str, options: list[str] = None) -> int:
+    def run_tests(self, test_level: str, options: Optional[list[str]] = None) -> int:
         """
         Run tests for a specific level with specified options.
 

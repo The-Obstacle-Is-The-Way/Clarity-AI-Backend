@@ -29,7 +29,7 @@ class NeuralPathwayMapper:
         Returns:
             Dict mapping brain regions to their connections with effect magnitudes.
         """
-        connectivity = {region: {} for region in BrainRegion}
+        connectivity: dict[BrainRegion, dict[BrainRegion, EffectMagnitude]] = {region: {} for region in BrainRegion}
 
         # Define connectivity with mathematically precise effect magnitudes
         connectivity[BrainRegion.PREFRONTAL_CORTEX][BrainRegion.AMYGDALA] = "large"
@@ -53,7 +53,7 @@ class NeuralPathwayMapper:
         Returns:
             Dict mapping neurotransmitters to their effects on other neurotransmitters.
         """
-        interactions = {nt: {} for nt in Neurotransmitter}
+        interactions: dict[Neurotransmitter, dict[Neurotransmitter, EffectMagnitude]] = {nt: {} for nt in Neurotransmitter}
 
         # Define interactions with proper effect magnitudes
         interactions[Neurotransmitter.SEROTONIN][Neurotransmitter.DOPAMINE] = "medium"
@@ -117,7 +117,7 @@ class NeuralPathwayMapper:
 
     def get_all_affected_regions(self, source_region: BrainRegion) -> set[BrainRegion]:
         """Get all regions affected by the source region through direct and indirect connections."""
-        affected = set()
+        affected: set[BrainRegion] = set()
         self._trace_region_effects(source_region, affected, set())
         return affected
 

@@ -31,7 +31,7 @@ class TestRole:
         """Test role equality operations."""
         assert Role.ADMIN == Role.ADMIN
         assert Role.ADMIN == "ADMIN"
-        assert Role.ADMIN != Role.USER
+        assert Role.ADMIN != Role.USER  # type: ignore[unreachable]
         assert Role.ADMIN != "USER"
 
     def test_role_in_operations(self) -> None:

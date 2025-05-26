@@ -16,6 +16,7 @@ import subprocess
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Tuple
 
 # Configure paths
 PROJECT_ROOT = Path(__file__).parent.parent.absolute()
@@ -74,7 +75,7 @@ def parse_mypy_output(output: str) -> dict[str, list[dict]]:
 
 def analyze_typing_issues(issues: dict[str, list[dict]]) -> dict:
     """Analyze typing issues to identify patterns and frequencies."""
-    analysis = {
+    analysis: Dict[str, Any] = {
         "total_files": len(issues),
         "total_issues": sum(len(file_issues) for file_issues in issues.values()),
         "issue_types": defaultdict(int),
