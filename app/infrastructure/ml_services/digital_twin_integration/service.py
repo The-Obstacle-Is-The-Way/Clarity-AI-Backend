@@ -13,16 +13,16 @@ from uuid import UUID
 # Use canonical config path
 from app.domain.entities.digital_twin.digital_twin import DigitalTwin
 from app.domain.interfaces.ml_services import (
-    BiometricCorrelationService,
-    DigitalTwinIntegrationService,
-    PharmacogenomicsService,
-    SymptomForecastingService,
+    IBiometricCorrelationService,
+    IDigitalTwinIntegrationService,
+    IPharmacogenomicsService,
+    ISymptomForecastingService,
 )
 
 logger = logging.getLogger(__name__)
 
 
-class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
+class DigitalTwinIntegrationServiceImpl(IDigitalTwinIntegrationService):
     """
     Implementation of the Digital Twin Integration Service.
 
@@ -38,9 +38,9 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
 
     def __init__(
         self,
-        symptom_forecasting_service: SymptomForecastingService,
-        biometric_correlation_service: BiometricCorrelationService,
-        pharmacogenomics_service: PharmacogenomicsService,
+        symptom_forecasting_service: ISymptomForecastingService,
+        biometric_correlation_service: IBiometricCorrelationService,
+        pharmacogenomics_service: IPharmacogenomicsService,
     ):
         """
         Initialize the Digital Twin Integration Service with required microservices.
@@ -111,67 +111,71 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
             raise RuntimeError(f"Failed to generate Digital Twin: {e!s}")
 
     async def update_digital_twin(
-        self, digital_twin_id: UUID, new_data: dict[str, Any]
-    ) -> DigitalTwin:
+        self, patient_id: UUID, patient_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
-        Update an existing Digital Twin with new data.
+        Update the Digital Twin with new patient data.
 
         Args:
-            digital_twin_id: UUID of the Digital Twin to update
-            new_data: Dictionary containing new data to incorporate
+            patient_id: UUID of the patient
+            patient_data: Dictionary containing new patient data to incorporate
 
         Returns:
-            Updated DigitalTwin entity
+            Updated Digital Twin as dictionary
         """
-        logger.info(f"Updating Digital Twin {digital_twin_id}")
+        logger.info(f"Updating Digital Twin for patient {patient_id}")
 
         try:
-            # Step 1: Extract patient ID and data categories
-            patient_id = new_data.get("patient_id")
-            if not patient_id:
-                raise ValueError("Patient ID is required for Digital Twin update")
-
-            clinical_data = new_data.get("clinical_data", {})
-            biometric_data = new_data.get("biometric_data")
-            genetic_data = new_data.get("genetic_data")
+            # Step 1: Extract data categories from patient_data
+            clinical_data = patient_data.get("clinical_data", {})
+            biometric_data = patient_data.get("biometric_data")
+            genetic_data = patient_data.get("genetic_data")
 
             # Step 2: Update relevant components based on new data
             updates = {}
 
             if clinical_data:
                 symptom_forecast = await self._generate_symptom_forecast(
-                    UUID(patient_id), clinical_data
+                    patient_id, clinical_data
                 )
                 updates["symptom_forecast"] = symptom_forecast
 
             if biometric_data:
                 biometric_analysis = await self._analyze_biometric_correlations(
-                    UUID(patient_id), biometric_data, clinical_data
+                    patient_id, biometric_data, clinical_data
                 )
                 updates["biometric_analysis"] = biometric_analysis
 
             if genetic_data and "medications" in clinical_data:
                 pharmacogenomic_insights = await self._generate_pharmacogenomic_insights(
-                    UUID(patient_id), genetic_data, clinical_data
+                    patient_id, genetic_data, clinical_data
                 )
                 updates["pharmacogenomic_insights"] = pharmacogenomic_insights
 
             # Step 3: Create updated Digital Twin
-            # Note: In a real implementation, we would retrieve the existing Digital Twin
-            # and update it with the new data, but for this skeleton we'll create a new one
             digital_twin = self._create_digital_twin(
-                UUID(patient_id),
+                patient_id,
                 updates.get("symptom_forecast"),
                 updates.get("biometric_analysis"),
                 updates.get("pharmacogenomic_insights"),
-                digital_twin_id=digital_twin_id,
             )
 
-            logger.info(f"Digital Twin {digital_twin_id} successfully updated")
-            return digital_twin
+            # Step 4: Convert DigitalTwin entity to dictionary for interface compliance
+            result = {
+                "id": str(digital_twin.id),
+                "patient_id": str(digital_twin.patient_id),
+                "created_at": digital_twin.created_at.isoformat(),
+                "updated_at": digital_twin.updated_at.isoformat(),
+                "symptom_forecast": updates.get("symptom_forecast"),
+                "biometric_analysis": updates.get("biometric_analysis"),
+                "pharmacogenomic_insights": updates.get("pharmacogenomic_insights"),
+            }
+
+            logger.info(f"Digital Twin for patient {patient_id} successfully updated")
+            return result
 
         except Exception as e:
-            logger.error(f"Error updating Digital Twin {digital_twin_id}: {e!s}")
+            logger.error(f"Error updating Digital Twin for patient {patient_id}: {e!s}")
             raise RuntimeError(f"Failed to update Digital Twin: {e!s}")
 
     async def generate_comprehensive_insights(
@@ -235,8 +239,8 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
         symptom_data = clinical_data.get("symptoms", {})
 
         # Generate forecast
-        forecast = await self.symptom_forecasting_service.generate_forecast(
-            patient_id, symptom_data, horizon_days=30, use_ensemble=True
+        forecast = await self.symptom_forecasting_service.forecast_symptoms(
+            patient_id, symptom_data, horizon=30, use_ensemble=True
         )
 
         return forecast
@@ -257,14 +261,18 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
             "sleep_quality": clinical_data.get("sleep_quality", {}),
         }
 
+        # Convert dict data to list format expected by interface
+        biometric_data_list = [biometric_data] if isinstance(biometric_data, dict) else biometric_data
+        mental_health_data_list = [mental_health_data] if isinstance(mental_health_data, dict) else mental_health_data
+        
         # Analyze correlations
         correlations = await self.biometric_correlation_service.analyze_correlations(
-            patient_id, biometric_data, mental_health_data
+            patient_id, biometric_data_list, mental_health_data_list
         )
 
         # Generate monitoring plan
         monitoring_plan = await self.biometric_correlation_service.generate_monitoring_plan(
-            patient_id, biometric_data, mental_health_data
+            patient_id, correlations
         )
 
         # Combine results
@@ -288,15 +296,22 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
 
         # Analyze gene-medication interactions
         if medications:
-            interactions = await self.pharmacogenomics_service.analyze_gene_interactions(
-                patient_id, genetic_data, medications
+            # Combine genetic data and medications for the interface
+            interaction_data = {**genetic_data, "medications": medications}
+            interactions = await self.pharmacogenomics_service.analyze_gene_medication_interactions(
+                patient_id, interaction_data
             )
         else:
             interactions = {"medications_analyzed": [], "gene_interactions": {}}
 
-        # Generate treatment plan
-        treatment_plan = await self.pharmacogenomics_service.generate_treatment_plan(
-            patient_id, genetic_data, medication_history, condition
+        # Generate treatment plan using prediction results format
+        prediction_results = {
+            "genetic_markers": genetic_data,
+            "condition": condition,
+            "gene_interactions": interactions.get("gene_interactions", {})
+        }
+        treatment_plan = await self.pharmacogenomics_service.generate_treatment_recommendations(
+            patient_id, prediction_results, medication_history
         )
 
         # Combine results
