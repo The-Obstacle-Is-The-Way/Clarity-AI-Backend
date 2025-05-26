@@ -1398,3 +1398,592 @@ class MockXGBoostService(XGBoostInterface):
                     field=f"outcome_timeframe.{unit}",
                     value=value,
                 )
+
+# Abstract method implementations required by interfaces
+
+    async def predict(
+        self, patient_id: uuid.UUID, features: dict[str, Any], model_type: str, **kwargs
+    ) -> dict[str, Any]:
+        """
+        Generic prediction method from MLServiceInterface.
+
+        Args:
+            patient_id: Patient identifier
+            features: Input features for prediction
+            model_type: Type of model to use
+            **kwargs: Additional parameters
+
+        Returns:
+            Dictionary containing prediction results
+
+        Raises:
+            ConfigurationError: If service not initialized
+            ValidationError: If parameters are invalid
+        """
+        if not self.is_initialized:
+            raise ConfigurationError("Service not initialized", field="initialization")
+
+        # Simulate network latency
+        await self._simulate_delay()
+
+        # Convert UUID to string for internal processing
+        patient_id_str = str(patient_id)
+
+        # Validate inputs
+        if not features:
+            raise ValidationError("Features cannot be empty", field="features")
+
+        # Check for PHI in features
+        self._check_phi_in_data(features)
+
+        # Generate prediction ID
+        prediction_id = str(uuid.uuid4())
+
+        # Determine prediction type based on model_type
+        if "risk" in model_type.lower():
+            # Delegate to risk prediction
+            risk_type = kwargs.get("risk_type", "general")
+            time_frame_days = kwargs.get("time_frame_days", 30)
+            return await self.predict_risk(patient_id_str, risk_type, features, time_frame_days)
+        
+        elif "treatment" in model_type.lower() or "medication" in model_type.lower():
+            # Delegate to treatment response prediction
+            treatment_type = kwargs.get("treatment_type", "medication")
+            treatment_details = kwargs.get("treatment_details", {})
+            return await self.predict_treatment_response(patient_id_str, treatment_type, treatment_details, features)
+        
+        elif "outcome" in model_type.lower():
+            # Delegate to outcome prediction
+            outcome_timeframe = kwargs.get("outcome_timeframe", {"timeframe_months": 6, "outcome_type": "symptom_reduction"})
+            treatment_plan = kwargs.get("treatment_plan", {})
+            return await self.predict_outcome(
+                patient_id_str, outcome_timeframe, features, treatment_plan,
+                kwargs.get("social_determinants"), kwargs.get("comorbidities")
+            )
+        
+        else:
+            # Generic prediction for unknown model types
+            score = random.random()
+            confidence = 0.7 + random.random() * 0.25
+            
+            result = {
+                "prediction_id": prediction_id,
+                "patient_id": patient_id_str,
+                "model_type": model_type,
+                "prediction_score": round(score, 3),
+                "confidence": round(confidence, 3),
+                "features_used": list(features.keys()),
+                "timestamp": datetime.now().isoformat(),
+                "status": "completed"
+            }
+
+            # Store prediction
+            self._predictions[prediction_id] = result
+
+            # Notify observers
+            await self._notify_observers(
+                EventType.PREDICTION_COMPLETE,
+                {
+                    "prediction_id": prediction_id,
+                    "patient_id": patient_id_str,
+                    "model_type": model_type,
+                    "status": "completed",
+                },
+            )
+
+            return result
+
+    async def healthcheck(self) -> dict[str, Any]:
+        """
+        Check health status of XGBoost service.
+
+        Returns:
+            Dictionary containing service health status and dependencies
+        """
+        # Simulate a brief check
+        await asyncio.sleep(0.01)
+
+        # Check initialization status
+        is_healthy = self.is_initialized
+
+        # Mock dependency checks
+        dependencies = {
+            "xgboost_models": {
+                "status": "healthy" if is_healthy else "unhealthy",
+                "response_time_ms": random.randint(10, 50) if is_healthy else None,
+                "version": "1.7.3" if is_healthy else None,
+            },
+            "model_storage": {
+                "status": "healthy" if is_healthy else "unhealthy",
+                "available_models": len(ModelType) if is_healthy else 0,
+                "last_updated": datetime.now().isoformat() if is_healthy else None,
+            },
+            "feature_store": {
+                "status": "healthy" if is_healthy else "degraded",
+                "connection_pool": "active" if is_healthy else "inactive",
+                "cache_hit_rate": round(random.uniform(0.85, 0.95), 2) if is_healthy else 0.0,
+            },
+        }
+
+        # Overall service status
+        service_status = "healthy" if is_healthy else "unhealthy"
+        if is_healthy and any(dep["status"] == "degraded" for dep in dependencies.values()):
+            service_status = "degraded"
+
+        result = {
+            "service": "xgboost",
+            "status": service_status,
+            "timestamp": datetime.now().isoformat(),
+            "version": "1.0.0",
+            "uptime_seconds": time.time() - getattr(self, '_start_time', time.time()),
+            "dependencies": dependencies,
+            "metrics": {
+                "total_predictions": len(self._predictions),
+                "active_profiles": len(self._profiles),
+                "memory_usage_mb": random.randint(128, 512),
+                "cpu_usage_percent": random.randint(5, 25),
+            },
+            "configuration": {
+                "privacy_level": self._privacy_level.value,
+                "mock_delay_ms": self._mock_delay_ms,
+                "models_loaded": len(ModelType),
+            },
+        }
+
+        return result
+
+    async def predict_risk(
+        self,
+        patient_id: str,
+        risk_type: str,
+        clinical_data: dict[str, Any],
+        time_frame_days: int | None = None,
+    ) -> dict[str, Any]:
+        """
+        Predict patient risk based on clinical data.
+
+        Args:
+            patient_id: Unique identifier for the patient
+            risk_type: Type of risk to predict (e.g., relapse, suicide)
+            clinical_data: Clinical data for prediction
+            time_frame_days: Time frame in days for the prediction
+
+        Returns:
+            Dictionary containing risk prediction results
+
+        Raises:
+            ConfigurationError: If service not initialized
+            ValidationError: If parameters are invalid
+        """
+        if not self.is_initialized:
+            raise ConfigurationError("Service not initialized", field="initialization")
+
+        # Simulate network latency
+        await self._simulate_delay()
+
+        # Validate inputs
+        self._validate_risk_type(risk_type)
+        if not clinical_data:
+            raise ValidationError("Clinical data cannot be empty", field="clinical_data")
+
+        # Check for PHI in clinical data
+        self._check_phi_in_data(clinical_data)
+
+        # Set default time frame
+        if time_frame_days is None:
+            time_frame_days = 30
+
+        if time_frame_days <= 0:
+            raise ValidationError("Time frame must be positive", field="time_frame_days")
+
+        # Generate prediction ID
+        prediction_id = str(uuid.uuid4())
+
+        # Generate deterministic risk score
+        risk_score = self._generate_deterministic_risk_score(
+            patient_id, risk_type, clinical_data, time_frame_days
+        )
+
+        # Map score to risk level
+        risk_level = self._map_score_to_risk_level(risk_score)
+
+        # Extract relevant features
+        features = self._extract_features(clinical_data)
+
+        # Generate supporting evidence
+        evidence = self._generate_supporting_evidence(risk_type, clinical_data)
+
+        # Generate risk factors
+        risk_factors = self._generate_risk_factors(risk_type, clinical_data)
+
+        # Create result
+        result = {
+            "prediction_id": prediction_id,
+            "patient_id": patient_id,
+            "risk_type": risk_type,
+            "risk_score": round(risk_score, 3),
+            "risk_level": risk_level,
+            "confidence": round(0.75 + random.random() * 0.20, 2),
+            "time_frame_days": time_frame_days,
+            "features_used": features,
+            "supporting_evidence": evidence,
+            "risk_factors": risk_factors,
+            "recommendations": [
+                f"Monitor {risk_type} risk indicators closely",
+                "Consider increased clinical contact frequency",
+                "Review current treatment plan effectiveness",
+            ],
+            "timestamp": datetime.now().isoformat(),
+            "model_version": "1.0.0",
+            "status": "completed",
+        }
+
+        # Store prediction
+        self._predictions[prediction_id] = result
+
+        # Notify observers
+        await self._notify_observers(
+            EventType.PREDICTION_COMPLETE,
+            {
+                "prediction_id": prediction_id,
+                "patient_id": patient_id,
+                "risk_type": risk_type,
+                "risk_level": risk_level,
+                "status": "completed",
+            },
+        )
+
+        return result
+
+    async def predict_treatment_response(
+        self,
+        patient_id: str,
+        treatment_type: str,
+        treatment_details: dict[str, Any],
+        clinical_data: dict[str, Any],
+    ) -> dict[str, Any]:
+        """
+        Predict patient response to treatment.
+
+        Args:
+            patient_id: Unique identifier for the patient
+            treatment_type: Type of treatment (e.g., medication, therapy)
+            treatment_details: Details of the treatment
+            clinical_data: Clinical data for prediction
+
+        Returns:
+            Dictionary containing treatment response prediction
+
+        Raises:
+            ConfigurationError: If service not initialized
+            ValidationError: If parameters are invalid
+        """
+        if not self.is_initialized:
+            raise ConfigurationError("Service not initialized", field="initialization")
+
+        # Simulate network latency
+        await self._simulate_delay()
+
+        # Validate inputs
+        self._validate_treatment_type(treatment_type, treatment_details)
+        if not clinical_data:
+            raise ValidationError("Clinical data cannot be empty", field="clinical_data")
+
+        # Check for PHI in data
+        self._check_phi_in_data(clinical_data)
+        self._check_phi_in_data(treatment_details)
+
+        # Generate prediction ID
+        prediction_id = str(uuid.uuid4())
+
+        # Generate deterministic efficacy score
+        efficacy_score = self._generate_deterministic_efficacy_score(
+            patient_id, treatment_type, treatment_details, clinical_data
+        )
+
+        # Map score to response level
+        response_level = self._map_score_to_response_level(efficacy_score)
+
+        # Extract relevant features
+        features = self._extract_features(clinical_data)
+
+        # Generate side effect risk
+        side_effects = self._generate_side_effect_risk(treatment_type, treatment_details, clinical_data)
+
+        # Generate expected outcome
+        expected_outcome = self._generate_expected_outcome(treatment_type, efficacy_score)
+
+        # Create result
+        result = {
+            "prediction_id": prediction_id,
+            "patient_id": patient_id,
+            "treatment_type": treatment_type,
+            "treatment_details": treatment_details,
+            "efficacy_score": round(efficacy_score, 3),
+            "response_level": response_level,
+            "confidence": round(0.70 + random.random() * 0.25, 2),
+            "features_used": features,
+            "expected_outcome": expected_outcome,
+            "side_effect_risk": side_effects,
+            "recommendations": [
+                f"Consider {treatment_type} as indicated by model prediction",
+                "Monitor for treatment response within 2-4 weeks",
+                "Assess side effect profile regularly",
+            ],
+            "contraindications": [],
+            "timestamp": datetime.now().isoformat(),
+            "model_version": "1.0.0",
+            "status": "completed",
+        }
+
+        # Store prediction
+        self._predictions[prediction_id] = result
+
+        # Notify observers
+        await self._notify_observers(
+            EventType.PREDICTION_COMPLETE,
+            {
+                "prediction_id": prediction_id,
+                "patient_id": patient_id,
+                "treatment_type": treatment_type,
+                "response_level": response_level,
+                "status": "completed",
+            },
+        )
+
+        return result
+
+    async def predict_outcome(
+        self,
+        patient_id: str,
+        outcome_timeframe: dict[str, Any],
+        clinical_data: dict[str, Any],
+        treatment_plan: dict[str, Any],
+        social_determinants: dict[str, Any] | None = None,
+        comorbidities: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Predict patient outcome based on clinical data and treatment plan.
+
+        Args:
+            patient_id: Unique identifier for the patient
+            outcome_timeframe: Timeframe for outcome prediction
+            clinical_data: Clinical data for prediction
+            treatment_plan: Treatment plan details
+            social_determinants: Social determinants of health
+            comorbidities: Comorbid conditions
+
+        Returns:
+            Dictionary containing outcome prediction results
+
+        Raises:
+            ConfigurationError: If service not initialized
+            ValidationError: If parameters are invalid
+        """
+        if not self.is_initialized:
+            raise ConfigurationError("Service not initialized", field="initialization")
+
+        # Simulate network latency
+        await self._simulate_delay()
+
+        # Validate inputs - note: this will validate against the existing validation method
+        # which expects different structure than what MLServiceInterface specifies
+        # We need to adapt the input to match existing validation
+        if not isinstance(outcome_timeframe, dict):
+            raise ValidationError("Outcome timeframe must be a dictionary", field="outcome_timeframe")
+        
+        # Convert modern format to legacy format if needed
+        legacy_timeframe = outcome_timeframe.copy()
+        if "timeframe_months" in outcome_timeframe:
+            legacy_timeframe["months"] = outcome_timeframe["timeframe_months"]
+        if "outcome_type" in outcome_timeframe:
+            # Store outcome type for later use
+            outcome_type = outcome_timeframe["outcome_type"]
+        else:
+            outcome_type = "general"
+
+        self._validate_outcome_params(legacy_timeframe)
+        
+        if not clinical_data:
+            raise ValidationError("Clinical data cannot be empty", field="clinical_data")
+        if not treatment_plan:
+            raise ValidationError("Treatment plan cannot be empty", field="treatment_plan")
+
+        # Check for PHI in data
+        self._check_phi_in_data(clinical_data)
+        self._check_phi_in_data(treatment_plan)
+        if social_determinants:
+            self._check_phi_in_data(social_determinants)
+        if comorbidities:
+            self._check_phi_in_data(comorbidities)
+
+        # Generate prediction ID
+        prediction_id = str(uuid.uuid4())
+
+        # Generate deterministic outcome score
+        outcome_score = self._generate_deterministic_outcome_score(
+            patient_id, outcome_timeframe, clinical_data, treatment_plan, social_determinants, comorbidities
+        )
+
+        # Extract relevant features
+        features = self._extract_features(clinical_data)
+
+        # Generate outcome trajectory
+        trajectory = self._generate_outcome_trajectory(outcome_timeframe, outcome_score)
+
+        # Generate outcome details
+        outcome_details = self._generate_outcome_details(outcome_timeframe, outcome_score)
+
+        # Create result
+        result = {
+            "prediction_id": prediction_id,
+            "patient_id": patient_id,
+            "outcome_timeframe": outcome_timeframe,
+            "outcome_score": round(outcome_score, 3),
+            "predicted_improvement": round(outcome_score * 100, 1),
+            "confidence": round(0.72 + random.random() * 0.23, 2),
+            "features_used": features,
+            "outcome_trajectory": trajectory,
+            "outcome_details": outcome_details,
+            "influencing_factors": {
+                "treatment_adherence": random.choice(["high", "medium", "low"]),
+                "social_support": random.choice(["strong", "moderate", "limited"]),
+                "comorbidity_impact": random.choice(["minimal", "moderate", "significant"]),
+            },
+            "recommendations": [
+                "Continue current treatment plan with regular monitoring",
+                "Consider adjunct interventions if available",
+                "Monitor for early signs of treatment response",
+            ],
+            "timestamp": datetime.now().isoformat(),
+            "model_version": "1.0.0",
+            "status": "completed",
+        }
+
+        # Store prediction
+        self._predictions[prediction_id] = result
+
+        # Notify observers
+        await self._notify_observers(
+            EventType.PREDICTION_COMPLETE,
+            {
+                "prediction_id": prediction_id,
+                "patient_id": patient_id,
+                "outcome_type": outcome_type,
+                "predicted_improvement": result["predicted_improvement"],
+                "status": "completed",
+            },
+        )
+
+        return result
+
+    async def get_feature_importance(
+        self,
+        model_type: str | ModelType,
+        prediction_id: str,
+        patient_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Get feature importance for a prediction.
+
+        Args:
+            model_type: Type of model used for prediction
+            prediction_id: ID of the prediction
+            patient_id: Optional patient ID for authorization
+
+        Returns:
+            Dictionary containing feature importance data
+
+        Raises:
+            ConfigurationError: If service not initialized
+            ResourceNotFoundError: If prediction not found
+            ValidationError: If parameters are invalid
+        """
+        if not self.is_initialized:
+            raise ConfigurationError("Service not initialized", field="initialization")
+
+        # Simulate network latency
+        await self._simulate_delay()
+
+        # Check if prediction exists
+        if prediction_id not in self._predictions:
+            raise ResourceNotFoundError(
+                f"Prediction not found: {prediction_id}",
+                resource_type="prediction",
+                resource_id=prediction_id,
+            )
+
+        # Get prediction data
+        prediction = self._predictions[prediction_id]
+
+        # Verify patient ID if provided
+        if patient_id and prediction.get("patient_id") != patient_id:
+            raise ValidationError("Patient ID mismatch", field="patient_id", value=patient_id)
+
+        # Handle ModelType enum or string
+        if isinstance(model_type, ModelType):
+            model_name = model_type.value
+        else:
+            model_name = str(model_type)
+
+        # Get features used in prediction
+        features_used = prediction.get("features_used", [])
+        if not features_used:
+            # Generate default features based on model type
+            if "risk" in model_name.lower():
+                features_used = ["symptom_severity", "medication_adherence", "previous_episodes", "social_support"]
+            elif "medication" in model_name.lower():
+                features_used = ["age", "weight", "previous_response", "comorbidities"]
+            elif "therapy" in model_name.lower():
+                features_used = ["motivation", "insight", "social_support", "symptom_severity"]
+            else:
+                features_used = ["baseline_severity", "treatment_history", "functional_status"]
+
+        # Generate deterministic feature importance scores
+        seed = int(hashlib.md5(f"{prediction_id}:{model_name}".encode()).hexdigest(), 16)
+        random.seed(seed)
+
+        # Generate importance scores that sum to 1.0
+        raw_scores = [random.random() for _ in features_used]
+        total = sum(raw_scores)
+        normalized_scores = [score / total for score in raw_scores]
+
+        # Create feature importance dictionary
+        feature_importance = {}
+        for i, feature in enumerate(features_used):
+            feature_importance[feature] = {
+                "importance": round(normalized_scores[i], 4),
+                "rank": i + 1,
+                "direction": random.choice(["positive", "negative"]),
+                "confidence": round(0.80 + random.random() * 0.15, 2),
+            }
+
+        # Sort by importance
+        sorted_features = sorted(
+            feature_importance.items(), key=lambda x: x[1]["importance"], reverse=True
+        )
+
+        # Update ranks
+        for rank, (feature, data) in enumerate(sorted_features, 1):
+            feature_importance[feature]["rank"] = rank
+
+        # Create result
+        result = {
+            "prediction_id": prediction_id,
+            "model_type": model_name,
+            "patient_id": prediction.get("patient_id"),
+            "feature_importance": feature_importance,
+            "top_features": [feature for feature, _ in sorted_features[:5]],
+            "method": "shapley_values",
+            "baseline_score": round(random.uniform(0.3, 0.7), 3),
+            "interpretation": {
+                "most_influential": sorted_features[0][0] if sorted_features else None,
+                "least_influential": sorted_features[-1][0] if sorted_features else None,
+                "total_features": len(features_used),
+            },
+            "timestamp": datetime.now().isoformat(),
+            "model_version": "1.0.0",
+            "status": "completed",
+        }
+
+        return result
