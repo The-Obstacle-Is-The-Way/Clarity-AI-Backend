@@ -514,8 +514,8 @@ class JWTServiceImpl(IJwtService):
             "original_iat": int(now.timestamp()),
         }
         
-        # No additional claims processing needed for interface compliance
-        additional_claims_dict: Dict[str, Any] = {}
+        # Process additional claims if provided
+        additional_claims_dict: Dict[str, Any] = additional_claims.copy() if additional_claims else {}
         
         # Create refresh token payload
         payload = create_refresh_token_payload(
