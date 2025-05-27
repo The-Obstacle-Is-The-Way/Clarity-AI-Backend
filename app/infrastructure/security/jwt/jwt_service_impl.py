@@ -8,7 +8,7 @@ and handling JWT token creation, validation, and management for HIPAA compliance
 import logging
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar
 from uuid import UUID, uuid4
 
 from jose.exceptions import ExpiredSignatureError, JWTError
@@ -287,7 +287,7 @@ class JWTServiceImpl(IJwtService):
     @property
     def access_token_expire_minutes(self) -> int:
         """Access token expiration time in minutes."""
-        return cast(int, self._access_token_expire_minutes)
+        return self._access_token_expire_minutes
 
     @property
     def refresh_token_expire_minutes(self) -> int:
@@ -354,11 +354,11 @@ class JWTServiceImpl(IJwtService):
             )
             
             # Encode the token
-            encoded_jwt = cast(str, jwt_encode(
+            encoded_jwt = jwt_encode(
                 payload.model_dump(exclude_none=True),
                 self._secret_key,
                 algorithm=self._algorithm,
-            ))
+            )
             
             # Audit log the token creation
             if self.audit_logger:
@@ -415,11 +415,11 @@ class JWTServiceImpl(IJwtService):
             )
             
             # Encode the token
-            encoded_jwt = cast(str, jwt_encode(
+            encoded_jwt = jwt_encode(
                 payload.model_dump(exclude_none=True),
                 self._secret_key,
                 algorithm=self._algorithm,
-            ))
+            )
             
             # Audit log the token creation
             if self.audit_logger:
@@ -526,11 +526,11 @@ class JWTServiceImpl(IJwtService):
         )
         
         # Encode the token
-        encoded_jwt = cast(str, jwt_encode(
+        encoded_jwt = jwt_encode(
             payload.model_dump(exclude_none=True),
             self._secret_key,
             algorithm=self._algorithm,
-        ))
+        )
         
         # Log token creation (but don't use async logger)
         logger.info(f"Refresh token created for user {subject_str}")
@@ -843,11 +843,11 @@ class JWTServiceImpl(IJwtService):
             payload_dict["role"] = claims_dict["role"]
             
         # Encode the token
-        encoded_jwt = cast(str, jwt_encode(
+        encoded_jwt = jwt_encode(
             payload_dict,
             self._secret_key,
             algorithm=self._algorithm,
-        ))
+        )
         
         # Log token creation (but don't use async logger)
         logger.info(f"Access token created for user {subject_str}")
@@ -1319,14 +1319,14 @@ class JWTServiceImpl(IJwtService):
         if auth_header:
             parts = auth_header.split()
             if len(parts) == 2 and parts[0].lower() == "bearer":
-                return cast(str, parts[1])
+                return parts[1]
                 
         # Check for token in cookies
         if hasattr(request, "cookies"):
             # Check for token in various cookie names
             for cookie_name in ["token", "access_token", "jwt"]:
                 if cookie_name in request.cookies:
-                    return cast(str, request.cookies[cookie_name])
+                    return request.cookies[cookie_name]
             
         return None
         
