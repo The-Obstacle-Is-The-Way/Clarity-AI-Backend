@@ -739,10 +739,10 @@ class GeneMedicationModel(BaseModel):
 
             # Update interaction database
             if "interaction_db" in training_data:
-                self.interaction_db = training_data["interaction_db"]
+                self.interaction_db: dict[str, Any] = training_data["interaction_db"]
 
             # Calculate metrics
-            metrics = {}
+            metrics: dict[str, Any] = {}
 
             # Response model metrics
             response_accuracy = self.response_model.score(X_train, y_response)
@@ -771,10 +771,10 @@ class GeneMedicationModel(BaseModel):
                 }
 
             # Update model metrics
-            self.metrics = metrics
+            self.metrics: dict[str, Any] = metrics
 
             # Update last training date
-            self.last_training_date = datetime.now(UTC).isoformat()
+            self.last_training_date: str = datetime.now(UTC).isoformat()
 
             return metrics
 

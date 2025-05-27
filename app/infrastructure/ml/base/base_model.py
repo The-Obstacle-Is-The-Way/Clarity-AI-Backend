@@ -43,9 +43,9 @@ class BaseModel(ABC):
         self.version = version
         self.model_path = model_path
         self.logger = logger or get_logger(f"model.{model_name}")
-        self.last_training_date = None
-        self.metrics = {}
-        self._model = None
+        self.last_training_date: datetime | None = None
+        self.metrics: dict[str, float] = {}
+        self._model: Any | None = None
 
     @abstractmethod
     def load(self) -> None:
