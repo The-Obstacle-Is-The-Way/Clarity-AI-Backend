@@ -107,7 +107,7 @@ class BiometricCorrelationAdapter(BiometricCorrelationInterface):
     calls to the infrastructure BiometricCorrelationService.
     """
 
-    def __init__(self, service: BiometricCorrelationService):
+    def __init__(self, service: BiometricCorrelationService) -> None:
         """
         Initialize the adapter.
 
