@@ -82,3 +82,14 @@ class IntegrationException(DomainException):
     """Exception raised when integration with external systems fails."""
 
     pass
+
+
+class PatientLimitExceededError(BusinessRuleViolationException):
+    """Exception raised when a provider's patient limit is exceeded."""
+
+    def __init__(
+        self,
+        message: str = "Provider patient limit exceeded",
+        details: dict[str, Any] | None = None,
+    ):
+        super().__init__(message, details)

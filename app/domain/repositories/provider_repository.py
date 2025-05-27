@@ -5,7 +5,7 @@ This module defines the interface for provider repositories.
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, date
 from uuid import UUID
 from typing import Optional, Dict, Any
 
@@ -68,6 +68,24 @@ class ProviderRepository(ABC):
 
         Args:
             license_number: License number of the provider
+            context: Optional context for HIPAA audit logging (user_id, action, etc.)
+
+        Returns:
+            Provider if found, None otherwise
+        """
+        pass
+
+    @abstractmethod
+    async def get_by_npi(
+        self,
+        npi: str,
+        context: Optional[Dict[str, Any]] = None
+    ) -> Optional[Provider]:
+        """
+        Get a provider by NPI (National Provider Identifier).
+
+        Args:
+            npi: NPI number of the provider
             context: Optional context for HIPAA audit logging (user_id, action, etc.)
 
         Returns:
@@ -308,9 +326,44 @@ class ProviderRepository(ABC):
         """
         pass
 
+    @abstractmethod
+    async def get_available_on_day(
+        self,
+        day: date,
+        context: Optional[Dict[str, Any]] = None
+    ) -> list[Provider]:
+        """
+        Get providers available on a specific day.
+
+        Args:
+            day: The specific day to check availability for
+            context: Optional context for HIPAA audit logging (user_id, action, etc.)
+
+        Returns:
+            List of providers available on the specified day
+        """
+        pass
+
+    @abstractmethod
+    async def get_prescribers(
+        self,
+        context: Optional[Dict[str, Any]] = None
+    ) -> list[Provider]:
+        """
+        Get providers who can prescribe medications.
+
+        Args:
+            context: Optional context for HIPAA audit logging (user_id, action, etc.)
+
+        Returns:
+            List of providers who are authorized to prescribe medications
+        """
+        pass
+
     # Convenience method for backward compatibility
+    @abstractmethod
     async def save(
-        self, 
+        self,
         provider: Provider,
         context: Optional[Dict[str, Any]] = None
     ) -> Provider:
@@ -324,10 +377,4 @@ class ProviderRepository(ABC):
         Returns:
             Saved provider
         """
-        if provider.id is None:
-            return await self.create(provider, context)
-        else:
-            result = await self.update(provider, context)
-            if result is None:
-                raise ValueError(f"Provider with ID {provider.id} not found for update")
-            return result
+        pass

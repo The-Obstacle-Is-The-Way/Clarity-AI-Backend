@@ -34,6 +34,122 @@ class ProviderStatus(Enum):
     PENDING = "pending"
 
 
+class ProviderRole(Enum):
+    """Role of a provider - alias for ProviderType for backward compatibility."""
+    
+    PSYCHIATRIST = "psychiatrist"
+    PSYCHOLOGIST = "psychologist"
+    THERAPIST = "therapist"
+    NURSE_PRACTITIONER = "nurse_practitioner"
+    SOCIAL_WORKER = "social_worker"
+    COUNSELOR = "counselor"
+    OTHER = "other"
+
+
+class ProviderSpecialty(Enum):
+    """Specialty areas for providers."""
+    
+    GENERAL_PSYCHIATRY = "general_psychiatry"
+    CHILD_ADOLESCENT_PSYCHIATRY = "child_adolescent_psychiatry"
+    ADDICTION_PSYCHIATRY = "addiction_psychiatry"
+    GERIATRIC_PSYCHIATRY = "geriatric_psychiatry"
+    FORENSIC_PSYCHIATRY = "forensic_psychiatry"
+    CONSULTATION_LIAISON_PSYCHIATRY = "consultation_liaison_psychiatry"
+    COGNITIVE_BEHAVIORAL_THERAPY = "cognitive_behavioral_therapy"
+    DIALECTICAL_BEHAVIOR_THERAPY = "dialectical_behavior_therapy"
+    PSYCHODYNAMIC_THERAPY = "psychodynamic_therapy"
+    FAMILY_THERAPY = "family_therapy"
+    GROUP_THERAPY = "group_therapy"
+    TRAUMA_THERAPY = "trauma_therapy"
+    ANXIETY_DISORDERS = "anxiety_disorders"
+    MOOD_DISORDERS = "mood_disorders"
+    PSYCHOTIC_DISORDERS = "psychotic_disorders"
+    PERSONALITY_DISORDERS = "personality_disorders"
+    EATING_DISORDERS = "eating_disorders"
+    SUBSTANCE_USE_DISORDERS = "substance_use_disorders"
+    ADHD = "adhd"
+    AUTISM_SPECTRUM_DISORDERS = "autism_spectrum_disorders"
+
+
+class Credential:
+    """Represents a professional credential for a provider."""
+    
+    def __init__(
+        self,
+        type: str,
+        issuer: str,
+        issue_date: datetime,
+        expiration_date: datetime | None = None,
+        identifier: str | None = None,
+        verification_url: str | None = None,
+    ):
+        """
+        Initialize a credential.
+        
+        Args:
+            type: Type of credential (e.g., "MD", "PhD", "License")
+            issuer: Institution that issued the credential
+            issue_date: Date the credential was issued
+            expiration_date: Optional expiration date
+            identifier: Optional identifier (e.g., license number)
+            verification_url: Optional URL for verification
+        """
+        self.type = type
+        self.issuer = issuer
+        self.issue_date = issue_date
+        self.expiration_date = expiration_date
+        self.identifier = identifier
+        self.verification_url = verification_url
+    
+    @property
+    def is_expired(self) -> bool:
+        """Check if the credential is expired."""
+        if self.expiration_date is None:
+            return False
+        return datetime.now() > self.expiration_date
+    
+    @property
+    def expires_soon(self) -> bool:
+        """Check if the credential expires within 30 days."""
+        if self.expiration_date is None:
+            return False
+        days_until_expiry = (self.expiration_date - datetime.now()).days
+        return 0 < days_until_expiry <= 30
+
+
+class AvailabilitySlot:
+    """Represents an availability slot for a provider."""
+    
+    def __init__(
+        self,
+        day_of_week: int,
+        start_time: time,
+        end_time: time,
+        is_telehealth: bool = True,
+        is_in_person: bool = True,
+    ):
+        """
+        Initialize an availability slot.
+        
+        Args:
+            day_of_week: Day of the week (0 = Monday, 6 = Sunday)
+            start_time: Start time of availability
+            end_time: End time of availability
+            is_telehealth: Whether telehealth appointments are supported
+            is_in_person: Whether in-person appointments are supported
+        """
+        if not (0 <= day_of_week <= 6):
+            raise ValidationError("Day of week must be between 0 (Monday) and 6 (Sunday)")
+        if start_time >= end_time:
+            raise ValidationError("Start time must be before end time")
+        
+        self.day_of_week = day_of_week
+        self.start_time = start_time
+        self.end_time = end_time
+        self.is_telehealth = is_telehealth
+        self.is_in_person = is_in_person
+
+
 class Provider:
     """
     Provider entity representing a healthcare provider in the system.
@@ -61,6 +177,7 @@ class Provider:
     availability: dict[str, list[dict[str, Any]]]
     max_patients: int | None
     current_patient_count: int
+    accepts_new_patients: bool
     created_at: datetime
     updated_at: datetime
     metadata: dict[str, Any]
@@ -85,6 +202,7 @@ class Provider:
         availability: dict[str, list[dict[str, Any]]] | None = None,
         max_patients: int | None = None,
         current_patient_count: int = 0,
+        accepts_new_patients: bool = True,
         created_at: datetime | None = None,
         updated_at: datetime | None = None,
         metadata: dict[str, Any] | None = None,
@@ -111,6 +229,7 @@ class Provider:
             availability: Availability schedule of the provider
             max_patients: Maximum number of patients the provider can have
             current_patient_count: Current number of patients
+            accepts_new_patients: Whether the provider accepts new patients
             created_at: Time the provider was created
             updated_at: Time the provider was last updated
             metadata: Additional metadata
@@ -145,6 +264,7 @@ class Provider:
         self.availability = availability or {}
         self.max_patients = max_patients
         self.current_patient_count = current_patient_count
+        self.accepts_new_patients = accepts_new_patients
         self.created_at = created_at or datetime.now()
         self.updated_at = updated_at or datetime.now()
         self.metadata = metadata or {}
@@ -328,6 +448,43 @@ class Provider:
             self.status = status
 
         # Update timestamp
+        self.updated_at = datetime.now()
+
+    @property
+    def is_active(self) -> bool:
+        """
+        Check if the provider is active.
+
+        Returns:
+            True if the provider is active, False otherwise
+        """
+        return self.status == ProviderStatus.ACTIVE
+
+    @property
+    def full_name(self) -> str:
+        """
+        Get the provider's full name.
+
+        Returns:
+            Full name combining first and last name
+        """
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        elif self.first_name:
+            return self.first_name
+        elif self.last_name:
+            return self.last_name
+        else:
+            return "Unknown Provider"
+
+    def set_accepts_new_patients(self, accepts: bool) -> None:
+        """
+        Set whether the provider accepts new patients.
+
+        Args:
+            accepts: Whether to accept new patients
+        """
+        self.accepts_new_patients = accepts
         self.updated_at = datetime.now()
 
     def add_specialty(self, specialty: str) -> None:
@@ -626,6 +783,7 @@ class Provider:
             "availability": self.availability,
             "max_patients": self.max_patients,
             "current_patient_count": self.current_patient_count,
+            "accepts_new_patients": self.accepts_new_patients,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "metadata": self.metadata,

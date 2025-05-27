@@ -64,7 +64,7 @@ class IAppointmentRepository(ABC):
         """Find appointments for a provider that overlap with a given time slot, excluding a specific appointment."""
         pass
 
-    # Convenience method for backward compatibility with domain services
+    @abstractmethod
     async def save(self, appointment: Appointment) -> Appointment:
         """
         Save an appointment (create if new, update if existing).
@@ -81,13 +81,7 @@ class IAppointmentRepository(ABC):
         Raises:
             ValueError: If appointment ID exists but appointment is not found for update
         """
-        if appointment.id is None:
-            return await self.create(appointment)
-        else:
-            result = await self.update(appointment)
-            if result is None:
-                raise ValueError(f"Appointment with ID {appointment.id} not found for update")
-            return result
+        pass
 
 
 # ---------------------------------------------------------------------------
