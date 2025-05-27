@@ -440,7 +440,7 @@ class JWTServiceImpl(IJwtService):
             raise
             
     # Backward compatibility method for tests
-    def create_refresh_token(
+    def create_refresh_token_sync(
         self,
         data: dict[str, Any] | None = None,
         subject: str | None = None,
@@ -668,14 +668,63 @@ class JWTServiceImpl(IJwtService):
         Returns:
             JWT access token as a string
         """
-        return await self.create_access_token_async(
-            user_id=user_id,
-            roles=roles,
-            expires_delta_minutes=expires_delta_minutes
+        # Convert UUID to string if needed
+        subject_str = str(user_id)
+        
+        # Get current time
+        now = datetime.now(timezone.utc)
+        
+        # Set token expiration
+        if expires_delta_minutes:
+            expire = now + timedelta(minutes=float(expires_delta_minutes))
+        else:
+            expire = now + timedelta(minutes=float(self._access_token_expire_minutes))
+        
+        # Create token payload using domain type factory
+        payload = create_access_token_payload(
+            subject=subject_str,
+            roles=roles or [],
+            permissions=[],
+            username=None,
+            session_id=None,
+            issued_at=now,
+            expires_at=expire,
+            token_id=str(uuid4()),
+            issuer=self._token_issuer,
+            audience=self._token_audience,
+            additional_claims={},
         )
+        
+        # Encode the token
+        encoded_jwt = jwt_encode(
+            payload.model_dump(exclude_none=True),
+            self._secret_key,
+            algorithm=self._algorithm,
+        )
+        
+        # Log token creation
+        logger.info(f"Access token created for user {subject_str}")
+        
+        # Audit log the token creation if audit_logger is available
+        if self.audit_logger:
+            try:
+                await self.audit_logger.log_security_event(
+                    event_type=AuditEventType.TOKEN_CREATION,
+                    description=f"Access token created for user {subject_str}",
+                    user_id=subject_str,
+                    metadata={
+                        "token_type": "access",
+                        "expires_at": expire.isoformat(),
+                        "jti": payload.jti,
+                    },
+                )
+            except Exception as e:
+                logger.warning(f"Failed to audit log token creation: {e!s}")
+        
+        return encoded_jwt
 
     # Backward compatibility methods for tests
-    def create_access_token(
+    def create_access_token_sync(
         self,
         data: dict[str, Any] | None = None,
         subject: str | None = None,
