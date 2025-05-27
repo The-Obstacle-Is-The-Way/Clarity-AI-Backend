@@ -378,7 +378,7 @@ class JWTServiceImpl(IJwtService):
             logger.error(f"Error creating access token: {e!s}")
             raise
 
-    async def create_refresh_token(
+    async def create_refresh_token_async(
         self, user_id: str | UUID, expires_delta_minutes: int | None = None
     ) -> str:
         """Create a JWT refresh token that can be used to generate new access tokens.
@@ -440,7 +440,7 @@ class JWTServiceImpl(IJwtService):
             raise
             
     # Backward compatibility method for tests
-    def create_refresh_token_sync(
+    def create_refresh_token(
         self,
         data: dict[str, Any] | None = None,
         subject: str | None = None,
@@ -652,7 +652,7 @@ class JWTServiceImpl(IJwtService):
             logger.error(f"Error verifying token: {e!s}")
             raise InvalidTokenException(f"Token verification failed: {e!s}")
             
-    async def create_access_token(
+    async def create_access_token_async(
         self,
         user_id: str | UUID,
         roles: list[str] | None = None,
@@ -724,7 +724,7 @@ class JWTServiceImpl(IJwtService):
         return encoded_jwt
 
     # Backward compatibility methods for tests
-    def create_access_token_sync(
+    def create_access_token(
         self,
         data: dict[str, Any] | None = None,
         subject: str | None = None,
