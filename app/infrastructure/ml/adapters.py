@@ -36,7 +36,7 @@ class SymptomForecastingAdapter(SymptomForecastingInterface):
     calls to the infrastructure SymptomForecastingService.
     """
 
-    def __init__(self, service: SymptomForecastingService):
+    def __init__(self, service: SymptomForecastingService) -> None:
         """
         Initialize the adapter.
 
