@@ -83,7 +83,7 @@ def transform_file(file_path: Path) -> tuple[bool, int]:
     return False, 0
 
 
-def main():
+def main() -> None:
     """Main function to transform datetime imports across the codebase."""
     # Find Python files
     python_files = find_python_files(SOURCE_DIRS, EXCLUSION_DIRS)

@@ -17,6 +17,7 @@ import subprocess
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+from typing import Dict, Any, Tuple
 
 
 class FixPhase(str, Enum):
@@ -36,9 +37,9 @@ PROJECT_ROOT = Path(__file__).parent.parent.absolute()
 APP_DIR = PROJECT_ROOT / "app"
 
 
-def get_issue_counts(output: str) -> dict[str, int]:
+def get_issue_counts(output: str) -> Dict[str, int]:
     """Extract issue counts from ruff output."""
-    counts = {}
+    counts: Dict[str, int] = {}
     for line in output.split("\n"):
         parts = line.strip().split()
         if len(parts) >= 2 and parts[0].isdigit() and len(parts[1]) == 5 and parts[1][4] == " ":
@@ -169,7 +170,7 @@ def fix_type_annotations(path: str | None = None) -> None:
 def generate_report() -> None:
     """Generate a detailed report of the current linting status."""
     print("Generating linting report...")
-    report = {
+    report: Dict[str, Any] = {
         "timestamp": datetime.now().isoformat(),
         "ruff": {},
         "black": {},
@@ -208,7 +209,7 @@ def generate_report() -> None:
     print(f"isort import ordering issues: {report['isort']['would_change']}")
 
 
-def main():
+def main() -> None:
     """Main function to orchestrate linting fixes."""
     parser = argparse.ArgumentParser(description="Fix linting issues in the codebase.")
     parser.add_argument(

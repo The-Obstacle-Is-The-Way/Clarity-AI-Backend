@@ -16,7 +16,7 @@ import re
 from pathlib import Path
 
 
-def fix_db_driver():
+def fix_db_driver() -> bool:
     """Fix the database driver configuration for async SQLAlchemy."""
     # Get the base paths
     base_dir = Path(__file__).resolve().parent.parent

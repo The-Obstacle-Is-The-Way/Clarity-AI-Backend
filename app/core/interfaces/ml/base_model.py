@@ -30,7 +30,7 @@ class BaseMLModel(ABC):
         pass
 
     @abstractmethod
-    async def initialize(self, **kwargs) -> bool:
+    async def initialize(self, **kwargs: Any) -> bool:
         """
         Initialize the model with the given parameters.
 

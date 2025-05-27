@@ -5,8 +5,10 @@ This module provides a minimal implementation of the YAML interface
 needed for testing, without requiring the actual PyYAML package.
 """
 
+from typing import Any, Dict, Optional
 
-def safe_load(stream):
+
+def safe_load(stream: Any) -> Dict[str, Any]:
     """
     Mock implementation of yaml.safe_load.
 
@@ -43,7 +45,7 @@ def safe_load(stream):
     }
 
 
-def dump(data, stream=None, **kwargs):
+def dump(data: Any, stream: Optional[Any] = None, **kwargs: Any) -> Optional[str]:
     """
     Mock implementation of yaml.dump.
 

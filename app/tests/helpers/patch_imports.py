@@ -9,11 +9,11 @@ import sys
 import types
 from collections.abc import Callable
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, Generator
 
 
 @contextmanager
-def patch_imports():
+def patch_imports() -> Generator[None, None, None]:
     """
     Context manager to temporarily patch problematic imports during test collection.
 

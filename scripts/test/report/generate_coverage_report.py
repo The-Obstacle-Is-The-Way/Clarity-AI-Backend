@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 
-def generate_coverage_report():
+def generate_coverage_report() -> bool:
     """Generate coverage report from existing coverage data."""
     base_dir = Path(__file__).resolve().parent.parent
     print(f"Base directory: {base_dir}")
