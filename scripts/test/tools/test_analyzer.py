@@ -267,7 +267,7 @@ class TestAnalyzer:
             if isinstance(node, ast.FunctionDef) and (
                 node.name.startswith("test_")
                 or any(
-                    decorator.id == "pytest.mark.parametrize"
+                    getattr(decorator, 'id', None) == "pytest.mark.parametrize"
                     for decorator in node.decorator_list
                     if isinstance(decorator, ast.Attribute)
                 )

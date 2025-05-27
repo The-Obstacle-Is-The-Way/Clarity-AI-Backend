@@ -13,6 +13,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Dict, List, Optional
 
 # Configure logging
 logging.basicConfig(
@@ -33,7 +34,7 @@ class TestRunner:
         self.auto_fix_script = os.path.join(
             backend_dir, "scripts", "test", "tools", "auto_fix_syntax.py"
         )
-        self.results = {
+        self.results: Dict[str, List[str]] = {
             "fixed_files": [],
             "passing_tests": [],
             "failing_tests": [],
