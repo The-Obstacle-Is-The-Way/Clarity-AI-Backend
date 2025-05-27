@@ -8,7 +8,7 @@ This module defines the base exception class for all domain exceptions.
 class DomainException(Exception):
     """Base exception for all domain-specific exceptions."""
 
-    def __init__(self, message: str = "A domain error occurred"):
+    def __init__(self, message: str = "A domain error occurred") -> None:
         """
         Initialize the domain exception.
 

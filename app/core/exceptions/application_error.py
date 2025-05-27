@@ -84,7 +84,9 @@ class ApplicationError(BaseApplicationError):
         message: str = "Application error",
         detail: str | list[str] | dict[str, Any] | None = None,
         code: ErrorCode = ErrorCode.INTERNAL_ERROR,
-    ):
+        *args: Any,
+        **kwargs: Any
+    ) -> None:
         """
         Initialize an application error.
 

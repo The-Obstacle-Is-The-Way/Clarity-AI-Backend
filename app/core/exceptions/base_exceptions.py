@@ -23,11 +23,13 @@ class BaseException(Exception):
         message: str,
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str | None = None,
+        *args: Any,
+        **kwargs: Any
     ) -> None:
         self.message = message
         self.detail = detail
         self.code = code
-        super().__init__(self.message)
+        super().__init__(self.message, *args, **kwargs)
 
     def __str__(self) -> str:
         if self.detail:
