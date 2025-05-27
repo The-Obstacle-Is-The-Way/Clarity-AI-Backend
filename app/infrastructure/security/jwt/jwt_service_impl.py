@@ -480,19 +480,16 @@ class JWTServiceImpl(IJwtService):
             "original_iat": int(now.timestamp()),
         }
         
-        # Process additional claims if provided
-        additional_claims_dict: Dict[str, Any] = additional_claims.copy() if additional_claims else {}
-        
         # Create refresh token payload
         payload = create_refresh_token_payload(
             subject=subject_str,
             issued_at=now,
             expires_at=expire,
-            token_id=payload_data["jti"],
+            token_id=str(payload_data["jti"]),
             issuer=self._token_issuer,
             audience=self._token_audience,
-            original_iat=payload_data["original_iat"],
-            additional_claims=additional_claims_dict,
+            original_iat=int(payload_data["original_iat"]),
+            additional_claims={},
         )
         
         # Encode the token
@@ -625,12 +622,9 @@ class JWTServiceImpl(IJwtService):
     # Backward compatibility methods for tests
     async def create_access_token(
         self,
-        data: dict[str, Any] | None = None,
-        subject: str | None = None,
-        expires_delta_minutes: int | None = None,
-        expires_delta: timedelta | None = None,
-        additional_claims: dict[str, Any] | None = None,
-        **kwargs
+        user_id: str | UUID,
+        roles: list[str] | None = None,
+        expires_delta_minutes: int | None = None
     ) -> str:
         """
         Synchronous backward compatibility method for creating access tokens.
@@ -647,167 +641,51 @@ class JWTServiceImpl(IJwtService):
         Returns:
             JWT access token as a string
         """
-        # Extract user_id, roles, and permissions from data or parameters
-        user_id = None
-        roles = None
-        permissions = None
-        session_id = None
-        custom_key = None
-        family_id = None
-        jti = None
-        
-        if data:
-            user_id = data.get("sub") or data.get("subject")
-            roles = data.get("roles")
-            permissions = data.get("permissions")
-            session_id = data.get("session_id")
-            custom_key = data.get("custom_key")
-            family_id = data.get("family_id")
-            jti = data.get("jti")
-        
-        if subject and not user_id:
-            user_id = subject
-            
-        if not user_id:
-            user_id = kwargs.get("user_id") or "default-subject-for-tests"
-            
-        # Extract additional fields from kwargs
-        if not session_id and "session_id" in kwargs:
-            session_id = kwargs["session_id"]
-        
-        if not custom_key and "custom_key" in kwargs:
-            custom_key = kwargs["custom_key"]
-        elif not custom_key and additional_claims is not None and "custom_key" in additional_claims:
-            custom_key = additional_claims["custom_key"]
-        
-        if not family_id and "family_id" in kwargs:
-            family_id = kwargs["family_id"]
-        
-        if not jti and "jti" in kwargs:
-            jti = kwargs["jti"]
-            
-        # Convert UUID to string if needed
-        subject_str = str(user_id)
+        # Convert user_id to string if it's a UUID
+        user_id_str = str(user_id)
         
         # Get current time
         now = datetime.now(timezone.utc)
         
         # Set token expiration
-        if expires_delta:
-            # Handle timedelta object directly
-            expire = now + expires_delta
-        elif expires_delta_minutes:
+        if expires_delta_minutes:
             expire = now + timedelta(minutes=float(expires_delta_minutes))
         else:
             expire = now + timedelta(minutes=float(self._access_token_expire_minutes))
         
         # Create token payload using domain type factory
-        # Prepare additional claims
-        claims_dict = {}
-        
-        # Add roles to additional claims if provided in data or additional_claims
-        if data and "roles" in data:
-            claims_dict["roles"] = data["roles"]
-        elif additional_claims and "roles" in additional_claims:
-            claims_dict["roles"] = additional_claims["roles"]
-            
-        # Add role (singular) for backward compatibility
-        if data and "role" in data:
-            claims_dict["role"] = data["role"]
-        elif additional_claims and "role" in additional_claims:
-            claims_dict["role"] = additional_claims["role"]
-        
-        # Add permissions to additional claims if provided
-        if permissions:
-            claims_dict["permissions"] = permissions
-            
-        # Add session_id to additional claims if provided
-        if session_id:
-            claims_dict["session_id"] = session_id
-            
-        # Add custom_key to additional claims if provided
-        if custom_key:
-            claims_dict["custom_key"] = custom_key
-            
-        # Add role to additional claims if provided
-        if additional_claims and "role" in additional_claims:
-            claims_dict["role"] = additional_claims["role"]
-            
-        # Add family_id to additional claims if provided
-        if family_id:
-            claims_dict["family_id"] = family_id
-            
-        # Extract custom fields from data if present, filtering out PHI fields
-        if data and isinstance(data, dict):
-            for key, value in data.items():
-                if (key not in ["sub", "roles", "permissions", "session_id", "custom_key", "family_id", "jti"]
-                    and key not in TokenPayload.PHI_FIELDS):
-                    claims_dict[key] = value
-            
-        # Add any other additional_claims if provided, filtering out PHI fields
-        if additional_claims:
-            for key, value in additional_claims.items():
-                if (key not in ["user_id", "session_id", "custom_key", "family_id", "jti"]
-                    and key not in TokenPayload.PHI_FIELDS):
-                    claims_dict[key] = value
-            
-        # Add any other kwargs as additional claims, filtering out PHI fields
-        for key, value in kwargs.items():
-            if key not in ["user_id", "session_id", "custom_key", "family_id", "jti", "expires_delta", "additional_claims"]:
-                # Skip PHI fields
-                if key not in TokenPayload.PHI_FIELDS:
-                    claims_dict[key] = value
-        
         payload = create_access_token_payload(
-            subject=subject_str,
-            roles=claims_dict.get("roles", roles or []),
-            permissions=permissions or [],
-            username=data.get("username") if data else None,
-            session_id=session_id,
+            subject=user_id_str,
+            roles=roles or [],
+            permissions=[],
+            username=None,
+            session_id=None,
             issued_at=now,
             expires_at=expire,
-            token_id=jti or str(uuid4()),
+            token_id=str(uuid4()),
             issuer=self._token_issuer,
             audience=self._token_audience,
-            additional_claims=claims_dict,
+            additional_claims={},
         )
         
-        # Ensure custom_key is properly set in the payload
-        if custom_key:
-            payload.custom_fields["custom_key"] = custom_key
-            
-        # Ensure role is properly set in the payload
-        if "role" in claims_dict:
-            payload.custom_fields["role"] = claims_dict["role"]
-            # Also add to roles array if not already there
-            if claims_dict["role"] not in payload.roles:
-                payload.roles.append(claims_dict["role"])
-            
-        # Encode the token with all claims
-        payload_dict = payload.model_dump(exclude_none=True)
-        
-        # Add role directly to the top level for jose.jwt encoding
-        if "role" in claims_dict:
-            payload_dict["role"] = claims_dict["role"]
-            
         # Encode the token
+        payload_dict = payload.model_dump(exclude_none=True)
         encoded_jwt = jwt_encode(
             payload_dict,
             self._secret_key,
             algorithm=self._algorithm,
         )
         
-        # Log token creation (but don't use async logger)
-        logger.info(f"Access token created for user {subject_str}")
+        # Log token creation
+        logger.info(f"Access token created for user {user_id_str}")
         
         # Audit log the token creation if audit_logger is available
         if self.audit_logger:
             try:
-                # Use the correct method name for the mock
                 await self.audit_logger.log_security_event(
                     event_type=AuditEventType.TOKEN_CREATION,
-                    description=f"Access token created for user {subject_str}",
-                    user_id=subject_str,
+                    description=f"Access token created for user {user_id_str}",
+                    user_id=user_id_str,
                     metadata={
                         "token_type": "access",
                         "expires_at": expire.isoformat(),
@@ -1076,9 +954,9 @@ class JWTServiceImpl(IJwtService):
             refresh_payload = self.verify_refresh_token(refresh_token)
             
             # Create a new access token
-            new_access_token = self.create_access_token(
-                subject=refresh_payload.sub,
-                data={"roles": refresh_payload.roles}
+            new_access_token = await self.create_access_token(
+                user_id=refresh_payload.sub,
+                roles=refresh_payload.roles
             )
             
             # Audit log the token refresh
@@ -1218,7 +1096,7 @@ class JWTServiceImpl(IJwtService):
         
     # Additional methods needed for backward compatibility with tests
     
-    def check_resource_access(self, token: str, resource_id: str, required_roles: list[str] | None = None) -> bool:
+    async def check_resource_access(self, token: str, resource_id: str, required_roles: list[str] | None = None) -> bool:
         """
         Check if a token has access to a specific resource.
         
@@ -1232,7 +1110,7 @@ class JWTServiceImpl(IJwtService):
         """
         try:
             # Decode the token
-            payload = self.decode_token(token)
+            payload = await self.decode_token(token)
             
             # Check if token has required roles
             if required_roles:
