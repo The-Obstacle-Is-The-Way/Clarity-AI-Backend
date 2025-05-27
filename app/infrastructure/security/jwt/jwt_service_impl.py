@@ -440,64 +440,30 @@ class JWTServiceImpl(IJwtService):
             raise
             
     # Backward compatibility method for tests
-    def create_refresh_token(
+    async def create_refresh_token(
         self,
-        user_id: str | UUID | None = None,
-        expires_delta_minutes: int | None = None,
-        *,
-        data: dict[str, Any] | None = None,
-        subject: str | None = None,
-        expires_delta: timedelta | None = None,
-        additional_claims: dict[str, Any] | None = None
+        user_id: str | UUID,
+        expires_delta_minutes: int | None = None
     ) -> str:
         """
-        Synchronous backward compatibility method for creating refresh tokens.
-        
-        This method is provided for backward compatibility with existing tests
-        and code that uses the old API. New code should use the async version.
+        Create a refresh token for the specified user.
         
         Args:
-            data: Dictionary containing token data (old style)
-            subject: User ID (alternative to data)
+            user_id: User identifier (required)
             expires_delta_minutes: Custom expiration time in minutes
-            additional_claims: Additional claims to include in the token
-            **kwargs: Additional arguments for backward compatibility
             
         Returns:
             JWT refresh token as a string
         """
-        # Handle backward compatibility parameter mapping
-        final_user_id = user_id
-        final_expires_delta_minutes = expires_delta_minutes
-        
-        # Extract user_id from legacy 'data' parameter if provided
-        if data is not None:
-            if isinstance(data, dict) and "sub" in data:
-                final_user_id = data["sub"]
-            else:
-                raise ValueError("'data' parameter must be a dictionary containing 'sub' key")
-        
-        # Use 'subject' parameter if provided (takes precedence over data)
-        if subject is not None:
-            final_user_id = subject
-            
-        # Convert expires_delta timedelta to minutes if provided
-        if expires_delta is not None:
-            final_expires_delta_minutes = int(expires_delta.total_seconds() / 60)
-        
-        # Ensure we have a user_id
-        if final_user_id is None:
-            raise ValueError("user_id is required (via user_id, data['sub'], or subject parameter)")
-        
         # Convert UUID to string if needed
-        subject_str = str(final_user_id)
+        subject_str = str(user_id)
         
         # Get current time
         now = datetime.now(timezone.utc)
         
         # Set token expiration
-        if final_expires_delta_minutes:
-            expire = now + timedelta(minutes=float(final_expires_delta_minutes))
+        if expires_delta_minutes:
+            expire = now + timedelta(minutes=float(expires_delta_minutes))
         else:
             expire = now + timedelta(minutes=float(self._refresh_token_expire_minutes))
         
@@ -657,7 +623,7 @@ class JWTServiceImpl(IJwtService):
             raise InvalidTokenException(f"Token verification failed: {e!s}")
             
     # Backward compatibility methods for tests
-    def create_access_token(
+    async def create_access_token(
         self,
         data: dict[str, Any] | None = None,
         subject: str | None = None,
@@ -838,7 +804,7 @@ class JWTServiceImpl(IJwtService):
         if self.audit_logger:
             try:
                 # Use the correct method name for the mock
-                self.audit_logger.log_security_event(
+                await self.audit_logger.log_security_event(
                     event_type=AuditEventType.TOKEN_CREATION,
                     description=f"Access token created for user {subject_str}",
                     user_id=subject_str,
@@ -853,7 +819,7 @@ class JWTServiceImpl(IJwtService):
         
         return encoded_jwt
     
-    def decode_token(
+    async def decode_token(
         self,
         token: str,
         verify_signature: bool = True,
@@ -955,7 +921,7 @@ class JWTServiceImpl(IJwtService):
             if self.audit_logger:
                 try:
                     # Use the correct method name for the mock
-                    self.audit_logger.log_security_event(
+                    await self.audit_logger.log_security_event(
                         event_type=AuditEventType.TOKEN_VALIDATION,
                         description="Token verified successfully",
                         user_id=payload.sub if payload.sub else "unknown",
@@ -1117,7 +1083,7 @@ class JWTServiceImpl(IJwtService):
             
             # Audit log the token refresh
             if self.audit_logger:
-                self.audit_logger.log_security_event(
+                await self.audit_logger.log_security_event(
                     event_type=AuditEventType.TOKEN_REFRESH,
                     description=f"Access token refreshed for user {refresh_payload.sub}",
                     user_id=refresh_payload.sub,
