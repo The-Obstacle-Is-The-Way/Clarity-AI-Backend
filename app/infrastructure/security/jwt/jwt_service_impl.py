@@ -956,7 +956,7 @@ class JWTServiceImpl(IJwtService):
                 try:
                     # Use the correct method name for the mock
                     self.audit_logger.log_security_event(
-                        event_type=AuditEventType.TOKEN_VALIDATED,
+                        event_type=AuditEventType.TOKEN_VALIDATION,
                         description="Token verified successfully",
                         user_id=payload.sub if payload.sub else "unknown",
                         metadata={

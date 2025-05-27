@@ -75,7 +75,7 @@ class IAuditLogger(ABC):
     """
 
     @abstractmethod
-    def log_security_event(
+    async def log_security_event(
         self,
         event_type: AuditEventType,
         description: str,
