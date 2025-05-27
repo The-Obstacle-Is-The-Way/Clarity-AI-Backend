@@ -461,7 +461,14 @@ class JWTServiceImpl(IJwtService):
         # Handle backward compatibility for legacy 'data' parameter
         if data is not None and user_id is None:
             # Legacy parameter name for backward compatibility
-            actual_user_id = data
+            if isinstance(data, dict):
+                # Extract user ID from dictionary's 'sub' field
+                actual_user_id = data.get("sub")
+                if actual_user_id is None:
+                    raise ValueError("Dictionary 'data' parameter must contain a 'sub' field")
+            else:
+                # Use data directly (string or UUID)
+                actual_user_id = data
         elif user_id is not None and data is None:
             # New parameter name
             actual_user_id = user_id
