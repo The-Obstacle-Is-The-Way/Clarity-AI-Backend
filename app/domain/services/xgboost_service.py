@@ -3,6 +3,7 @@ Domain service interface for XGBoost prediction engine.
 Pure domain interface with no infrastructure dependencies.
 """
 from abc import ABC, abstractmethod
+from typing import Any
 from uuid import UUID
 
 from app.domain.entities.digital_twin_enums import BrainRegion
@@ -19,9 +20,9 @@ class XGBoostService(ABC):
         self,
         patient_id: UUID,
         digital_twin_state_id: UUID,
-        treatment_options: list[dict],
+        treatment_options: list[dict[str, Any]],
         time_horizon: str = "short_term",  # "short_term", "medium_term", "long_term"
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Predict response to treatment options based on Digital Twin state.
 
@@ -43,8 +44,8 @@ class XGBoostService(ABC):
         digital_twin_state_id: UUID,
         symptoms: list[str],
         time_points: list[int],  # days into the future
-        with_treatment: dict | None = None,
-    ) -> dict:
+        with_treatment: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Forecast symptom progression over time with or without treatment.
 
@@ -63,7 +64,7 @@ class XGBoostService(ABC):
     @abstractmethod
     async def identify_risk_factors(
         self, patient_id: UUID, digital_twin_state_id: UUID, target_outcome: str
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """
         Identify risk factors for a specific outcome based on the Digital Twin state.
 
@@ -80,7 +81,7 @@ class XGBoostService(ABC):
     @abstractmethod
     async def calculate_feature_importance(
         self, patient_id: UUID, digital_twin_state_id: UUID, prediction_type: str
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """
         Calculate feature importance for a specific prediction type.
 
@@ -115,9 +116,9 @@ class XGBoostService(ABC):
         self,
         patient_id: UUID,
         digital_twin_state_id: UUID,
-        treatment_options: list[dict],
+        treatment_options: list[dict[str, Any]],
         evaluation_metrics: list[str],
-    ) -> list[tuple[dict, dict]]:
+    ) -> list[tuple[dict[str, Any], dict[str, Any]]]:
         """
         Compare multiple treatment options based on predicted outcomes.
 

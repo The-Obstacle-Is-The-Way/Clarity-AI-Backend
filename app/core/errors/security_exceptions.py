@@ -6,6 +6,7 @@ principles. These exceptions represent domain-specific error conditions related
 to security features like authentication, authorization, and access control.
 """
 
+from typing import Any
 
 from app.core.errors.base_exceptions import BaseAppException
 
@@ -27,7 +28,7 @@ class InvalidCredentialsError(SecurityException):
     def __init__(
         self,
         message: str = "Invalid authentication credentials provided",
-        detail: dict | None = None,
+        detail: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, detail=detail)
 
@@ -38,7 +39,7 @@ class TokenExpiredError(InvalidCredentialsError):
     def __init__(
         self,
         message: str = "Authentication token has expired",
-        detail: dict | None = None,
+        detail: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, detail=detail)
 
@@ -49,7 +50,7 @@ class TokenValidationError(InvalidCredentialsError):
     def __init__(
         self,
         message: str = "Authentication token validation failed",
-        detail: dict | None = None,
+        detail: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, detail=detail)
 
@@ -64,8 +65,8 @@ class InsufficientPermissionsError(SecurityException):
     def __init__(
         self,
         message: str = "Insufficient permissions to perform this action",
-        required_permissions: list | None = None,
-        detail: dict | None = None,
+        required_permissions: list[str] | None = None,
+        detail: dict[str, Any] | None = None,
     ) -> None:
         if required_permissions:
             if detail is None:
@@ -80,7 +81,7 @@ class SessionExpiredError(SecurityException):
     def __init__(
         self,
         message: str = "Your session has expired, please login again",
-        detail: dict | None = None,
+        detail: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, detail=detail)
 
@@ -92,7 +93,7 @@ class RateLimitExceededError(SecurityException):
         self,
         message: str = "Rate limit exceeded",
         retry_after: int | None = None,
-        detail: dict | None = None,
+        detail: dict[str, Any] | None = None,
     ) -> None:
         if retry_after:
             if detail is None:
