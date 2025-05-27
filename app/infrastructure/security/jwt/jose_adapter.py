@@ -5,7 +5,7 @@ Adapts the python-jose library for JWT operations while providing a consistent
 interface to ensure security and HIPAA compliance.
 """
 
-from typing import Any, cast
+from typing import Any
 
 # Import JWT functionalities from python-jose
 from jose import ExpiredSignatureError, JWTError, jwt
@@ -43,7 +43,7 @@ def encode(
         actual_headers.update({"typ": "JWT", "use": "access"})
 
     # Encode with jose
-    return cast(str, jwt.encode(claims, key, algorithm=algorithm, headers=actual_headers))
+    return jwt.encode(claims, key, algorithm=algorithm, headers=actual_headers)
 
 
 def decode(
@@ -92,7 +92,7 @@ def decode(
         }
 
     # Decode with jose
-    return cast(dict[str, Any], jwt.decode(
+    return jwt.decode(
         token,
         key,
         algorithms=algorithms,
@@ -100,4 +100,4 @@ def decode(
         issuer=issuer,
         subject=subject,
         options=options,
-    ))
+    )
