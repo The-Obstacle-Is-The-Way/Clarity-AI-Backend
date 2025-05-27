@@ -245,7 +245,7 @@ class JWTServiceImpl(IJwtService):
         if refresh_token_expire_days:
             self._refresh_token_expire_minutes = refresh_token_expire_days * 24 * 60
         elif settings and hasattr(settings, "refresh_token_expire_minutes"):
-            self._refresh_token_expire_minutes = settings.refresh_token_expire_minutes
+            self._refresh_token_expire_minutes = int(settings.refresh_token_expire_minutes) if settings.refresh_token_expire_minutes is not None else 10080
         else:
             self._refresh_token_expire_minutes = 10080  # Default to 7 days in minutes
 
@@ -839,7 +839,7 @@ class JWTServiceImpl(IJwtService):
             try:
                 # Use the correct method name for the mock
                 self.audit_logger.log_security_event(
-                    event_type="TOKEN_CREATION",  # Use string instead of enum
+                    event_type=AuditEventType.TOKEN_CREATION,
                     description=f"Access token created for user {subject_str}",
                     user_id=subject_str,
                     metadata={
@@ -956,7 +956,7 @@ class JWTServiceImpl(IJwtService):
                 try:
                     # Use the correct method name for the mock
                     self.audit_logger.log_security_event(
-                        event_type="TOKEN_VERIFICATION",  # Use string instead of enum
+                        event_type=AuditEventType.TOKEN_VALIDATED,
                         description="Token verified successfully",
                         user_id=payload.sub if payload.sub else "unknown",
                         metadata={
