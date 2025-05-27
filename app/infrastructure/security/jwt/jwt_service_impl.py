@@ -8,7 +8,7 @@ and handling JWT token creation, validation, and management for HIPAA compliance
 import logging
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Dict
 from uuid import UUID, uuid4
 
 from jose.exceptions import ExpiredSignatureError, JWTError
@@ -442,11 +442,13 @@ class JWTServiceImpl(IJwtService):
     # Backward compatibility method for tests
     def create_refresh_token(
         self,
+        user_id: str | UUID | None = None,
+        expires_delta_minutes: int | None = None,
+        *,
         data: dict[str, Any] | None = None,
         subject: str | None = None,
-        expires_delta_minutes: int | None = None,
-        additional_claims: dict[str, Any] | None = None,
-        **kwargs
+        expires_delta: timedelta | None = None,
+        additional_claims: dict[str, Any] | None = None
     ) -> str:
         """
         Synchronous backward compatibility method for creating refresh tokens.
@@ -464,27 +466,38 @@ class JWTServiceImpl(IJwtService):
         Returns:
             JWT refresh token as a string
         """
-        # Extract user_id from data or parameters
-        user_id = None
+        # Handle backward compatibility parameter mapping
+        final_user_id = user_id
+        final_expires_delta_minutes = expires_delta_minutes
         
-        if data:
-            user_id = data.get("sub") or data.get("subject")
+        # Extract user_id from legacy 'data' parameter if provided
+        if data is not None:
+            if isinstance(data, dict) and "sub" in data:
+                final_user_id = data["sub"]
+            else:
+                raise ValueError("'data' parameter must be a dictionary containing 'sub' key")
         
-        if subject and not user_id:
-            user_id = subject
+        # Use 'subject' parameter if provided (takes precedence over data)
+        if subject is not None:
+            final_user_id = subject
             
-        if not user_id:
-            user_id = kwargs.get("user_id") or "default-subject-for-tests"
-            
+        # Convert expires_delta timedelta to minutes if provided
+        if expires_delta is not None:
+            final_expires_delta_minutes = int(expires_delta.total_seconds() / 60)
+        
+        # Ensure we have a user_id
+        if final_user_id is None:
+            raise ValueError("user_id is required (via user_id, data['sub'], or subject parameter)")
+        
         # Convert UUID to string if needed
-        subject_str = str(user_id)
+        subject_str = str(final_user_id)
         
         # Get current time
         now = datetime.now(timezone.utc)
         
         # Set token expiration
-        if expires_delta_minutes:
-            expire = now + timedelta(minutes=float(expires_delta_minutes))
+        if final_expires_delta_minutes:
+            expire = now + timedelta(minutes=float(final_expires_delta_minutes))
         else:
             expire = now + timedelta(minutes=float(self._refresh_token_expire_minutes))
         
@@ -501,17 +514,8 @@ class JWTServiceImpl(IJwtService):
             "original_iat": int(now.timestamp()),
         }
         
-        # Add additional claims if provided
-        if additional_claims:
-            payload_data.update(additional_claims)
-            
-        # Prepare additional claims
-        additional_claims_dict = {}
-        
-        # Add family_id if provided
-        if additional_claims and "family_id" in additional_claims:
-            additional_claims_dict["family_id"] = additional_claims["family_id"]
-            payload_data["family_id"] = additional_claims["family_id"]
+        # No additional claims processing needed for interface compliance
+        additional_claims_dict: Dict[str, Any] = {}
         
         # Create refresh token payload
         payload = create_refresh_token_payload(
@@ -652,77 +656,6 @@ class JWTServiceImpl(IJwtService):
             logger.error(f"Error verifying token: {e!s}")
             raise InvalidTokenException(f"Token verification failed: {e!s}")
             
-    async def create_access_token_async(
-        self,
-        user_id: str | UUID,
-        roles: list[str] | None = None,
-        expires_delta_minutes: int | None = None,
-    ) -> str:
-        """Create a JWT access token for authentication.
-
-        Args:
-            user_id: The user ID to encode in the token
-            roles: The user roles to encode in the token
-            expires_delta_minutes: Custom expiration time in minutes
-
-        Returns:
-            JWT access token as a string
-        """
-        # Convert UUID to string if needed
-        subject_str = str(user_id)
-        
-        # Get current time
-        now = datetime.now(timezone.utc)
-        
-        # Set token expiration
-        if expires_delta_minutes:
-            expire = now + timedelta(minutes=float(expires_delta_minutes))
-        else:
-            expire = now + timedelta(minutes=float(self._access_token_expire_minutes))
-        
-        # Create token payload using domain type factory
-        payload = create_access_token_payload(
-            subject=subject_str,
-            roles=roles or [],
-            permissions=[],
-            username=None,
-            session_id=None,
-            issued_at=now,
-            expires_at=expire,
-            token_id=str(uuid4()),
-            issuer=self._token_issuer,
-            audience=self._token_audience,
-            additional_claims={},
-        )
-        
-        # Encode the token
-        encoded_jwt = jwt_encode(
-            payload.model_dump(exclude_none=True),
-            self._secret_key,
-            algorithm=self._algorithm,
-        )
-        
-        # Log token creation
-        logger.info(f"Access token created for user {subject_str}")
-        
-        # Audit log the token creation if audit_logger is available
-        if self.audit_logger:
-            try:
-                await self.audit_logger.log_security_event(
-                    event_type=AuditEventType.TOKEN_CREATION,
-                    description=f"Access token created for user {subject_str}",
-                    user_id=subject_str,
-                    metadata={
-                        "token_type": "access",
-                        "expires_at": expire.isoformat(),
-                        "jti": payload.jti,
-                    },
-                )
-            except Exception as e:
-                logger.warning(f"Failed to audit log token creation: {e!s}")
-        
-        return encoded_jwt
-
     # Backward compatibility methods for tests
     def create_access_token(
         self,
