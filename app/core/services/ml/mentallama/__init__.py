@@ -221,7 +221,7 @@ class MentaLLaMA(MentaLLaMAInterface):
         negative_count = sum(1 for word in words if word.lower() in negative_words)
 
         # Calculate simple sentiment score (-1 to 1)
-        sentiment_score = 0
+        sentiment_score = 0.0
         if word_count > 0:
             sentiment_score = (positive_count - negative_count) / word_count
             sentiment_score = max(-1, min(1, sentiment_score * 5))  # Scale and clamp
@@ -964,7 +964,7 @@ class MentaLLaMA(MentaLLaMAInterface):
         text_lower = text.lower()
 
         # Analyze each requested dimension
-        dimension_results = {}
+        dimension_results: dict[str, dict[str, Any]] = {}
         for dimension in dimensions:
             if dimension not in dimension_keywords:
                 continue
@@ -1016,7 +1016,7 @@ class MentaLLaMA(MentaLLaMAInterface):
         # Determine primary dimensions based on relevance scores
         sorted_dimensions = sorted(
             dimension_results.items(),
-            key=lambda x: x[1]["relevance_score"],
+            key=lambda x: float(x[1]["relevance_score"]),
             reverse=True,
         )
         primary_dimensions = [
@@ -1187,7 +1187,7 @@ class MentaLLaMA(MentaLLaMAInterface):
         session_id = str(uuid.uuid4())
 
         # Initialize session
-        session = {
+        session: dict[str, Any] = {
             "id": session_id,
             "therapist_id": therapist_id,
             "patient_id": patient_id,
@@ -1585,7 +1585,7 @@ class MentaLLaMA(MentaLLaMAInterface):
         negative_count = sum(1 for word in words if word in negative_words)
 
         # Calculate sentiment score (-1 to 1)
-        sentiment_score = 0
+        sentiment_score: float = 0.0
         if len(words) > 0:
             sentiment_score = (positive_count - negative_count) / len(words) * 5
             sentiment_score = max(-1, min(1, sentiment_score))
@@ -1948,12 +1948,12 @@ class MentaLLaMA(MentaLLaMAInterface):
         Returns:
             Clinical recommendations
         """
-        recommendations = {
-            "clinical_focus": [],
+        recommendations: dict[str, Any] = {
+            "clinical_focus": list[str](),
             "follow_up": False,
             "immediate_action": False,
-            "therapeutic_approaches": [],
-            "support_resources": [],
+            "therapeutic_approaches": list[str](),
+            "support_resources": list[str](),
         }
 
         # Check risk levels
