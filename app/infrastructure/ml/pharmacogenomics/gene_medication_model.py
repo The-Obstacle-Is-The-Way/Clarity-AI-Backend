@@ -16,6 +16,7 @@ from uuid import UUID
 import joblib
 import numpy as np
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestClassifier
+from sklearn.base import BaseEstimator
 
 from app.domain.utils.datetime_utils import UTC
 from app.infrastructure.ml.base.base_model import BaseModel
@@ -89,9 +90,9 @@ class GeneMedicationModel(BaseModel):
         ]
 
         # Initialize models
-        self.response_model = None  # Predicts medication response
-        self.side_effect_model = None  # Predicts side effect risk
-        self.interaction_model = None  # Analyzes gene-medication interactions
+        self.response_model: RandomForestClassifier | None = None  # Predicts medication response
+        self.side_effect_model: RandomForestClassifier | None = None  # Predicts side effect risk
+        self.interaction_model: GradientBoostingRegressor | None = None  # Analyzes gene-medication interactions
 
         # Gene-medication interaction database
         self.interaction_db = {}
@@ -756,6 +757,10 @@ class GeneMedicationModel(BaseModel):
                 X_val = validation_data["features"]
                 y_val_response = validation_data["response_labels"]
                 y_val_side_effects = validation_data["side_effect_labels"]
+
+                # Type guard assertions for MyPy
+                assert self.response_model is not None, "Response model must be trained before validation"
+                assert self.side_effect_model is not None, "Side effect model must be trained before validation"
 
                 val_response_accuracy = self.response_model.score(X_val, y_val_response)
                 val_side_effect_accuracy = self.side_effect_model.score(X_val, y_val_side_effects)
