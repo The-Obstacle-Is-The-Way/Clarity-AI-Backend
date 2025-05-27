@@ -9,13 +9,11 @@ import uuid
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import (
-    JSON,
     ForeignKey,
     Integer,
     String,
     Text,
 )
-from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.sqlalchemy.models.base import (
@@ -23,7 +21,7 @@ from app.infrastructure.persistence.sqlalchemy.models.base import (
     Base,
     TimestampMixin,
 )
-from app.infrastructure.persistence.sqlalchemy.types import GUID
+from app.infrastructure.persistence.sqlalchemy.types import GUID, JSONEncodedDict
 
 if TYPE_CHECKING:
     from app.domain.entities.clinical_note import ClinicalNote
@@ -78,7 +76,7 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
         nullable=True
     )
     tags: Mapped[Optional[dict]] = mapped_column(
-        MutableDict.as_mutable(JSON()),
+        JSONEncodedDict,
         nullable=True
     )
     version: Mapped[int] = mapped_column(

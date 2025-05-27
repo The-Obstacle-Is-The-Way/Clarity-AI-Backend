@@ -12,20 +12,19 @@ import uuid
 import datetime
 
 from sqlalchemy import (
-    JSON,
     Boolean,
-
     DateTime,
     Float,
     ForeignKey,
+    JSON,
     String,
 )
 from sqlalchemy import UUID as SQLAlchemyUUID
-from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.utils.datetime_utils import now_utc
 from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin
+from app.infrastructure.persistence.sqlalchemy.types import JSONEncodedDict
 
 
 class BiometricTwinModel(Base, TimestampMixin):
@@ -49,7 +48,7 @@ class BiometricTwinModel(Base, TimestampMixin):
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
     baseline_established: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     connected_devices: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    config: Mapped[dict | None] = mapped_column(MutableDict.as_mutable(JSON), nullable=True)
+    config: Mapped[dict | None] = mapped_column(JSONEncodedDict, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="active", nullable=False)
 
     patient = relationship("Patient", back_populates="biometric_twin")
@@ -122,9 +121,9 @@ class BiometricTimeseriesDataModel(Base, TimestampMixin):
     timestamp: Mapped[datetime.datetime] = mapped_column(DateTime, default=now_utc, nullable=False, index=True)
     value_numeric: Mapped[float | None] = mapped_column(Float, nullable=True)
     value_string: Mapped[str | None] = mapped_column(String, nullable=True)
-    value_json: Mapped[dict | None] = mapped_column(MutableDict.as_mutable(JSON()), nullable=True)
+    value_json: Mapped[dict | None] = mapped_column(JSONEncodedDict, nullable=True)
     unit: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    metadata_: Mapped[dict | None] = mapped_column("metadata", MutableDict.as_mutable(JSON()), nullable=True)
+    metadata_: Mapped[dict | None] = mapped_column("metadata", JSONEncodedDict, nullable=True)
 
     biometric_twin = relationship("BiometricTwinModel", back_populates="timeseries_data")
 

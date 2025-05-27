@@ -10,16 +10,14 @@ import uuid
 import datetime
 
 from sqlalchemy import (
-    JSON,
-
     DateTime,
     ForeignKey,
+    JSON,
     String,
     Text,
 )
 from sqlalchemy import UUID as SQLAlchemyUUID
 from sqlalchemy import Enum as SQLAlchemyEnum
-from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.entities.biometric_alert import AlertStatusEnum
@@ -30,6 +28,7 @@ from app.infrastructure.persistence.sqlalchemy.models.base import (
     Base,
     TimestampMixin,
 )
+from app.infrastructure.persistence.sqlalchemy.types import JSONEncodedDict
 
 
 class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
@@ -86,7 +85,7 @@ class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
     )  # Serialized list of data points that triggered the alert
     alert_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # Renamed from metadata
 
-    triggering_event_details: Mapped[dict | None] = mapped_column(MutableDict.as_mutable(JSON()), nullable=True)
+    triggering_event_details: Mapped[dict | None] = mapped_column(JSONEncodedDict, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     patient = relationship("Patient")  # Add backref in Patient model if needed
