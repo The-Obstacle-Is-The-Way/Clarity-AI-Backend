@@ -184,7 +184,7 @@ class PharmacogenomicsAdapter(PharmacogenomicsInterface):
     calls to the infrastructure PharmacogenomicsService.
     """
 
-    def __init__(self, service: PharmacogenomicsService):
+    def __init__(self, service: PharmacogenomicsService) -> None:
         """
         Initialize the adapter.
 
@@ -285,7 +285,7 @@ class DigitalTwinServiceAdapter(DigitalTwinServiceInterface):
     calls to the infrastructure DigitalTwinIntegrationService.
     """
 
-    def __init__(self, service: DigitalTwinIntegrationService):
+    def __init__(self, service: DigitalTwinIntegrationService) -> None:
         """
         Initialize the adapter.
 
