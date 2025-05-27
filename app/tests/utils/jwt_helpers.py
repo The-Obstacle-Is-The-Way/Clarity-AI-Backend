@@ -4,7 +4,7 @@ JWT Test Helpers.
 This module provides utility functions for testing JWT functionality.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import jwt
@@ -40,7 +40,7 @@ def create_test_token(
     Returns:
         str: JWT token
     """
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
 
     if expired:
         exp = now - timedelta(hours=1)

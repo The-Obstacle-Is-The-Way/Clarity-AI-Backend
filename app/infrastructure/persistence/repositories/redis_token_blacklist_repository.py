@@ -7,7 +7,7 @@ for production use to properly manage token invalidation for HIPAA compliance.
 """
 
 import hashlib
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from app.core.interfaces.repositories.token_blacklist_repository_interface import (
     ITokenBlacklistRepository,
@@ -60,7 +60,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         """
         try:
             # Calculate remaining seconds until expiration
-            now = datetime.now(UTC)
+            now = datetime.now(timezone.utc)
             if expires_at <= now:
                 # Token already expired, no need to blacklist
                 logger.debug(f"Token {token_jti} already expired, skipping blacklist")

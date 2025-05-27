@@ -26,9 +26,9 @@ def utcnow() -> datetime:
     """
     try:
         # Python 3.12+ approach
-        from datetime import UTC
+        from datetime import timezone
 
-        return datetime.now(UTC)
+        return datetime.now(timezone.utc)
     except (ImportError, AttributeError):
         # Fallback for older Python versions and test frameworks
         return datetime.now(timezone.utc)

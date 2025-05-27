@@ -12,7 +12,7 @@ from unittest.mock import patch
 import pytest
 
 try:
-    from datetime import UTC  # Python 3.11+
+    from datetime import timezone  # Python 3.11+
 except ImportError:
     from app.domain.utils.datetime_utils import (
         UTC,
@@ -113,7 +113,7 @@ class TestAWSXGBoostServicePrediction:
         async def direct_predict_risk(patient_id, risk_type, clinical_data, **kwargs):
             # Return a perfectly formed result that matches exactly what we expect
             prediction_id = f"pred-{uuid.uuid4()}"
-            timestamp = datetime.now(UTC)
+            timestamp = datetime.now(timezone.utc)
 
             return {
                 "prediction_id": prediction_id,

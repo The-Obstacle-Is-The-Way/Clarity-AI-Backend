@@ -2,7 +2,7 @@
 Domain entities related to Biometric Rules for the Digital Twin.
 """
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
@@ -317,7 +317,7 @@ class BiometricAlertRule:
     provider_id: UUID | None = None  # Provider who created the rule
     is_active: bool = True
     is_template: bool = False  # Whether this rule is a template for creating other rules
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime | None = None
     version: int = 1
 
@@ -330,14 +330,14 @@ class BiometricAlertRule:
     def activate(self) -> "BiometricAlertRule":
         """Activate this rule."""
         self.is_active = True
-        self.updated_at = datetime.now(UTC)
+        self.updated_at = datetime.now(timezone.utc)
         self.version += 1
         return self
 
     def deactivate(self) -> "BiometricAlertRule":
         """Deactivate this rule."""
         self.is_active = False
-        self.updated_at = datetime.now(UTC)
+        self.updated_at = datetime.now(timezone.utc)
         self.version += 1
         return self
 
@@ -355,7 +355,7 @@ class BiometricAlertRule:
             if hasattr(self, key) and key not in ["id", "created_at"]:
                 setattr(self, key, value)
 
-        self.updated_at = datetime.now(UTC)
+        self.updated_at = datetime.now(timezone.utc)
         self.version += 1
         return self
 
@@ -404,7 +404,7 @@ class BiometricAlertRule:
 
     def mark_updated(self) -> None:
         """Mark the rule as updated with current timestamp."""
-        self.updated_at = datetime.now(UTC)
+        self.updated_at = datetime.now(timezone.utc)
 
     def assign_to_patient(self, patient_id: str) -> None:
         """
@@ -415,4 +415,4 @@ class BiometricAlertRule:
         """
         # Convert string patient_id to UUID for type safety
         self.patient_id = UUID(patient_id) if patient_id else None
-        self.updated_at = datetime.now(UTC)
+        self.updated_at = datetime.now(timezone.utc)

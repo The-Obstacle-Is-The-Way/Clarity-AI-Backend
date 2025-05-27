@@ -11,7 +11,7 @@ Tests for the Appointment entity.
 """
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -31,7 +31,7 @@ from app.domain.exceptions import (
 @pytest.fixture
 def future_datetime():
     """Fixture for a future datetime."""
-    return datetime.now(UTC) + timedelta(days=1)
+    return datetime.now(timezone.utc) + timedelta(days=1)
 
 
 @pytest.fixture
@@ -53,8 +53,8 @@ def valid_appointment_data(future_datetime):
         "location": "Office 101",
         "notes": "Initial consultation for anxiety",
         "reason": "Anxiety and depression",  # Assuming reason exists
-        "created_at": datetime.now(UTC),
-        "updated_at": datetime.now(UTC),
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
     }
 
 
@@ -125,7 +125,7 @@ class TestAppointment:
         from app.domain.entities.appointment import Appointment
 
         # Start time in the past
-        past_datetime = datetime.now(UTC) - timedelta(days=1)
+        past_datetime = datetime.now(timezone.utc) - timedelta(days=1)
         with pytest.raises(InvalidAppointmentTimeError):
             Appointment(
                 patient_id=str(uuid.uuid4()),

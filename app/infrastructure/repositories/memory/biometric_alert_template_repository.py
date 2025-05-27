@@ -8,7 +8,7 @@ a persistent storage is not required.
 
 import copy
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
@@ -58,8 +58,8 @@ class InMemoryBiometricAlertTemplateRepository(ITemplateRepository):
             priority=AlertPriority.MEDIUM,
             is_active=True,
             is_template=True,
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         self._templates[hr_high_id] = hr_high
 
@@ -81,8 +81,8 @@ class InMemoryBiometricAlertTemplateRepository(ITemplateRepository):
             priority=AlertPriority.HIGH,
             is_active=True,
             is_template=True,
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         self._templates[hr_low_id] = hr_low
 
@@ -110,8 +110,8 @@ class InMemoryBiometricAlertTemplateRepository(ITemplateRepository):
             priority=AlertPriority.MEDIUM,
             is_active=True,
             is_template=True,
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         self._templates[bp_high_id] = bp_high
 
@@ -133,8 +133,8 @@ class InMemoryBiometricAlertTemplateRepository(ITemplateRepository):
             priority=AlertPriority.MEDIUM,
             is_active=True,
             is_template=True,
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         self._templates[temp_high_id] = temp_high
 
@@ -156,8 +156,8 @@ class InMemoryBiometricAlertTemplateRepository(ITemplateRepository):
             priority=AlertPriority.HIGH,
             is_active=True,
             is_template=True,
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         self._templates[glucose_low_id] = glucose_low
 
@@ -203,7 +203,7 @@ class InMemoryBiometricAlertTemplateRepository(ITemplateRepository):
         template_data["is_template"] = True
 
         # Set creation and update timestamps
-        now = datetime.now(UTC)
+        now = datetime.now(timezone.utc)
         template_data["created_at"] = now
         template_data["updated_at"] = now
 
@@ -247,7 +247,7 @@ class InMemoryBiometricAlertTemplateRepository(ITemplateRepository):
                 updated_data[key] = value
 
         # Update timestamp
-        updated_data["updated_at"] = datetime.now(UTC)
+        updated_data["updated_at"] = datetime.now(timezone.utc)
 
         # Create updated entity
         try:

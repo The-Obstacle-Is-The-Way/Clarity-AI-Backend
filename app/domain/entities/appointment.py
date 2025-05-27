@@ -3,7 +3,7 @@ Appointment entity for managing clinical appointments.
 Domain model representing scheduled meetings between patients and providers.
 """
 from dataclasses import InitVar, dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from uuid import UUID
 
@@ -87,10 +87,10 @@ class Appointment(BaseEntity):
     cancelled_by_user_id: UUID | None = None  # Assuming the ID of user/provider who cancelled
     cancelled_at: datetime | None = None
 
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Canonical "updated" timestamp used internally by the domain model.
-    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     # ------------------------------------------------------------------
     # Init‑only (non‑stored) parameters
@@ -114,7 +114,7 @@ class Appointment(BaseEntity):
 
         # 0. Ensure start_time is not in the past
         if self.start_time < (
-            datetime.now(UTC) - timedelta(seconds=10)
+            datetime.now(timezone.utc) - timedelta(seconds=10)
         ):  # Allow 10s leeway for past for tests
             raise InvalidAppointmentTimeError("Appointment start time cannot be in the past.")
 
@@ -129,7 +129,7 @@ class Appointment(BaseEntity):
             if isinstance(value, datetime):
                 return value
             if value is None:
-                return datetime.now(UTC)
+                return datetime.now(timezone.utc)
             # Parse ISO‑8601 (also handles the *Z* suffix) and fall back to a
             # plain date only string (YYYY‑MM‑DD) by assuming midnight.
             try:
@@ -167,7 +167,7 @@ class Appointment(BaseEntity):
     def touch(self) -> None:
         """Bump *last_updated* to *now* – intended for internal use."""
 
-        now = datetime.now(UTC)
+        now = datetime.now(timezone.utc)
         self.__dict__["updated_at"] = now
         self.__dict__["last_updated"] = now
 
@@ -214,7 +214,7 @@ class Appointment(BaseEntity):
             )
         self.cancellation_reason = reason
         self.cancelled_by_user_id = cancelled_by
-        self.cancelled_at = datetime.now(UTC)
+        self.cancelled_at = datetime.now(timezone.utc)
         self.update_status(AppointmentStatus.CANCELLED)
 
     def complete(self) -> None:
