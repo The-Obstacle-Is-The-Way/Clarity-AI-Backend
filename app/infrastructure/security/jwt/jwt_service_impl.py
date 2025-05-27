@@ -255,14 +255,14 @@ class JWTServiceImpl(IJwtService):
         elif settings and hasattr(settings, "token_audience"):
             self._token_audience = settings.token_audience
         else:
-            self._token_audience = None
+            self._token_audience = ""
             
         if issuer:
             self._token_issuer = issuer
         elif settings and hasattr(settings, "token_issuer"):
             self._token_issuer = settings.token_issuer
         else:
-            self._token_issuer = None
+            self._token_issuer = ""
 
         # Backward compatibility attributes
         self.audience = self._token_audience
@@ -1110,14 +1110,14 @@ class JWTServiceImpl(IJwtService):
             refresh_payload = self.verify_refresh_token(refresh_token)
             
             # Create a new access token
-            new_access_token = await self.create_access_token(
-                user_id=refresh_payload.sub,
-                roles=refresh_payload.roles,
+            new_access_token = self.create_access_token(
+                subject=refresh_payload.sub,
+                data={"roles": refresh_payload.roles}
             )
             
             # Audit log the token refresh
             if self.audit_logger:
-                await self.audit_logger.log_security_event(
+                self.audit_logger.log_security_event(
                     event_type=AuditEventType.TOKEN_REFRESH,
                     description=f"Access token refreshed for user {refresh_payload.sub}",
                     user_id=refresh_payload.sub,
