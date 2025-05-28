@@ -161,7 +161,7 @@ class IJwtService(ABC):
     async def decode_token(self, token: str) -> Any:
         """
         Decode a JWT token and return its payload.
-        
+
         This method is used by authentication services to extract token data.
 
         Args:
@@ -174,7 +174,7 @@ class IJwtService(ABC):
             JWTError: If token is invalid or malformed
         """
         pass
-        
+
     @abstractmethod
     async def logout(self, token: str) -> bool:
         """
@@ -187,7 +187,7 @@ class IJwtService(ABC):
             True if successful, False otherwise
         """
         pass
-        
+
     @abstractmethod
     async def blacklist_session(self, session_id: str) -> bool:
         """

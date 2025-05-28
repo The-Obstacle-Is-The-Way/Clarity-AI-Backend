@@ -220,15 +220,12 @@ class AuthenticationService:
             # Convert parameters to interface-compatible format
             user_id = token_data["sub"]
             roles = token_data.get("roles", [])
-            
+
             # Convert roles to proper list type for interface compatibility
             roles_list: list[str] = list(roles) if roles else []
-            
+
             # Call the interface method with the expected parameters
-            token = await self.jwt_service.create_access_token(
-                user_id=user_id,
-                roles=roles_list
-            )
+            token = await self.jwt_service.create_access_token(user_id=user_id, roles=roles_list)
             return token
         except Exception as e:
             logger.error(f"Error creating access token: {e}", exc_info=True)
@@ -352,7 +349,7 @@ class AuthenticationService:
             user_id = payload.sub if hasattr(payload, "sub") else None
             if not user_id:
                 raise InvalidTokenException("Token does not contain user ID")
-                
+
             user = await self.get_user_by_id(str(user_id))
 
             # Create a new access token
