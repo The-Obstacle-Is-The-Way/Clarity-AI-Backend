@@ -1,12 +1,11 @@
 """Implementation of JWT service for authentication, authorization, and token management.
-"""Implementation of JWT service for authentication, authorization, and token management.
 
 Follows clean architecture principles by implementing the IJwtService interface
 and handling JWT token creation, validation, and management for HIPAA compliance.
 """
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional, Union, Any
+from typing import Any, Dict, List, Optional, Union
 from uuid import UUID, uuid4
 
 from jose import ExpiredSignatureError, JWTError
@@ -15,10 +14,11 @@ from jose import jwt as jose_jwt
 from app.core.audit.audit_logger import IAuditLogger
 from app.core.audit.audit_service import AuditEventType
 from app.core.config.settings import Settings
+from app.core.domain.types.jwt_payload import AccessTokenPayload, JWTPayload, RefreshTokenPayload
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
 from app.domain.interfaces.repository.token_blacklist_repository import ITokenBlacklistRepository
 from app.domain.interfaces.repository.user_repository import IUserRepository
-from app.infrastructure.security.jwt.i_jwt_service import IJwtService
+from app.core.interfaces.security.jwt_service_interface import IJwtService
 
 # Configure logging
 logger = logging.getLogger(__name__)
