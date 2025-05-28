@@ -101,7 +101,7 @@ class TokenPayload(BaseModel):
 
     def __init__(self, **data) -> None:
         """
-        Initialize TokenPayload and ensure all non-None fields are set as instance attributes
+        Initialize TokenPayload and ensure all fields are set as instance attributes
         so they appear in __dict__ for test compatibility.
         """
         super().__init__(**data)
@@ -116,17 +116,18 @@ class TokenPayload(BaseModel):
         
         for field in jwt_fields:
             value = getattr(self, field, None)
-            if value is not None:
+            # Always set the field in __dict__, even if None for some fields
+            if field in ['roles', 'permissions', 'custom_fields']:
+                # These should always be present, defaulting to empty list/dict
+                if value is None:
+                    if field == 'custom_fields':
+                        value = {}
+                    else:
+                        value = []
+                self.__dict__[field] = value
+            elif value is not None:
                 # Set as instance attribute to ensure it appears in __dict__
-                object.__setattr__(self, field, value)
-        
-        # Special handling for empty lists - tests might expect them in __dict__
-        if hasattr(self, 'roles') and self.roles is not None:
-            object.__setattr__(self, 'roles', self.roles)
-        if hasattr(self, 'permissions') and self.permissions is not None:
-            object.__setattr__(self, 'permissions', self.permissions)
-        if hasattr(self, 'custom_fields') and self.custom_fields is not None:
-            object.__setattr__(self, 'custom_fields', self.custom_fields)
+                self.__dict__[field] = value
 
     def __getattr__(self, key: str) -> Any:
         """Support access to custom_fields as attributes."""
