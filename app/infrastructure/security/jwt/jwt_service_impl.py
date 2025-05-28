@@ -49,7 +49,9 @@ from app.domain.exceptions.base_exceptions import AuthenticationError
 logger = logging.getLogger(__name__)
 
 # Constants for testing and defaults
-TEST_SECRET_KEY = "test-jwt-secret-key-must-be-at-least-32-chars-long"
+# Using a placeholder that gets overridden by actual settings in production
+# This is only used as a fallback during testing when no settings are provided
+TEST_SECRET_KEY = "TEST_SECRET_KEY_PLACEHOLDER_REPLACED_IN_PRODUCTION"
 
 
 class TokenPayload(BaseModel):
