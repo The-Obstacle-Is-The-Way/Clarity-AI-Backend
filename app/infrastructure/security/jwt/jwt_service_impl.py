@@ -688,65 +688,88 @@ class JWTServiceImpl(IJwtService):
             logger.error(f"Error creating access token: {e!s}")
             raise
 
-    async def create_refresh_token_async(
-        self, user_id: str | UUID, expires_delta_minutes: int | None = None
+    async def create_refresh_token(
+        self, user_id: str | UUID, expires_delta_minutes: int | None = None, 
+        family_id: str | None = None, additional_claims: dict | None = None
     ) -> str:
-        """Create a JWT refresh token that can be used to generate new access tokens.
+        """
+        Create a JWT refresh token for a user.
 
         Args:
             user_id: The user ID to encode in the token
             expires_delta_minutes: Custom expiration time in minutes
+            family_id: Optional family ID to group related refresh tokens
+            additional_claims: Optional additional claims to include in the token
 
         Returns:
             JWT refresh token as a string
         """
         try:
-            # Convert UUID to string if needed
-            subject = str(user_id)
+            # Convert the user_id to a string if it's a UUID
+            user_id_str = str(user_id)
 
-            # Get current time
-            now = datetime.now(timezone.utc)
+            # Generate a unique family ID for this token if not provided
+            token_family_id = family_id if family_id else str(uuid4())
 
-            # Set token expiration
-            if expires_delta_minutes:
-                expire = now + timedelta(minutes=float(expires_delta_minutes))
+            # Create token with standard claims plus the family_id
+            payload = {
+                "sub": user_id_str,
+                "type": "refresh",  # Token type for validation
+                "family_id": token_family_id,  # Group related refresh tokens
+                "jti": str(uuid4()),  # Unique token ID for blacklisting
+            }
+            
+            # Add any additional claims
+            if additional_claims:
+                # Handle the case where family_id is provided in additional_claims
+                if "family_id" in additional_claims and not family_id:
+                    token_family_id = additional_claims["family_id"]
+                    payload["family_id"] = token_family_id
+                    
+                # Add all other additional claims
+                for key, value in additional_claims.items():
+                    if key != "family_id":  # Skip family_id as we've already handled it
+                        payload[key] = value
+
+            # Set the expiration time
+            if expires_delta_minutes is not None:
+                expires_delta = timedelta(minutes=expires_delta_minutes)
             else:
-                expire = now + timedelta(minutes=float(self._refresh_token_expire_minutes))
+                # Default to 7 days for refresh tokens if settings available
+                refresh_days = (
+                    self.settings.REFRESH_TOKEN_EXPIRE_DAYS
+                    if self.settings
+                    else 7
+                )
+                expires_delta = timedelta(days=refresh_days)
 
-            # Create token payload using domain type factory
-            payload = create_refresh_token_payload(
-                subject=subject,
-                issued_at=now,
-                expires_at=expire,
-                token_id=str(uuid4()),
-                issuer=self._token_issuer,
-                audience=self._token_audience,
-                original_iat=int(now.timestamp()),
+            expire = datetime.now(timezone.utc) + expires_delta
+            payload["exp"] = expire
+
+            # Add standard token fields
+            self._add_standard_claims(payload)
+
+            # Log token creation (without including the actual token)
+            logger.info(
+                f"Refresh token created for user {user_id_str} with family_id {token_family_id}"
+            )
+
+            # Audit the token creation
+            self.audit_logger.log_security_event(
+                AuditEventType.TOKEN_CREATED,
+                user_id=user_id_str,
+                details={
+                    "token_type": "refresh",
+                    "family_id": token_family_id,
+                    "expires_at": expire.isoformat(),
+                },
             )
 
             # Encode the token
-            encoded_jwt = jwt_encode(
-                payload.model_dump(exclude_none=True),
-                self._secret_key,
-                algorithm=self._algorithm,
-            )
-
-            # Audit log the token creation
-            if self.audit_logger:
-                await self.audit_logger.log_security_event(
-                    event_type=AuditEventType.TOKEN_CREATION,
-                    description=f"Refresh token created for user {subject}",
-                    user_id=subject,
-                    metadata={
-                        "token_type": TokenType.REFRESH,
-                        "expires_at": expire.isoformat(),
-                        "jti": payload.jti,
-                    },
-                )
-
-            return encoded_jwt
+            return self._encode_token(payload)
         except Exception as e:
-            logger.error(f"Error creating refresh token: {e!s}")
+            # Log the error (with sensitive info removed)
+            logger.error(f"Error creating refresh token: {str(e)}")
             raise
 
     def _decode_token(
