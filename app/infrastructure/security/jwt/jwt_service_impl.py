@@ -912,46 +912,20 @@ class JWTServiceImpl(IJwtService):
         """Create a refresh token for the specified user.
         
         Args:
-            user_id: User identifier
+            user_id: User identifier (string or UUID)
             expires_delta_minutes: Custom expiration time in minutes
-            data: Legacy parameter for backward compatibility
-            subject: Alternative to user_id for test compatibility
-            expires_delta: Alternative to expires_delta_minutes using timedelta
             
         Returns:
             JWT refresh token as a string
         """
-        # Handle multiple parameter options for compatibility
-        actual_user_id = None
-        
-        # Check all possible parameters for user ID, in order of priority
-        if subject is not None:
-            actual_user_id = subject
-        elif user_id is not None:
-            actual_user_id = user_id
-        elif data is not None:
-            if isinstance(data, dict):
-                # Extract user ID from dictionary's 'sub' field
-                actual_user_id = data.get("sub")
-                if actual_user_id is None:
-                    raise ValueError("Dictionary 'data' parameter must contain a 'sub' field")
-            else:
-                # Use data directly (string or UUID)
-                actual_user_id = data
-        else:
-            # No valid parameter provided
-            raise ValueError("One of 'subject', 'user_id', or 'data' parameter must be provided")
-        
         # Convert UUID to string if needed
-        subject_str = str(actual_user_id)
+        subject_str = str(user_id)
         
         # Get current time
         now = datetime.now(timezone.utc)
         
-        # Set token expiration with multiple parameter options
-        if expires_delta is not None:
-            expire = now + expires_delta
-        elif expires_delta_minutes is not None:
+        # Set token expiration
+        if expires_delta_minutes is not None:
             expire = now + timedelta(minutes=float(expires_delta_minutes))
         else:
             expire = now + timedelta(minutes=float(self._refresh_token_expire_minutes))
