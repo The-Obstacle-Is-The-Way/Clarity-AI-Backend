@@ -12,7 +12,7 @@ from typing import Any, Dict
 from uuid import UUID
 
 # Import domain types for proper type safety
-from app.core.domain.types.jwt_payload import RefreshTokenPayload, AccessTokenPayload, JWTPayload
+from app.core.domain.types.jwt_payload import AccessTokenPayload, JWTPayload, RefreshTokenPayload
 
 
 class IJwtService(ABC):
