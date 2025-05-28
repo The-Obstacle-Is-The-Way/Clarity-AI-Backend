@@ -1,4 +1,5 @@
 """Implementation of JWT service for authentication, authorization, and token management.
+"""Implementation of JWT service for authentication, authorization, and token management.
 
 Follows clean architecture principles by implementing the IJwtService interface
 and handling JWT token creation, validation, and management for HIPAA compliance.
