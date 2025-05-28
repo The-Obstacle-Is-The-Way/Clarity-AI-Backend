@@ -595,6 +595,36 @@ class JWTServiceImpl(IJwtService):
             logger.error(f"Error verifying token: {e!s}")
             raise InvalidTokenException(f"Token verification failed: {e!s}")
 
+    async def get_token_identity(self, token: str) -> str | None:
+        """Extract and return the identity (subject) from a JWT token.
+        
+        Args:
+            token: The JWT token to extract identity from
+            
+        Returns:
+            The identity/subject from the token, or None if extraction fails
+            
+        Raises:
+            InvalidTokenException: If the token is invalid or malformed
+            TokenExpiredException: If the token has expired
+        """
+        try:
+            # Decode the token to get the raw payload
+            raw_payload = self._decode_token(token)
+            
+            # Extract the subject (identity) from the payload
+            identity = raw_payload.get("sub")
+            
+            # Return as string if found, None otherwise
+            return str(identity) if identity is not None else None
+            
+        except (TokenExpiredException, InvalidTokenException):
+            # Re-raise these specific exceptions as expected by the interface
+            raise
+        except Exception as e:
+            logger.error(f"Error extracting token identity: {e!s}")
+            raise InvalidTokenException(f"Failed to extract token identity: {e!s}")
+
     def verify_refresh_token(self, refresh_token: str) -> RefreshTokenPayload:
         """Verify a refresh token and return its payload.
 
@@ -939,18 +969,23 @@ class JWTServiceImpl(IJwtService):
                 final_jti = data["jti"]
         
         # Create token payload using domain type factory
+        # Prepare additional claims
+        additional_claims = {}
+        if final_family_id:
+            additional_claims["family_id"] = final_family_id
+
         payload = create_access_token_payload(
             subject=user_id_str,
             roles=final_roles,
             permissions=final_permissions,
             username=None,
             session_id=final_session_id,
-            family_id=final_family_id,
             issued_at=now,
             expires_at=expire,
             token_id=final_jti,
             issuer=self._token_issuer,
             audience=self._token_audience,
+            additional_claims=additional_claims if additional_claims else None,
         )
         
         # Add custom fields
