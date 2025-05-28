@@ -1509,7 +1509,8 @@ async def refresh_access_token(self, refresh_token: str) -> str:
     def __getattr__(self, name: str):
         """
         Provide backward compatibility by redirecting to sync versions.
-        """        sync_methods = {
+        """
+        sync_methods = {
             'create_access_token': 'create_access_token_sync',
             'create_refresh_token': 'create_refresh_token_sync',
             'decode_token': 'decode_token_sync',
