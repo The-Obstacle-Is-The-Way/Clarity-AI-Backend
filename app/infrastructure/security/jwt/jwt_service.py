@@ -58,9 +58,7 @@ class TokenPayload(BaseModel):
     type: str | None = None  # Token type
     roles: list[str] = []  # User roles
     refresh: bool | None = None  # Is refresh token
-    
-    # Custom storage for non-standard claims
-    custom_fields: dict[str, Any] = {}
+    custom_fields: dict[str, Any] = {}  # Non-standard claims
 
     model_config = {
         "arbitrary_types_allowed": True,
@@ -162,10 +160,10 @@ class JWTServiceImpl(IJwtService):
         expires_delta_minutes: int | None = None
     ) -> str:
         """Create a JWT refresh token."""
-        # Convert minutes to days or use default
-        expires_days = self.refresh_token_expire_days
+        # Convert minutes to days or use default (ensure float for timedelta)
+        expires_days: float = float(self.refresh_token_expire_days)
         if expires_delta_minutes is not None:
-            expires_days = expires_delta_minutes / (24 * 60)  # Convert to days
+            expires_days = expires_delta_minutes / (24 * 60)  # Convert to days (float for timedelta)
         
         expires_delta = timedelta(days=expires_days)
         
@@ -312,11 +310,14 @@ class JWTServiceImpl(IJwtService):
             if not subject:
                 raise InvalidTokenError("Token does not contain identity")
 
+            # Ensure subject is a string for proper typing
+            subject_str = str(subject)
+            
             # Try to return as UUID if possible, otherwise as string
             try:
-                return UUID(subject)
+                return UUID(subject_str)
             except ValueError:
-                return subject
+                return subject_str
 
         except Exception as e:
             logger.error(f"Error extracting token identity: {e}")
@@ -351,17 +352,34 @@ class JWTServiceImpl(IJwtService):
             )
 
             # Create TokenPayload object
-            token_data = {}
-            custom_fields = {}
+            token_data: dict[str, Any] = {}
+            custom_fields: dict[str, Any] = {}
 
-            # Process all claims
+            # Process all claims with proper type conversion
             for key, value in payload.items():
                 if key == "sub":
                     token_data["subject"] = str(value)
-                elif key == "roles" and not isinstance(value, list):
-                    token_data["roles"] = [value] if value else []
+                elif key == "roles":
+                    if not isinstance(value, list):
+                        token_data["roles"] = [value] if value else []
+                    else:
+                        token_data["roles"] = value
+                elif key in ["exp", "nbf", "iat"] and value is not None:
+                    # Convert timestamp fields to int
+                    token_data[key] = int(value)
+                elif key == "refresh" and value is not None:
+                    # Convert refresh flag to bool
+                    token_data[key] = bool(value)
+                elif key in ["iss", "jti", "type"] and value is not None:
+                    # Ensure string fields are strings
+                    token_data[key] = str(value)
+                elif key == "aud":
+                    # Handle audience field (can be string or list[str])
+                    if isinstance(value, list):
+                        token_data[key] = value
+                    elif value is not None:
+                        token_data[key] = str(value)
                 else:
-                    token_data[key] = value
                     # Add non-standard claims to custom_fields
                     standard_claims = ["iss", "sub", "aud", "exp", "nbf", "iat", "jti", "type", "roles", "refresh"]
                     if key not in standard_claims:
@@ -409,7 +427,8 @@ class JWTServiceImpl(IJwtService):
         # Check repository first
         if self.token_blacklist_repository:
             try:
-                return await self.token_blacklist_repository.is_blacklisted(jti)
+                result = await self.token_blacklist_repository.is_blacklisted(jti)
+                return bool(result)
             except Exception as e:
                 logger.warning(f"Error checking blacklist repository: {e}")
 

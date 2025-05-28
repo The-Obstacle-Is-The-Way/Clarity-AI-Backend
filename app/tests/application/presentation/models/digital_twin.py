@@ -38,12 +38,12 @@ class BiometricTimeseriesOutput(BaseModel):
     physiological_range: PhysiologicalRangeModel | None = Field(
         default=None,
         description="Normal and critical ranges for this biometric",
-        examples={
+        examples=[{
             "min": 60.0,
             "max": 100.0,
             "critical_min": 40.0,
             "critical_max": 140.0,
-        },
+        }]
     )
 
     model_config = ConfigDict(
@@ -90,7 +90,7 @@ class DigitalTwinOutput(BaseModel):
     timeseries_data: dict[str, BiometricTimeseriesOutput] = Field(
         ...,
         description="Biometric timeseries data by type",
-        examples={
+        examples=[{
             "heart_rate": {
                 "biometric_type": "heart_rate",
                 "unit": "bpm",
@@ -109,7 +109,7 @@ class DigitalTwinOutput(BaseModel):
                     "critical_max": 140.0,
                 },
             }
-        },
+        }],
     )
 
     created_at: datetime = Field(
@@ -196,7 +196,7 @@ class DigitalTwinSummary(BaseModel):
     latest_readings: dict[str, BiometricDataOutput] = Field(
         ...,
         description="Latest reading for each biometric type",
-        examples={
+        examples=[{
             "heart_rate": {
                 "timestamp": "2025-04-10T14:30:00",
                 "value": 72.5,
@@ -209,7 +209,7 @@ class DigitalTwinSummary(BaseModel):
                 "source": "clinical",
                 "metadata": {"position": "sitting"},
             },
-        },
+        }],
     )
 
     updated_at: datetime = Field(

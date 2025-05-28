@@ -8,7 +8,7 @@ related to biometric data in the digital twin system.
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 
 class BiometricDataInput(BaseModel):
@@ -117,10 +117,10 @@ class BiometricHistoryParams(BaseModel):
 
     @field_validator("end_time")
     def validate_time_range(
-        self, end_time: datetime | None, values: dict[str, Any]
+        cls, end_time: datetime | None, info: ValidationInfo
     ) -> datetime | None:
         """Ensure end_time is after start_time if both are provided."""
-        start_time = values.get("start_time")
+        start_time = info.data.get("start_time")
         if start_time and end_time and end_time < start_time:
             raise ValueError("End time must be after start time")
         return end_time
@@ -155,25 +155,25 @@ class PhysiologicalRangeModel(BaseModel):
     )
 
     @field_validator("max")
-    def validate_max(self, max_val: float, values: dict[str, Any]) -> float:
+    def validate_max(cls, max_val: float, info: ValidationInfo) -> float:
         """Ensure max is greater than min."""
-        min_val = values.get("min")
+        min_val = info.data.get("min")
         if min_val is not None and max_val <= min_val:
             raise ValueError("Max value must be greater than min value")
         return max_val
 
     @field_validator("critical_min")
-    def validate_critical_min(self, critical_min: float, values: dict[str, Any]) -> float:
+    def validate_critical_min(cls, critical_min: float, info: ValidationInfo) -> float:
         """Ensure critical_min is less than or equal to min."""
-        min_val = values.get("min")
+        min_val = info.data.get("min")
         if min_val is not None and critical_min > min_val:
             raise ValueError("Critical min value must be less than or equal to min value")
         return critical_min
 
     @field_validator("critical_max")
-    def validate_critical_max(self, critical_max: float, values: dict[str, Any]) -> float:
+    def validate_critical_max(cls, critical_max: float, info: ValidationInfo) -> float:
         """Ensure critical_max is greater than or equal to max."""
-        max_val = values.get("max")
+        max_val = info.data.get("max")
         if max_val is not None and critical_max < max_val:
             raise ValueError("Critical max value must be greater than or equal to max value")
         return critical_max

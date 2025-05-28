@@ -692,14 +692,14 @@ class JWTServiceImpl(IJwtService):
             logger.error(f"Error verifying token: {e!s}")
             raise InvalidTokenException(f"Token verification failed: {e!s}")
 
-    async def get_token_identity(self, token: str) -> str | None:
+    async def get_token_identity(self, token: str) -> str | UUID:
         """Extract and return the identity (subject) from a JWT token.
         
         Args:
             token: The JWT token to extract identity from
             
         Returns:
-            The identity/subject from the token, or None if extraction fails
+            The identity/subject from the token as string or UUID
             
         Raises:
             InvalidTokenException: If the token is invalid or malformed
@@ -712,8 +712,12 @@ class JWTServiceImpl(IJwtService):
             # Extract the subject (identity) from the payload
             identity = raw_payload.get("sub")
             
-            # Return as string if found, None otherwise
-            return str(identity) if identity is not None else None
+            # If no identity found, raise InvalidTokenException
+            if identity is None:
+                raise InvalidTokenException("Token does not contain a valid subject")
+            
+            # Return as string (interface allows str | UUID)
+            return str(identity)
             
         except (TokenExpiredException, InvalidTokenException):
             # Re-raise these specific exceptions as expected by the interface
@@ -902,12 +906,8 @@ class JWTServiceImpl(IJwtService):
 
     def create_refresh_token(
         self,
-        user_id: str | UUID = None,
-        expires_delta_minutes: int | None = None,
-        data: str | UUID | dict = None,  # Legacy parameter name for backward compatibility
-        subject: str | UUID = None,  # Added for test compatibility
-        expires_delta: timedelta = None,  # Added for test compatibility
-        additional_claims: Optional[Dict[str, Any]] = None
+        user_id: str | UUID,
+        expires_delta_minutes: int | None = None
     ) -> str:
         """Create a refresh token for the specified user.
         
