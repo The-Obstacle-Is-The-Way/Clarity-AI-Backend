@@ -89,7 +89,7 @@ class TokenPayload(BaseModel):
         return default
 
 
-class JWTService(IJwtService):
+class JWTServiceImpl(IJwtService):
     """JWT Service implementation following SOLID principles.
 
     This service properly implements the IJwtService interface with
@@ -422,7 +422,7 @@ def get_jwt_service(
     user_repository: Any = None,
     token_blacklist_repository: Any = None,
     audit_logger: Any = None,
-) -> JWTService:
+) -> JWTServiceImpl:
     """Dependency injection factory for JWT service."""
     # Extract secret key from settings
     secret_key = None
@@ -445,7 +445,7 @@ def get_jwt_service(
     issuer = getattr(settings, "JWT_ISSUER", None)
     audience = getattr(settings, "JWT_AUDIENCE", None)
 
-    return JWTService(
+    return JWTServiceImpl(
         secret_key=secret_key,
         algorithm=algorithm,
         access_token_expire_minutes=access_token_expire_minutes,
