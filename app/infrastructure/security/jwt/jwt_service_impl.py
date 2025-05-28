@@ -1035,8 +1035,38 @@ class JWTServiceImpl(IJwtService):
             logger.error(f"Error during logout: {e!s}")
             return False
 
-    # Sync wrapper methods for backward compatibility with tests
-    def create_access_token(
+    # Interface-compliant method required by IJwtService
+    async def create_access_token(
+        self,
+        user_id: str | UUID,
+        roles: list[str] | None = None,
+        expires_delta_minutes: int | None = None,
+    ) -> str:
+        """Create a JWT access token for authentication.
+
+        Args:
+            user_id: The user ID to encode in the token
+            roles: The user roles to encode in the token
+            expires_delta_minutes: Custom expiration time in minutes
+
+        Returns:
+            JWT access token as a string
+        """
+        # Convert parameters to the format expected by the internal implementation
+        user_id_str = str(user_id)
+        additional_claims = {}
+        if roles:
+            additional_claims["roles"] = roles
+            
+        # Call the internal implementation
+        return await self._create_access_token_internal(
+            subject=user_id_str,
+            additional_claims=additional_claims,
+            expires_delta_minutes=expires_delta_minutes
+        )
+        
+    # Internal implementation for backward compatibility
+    async def _create_access_token_internal(
         self,
         data: dict[str, Any] | None = None,
         subject: str | None = None,
