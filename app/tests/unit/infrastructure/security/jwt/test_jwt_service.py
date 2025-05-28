@@ -6,7 +6,7 @@ according to HIPAA security standards.
 """
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock
 
 import pytest
@@ -43,7 +43,7 @@ def test_user():
         last_name="User",
         roles=[Role.PROVIDER],
         is_active=True,
-        created_at=datetime.now(UTC),
+        created_at=datetime.now(timezone.utc),
     )
 
 

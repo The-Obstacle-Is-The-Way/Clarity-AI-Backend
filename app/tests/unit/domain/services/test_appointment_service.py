@@ -5,7 +5,7 @@ Tests for the Appointment Service.
 # Defer service import if necessary, though typically fine in tests
 # from app.domain.services.appointment_service import AppointmentService
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -26,7 +26,7 @@ from app.domain.exceptions.appointment_exceptions import AppointmentConflictErro
 @pytest.fixture
 def future_datetime():
     """Fixture for a future datetime."""
-    return datetime.now(UTC) + timedelta(days=1)
+    return datetime.now(timezone.utc) + timedelta(days=1)
 
 
 @pytest.fixture
