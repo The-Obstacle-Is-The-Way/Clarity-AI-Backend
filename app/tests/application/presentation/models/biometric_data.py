@@ -8,7 +8,7 @@ related to biometric data in the digital twin system.
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class BiometricDataInput(BaseModel):
@@ -17,27 +17,27 @@ class BiometricDataInput(BaseModel):
     biometric_type: str = Field(
         ...,
         description="Type of biometric data (e.g., heart_rate, blood_pressure)",
-        example="heart_rate",
+        examples=["heart_rate"],
     )
 
     value: float | int | dict[str, Any] = Field(
         ...,
         description="Measurement value, can be numeric or structured data",
-        example=72.5,
+        examples=[72.5],
     )
 
-    source: str = Field(..., description="Source of the biometric data", example="wearable")
+    source: str = Field(..., description="Source of the biometric data", examples=["wearable"])
 
     timestamp: datetime = Field(
         default_factory=datetime.now,
         description="When the data was recorded",
-        example="2025-04-10T14:30:00",
+        examples=["2025-04-10T14:30:00"],
     )
 
     metadata: dict[str, Any] | None = Field(
         default=None,
         description="Optional additional information about the reading",
-        example={"device": "fitbit", "activity": "resting"},
+        examples=[{"device": "fitbit", "activity": "resting"}],
     )
 
     @field_validator("biometric_type")
@@ -71,21 +71,21 @@ class BiometricDataOutput(BaseModel):
     """API model for biometric data output."""
 
     timestamp: datetime = Field(
-        ..., description="When the data was recorded", example="2025-04-10T14:30:00"
+        ..., description="When the data was recorded", examples=["2025-04-10T14:30:00"]
     )
 
     value: float | int | dict[str, Any] = Field(
         ...,
         description="Measurement value, can be numeric or structured data",
-        example=72.5,
+        examples=[72.5],
     )
 
-    source: str = Field(..., description="Source of the biometric data", example="wearable")
+    source: str = Field(..., description="Source of the biometric data", examples=["wearable"])
 
     metadata: dict[str, Any] | None = Field(
         default=None,
         description="Optional additional information about the reading",
-        example={"device": "fitbit", "activity": "resting"},
+        examples=[{"device": "fitbit", "activity": "resting"}],
     )
 
     model_config = ConfigDict(
@@ -106,13 +106,13 @@ class BiometricHistoryParams(BaseModel):
     start_time: datetime | None = Field(
         default=None,
         description="Start time for filtering data",
-        example="2025-04-01T00:00:00",
+        examples=["2025-04-01T00:00:00"],
     )
 
     end_time: datetime | None = Field(
         default=None,
         description="End time for filtering data",
-        example="2025-04-11T00:00:00",
+        examples=["2025-04-11T00:00:00"],
     )
 
     @field_validator("end_time")
@@ -138,20 +138,20 @@ class BiometricHistoryParams(BaseModel):
 class PhysiologicalRangeModel(BaseModel):
     """API model for physiological range data."""
 
-    min: float = Field(..., description="Minimum value of the normal range", example=60.0)
+    min: float = Field(..., description="Minimum value of the normal range", examples=[60.0])
 
-    max: float = Field(..., description="Maximum value of the normal range", example=100.0)
+    max: float = Field(..., description="Maximum value of the normal range", examples=[100.0])
 
     critical_min: float = Field(
         ...,
         description="Minimum value before the measurement is considered critically low",
-        example=40.0,
+        examples=[40.0],
     )
 
     critical_max: float = Field(
         ...,
         description="Maximum value before the measurement is considered critically high",
-        example=140.0,
+        examples=[140.0],
     )
 
     @field_validator("max")

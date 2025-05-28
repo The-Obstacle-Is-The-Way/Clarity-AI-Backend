@@ -18,14 +18,14 @@ from app.presentation.models.biometric_data import (
 class BiometricTimeseriesOutput(BaseModel):
     """API model for biometric timeseries data."""
 
-    biometric_type: str = Field(..., description="Type of biometric data", example="heart_rate")
+    biometric_type: str = Field(..., description="Type of biometric data", examples=["heart_rate"])
 
-    unit: str = Field(..., description="Unit of measurement", example="bpm")
+    unit: str = Field(..., description="Unit of measurement", examples=["bpm"])
 
     data_points: list[BiometricDataOutput] = Field(
         ...,
         description="Time series of biometric measurements",
-        example=[
+        examples=[
             {
                 "timestamp": "2025-04-10T14:30:00",
                 "value": 72.5,
@@ -38,7 +38,7 @@ class BiometricTimeseriesOutput(BaseModel):
     physiological_range: PhysiologicalRangeModel | None = Field(
         default=None,
         description="Normal and critical ranges for this biometric",
-        example={
+        examples={
             "min": 60.0,
             "max": 100.0,
             "critical_min": 40.0,
@@ -82,15 +82,15 @@ class DigitalTwinOutput(BaseModel):
     id: str = Field(
         ...,
         description="Unique identifier for the digital twin",
-        example="550e8400-e29b-41d4-a716-446655440000",
+        examples=["550e8400-e29b-41d4-a716-446655440000"],
     )
 
-    patient_id: str = Field(..., description="ID of the associated patient", example="patient-123")
+    patient_id: str = Field(..., description="ID of the associated patient", examples=["patient-123"])
 
     timeseries_data: dict[str, BiometricTimeseriesOutput] = Field(
         ...,
         description="Biometric timeseries data by type",
-        example={
+        examples={
             "heart_rate": {
                 "biometric_type": "heart_rate",
                 "unit": "bpm",
@@ -115,13 +115,13 @@ class DigitalTwinOutput(BaseModel):
     created_at: datetime = Field(
         ...,
         description="When the digital twin was created",
-        example="2025-03-15T00:00:00",
+        examples=["2025-03-15T00:00:00"],
     )
 
     updated_at: datetime = Field(
         ...,
         description="When the digital twin was last updated",
-        example="2025-04-10T14:30:00",
+        examples=["2025-04-10T14:30:00"],
     )
 
     model_config = ConfigDict(
@@ -177,7 +177,7 @@ class DigitalTwinOutput(BaseModel):
 class DigitalTwinCreate(BaseModel):
     """API model for creating a new digital twin."""
 
-    patient_id: str = Field(..., description="ID of the associated patient", example="patient-123")
+    patient_id: str = Field(..., description="ID of the associated patient", examples=["patient-123"])
 
     model_config = ConfigDict(json_schema_extra={"example": {"patient_id": "patient-123"}})
 
@@ -188,15 +188,15 @@ class DigitalTwinSummary(BaseModel):
     id: str = Field(
         ...,
         description="Unique identifier for the digital twin",
-        example="550e8400-e29b-41d4-a716-446655440000",
+        examples=["550e8400-e29b-41d4-a716-446655440000"],
     )
 
-    patient_id: str = Field(..., description="ID of the associated patient", example="patient-123")
+    patient_id: str = Field(..., description="ID of the associated patient", examples=["patient-123"])
 
     latest_readings: dict[str, BiometricDataOutput] = Field(
         ...,
         description="Latest reading for each biometric type",
-        example={
+        examples={
             "heart_rate": {
                 "timestamp": "2025-04-10T14:30:00",
                 "value": 72.5,
@@ -215,7 +215,7 @@ class DigitalTwinSummary(BaseModel):
     updated_at: datetime = Field(
         ...,
         description="When the digital twin was last updated",
-        example="2025-04-10T15:00:00",
+        examples=["2025-04-10T15:00:00"],
     )
 
     model_config = ConfigDict(
