@@ -9,7 +9,7 @@ import asyncio
 import logging
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any, ClassVar, Dict
+from typing import Any, ClassVar, Dict, Optional
 from uuid import UUID, uuid4
 
 from jose.exceptions import ExpiredSignatureError, JWTError
@@ -566,7 +566,7 @@ class JWTServiceImpl(IJwtService):
         """
         try:
             # Check if token is blacklisted
-            if await self.is_token_blacklisted(token):
+            if self.is_token_blacklisted(token):
                 raise TokenBlacklistedException("Token has been revoked")
             
             # Decode the token
@@ -809,7 +809,8 @@ class JWTServiceImpl(IJwtService):
         expires_delta_minutes: int | None = None,
         data: str | UUID | dict = None,  # Legacy parameter name for backward compatibility
         subject: str | UUID = None,  # Added for test compatibility
-        expires_delta: timedelta = None  # Added for test compatibility
+        expires_delta: timedelta = None,  # Added for test compatibility
+        additional_claims: Optional[Dict[str, Any]] = None
     ) -> str:
         """Create a refresh token for the specified user.
         
@@ -1137,3 +1138,207 @@ class JWTServiceImpl(IJwtService):
     def is_token_blacklisted(self, token: str) -> bool:
         """Check if a token has been blacklisted (sync version for backward compatibility)."""
         return self.is_token_blacklisted_sync(token)
+
+    async def get_user_from_token(self, token: str) -> Any:
+        """Extract user from JWT token by getting user ID and fetching from repository.
+        
+        Args:
+            token: JWT token string
+            
+        Returns:
+            User object from repository
+            
+        Raises:
+            AuthenticationError: If token is invalid or user not found
+        """
+        try:
+            # Verify token and get payload
+            payload = await self.verify_token(token)
+            user_id = payload.sub
+            
+            if not user_id:
+                from app.core.exceptions.auth_exceptions import AuthenticationError
+                raise AuthenticationError("No user ID found in token")
+                
+            # Get user from repository if available
+            if hasattr(self, 'user_repository') and self.user_repository:
+                user = await self.user_repository.get_by_id(user_id)
+                if not user:
+                    from app.core.exceptions.auth_exceptions import AuthenticationError
+                    raise AuthenticationError(f"User {user_id} not found")
+                return user
+            else:
+                # If no repository available, return user_id
+                return {"id": user_id, "sub": user_id}
+                
+        except Exception as e:
+            from app.core.exceptions.auth_exceptions import AuthenticationError
+            if isinstance(e, AuthenticationError):
+                raise
+            raise AuthenticationError(f"Failed to get user from token: {str(e)}")
+
+    def extract_token_from_request(self, request) -> str | None:
+        """Extract JWT token from request headers or cookies.
+        
+        Args:
+            request: Request object with headers and cookies
+            
+        Returns:
+            JWT token string or None if not found
+        """
+        # Try Authorization header first
+        auth_header = getattr(request, 'headers', {}).get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            return auth_header[7:]  # Remove 'Bearer ' prefix
+            
+        # Try cookies as fallback
+        cookies = getattr(request, 'cookies', {})
+        if 'access_token' in cookies:
+            return cookies['access_token']
+            
+        return None
+
+    def check_resource_access(self, request, resource_path: str, resource_owner_id: str | None = None) -> bool:
+        """Check if user has access to a resource based on their roles and ownership.
+        
+        Args:
+            request: Request object to extract token from
+            resource_path: Path/identifier of the resource being accessed
+            resource_owner_id: ID of the resource owner for ownership checks
+            
+        Returns:
+            True if access granted, False otherwise
+        """
+        try:
+            # Extract token from request
+            token = self.extract_token_from_request(request)
+            if not token:
+                return False
+                
+            # Verify token synchronously for this check
+            try:
+                payload_dict = self._decode_token(token, verify_signature=True, verify_exp=True)
+                payload = TokenPayload.from_dict(payload_dict)
+            except Exception:
+                return False
+                
+            # Get user roles from token
+            roles = payload.get('roles', [])
+            user_id = payload.sub
+            
+            # Admin always has access
+            if 'admin' in roles or 'system_admin' in roles:
+                return True
+                
+            # Resource owner has access to their own resources
+            if resource_owner_id and user_id == resource_owner_id:
+                return True
+                
+            # Healthcare providers have broad access
+            if any(role in roles for role in ['healthcare_provider', 'clinician', 'therapist']):
+                return True
+                
+            # Patients can access their own data
+            if 'patient' in roles and resource_owner_id and user_id == resource_owner_id:
+                return True
+                
+            # Default deny
+            return False
+            
+        except Exception:
+            return False
+
+    def _sanitize_message_for_hipaa(self, message: str) -> str:
+        """Sanitize error messages by redacting sensitive healthcare data (PII/PHI).
+        
+        This method ensures HIPAA compliance by removing:
+        - UUIDs (user identifiers)
+        - Email addresses
+        - Social Security Numbers (SSNs)
+        - Other potential PHI patterns
+        
+        Args:
+            message: Raw error message that may contain sensitive data
+            
+        Returns:
+            Sanitized message with sensitive data redacted
+        """
+        import re
+        
+        if not message:
+            return message
+            
+        sanitized = message
+        
+        # Redact UUIDs (case-insensitive pattern for standard UUID format)
+        uuid_pattern = r'\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b'
+        sanitized = re.sub(uuid_pattern, '[REDACTED_UUID]', sanitized, flags=re.IGNORECASE)
+        
+        # Redact email addresses
+        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+        sanitized = re.sub(email_pattern, '[REDACTED_EMAIL]', sanitized)
+        
+        # Redact SSN patterns (XXX-XX-XXXX format)
+        ssn_pattern = r'\b\d{3}-\d{2}-\d{4}\b'
+        sanitized = re.sub(ssn_pattern, '[REDACTED_SSN]', sanitized)
+        
+        # Redact additional numeric identifier patterns that could be PHI
+        # Phone numbers in various formats
+        phone_pattern = r'\b(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b'
+        sanitized = re.sub(phone_pattern, '[REDACTED_PHONE]', sanitized)
+        
+        # Medical record numbers (common patterns)
+        mrn_pattern = r'\b(?:MRN|mrn|medical[_\s]?record[_\s]?number|patient[_\s]?id)[:\s]*[A-Za-z0-9-]{6,}\b'
+        sanitized = re.sub(mrn_pattern, '[REDACTED_MRN]', sanitized, flags=re.IGNORECASE)
+        
+        return sanitized
+
+    def create_unauthorized_response(self, error_type: str = "authentication_required",
+                                   message: str = "Authentication required") -> dict[str, Any]:
+        """Create standardized unauthorized response with HIPAA-compliant data sanitization.
+        
+        Args:
+            error_type: Type of authentication error
+            message: Human-readable error message (will be sanitized for HIPAA compliance)
+            
+        Returns:
+            Dictionary with error response structure containing sanitized error messages
+        """
+        error_responses = {
+            "token_expired": {
+                "error": "token_expired",
+                "message": "Token has expired",
+                "status_code": 401
+            },
+            "invalid_token": {
+                "error": "invalid_token",
+                "message": "Token is invalid",
+                "status_code": 401
+            },
+            "insufficient_permissions": {
+                "error": "insufficient_permissions",
+                "message": "Insufficient permissions for this resource",
+                "status_code": 403
+            },
+            "authentication_required": {
+                "error": "authentication_required",
+                "message": "Authentication required",
+                "status_code": 401
+            }
+        }
+        
+        response = error_responses.get(error_type, error_responses["authentication_required"])
+        
+        # Override message if provided, ensuring HIPAA compliance through sanitization
+        if message != "Authentication required":
+            response["message"] = self._sanitize_message_for_hipaa(message)
+            
+        return {
+            "status_code": response["status_code"],
+            "body": {
+                "error": response["message"],
+                "error_code": response["error"],
+                "error_type": error_type,  # Preserve error type for test validation
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        }

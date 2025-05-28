@@ -144,9 +144,9 @@ def jwt_service_patch(test_settings) -> Generator:
     """
     # Create a patched JWTService class
     with patch(
-        "app.infrastructure.security.jwt.jwt_service.JWTService.create_access_token"
+        "app.infrastructure.security.jwt.jwt_service.IJwtService.create_access_token"
     ) as mock_create_access_token, patch(
-        "app.infrastructure.security.jwt.jwt_service.JWTService.create_refresh_token"
+        "app.infrastructure.security.jwt.jwt_service.IJwtService.create_refresh_token"
     ) as mock_create_refresh_token:
         # Configure mock methods
         mock_create_access_token.return_value = "test_access_token"
