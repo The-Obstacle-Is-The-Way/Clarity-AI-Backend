@@ -101,25 +101,36 @@ class TokenPayload(BaseModel):
 
     def __getattr__(self, key: str) -> Any:
         """Support access to custom_fields as attributes."""
-        # CRITICAL FIX: Never block access to standard JWT claims
-        # Standard JWT claims like 'sub', 'subject', etc. should always be accessible
-        standard_jwt_claims = {'sub', 'subject', 'iat', 'exp', 'jti', 'iss', 'aud', 'type', 'roles', 'permissions'}
+        # CRITICAL FIX: Handle subject field properly
+        if key == 'subject':
+            # Return the sub field value, which should contain the user ID
+            return self.sub
+            
+        # Standard JWT claims should be accessible via normal attribute access
+        # These are defined as model fields and handled by Pydantic
+        standard_jwt_claims = {'sub', 'iat', 'exp', 'jti', 'iss', 'aud', 'type', 'roles', 'permissions', 'family_id', 'session_id', 'refresh'}
         
-        # Allow access to standard JWT claims regardless of PHI status
+        # For standard claims, try to get the actual model field value
         if key in standard_jwt_claims:
-            # For 'subject', return self.sub (handled by the property)
-            if key == 'subject':
-                return self.sub
-            # For other standard claims, get from model fields
-            return getattr(self, key, None)
+            # Use object.__getattribute__ to avoid recursion
+            try:
+                return object.__getattribute__(self, key)
+            except AttributeError:
+                return None
         
         # Block access to PHI fields (but not standard JWT claims)
         if key in self.PHI_FIELDS:
             return None
             
-        # Check if the attribute is in custom_fields
+        # Check if the attribute is in custom_fields first
         if hasattr(self, 'custom_fields') and key in self.custom_fields:
             return self.custom_fields[key]
+            
+        # Check if it's a field that should be directly accessible (like custom_key)
+        try:
+            return object.__getattribute__(self, key)
+        except AttributeError:
+            pass
             
         # Special handling for 'role' attribute
         if key == 'role' and hasattr(self, 'roles') and self.roles:
@@ -959,49 +970,12 @@ class JWTServiceImpl(IJwtService):
             )
         )
 
-    def create_refresh_token(
-        self,
-        data: dict[str, Any] | None = None,
-        subject: str | None = None,
-        expires_delta_minutes: int | None = None,
-    ) -> str:
-        """Sync wrapper for create_refresh_token_async."""
-        import asyncio
-        
-        # Handle different parameter formats for backward compatibility
-        user_id = None
-        
-        if data:
-            user_id = data.get("sub")
-        elif subject:
-            user_id = subject
-        
-        if not user_id:
-            raise ValueError("User ID (subject) is required")
-            
-        loop = None
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        
-        return loop.run_until_complete(
-            self.create_refresh_token_async(
-                user_id=user_id,
-                expires_delta_minutes=expires_delta_minutes,
-            )
-        )
 
-    def decode_token(self, token: str, options: dict[str, Any] | None = None) -> "TokenPayload":
-        """Sync wrapper for _decode_token with options support."""
-        verify_exp = True
-        if options and "verify_exp" in options:
-            verify_exp = options["verify_exp"]
-        
-        return self._decode_token(token, verify_exp=verify_exp)
-
-    def revoke_token(self, token: str) -> bool:
+    async def revoke_token(self, token: str) -> bool:
+        """Revoke token by blacklisting it (async version)."""
+        return await self.logout(token)
+    
+    def revoke_token_sync(self, token: str) -> bool:
         """Sync wrapper for logout method."""
         import asyncio
         
@@ -1036,53 +1010,46 @@ class JWTServiceImpl(IJwtService):
             logger.error(f"Error during logout: {e}")
             return False
 
-    # Sync wrapper methods for verify_token
-    def decode_token(self, token: str) -> dict[str, Any]:
-        """Sync wrapper for token decoding that returns raw payload dict."""
-        try:
-            # Use the existing _decode_token method which is synchronous
-            payload = self._decode_token(token, verify_exp=True)
-            
-            # Check if token is blacklisted (simplified sync check)
-            # For sync mode, we'll do a simple check without async operations
-            try:
-                jti = payload.get("jti")
-                if jti and jti in self._token_blacklist:
-                    raise InvalidTokenException("Token has been revoked")
-            except Exception:
-                # If blacklist check fails, continue (fail open for sync mode)
-                pass
-                
-            return payload
-            
-        except Exception as e:
-            if isinstance(e, (InvalidTokenException, ExpiredSignatureError)):
-                raise
-            raise InvalidTokenException(f"Token verification failed: {str(e)}")
-
-    def verify_token_sync(self, token: str) -> dict[str, Any]:
-        """Sync token verification that returns raw payload dict."""
-        return self.decode_token(token)
 
     # ===== BACKWARD COMPATIBILITY METHODS FOR TESTS =====
     # These methods provide the exact signatures expected by existing tests
 
     def create_refresh_token(
         self,
-        user_id: str | UUID,
-        expires_delta_minutes: int | None = None
+        data: dict[str, Any] | None = None,
+        subject: str | UUID | None = None,
+        user_id: str | UUID | None = None,
+        expires_delta_minutes: int | None = None,
+        **kwargs: Any
     ) -> str:
-        """Create a refresh token for the specified user.
+        """Create a refresh token with backward compatibility for multiple calling patterns.
         
         Args:
-            user_id: User identifier (string or UUID)
+            data: Dictionary containing token data (old style)
+            subject: User ID (alternative to data)
+            user_id: User ID (direct parameter)
             expires_delta_minutes: Custom expiration time in minutes
+            **kwargs: Additional arguments for backward compatibility
             
         Returns:
             JWT refresh token as a string
         """
-        # Convert UUID to string if needed
-        subject_str = str(user_id)
+        # Extract user_id from various sources for backward compatibility
+        final_user_id = None
+        
+        if data:
+            # Extract from data dictionary (legacy style)
+            final_user_id = data.get("user_id") or data.get("subject") or data.get("sub")
+        elif subject:
+            final_user_id = subject
+        elif user_id:
+            final_user_id = user_id
+        
+        if not final_user_id:
+            raise ValueError("user_id must be provided via data, subject, or user_id parameter")
+        
+        # Convert user_id to string if it's a UUID
+        subject_str = str(final_user_id)
         
         # Get current time
         now = datetime.now(timezone.utc)
@@ -1259,7 +1226,7 @@ class JWTServiceImpl(IJwtService):
         token: str,
         verify_signature: bool = True,
         verify_exp: bool = True,
-        options: dict[str, bool] | None = None
+        options: dict[str, Any] | None = None
     ) -> TokenPayload:
         """Synchronous backward compatibility method for decoding tokens.
         
@@ -1280,6 +1247,10 @@ class JWTServiceImpl(IJwtService):
             InvalidTokenException: If token is invalid
         """
         try:
+            # Handle options parameter which can override verify_exp
+            if options and "verify_exp" in options:
+                verify_exp = options["verify_exp"]
+            
             # Set up default options
             default_options = {
                 "verify_signature": verify_signature,
@@ -1316,6 +1287,15 @@ class JWTServiceImpl(IJwtService):
             logger.debug(f"TokenPayload sub field: {payload.sub}")
             logger.debug(f"TokenPayload roles field: {payload.roles}")
                 
+            # Check if token is blacklisted (simplified sync check)
+            try:
+                jti = payload.jti
+                if jti and jti in self._token_blacklist:
+                    raise InvalidTokenException("Token has been revoked")
+            except Exception:
+                # If blacklist check fails, continue (fail open for sync mode)
+                pass
+                
             # Audit log the token verification if audit_logger is available
             if self.audit_logger:
                 try:
@@ -1339,6 +1319,10 @@ class JWTServiceImpl(IJwtService):
         except JWTError as e:
             logger.warning(f"Invalid token: {e!s}")
             raise InvalidTokenException(f"Invalid token: {e!s}")
+
+    def verify_token_sync(self, token: str) -> TokenPayload:
+        """Sync token verification that returns TokenPayload."""
+        return self.decode_token(token)
 
     # Alias method for backward compatibility
     def is_token_blacklisted(self, token: str) -> bool:
