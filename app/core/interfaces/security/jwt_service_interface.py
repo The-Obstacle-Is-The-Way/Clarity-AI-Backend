@@ -8,7 +8,7 @@ while maintaining HIPAA compliance and clean architecture.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any
+from typing import Any, Dict
 from uuid import UUID
 
 # Import domain types for proper type safety
@@ -154,5 +154,49 @@ class IJwtService(ABC):
 
         Raises:
             JWTError: If token is invalid or doesn't contain identity
+        """
+        pass
+
+    @abstractmethod
+    async def decode_token(self, token: str) -> Any:
+        """
+        Decode a JWT token and return its payload.
+        
+        This method is used by authentication services to extract token data.
+
+        Args:
+            token: The JWT token to decode
+
+        Returns:
+            Token payload data
+
+        Raises:
+            JWTError: If token is invalid or malformed
+        """
+        pass
+        
+    @abstractmethod
+    async def logout(self, token: str) -> bool:
+        """
+        Blacklist a token for logout purposes.
+
+        Args:
+            token: The token to blacklist
+
+        Returns:
+            True if successful, False otherwise
+        """
+        pass
+        
+    @abstractmethod
+    async def blacklist_session(self, session_id: str) -> bool:
+        """
+        Blacklist all tokens associated with a session.
+
+        Args:
+            session_id: The session ID to blacklist
+
+        Returns:
+            True if successful, False otherwise
         """
         pass
