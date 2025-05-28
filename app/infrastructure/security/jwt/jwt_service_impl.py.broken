@@ -1100,6 +1100,58 @@ class JWTServiceImpl(IJwtService):
                 self._token_blacklist[token_jti] = True
 
             # Audit log the token blacklisting
+            if self.audit_logger:
+                user_id = payload.get("sub", "unknown")
+                await self.audit_logger.log_security_event(
+                    event_type=AuditEventType.TOKEN_REVOCATION,
+                    description=f"Token blacklisted for user {user_id}",
+                    user_id=user_id,
+                    metadata={
+                        "token_jti": token_jti,
+                        "expires_at": expires_at.isoformat(),
+                    },
+                )
+
+            logger.info(f"Token {token_jti} added to blacklist")
+                logger.warning("Cannot revoke token: unable to decode")
+                return False
+
+            # Get expiration or use default
+            exp = payload.get("exp", None)
+            if not exp:
+                # Default to 1 hour if exp not found
+                exp_time = datetime.now(timezone.utc) + timedelta(hours=1)
+            else:
+                exp_time = datetime.fromtimestamp(exp, tz=timezone.utc)
+
+            # Check if token blacklist repository is available
+            # if self.token_blacklist_repository is None:
+            #    # No blacklist repository available, consider it blacklisted
+            #    logger.warning("Token blacklist repository not available, considering token revoked")
+            #    return True
+
+            # Add token to blacklist
+            # await self.token_blacklist_repository.add_to_blacklist(token, exp_time)
+
+            # Audit the token revocation
+            self.audit_logger.log_security_event(
+                AuditEventType.TOKEN_REVOKED,
+                user_id=str(payload.get("sub", "unknown")),
+                details={
+                    "token_type": payload.get("type", "unknown"),
+                    "jti": payload.get("jti", "unknown"),
+                },
+            )
+
+            return True
+        except Exception as e:
+            # Log the exception (avoiding PHI)
+            logger.error(f"Error revoking token: {str(e)}")
+            return False
+
+    async def decode_token(self, token: str) -> Any:
+        """
+        Decode a JWT token and return its payload.
 
         This method is used by authentication services to extract token data.
 
