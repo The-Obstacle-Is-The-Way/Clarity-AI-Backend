@@ -83,6 +83,43 @@ class IAppointmentRepository(ABC):
         """
         pass
 
+    # ---------------------------------------------------------------------------
+    # Newly added methods to support patient and analytics services
+    # ---------------------------------------------------------------------------
+
+    @abstractmethod
+    async def list_upcoming_by_patient(
+        self,
+        patient_id: UUID,
+        limit: int = 5,
+    ) -> list[Appointment]:
+        """List upcoming appointments for a patient ordered by date ascending."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def list_by_date_range(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        *,
+        patient_id: UUID | None = None,
+        provider_id: UUID | None = None,
+        status: AppointmentStatus | None = None,
+    ) -> list[Appointment]:
+        """Return appointments filtered by arbitrary date range and optional patient/provider."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def list_by_provider_date_range(
+        self,
+        provider_id: UUID,
+        start_date: datetime,
+        end_date: datetime,
+        status: AppointmentStatus | None = None,
+    ) -> list[Appointment]:
+        """Convenience wrapper for provider-centric analytics queries."""
+        raise NotImplementedError
+
 
 # ---------------------------------------------------------------------------
 # Backwards‑compatibility alias
