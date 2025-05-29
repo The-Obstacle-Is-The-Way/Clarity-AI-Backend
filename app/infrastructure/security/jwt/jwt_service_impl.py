@@ -186,17 +186,21 @@ class JWTServiceImpl(IJwtService):
         # ------------------------------------------------------------------
         # Configuration with sane test-friendly fallbacks
         # ------------------------------------------------------------------
-        raw_key = (
-            secret_key
-            or getattr(settings, "jwt_secret_key", None)
-            or getattr(settings, "JWT_SECRET_KEY", None)
-        )
-        # Handle Pydantic SecretStr or similar objects with get_secret_value()
-        if hasattr(raw_key, "get_secret_value"):
-            raw_key = raw_key.get_secret_value()
-        # If still None, fall back to test constant
+        raw_key = secret_key
+        if raw_key is None and settings is not None:
+            for attr in ("jwt_secret_key", "JWT_SECRET_KEY", "SECRET_KEY"):
+                candidate = getattr(settings, attr, None)
+                # Guard against MagicMock auto-creation – require explicit attribute
+                if candidate is None:
+                    continue
+                # Resolve SecretStr / MagicMock
+                if hasattr(candidate, "get_secret_value"):
+                    candidate = candidate.get_secret_value()
+                raw_key = candidate
+                break
         if raw_key is None:
             raw_key = "TEST_SECRET_KEY"
+        # Ensure plain str
         self.secret_key = str(raw_key)
 
         self.algorithm: str = (
@@ -277,7 +281,7 @@ class JWTServiceImpl(IJwtService):
         except ExpiredSignatureError as exc:
             raise TokenExpiredException("Token has expired") from exc
         except JWTError as exc:
-            raise InvalidTokenException(str(exc)) from exc
+            raise InvalidTokenException(f"Invalid token: {exc}") from exc
 
     # ------------------------------------------------------------------
     # Token builders
