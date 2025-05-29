@@ -430,6 +430,94 @@ class AuditLogger(IAuditLogger):
         # TODO: Implement proper storage and retrieval of audit events in a later sprint
         return []
 
+    # ------------------------------------------------------------------
+    # IAuditLogger interface compliance helpers
+    # ------------------------------------------------------------------
+
+    async def log_security_event(
+        self,
+        event_type: AuditEventType | str,  # type: ignore[override]
+        description: str,
+        severity: AuditSeverity = AuditSeverity.INFO,
+        user_id: str | None = None,
+        metadata: dict | None = None,
+    ) -> None:  # noqa: D401 – interface requires exact name
+        """Async wrapper for security event logging to satisfy ABC."""
+        # Delegate to sync implementation for backward compatibility
+        self.log_security_event(
+            event_type=str(event_type),
+            description=description,
+            user_id=user_id,
+            severity=severity,
+            metadata=metadata,
+        )
+
+    def log_data_access(
+        self,
+        resource_type: str,
+        resource_id: str,
+        action: str,
+        user_id: str,
+        reason: str | None = None,
+        metadata: dict | None = None,
+    ) -> None:  # type: ignore[override]
+        """Log generic data access events (non-PHI)."""
+        entry = {
+            "resource_type": resource_type,
+            "resource_id": resource_id,
+            "action": action,
+            "user_id": user_id,
+            "reason": reason,
+            "timestamp": format_date_iso(utcnow()),
+        }
+        if metadata:
+            entry.update(metadata)
+        self.__class__.log_transaction(entry)
+
+    def log_api_request(
+        self,
+        endpoint: str,
+        method: str,
+        status_code: int,
+        user_id: str | None = None,
+        request_id: str | None = None,
+        duration_ms: float | None = None,
+        metadata: dict | None = None,
+    ) -> None:  # type: ignore[override]
+        """Log API request details for auditing."""
+        entry = {
+            "endpoint": endpoint,
+            "method": method,
+            "status_code": status_code,
+            "user_id": user_id,
+            "request_id": request_id,
+            "duration_ms": duration_ms,
+            "timestamp": format_date_iso(utcnow()),
+            "action": "api_request",
+        }
+        if metadata:
+            entry.update(metadata)
+        self.__class__.log_transaction(entry)
+
+    def log_system_event(
+        self,
+        event_type: str,
+        description: str,
+        severity: AuditSeverity = AuditSeverity.INFO,
+        metadata: dict | None = None,
+    ) -> None:  # type: ignore[override]
+        """Log system-level events (startup, shutdown)."""
+        entry = {
+            "event_type": event_type,
+            "description": description,
+            "severity": severity.value if isinstance(severity, AuditSeverity) else str(severity),
+            "timestamp": format_date_iso(utcnow()),
+            "action": "system_event",
+        }
+        if metadata:
+            entry.update(metadata)
+        self.__class__.log_transaction(entry)
+
 
 # Initialize the audit logger when the module is imported - but defer actual setup
 # to ensure we don't have issues during import for tests
