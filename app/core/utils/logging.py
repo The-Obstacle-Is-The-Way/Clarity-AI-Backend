@@ -12,7 +12,7 @@ import traceback
 from collections.abc import Callable
 from datetime import datetime
 from functools import wraps
-from typing import Any, ParamSpec, TypeVar, cast
+from typing import Any, ParamSpec, TypeVar
 
 from app.core.constants import LogLevel
 
@@ -206,13 +206,14 @@ def log_method_calls(
         Decorator function
     """
     # Convert provided level to a standard logging int
+    numeric_level: int
     if isinstance(level, LogLevel):
-        numeric_level: int = level.value
+        numeric_level = level.value
     elif isinstance(level, int):
         numeric_level = level
     else:
         # Fallback: resolve string names (e.g., "INFO") to their numeric constant.
-        numeric_level = cast(int, getattr(logging, str(level).upper(), logging.INFO))
+        numeric_level = int(getattr(logging, str(level).upper(), logging.INFO))
 
     def decorator(cls: type) -> type:
         # Get class methods (excluding magic methods)
