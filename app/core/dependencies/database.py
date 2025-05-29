@@ -5,7 +5,7 @@ This module provides the database engine, session management,
 and connection utilities for the application.
 """
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
@@ -14,13 +14,16 @@ from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
 _orig_async_execute = _AsyncSession.execute
 
 
-async def _async_execute(self, statement, *args, **kwargs):
+async def _async_execute(
+    self: _AsyncSession, statement: Any, *args: Any, **kwargs: Any
+) -> Any:
+    """Wrapper allowing plain SQL strings in AsyncSession.execute."""
     if isinstance(statement, str):
         statement = text(statement)
     return await _orig_async_execute(self, statement, *args, **kwargs)
 
 
-_AsyncSession.execute = _async_execute
+_AsyncSession.execute = cast(Any, _async_execute)  # type: ignore[assignment]
 import logging
 import os
 from contextlib import asynccontextmanager

@@ -205,11 +205,14 @@ def log_method_calls(
     Returns:
         Decorator function
     """
-    # Convert to int if it's a LogLevel enum
+    # Convert provided level to a standard logging int
     if isinstance(level, LogLevel):
-        numeric_level = level.value
-    else:
+        numeric_level: int = level.value
+    elif isinstance(level, int):
         numeric_level = level
+    else:
+        # Fallback: try to resolve string names such as "INFO"
+        numeric_level = logging.getLevelName(str(level).upper())  # type: ignore[arg-type]
 
     def decorator(cls: type) -> type:
         # Get class methods (excluding magic methods)
