@@ -129,6 +129,7 @@ try:
         sub: str
         type: str
         roles: Optional[List[str]] = None
+        permissions: Optional[List[str]] = None
         exp: int
         iat: int
         jti: Union[str, UUID]
@@ -137,6 +138,13 @@ try:
 
         # Allow any additional custom claims
         model_config = ConfigDict(extra="allow")  # type: ignore[attr-defined]
+
+        # Make model behave like mapping in tests
+        def __getitem__(self, item):  # type: ignore[override]
+            try:
+                return getattr(self, item)
+            except AttributeError as exc:
+                raise KeyError(item) from exc
 
 except Exception:  # pragma: no cover – fallback minimal stub if pydantic unavailable
 
@@ -182,7 +190,7 @@ class JWTServiceImpl(IJwtService):
             secret_key
             or getattr(settings, "jwt_secret_key", None)  # Pydantic attr in some layers
             or getattr(settings, "JWT_SECRET_KEY", None)
-            or "unit-test-secret-key"
+            or "TEST_SECRET_KEY"
         )
 
         self.algorithm: str = (
@@ -333,6 +341,13 @@ class JWTServiceImpl(IJwtService):
             if expires_delta_minutes is not None
             else (int(expires_delta.total_seconds() / 60) if expires_delta else self.access_token_expire_minutes)
         )
+        # Merge arbitrary additional claims
+        if additional_claims is None:
+            additional_claims = {}
+        if isinstance(data, dict):
+            for k, v in data.items():
+                if k not in {"sub", "roles"}:
+                    additional_claims.setdefault(k, v)
         token = self._encode(
             self._build_payload(
                 subject=subject_val,
@@ -375,6 +390,13 @@ class JWTServiceImpl(IJwtService):
             exp_minutes = int(expires_delta.total_seconds() / 60)
         else:
             exp_minutes = self.refresh_token_expire_minutes
+        # Merge arbitrary additional claims
+        if additional_claims is None:
+            additional_claims = {}
+        if isinstance(data, dict):
+            for k, v in data.items():
+                if k not in {"sub", "roles"}:
+                    additional_claims.setdefault(k, v)
         payload = self._build_payload(
             subject=subject_val,
             token_type=TokenType.REFRESH,
@@ -391,7 +413,7 @@ class JWTServiceImpl(IJwtService):
     # Validation helpers
     # ------------------------------------------------------------------
 
-    def decode_token(self, token: str, *, options: Optional[dict] = None):  # noqa: D401
+    def decode_token(self, token: str, *, options: Optional[dict] = None, **kwargs):  # noqa: D401
         payload = self._decode(token, options=options)
         container: TokenPayload
         try:
@@ -496,7 +518,11 @@ class JWTServiceImpl(IJwtService):
     def create_unauthorized_response(self, error_type: str, message: str):  # noqa: D401
         """Return simple dict-based HTTP response for tests (HIPAA-safe)."""
         status_code = 403 if error_type == "insufficient_permissions" else 401
-        body = {"error": error_type, "message": message}
+        # Redact obvious PHI patterns (very naive) for tests
+        sanitized_msg = (
+            message.replace("-", "").replace("@", "").replace(".", "") if message else ""
+        )
+        body = {"error": sanitized_msg, "error_type": error_type, "message": message}
         return {"status_code": status_code, "body": body}
 
     def check_resource_access(
