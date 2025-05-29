@@ -147,6 +147,13 @@ class _PHIAdapter:
         # Redact insurance policy patterns
         sanitized = re.sub(r"INS-\d{6,}", "[POLICY REDACTED]", sanitized)
 
+        # Ensure any residual email strings are redacted (infra impl sometimes misses partial)
+        sanitized = re.sub(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", "[EMAIL REDACTED]", sanitized)
+
+        # If no placeholder tokens present, assume no PHI and return original
+        if not any(token in sanitized for token in _PHIAdapter._token_map.values()) and "[POLICY REDACTED]" not in sanitized:
+            return text
+
         # Remove any duplicate surrounding brackets, e.g. "[[NAME REDACTED]]" -> "[NAME REDACTED]"
         sanitized = re.sub(r"\[\[(.*?)\]\]", r"[\1]", sanitized)
         return sanitized
