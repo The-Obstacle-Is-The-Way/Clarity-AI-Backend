@@ -396,7 +396,11 @@ class JWTServiceImpl(IJwtService):
         from app.domain.exceptions import AuthenticationError  # local import to avoid cycles
 
         payload = self.decode_token(token, options={"verify_exp": False})
-        user_id = getattr(payload, "sub", None)
+        # payload may be a SimpleNamespace or a raw dict (tests mock dict)
+        if isinstance(payload, dict):
+            user_id = payload.get("sub")
+        else:
+            user_id = getattr(payload, "sub", None)
         if user_id is None:
             raise AuthenticationError("Invalid token: no subject")
         if self._user_repo is None:
