@@ -23,10 +23,6 @@ from app.core.interfaces.security.jwt_service_interface import IJwtService
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Use jwt functions directly for clarity
-jwt_encode = jose_jwt.encode
-jwt_decode = jose_jwt.decode
-
 # Test key for development use only - override in production
 TEST_SECRET_KEY = "test_secret_key_for_development_only"
 
