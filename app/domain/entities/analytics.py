@@ -147,7 +147,7 @@ class AnalyticsAggregate:
         self,
         dimensions: dict[str, Any],
         metrics: dict[str, Any],
-        time_period: dict[str, datetime] | None = None,
+        time_period: dict[str, Any] | None = None,
     ) -> None:
         """
         Initialize an analytics aggregate.
@@ -172,12 +172,13 @@ class AnalyticsAggregate:
 
         # Add time period if available
         if self.time_period:
-            formatted_time_period = {}
+            formatted_time_period: dict[str, str] = {}
             for key, value in self.time_period.items():
+                # Ensure datetime values are serialized; fallback to str() for others.
                 if isinstance(value, datetime):
                     formatted_time_period[key] = value.isoformat()
                 else:
-                    formatted_time_period[key] = value
+                    formatted_time_period[key] = str(value)
 
             result["time_period"] = formatted_time_period
 
