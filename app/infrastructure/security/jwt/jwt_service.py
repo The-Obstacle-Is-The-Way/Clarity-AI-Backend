@@ -323,6 +323,62 @@ class JWTServiceImpl(IJwtService):
             logger.error(f"Error extracting token identity: {e}")
             raise InvalidTokenError(f"Identity extraction failed: {e}")
 
+    async def blacklist_session(self, session_id: str) -> bool:
+        """Blacklist all tokens associated with a session.
+
+        MVP implementation: if a token blacklist repository is available, delegate
+        to it; otherwise, no-op and return ``False`` to indicate that session-wide
+        revocation is not yet supported.
+        """
+        if self.token_blacklist_repository is None:
+            # Not yet supported without repository – callers should not rely on this
+            logger.debug("blacklist_session called but no repository configured")
+            return False
+
+        try:
+            await self.token_blacklist_repository.blacklist_session_tokens(session_id)
+            return True
+        except Exception as exc:  # pragma: no cover – repository errors should not crash auth
+            logger.warning("Error blacklisting session %s: %s", session_id, exc)
+            return False
+
+    def decode_token(
+        self,
+        token: str,
+        verify_signature: bool = True,
+        *,
+        options: dict | None = None,
+        audience: str | None = None,
+        algorithms: list[str] | None = None,
+    ) -> TokenPayload:  # type: ignore[override]
+        """Decode a JWT token synchronously and return a validated payload.
+
+        The implementation mirrors ``verify_token`` but without the blacklist
+        checks so that unit-tests that call ``decode_token`` directly still work.
+        """
+        try:
+            payload = self._decode_token(token)
+        except InvalidTokenError as exc:
+            raise exc
+
+        payload_dict = self._extract_payload_dict(payload)
+        return payload_from_dict(payload_dict)
+
+    async def logout(self, token: str) -> bool:  # type: ignore[override]
+        """Revoke a token by putting its JTI on the blacklist.
+
+        This is a thin async wrapper around ``blacklist_token`` to satisfy the
+        interface while keeping the underlying implementation synchronous.
+        """
+        try:
+            payload = self._decode_token(token, verify_exp=False)
+            exp_ts = payload.get("exp", int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp()))
+            await self.blacklist_token(token, datetime.fromtimestamp(exp_ts, tz=timezone.utc))  # type: ignore[arg-type]
+            return True
+        except Exception as exc:
+            logger.warning("logout failed: %s", exc)
+            return False
+
     def _create_token(self, claims: dict[str, Any]) -> str:
         """Create a JWT token with the given claims."""
         try:

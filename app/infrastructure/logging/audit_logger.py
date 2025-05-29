@@ -333,54 +333,126 @@ class AuditLogger(IAuditLogger):
         # Log the transaction for persistent storage
         self.__class__.log_transaction(log_data)
 
-    def _legacy_log_system_event(
+    def log_system_event(
         self,
         event_type: str,
         description: str,
         severity: AuditSeverity = AuditSeverity.INFO,
-        metadata: dict | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
-        """
-        Log system-level events (startup, shutdown).
+        """Log system-level operational events.
 
-        Args:
-            event_type: Type of system event (e.g., "STARTUP", "SHUTDOWN", "ERROR")
-            description: Human-readable description of the event
-            severity: Severity level of the event
-            metadata: Additional contextual information about the event
+        This synchronous helper satisfies the IAuditLogger contract and simply
+        delegates to ``log_transaction`` with an ``action`` of "system_event".
         """
         # Configure if not already done
         if not self.__class__._configured:
             self.__class__.setup()
 
-        # Skip logging if disabled
         if not AUDIT_ENABLED:
             return
 
-        # Build log data
         log_data = {
-            "event_type": event_type,
-            "description": description,
+            "event_type": str(event_type),
             "timestamp": format_date_iso(utcnow()),
             "action": "system_event",
             "severity": severity.value if isinstance(severity, AuditSeverity) else str(severity),
+            "description": description,
         }
 
-        # Add any additional metadata
         if metadata:
             log_data.update(metadata)
 
-        # Log at appropriate level based on severity
+        self.__class__.log_transaction(log_data)
+
+    def log_api_request(
+        self,
+        endpoint: str,
+        method: str,
+        status_code: int,
+        user_id: str | None = None,
+        request_id: str | None = None,
+        duration_ms: float | None = None,
+        metadata: dict | None = None,
+    ) -> None:
+        """Concrete implementation completing the IAuditLogger contract."""
+        # Configure if not already done
+        if not self.__class__._configured:
+            self.__class__.setup()
+
+        if not AUDIT_ENABLED:
+            return
+
+        log_data = {
+            "event_type": "API_REQUEST",
+            "endpoint": endpoint,
+            "method": method.upper(),
+            "status_code": status_code,
+            "user_id": user_id or "anonymous",
+            "request_id": request_id,
+            "duration_ms": duration_ms,
+            "timestamp": format_date_iso(utcnow()),
+            "action": "api_request",
+        }
+
+        # Remove None values
+        log_data = {k: v for k, v in log_data.items() if v is not None}
+
+        if metadata:
+            log_data.update(metadata)
+
+        # Severity is inferred from status code
+        severity = (
+            AuditSeverity.ERROR if status_code >= 500 else AuditSeverity.WARNING if status_code >= 400 else AuditSeverity.INFO
+        )
+        log_data["severity"] = severity.value
+
+        # Emit to logger
         log_message = json.dumps(log_data)
-
-        if severity in (AuditSeverity.ERROR, AuditSeverity.CRITICAL):
-            self.__class__._logger.error(f"SYSTEM_EVENT: {log_message}")
+        if severity == AuditSeverity.ERROR:
+            self.__class__._logger.error(f"API_REQUEST: {log_message}")
         elif severity == AuditSeverity.WARNING:
-            self.__class__._logger.warning(f"SYSTEM_EVENT: {log_message}")
+            self.__class__._logger.warning(f"API_REQUEST: {log_message}")
         else:
-            self.__class__._logger.info(f"SYSTEM_EVENT: {log_message}")
+            self.__class__._logger.info(f"API_REQUEST: {log_message}")
 
-        # Log the transaction for persistent storage
+        # Persist
+        self.__class__.log_transaction(log_data)
+
+    def log_data_access(
+        self,
+        resource_type: str,
+        resource_id: str,
+        action: str,
+        user_id: str,
+        reason: str | None = None,
+        metadata: dict | None = None,
+    ) -> None:
+        """Generic wrapper to log data access events (non-PHI specific)."""
+        # Configure if not already done
+        if not self.__class__._configured:
+            self.__class__.setup()
+
+        if not AUDIT_ENABLED:
+            return
+
+        log_data = {
+            "event_type": AuditEventType.DATA_ACCESS.value,
+            "resource_type": resource_type,
+            "resource_id": resource_id,
+            "action": action,
+            "user_id": user_id,
+            "reason": reason,
+            "timestamp": format_date_iso(utcnow()),
+        }
+
+        # Remove None values
+        log_data = {k: v for k, v in log_data.items() if v is not None}
+
+        if metadata:
+            log_data.update(metadata)
+
+        # Persist & emit
         self.__class__.log_transaction(log_data)
 
     def get_audit_trail(
@@ -417,56 +489,14 @@ class AuditLogger(IAuditLogger):
     # IAuditLogger interface compliance helpers
     # ------------------------------------------------------------------
 
-    def log_data_access(
-        self,
-        resource_type: str,
-        resource_id: str,
-        action: str,
-        user_id: str,
-        reason: str | None = None,
-        metadata: dict | None = None,
-    ) -> None:  # type: ignore[override]
-        """Log generic data access events (non-PHI)."""
-        entry = {
-            "resource_type": resource_type,
-            "resource_id": resource_id,
-            "action": action,
-            "user_id": user_id,
-            "reason": reason,
-            "timestamp": format_date_iso(utcnow()),
-        }
-        if metadata:
-            entry.update(metadata)
-        self.__class__.log_transaction(entry)
-
-    def log_api_request(
-        self,
-        endpoint: str,
-        method: str,
-        status_code: int,
-        user_id: str | None = None,
-        request_id: str | None = None,
-        duration_ms: float | None = None,
-        metadata: dict | None = None,
-    ) -> None:  # type: ignore[override]
-        """Log API request details for auditing."""
-        entry = {
-            "endpoint": endpoint,
-            "method": method,
-            "status_code": status_code,
-            "user_id": user_id,
-            "request_id": request_id,
-            "duration_ms": duration_ms,
-            "timestamp": format_date_iso(utcnow()),
-            "action": "api_request",
-        }
-        if metadata:
-            entry.update(metadata)
-        self.__class__.log_transaction(entry)
-
-    def _legacy_log_security_event(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401
-        """Deprecated duplicate method retained for backward compatibility (no-op)."""
-        return
+    # Explicit re-export so external modules can import these functions
+    # without requiring an intermediate import of AuditLogger
+    __all__ = [
+        "AuditEventType",
+        "AuditLogger",
+        "AuditSeverity",
+        "IAuditLogger",
+    ]
 
 
 # Initialize the audit logger when the module is imported - but defer actual setup
@@ -527,16 +557,3 @@ def log_auth_event(
 
 # Alias for backward compatibility with existing code
 audit_log_phi_access = log_phi_access
-
-# Explicit re-export so external modules can import these functions
-# without requiring an intermediate import of AuditLogger
-__all__ = [
-    "AuditEventType",
-    "AuditLogger",
-    "AuditSeverity",
-    "IAuditLogger",
-    "audit_log_phi_access",
-    "log_auth_event",
-    "log_phi_access",
-    "log_security_event",
-]
