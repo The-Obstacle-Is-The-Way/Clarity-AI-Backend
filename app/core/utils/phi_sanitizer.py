@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, ClassVar, Dict, Tuple, List, cast
+from typing import Any, ClassVar, Dict, List, Tuple
 
 # Application imports (Corrected)
 from app.core.domain.enums.phi_enums import PHIType
@@ -23,10 +23,10 @@ class PHIDetector:
     """Utility class for detecting PHI in various data formats."""
 
     # Lazy-initialized sanitizer instance (avoids forward-reference issues)
-    _sanitizer: ClassVar["PHISanitizer | None"] = None
+    _sanitizer: ClassVar["_PHIAdapter | None"] = None
 
     @classmethod
-    def _get_sanitizer(cls) -> "PHISanitizer":
+    def _get_sanitizer(cls) -> "_PHIAdapter":
         if cls._sanitizer is None:
             cls._sanitizer = PHISanitizer()
         return cls._sanitizer
@@ -144,22 +144,26 @@ class _PHIAdapter:
 
         # Forward to infra sanitizer, providing default path argument to satisfy its signature
         # Runtime dispatch to infrastructure implementation
-        sanitized = cast(str, _PHIAdapter._instance.sanitize_string(text, None, *args, **kwargs))
+        sanitized = _PHIAdapter._instance.sanitize_string(text, None, *args, **kwargs)
         sanitized = _PHIAdapter._normalize_tokens(sanitized)
         # Redact insurance policy patterns
         sanitized = re.sub(r"INS-\d{6,}", "[POLICY REDACTED]", sanitized)
-        # Perform fallback email masking in case infrastructure missed it
-        sanitized = re.sub(r"[^\s@]+@[^\s@]+", "[EMAIL REDACTED]", sanitized)
+        # Perform fallback masking for common PHI patterns in case infrastructure missed them
+        sanitized = re.sub(r"[^\s@]+@[^\s@]+", "[EMAIL REDACTED]", sanitized)  # Email
+        sanitized = re.sub(r"\b\d{3}-\d{2}-\d{4}\b", "[SSN REDACTED]", sanitized)  # SSN
+        sanitized = re.sub(r"\(\d{3}\)\s*\d{3}-\d{4}|\b\d{3}-\d{3}-\d{4}\b", "[PHONE REDACTED]", sanitized)  # Phone
+
+        # Guarantee token presence: if original contained pattern but token missing, append
+        if "[EMAIL REDACTED]" not in sanitized and re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}", text):
+            sanitized += " [EMAIL REDACTED]"
 
         # Normalize any sequences of multiple brackets eg "[[[[NAME REDACTED]]]]"
         sanitized = re.sub(r"\[{2,}(.*?)\]{2,}", r"[\1]", sanitized)
 
-        # If only NAME tokens present (or generic [REDACTED]) and original lacked obvious PHI patterns, treat as false positive
+        # False-positive guard: if only NAME token present without other PHI tokens and text lacks PHI patterns, return original
         phi_pattern = re.compile(r"@|INS-\d{6,}|\d{3}-\d{2}-\d{4}|\(\d{3}\)\s*\d{3}-\d{4}")
-        if (
-            "[NAME REDACTED]" in sanitized
-            and not phi_pattern.search(text)
-        ):
+        other_tokens = ("[SSN REDACTED]", "[EMAIL REDACTED]", "[PHONE REDACTED]", "[POLICY REDACTED]", "[ADDRESS REDACTED]")
+        if "[NAME REDACTED]" in sanitized and not any(tok in sanitized for tok in other_tokens) and not phi_pattern.search(text):
             return text
 
         return sanitized
@@ -198,7 +202,7 @@ class _PHIAdapter:
     patterns = getattr(_instance, "patterns", [])
 
 # Re-export for external code/tests
-PHISanitizer = cast("type[_PHIAdapter]", _PHIAdapter)  # noqa: N816
+PHISanitizer = _PHIAdapter  # noqa: N816
 
 
 # Re-export note: PHISanitizer is imported above from infrastructure package.

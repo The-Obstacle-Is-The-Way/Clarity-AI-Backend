@@ -76,6 +76,8 @@ class Medication:
     name: str
     dosage_schedule: DosageSchedule
     start_date: datetime
+    # Classification of medication (e.g., SSRI, SNRI, MAOI). Defaults to "UNKNOWN" if not specified.
+    medication_class: str = "UNKNOWN"
     id: UUID = field(default_factory=uuid4)
     end_date: datetime | None = None
     status: MedicationStatus = MedicationStatus.ACTIVE

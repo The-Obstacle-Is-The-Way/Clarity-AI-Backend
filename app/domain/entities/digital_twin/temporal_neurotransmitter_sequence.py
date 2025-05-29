@@ -126,7 +126,7 @@ class TemporalNeurotransmitterSequence(TemporalSequence):
             Boolean indicating success
         """
         # Find the closest timestamp in our sequence
-        closest_idx = None
+        closest_idx: int | None = None
         min_diff = timedelta.max
 
         for idx, ts in enumerate(self.timestamps):
@@ -147,13 +147,16 @@ class TemporalNeurotransmitterSequence(TemporalSequence):
         feature_idx = self._feature_indices[feature_name]
 
         # Update the value
-        self._values[closest_idx][feature_idx] = max(0.0, min(1.0, value))
+        # mypy: closest_idx is ensured not None due to earlier guard
+        self._values[cast(int, closest_idx)][feature_idx] = max(0.0, min(1.0, value))
         self.updated_at = datetime.now()
 
         return True
 
     def get_neurotransmitter_levels(
-        self, neurotransmitter: Neurotransmitter, brain_region: BrainRegion = None
+        self,
+        neurotransmitter: Neurotransmitter,
+        brain_region: BrainRegion | None = None,
     ) -> list[tuple[datetime, float]]:
         """
         Get the time series for a specific neurotransmitter.
@@ -197,7 +200,9 @@ class TemporalNeurotransmitterSequence(TemporalSequence):
         return result
 
     def get_brain_region_levels(
-        self, brain_region: BrainRegion, neurotransmitter: Neurotransmitter = None
+        self,
+        brain_region: BrainRegion,
+        neurotransmitter: Neurotransmitter | None = None,
     ) -> list[tuple[datetime, float]]:
         """
         Get the time series for a specific brain region.
