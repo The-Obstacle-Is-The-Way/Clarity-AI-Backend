@@ -16,7 +16,7 @@ from typing import Any
 # Application imports (Corrected)
 from app.core.domain.enums.phi_enums import PHIType
 # Avoid name collision: import only logger helper, not PHISanitizer implementation
-from app.infrastructure.security.phi import PHISanitizer, get_sanitized_logger
+from app.infrastructure.security.phi import PHISanitizer as _InfraPHISanitizer, get_sanitized_logger
 
 
 class PHIDetector:
@@ -103,6 +103,44 @@ class PHIDetector:
             matches.append((PHIType.NAME, name_match.group(0)))
 
         return matches
+
+
+class _PHIAdapter:
+    """Static adapter to expose Infra `PHISanitizer` instance via classmethods.
+
+    Legacy unit tests expect `PHISanitizer.sanitize_string` and
+    `PHISanitizer.sanitize_dict` to be *classmethods*. The infrastructure
+    implementation is instance-based.  We create a singleton internally and
+    expose static wrappers that forward to it, preserving Clean Architecture
+    by *not* redefining sanitization logic here.
+    """
+
+    _instance = _InfraPHISanitizer()
+
+    @staticmethod
+    def sanitize_string(text: str, *args, **kwargs):  # noqa: D401
+        return _PHIAdapter._instance.sanitize_string(text, *args, **kwargs)
+
+    @staticmethod
+    def sanitize_dict(data: Any, *args, **kwargs):  # noqa: D401
+        # Infrastructure offers `sanitize_json` and generic `sanitize`.
+        if hasattr(_PHIAdapter._instance, "sanitize_dict"):
+            return _PHIAdapter._instance.sanitize_dict(data, *args, **kwargs)  # type: ignore[attr-defined]
+        return _PHIAdapter._instance.sanitize_json(data, *args, **kwargs)
+
+    @staticmethod
+    def sanitize_text(text: str, *args, **kwargs):  # legacy alias
+        return _PHIAdapter._instance.sanitize_string(text, *args, **kwargs)
+
+    @staticmethod
+    def contains_phi(text: str, *args, **kwargs):
+        return _PHIAdapter._instance.contains_phi(text, *args, **kwargs)
+
+    # expose patterns for tests
+    patterns = getattr(_instance, "patterns", [])
+
+# Re-export for external code/tests
+PHISanitizer = _PHIAdapter  # type: ignore  # noqa: N816
 
 
 # Re-export note: PHISanitizer is imported above from infrastructure package.
