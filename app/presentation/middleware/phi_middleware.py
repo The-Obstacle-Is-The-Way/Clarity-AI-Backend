@@ -14,6 +14,7 @@ import re
 import time
 from collections.abc import Callable
 from re import Pattern
+from typing import Callable, cast
 
 from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
@@ -82,9 +83,9 @@ class PHIMiddleware(BaseHTTPMiddleware):
         # Get encryption service for HIPAA compliance
         container = get_container()
         try:
-            self.encryption_service = container.get(IEncryptionService)
+            self.encryption_service = cast(IEncryptionService, container.get(IEncryptionService))
         except KeyError:
-            # Create encryption service if not available
+            # Create encryption service if not available and register it
             self.encryption_service = BaseEncryptionService()
             container.register(IEncryptionService, self.encryption_service)
 
@@ -183,7 +184,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
                 raise PHIInUrlError("PHI detected in URL path")
 
         # Check query parameters
-        for _key, values in request.query_params.items():
+        for key, values in request.query_params.items():
             if isinstance(values, str):
                 values = [values]
             for value in values:
