@@ -7,6 +7,7 @@ which is specialized for mental health text analysis and therapeutic response ge
 
 from typing import Any
 
+import asyncio
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 
 from app.core.services.ml.interface import MentaLLaMAInterface
@@ -76,6 +77,8 @@ async def process_text(
     options = {"user_id": user_id, "temperature": temperature, "max_tokens": max_tokens}
 
     result = service.process(text=prompt, model_type=model, options=options)
+    if asyncio.iscoroutine(result):
+        result = await result
 
     return result
 
@@ -104,7 +107,11 @@ async def analyze_text(
     # For tests, forward to the process method
     options = {"user_id": user_id, "analysis_type": analysis_type}
 
-    return service.process(text=text, model_type="analysis", options=options)
+    result = service.process(text=text, model_type="analysis", options=options)
+    if asyncio.iscoroutine(result):
+        result = await result
+
+    return result
 
 
 @router.post("/detect-conditions", response_model=dict[str, Any])
@@ -129,7 +136,11 @@ async def detect_conditions(
     # For tests, forward to the process method
     options = {"user_id": user_id}
 
-    return service.process(text=text, model_type="conditions", options=options)
+    result = service.process(text=text, model_type="conditions", options=options)
+    if asyncio.iscoroutine(result):
+        result = await result
+
+    return result
 
 
 @router.post("/therapeutic-response", response_model=dict[str, Any])
@@ -161,7 +172,11 @@ async def generate_therapeutic_response(
     # For tests, forward to the process method
     options = {"user_id": user_id}
 
-    return service.process(text=prompt, model_type="therapeutic", options=options)
+    result = service.process(text=prompt, model_type="therapeutic", options=options)
+    if asyncio.iscoroutine(result):
+        result = await result
+
+    return result
 
 
 @router.post("/assess-suicide-risk", response_model=dict[str, Any])
@@ -185,6 +200,8 @@ async def assess_suicide_risk(
 
     # For tests, use a mock response that includes risk_level
     response = service.process(text=text, model_type="risk", options={"user_id": user_id})
+    if asyncio.iscoroutine(response):
+        response = await response
 
     # Add risk_level to response for test compatibility
     if "risk_level" not in response:
@@ -217,4 +234,8 @@ async def assess_wellness_dimensions(
     _check_health(service)
 
     # For tests, forward to the process method
-    return service.process(text=text, model_type="wellness", options={"user_id": user_id, "dimensions": dimensions})
+    result = service.process(text=text, model_type="wellness", options={"user_id": user_id, "dimensions": dimensions})
+    if asyncio.iscoroutine(result):
+        result = await result
+
+    return result
