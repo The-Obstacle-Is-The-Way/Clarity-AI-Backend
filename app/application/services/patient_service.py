@@ -6,12 +6,13 @@ Orchestrates use cases related to patient data management.
 import logging
 import uuid
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
+from datetime import date, datetime
 
 # Import necessary domain entities and repository interfaces
 from app.domain.entities.patient import Patient
 from app.domain.repositories.patient_repository import PatientRepository
-from app.presentation.api.schemas.patient import PatientCreateRequest
+from app.presentation.api.schemas.patient import PatientCreateRequest, PatientCreateResponse
 
 # Import encryption service if needed for handling sensitive data
 # from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
@@ -108,7 +109,7 @@ class PatientService:
     def __init__(self, repository: PatientRepository):
         self.repo = repository
 
-    async def get_patient_by_id(self, patient_id: str) -> dict[str, str] | None:
+    async def get_patient_by_id(self, patient_id: str) -> PatientCreateResponse | None:
         """Retrieves a patient by ID.
 
         Note: Authentication/Authorization context temporarily removed for basic tests.
@@ -122,9 +123,22 @@ class PatientService:
         # return PatientRead.model_validate(patient).model_dump() # Example using Pydantic
         if patient_id == "non-existent-patient":  # Simple mock for not found
             return None
-        return {"id": patient_id, "name": "Placeholder from Service"}
+        # Return placeholder PatientCreateResponse
+        return PatientCreateResponse(
+            id=UUID(patient_id),
+            first_name="Placeholder",
+            last_name="User",
+            date_of_birth=date.today(),
+            email=None,
+            phone_number=None,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+            created_by=uuid4(),
+        )
 
-    async def create_patient(self, patient_data: PatientCreateRequest) -> dict[str, str]:
+    async def create_patient(
+        self, patient_data: PatientCreateRequest, *, created_by_id: UUID | None = None
+    ) -> PatientCreateResponse:
         """Creates a new patient.
 
         Placeholder implementation.
@@ -137,9 +151,23 @@ class PatientService:
         # 4. Map the created domain entity back to PatientRead/Response schema
 
         # Placeholder response:
-        new_id = str(uuid.uuid4())
-        created_patient_dict = {"id": new_id, "name": patient_data.name}
-        logger.info(f"Service: Simulated creation of patient {new_id}")
-        return created_patient_dict
+        new_id = uuid4()
+
+        # Build response model
+        response = PatientCreateResponse(
+            id=new_id,
+            first_name=patient_data.first_name,
+            last_name=patient_data.last_name,
+            date_of_birth=patient_data.date_of_birth,
+            email=patient_data.email,
+            phone_number=patient_data.phone_number,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+            created_by=created_by_id or uuid4(),
+        )
+
+        logger.info("Service: Simulated creation of patient %s", new_id)
+
+        return response
 
     # Add other methods like update_patient, delete_patient, list_patients as needed

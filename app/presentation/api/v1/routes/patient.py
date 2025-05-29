@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.services.patient_service import PatientService
 from app.core.domain.entities.patient import Patient
 from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
-    PatientRepository as SQLPatientRepoImpl,
+    PatientRepositoryImpl as SQLPatientRepoImpl,
 )
 from app.presentation.api.dependencies.auth import CurrentUserDep, DomainUser
 from app.presentation.api.dependencies.database import get_db
@@ -122,7 +122,7 @@ async def create_patient_endpoint(
 @router.get("/{patient_id}/biometric-alert-rules")
 async def get_patient_biometric_alert_rules(
     patient_id: UUID = Path(..., description="Patient ID"),
-    current_user: CurrentUserDep = None,
+    current_user: DomainUser | None = None,
     rule_service=Depends(get_rule_service),
 ):
     """
