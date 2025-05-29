@@ -379,4 +379,25 @@ def mock_model_service():
     return create_mock_model_service()
 
 
+from app.core.schemas.users import UserCreateRequest
+
+@pytest.fixture
+def provider_user():
+    """Fixture to provide a provider user for tests."""
+    return UserCreateRequest(
+        email="provider@example.com",
+        password="test_password",
+        first_name="Provider",
+        last_name="User",
+        role="provider",
+    )
+
+
+@pytest.fixture
+def provider_auth_headers(provider_user, jwt_service):
+    """Fixture to provide provider authentication headers for tests."""
+    token = jwt_service.create_access_token_for_user(provider_user)
+    return {"Authorization": f"Bearer {token}"}
+
+
 # Setup other global fixtures if needed
