@@ -135,7 +135,7 @@ try:
         jti: Union[str, UUID]
         iss: Optional[str] = None
         aud: Optional[str] = None
-
+        family_id: Optional[str] = None
         # Allow any additional custom claims
         model_config = ConfigDict(extra="allow")  # type: ignore[attr-defined]
 
@@ -186,12 +186,18 @@ class JWTServiceImpl(IJwtService):
         # ------------------------------------------------------------------
         # Configuration with sane test-friendly fallbacks
         # ------------------------------------------------------------------
-        self.secret_key: str = (
+        raw_key = (
             secret_key
-            or getattr(settings, "jwt_secret_key", None)  # Pydantic attr in some layers
+            or getattr(settings, "jwt_secret_key", None)
             or getattr(settings, "JWT_SECRET_KEY", None)
-            or "TEST_SECRET_KEY"
         )
+        # Handle Pydantic SecretStr or similar objects with get_secret_value()
+        if hasattr(raw_key, "get_secret_value"):
+            raw_key = raw_key.get_secret_value()
+        # If still None, fall back to test constant
+        if raw_key is None:
+            raw_key = "TEST_SECRET_KEY"
+        self.secret_key = str(raw_key)
 
         self.algorithm: str = (
             algorithm
@@ -322,6 +328,7 @@ class JWTServiceImpl(IJwtService):
         expires_delta_minutes: Optional[int] = None,
         expires_delta: Optional[timedelta] = None,
         additional_claims: Optional[Dict[str, Any]] = None,
+        **kwargs,
     ) -> str:
         subject_val = (
             subject
@@ -348,6 +355,9 @@ class JWTServiceImpl(IJwtService):
             for k, v in data.items():
                 if k not in {"sub", "roles"}:
                     additional_claims.setdefault(k, v)
+        # Merge kwargs into additional claims directly (supports jti, session_id, etc.)
+        if kwargs:
+            additional_claims.update(kwargs)
         token = self._encode(
             self._build_payload(
                 subject=subject_val,
@@ -397,6 +407,9 @@ class JWTServiceImpl(IJwtService):
             for k, v in data.items():
                 if k not in {"sub", "roles"}:
                     additional_claims.setdefault(k, v)
+        # propagate existing family_id from additional_claims if param not provided
+        if family_id is None and "family_id" in additional_claims:
+            family_id = str(additional_claims["family_id"])
         payload = self._build_payload(
             subject=subject_val,
             token_type=TokenType.REFRESH,
@@ -404,7 +417,8 @@ class JWTServiceImpl(IJwtService):
             expires_in_minutes=exp_minutes,
             additional_claims=additional_claims,
         )
-        payload["family_id"] = family_id or str(uuid4())
+        if "family_id" not in payload:
+            payload["family_id"] = family_id or str(uuid4())
         token = self._encode(payload)
         _safe_call_audit(self._audit, AuditEventType.TOKEN_CREATED, token_type="refresh", subject=subject_val)
         return token
