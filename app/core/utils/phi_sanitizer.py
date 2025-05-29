@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
+from typing import Any, ClassVar, Dict, Tuple, List, cast
 
 # Application imports (Corrected)
 from app.core.domain.enums.phi_enums import PHIType
@@ -23,7 +23,7 @@ class PHIDetector:
     """Utility class for detecting PHI in various data formats."""
 
     # Lazy-initialized sanitizer instance (avoids forward-reference issues)
-    _sanitizer: "PHISanitizer | None" = None
+    _sanitizer: ClassVar["PHISanitizer | None"] = None
 
     @classmethod
     def _get_sanitizer(cls) -> "PHISanitizer":
@@ -54,10 +54,10 @@ class PHIDetector:
             return False
 
         # Use clean implementation
-        return PHIDetector._get_sanitizer().contains_phi(text)
+        return bool(PHIDetector._get_sanitizer().contains_phi(text))
 
     @staticmethod
-    def detect_phi_types(text: str) -> list[tuple[PHIType, str]]:
+    def detect_phi_types(text: str) -> List[Tuple[PHIType, str]]:
         """
         Detect specific PHI types in text.
 
@@ -115,9 +115,9 @@ class _PHIAdapter:
     by *not* redefining sanitization logic here.
     """
 
-    _instance = _InfraPHISanitizer()
+    _instance: ClassVar[_InfraPHISanitizer] = _InfraPHISanitizer()
 
-    _token_map = {
+    _token_map: ClassVar[Dict[str, str]] = {
         "[REDACTED NAME]": "[NAME REDACTED]",
         "[REDACTED SSN]": "[SSN REDACTED]",
         "[REDACTED EMAIL]": "[EMAIL REDACTED]",
@@ -134,7 +134,7 @@ class _PHIAdapter:
         return text
 
     @staticmethod
-    def sanitize_string(text: str, *args, **kwargs):  # noqa: D401
+    def sanitize_string(text: str, *args: Any, **kwargs: Any) -> str:  # noqa: D401
         # If _Infra implementation considers this text safe, return original but still mask policy numbers
         try:
             if not _PHIAdapter._instance.contains_phi(text):
@@ -143,7 +143,8 @@ class _PHIAdapter:
             pass
 
         # Forward to infra sanitizer, providing default path argument to satisfy its signature
-        sanitized = _PHIAdapter._instance.sanitize_string(text, None, *args, **kwargs)  # type: ignore[arg-type]
+        # Runtime dispatch to infrastructure implementation
+        sanitized = cast(str, _PHIAdapter._instance.sanitize_string(text, None, *args, **kwargs))
         sanitized = _PHIAdapter._normalize_tokens(sanitized)
         # Redact insurance policy patterns
         sanitized = re.sub(r"INS-\d{6,}", "[POLICY REDACTED]", sanitized)
@@ -155,7 +156,8 @@ class _PHIAdapter:
         sanitized = re.sub(r"\[{2,}(.*?)\]{2,}", r"[\1]", sanitized)
 
         # If only NAME tokens present and original lacked obvious PHI patterns, treat as false positive
-        if ("[NAME REDACTED]" in sanitized
+        if (
+            "[NAME REDACTED]" in sanitized
             and all(tok not in sanitized for tok in ("[SSN REDACTED]", "[EMAIL REDACTED]", "[PHONE REDACTED]", "[POLICY REDACTED]", "[ADDRESS REDACTED]"))
             and not re.search(r"@|INS-\d{6,}|\d{9}", text)
         ):
@@ -164,15 +166,15 @@ class _PHIAdapter:
         return sanitized
 
     @staticmethod
-    def sanitize_dict(data: Any, *args, **kwargs):  # noqa: D401
+    def sanitize_dict(data: Any, *args: Any, **kwargs: Any) -> Any:  # noqa: D401
         if hasattr(_PHIAdapter._instance, "sanitize_dict"):
-            sanit = _PHIAdapter._instance.sanitize_dict(data, *args, **kwargs)  # type: ignore[attr-defined]
+            sanit: Any = _PHIAdapter._instance.sanitize_dict(data, *args, **kwargs)  # type: ignore[attr-defined]
         elif hasattr(_PHIAdapter._instance, "sanitize_json"):
             sanit = _PHIAdapter._instance.sanitize_json(data, *args, **kwargs)
         else:
             sanit = _PHIAdapter._instance.sanitize(data, *args, **kwargs)
 
-        def _rec(obj):
+        def _rec(obj: Any) -> Any:
             if isinstance(obj, str):
                 s = _PHIAdapter._normalize_tokens(re.sub(r"INS-\d{6,}", "[POLICY REDACTED]", obj))
                 s = re.sub(r"[^\s@]+@[^\s@]+", "[EMAIL REDACTED]", s)
@@ -186,18 +188,18 @@ class _PHIAdapter:
         return _rec(sanit)
 
     @staticmethod
-    def sanitize_text(text: str, *args, **kwargs):  # legacy alias
+    def sanitize_text(text: str, *args: Any, **kwargs: Any) -> str:  # legacy alias
         return _PHIAdapter.sanitize_string(text, *args, **kwargs)
 
     @staticmethod
-    def contains_phi(text: str, *args, **kwargs):
-        return _PHIAdapter._instance.contains_phi(text, *args, **kwargs)
+    def contains_phi(text: str, *args: Any, **kwargs: Any) -> bool:
+        return bool(_PHIAdapter._instance.contains_phi(text, *args, **kwargs))
 
     # expose patterns for tests
     patterns = getattr(_instance, "patterns", [])
 
 # Re-export for external code/tests
-PHISanitizer = _PHIAdapter  # type: ignore  # noqa: N816
+PHISanitizer = cast("type[_PHIAdapter]", _PHIAdapter)  # noqa: N816
 
 
 # Re-export note: PHISanitizer is imported above from infrastructure package.
