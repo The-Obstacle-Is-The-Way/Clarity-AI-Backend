@@ -148,18 +148,17 @@ class _PHIAdapter:
         sanitized = _PHIAdapter._normalize_tokens(sanitized)
         # Redact insurance policy patterns
         sanitized = re.sub(r"INS-\d{6,}", "[POLICY REDACTED]", sanitized)
-
-        # Match any non-space substring containing '@'
+        # Perform fallback email masking in case infrastructure missed it
         sanitized = re.sub(r"[^\s@]+@[^\s@]+", "[EMAIL REDACTED]", sanitized)
 
         # Normalize any sequences of multiple brackets eg "[[[[NAME REDACTED]]]]"
         sanitized = re.sub(r"\[{2,}(.*?)\]{2,}", r"[\1]", sanitized)
 
-        # If only NAME tokens present and original lacked obvious PHI patterns, treat as false positive
+        # If only NAME tokens present (or generic [REDACTED]) and original lacked obvious PHI patterns, treat as false positive
+        phi_pattern = re.compile(r"@|INS-\d{6,}|\d{3}-\d{2}-\d{4}|\(\d{3}\)\s*\d{3}-\d{4}")
         if (
             "[NAME REDACTED]" in sanitized
-            and all(tok not in sanitized for tok in ("[SSN REDACTED]", "[EMAIL REDACTED]", "[PHONE REDACTED]", "[POLICY REDACTED]", "[ADDRESS REDACTED]"))
-            and not re.search(r"@|INS-\d{6,}|\d{9}", text)
+            and not phi_pattern.search(text)
         ):
             return text
 
