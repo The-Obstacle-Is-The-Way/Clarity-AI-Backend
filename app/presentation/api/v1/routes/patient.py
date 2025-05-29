@@ -24,7 +24,10 @@ from app.presentation.api.v1.endpoints.biometric_alert_rules import (
     get_patient_alert_rules,
     get_rule_service,
 )
-
+from app.application.services.biometric_alert_rule_service import (
+    BiometricAlertRuleService,
+)
+from app.presentation.api.v1.schemas.biometric_alert_rules import AlertRuleResponse
 
 # Placeholder dependency - replace with actual service implementation later
 def get_patient_service(db_session: AsyncSession = Depends(get_db)) -> PatientService:
@@ -123,8 +126,8 @@ async def create_patient_endpoint(
 async def get_patient_biometric_alert_rules(
     patient_id: UUID = Path(..., description="Patient ID"),
     current_user: DomainUser | None = None,
-    rule_service=Depends(get_rule_service),
-):
+    rule_service: BiometricAlertRuleService = Depends(get_rule_service),
+) -> list[AlertRuleResponse]:
     """
     Get biometric alert rules for a specific patient.
 

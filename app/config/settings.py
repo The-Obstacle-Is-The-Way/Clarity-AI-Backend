@@ -345,6 +345,27 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = Field(default=5, json_schema_extra={"env": "DB_POOL_SIZE"})
     DB_MAX_OVERFLOW: int = Field(default=10, json_schema_extra={"env": "DB_MAX_OVERFLOW"})
 
+    # --- Test-specific / convenience fields ---
+    # Certain integration tests expect this attribute for pointing to an isolated database
+    POSTGRES_TEST_DB: str | None = Field(
+        default=None,
+        json_schema_extra={"env": "POSTGRES_TEST_DB"},
+    )
+
+    # --- Rate-limiting configuration ---
+    RATE_LIMITING_ENABLED: bool = Field(
+        default=True,
+        json_schema_extra={"env": "RATE_LIMITING_ENABLED"},
+    )
+    DEFAULT_RATE_LIMITS: list[str] = Field(
+        default_factory=lambda: ["60/minute", "1000/hour"],
+        json_schema_extra={"env": "DEFAULT_RATE_LIMITS"},
+    )
+    RATE_LIMIT_STRATEGY: str = Field(
+        default="ip",
+        json_schema_extra={"env": "RATE_LIMIT_STRATEGY"},
+    )
+
     @model_validator(mode="after")
     def _set_debug_env(self) -> Self:
         """Set DEBUG env var for testing environment."""
@@ -410,7 +431,7 @@ class Settings(BaseSettings):
         ):
             # Use pydantic's PostgresDsn just for validation/building, but store as string
             dsn = PostgresDsn.build(
-                scheme="postgresql+asyncpg",
+                scheme="postgresql+asyncpg",  # Use asyncpg driver
                 username=values["POSTGRES_USER"],
                 password=str(values["POSTGRES_PASSWORD"]),  # Convert SecretStr
                 host=values["POSTGRES_SERVER"],

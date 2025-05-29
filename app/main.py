@@ -60,6 +60,6 @@ if __name__ == "__main__":
         host=settings.SERVER_HOST,
         port=settings.SERVER_PORT,
         log_level=settings.LOG_LEVEL.lower(),
-        reload=settings.UVICORN_RELOAD,
+        reload=settings.ENVIRONMENT == "development",
         workers=settings.UVICORN_WORKERS,
     )

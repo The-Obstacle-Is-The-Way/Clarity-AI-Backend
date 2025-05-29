@@ -7,37 +7,42 @@ and authenticated user identity.
 """
 
 import logging
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 # Optional dependency handling - similar to the Redis pattern
 try:
-    from slowapi import Limiter
-    from slowapi.util import get_remote_address
+    # Import the real slowapi components if available
+    from slowapi import Limiter as _SlowapiLimiter  # type: ignore
+    from slowapi.util import get_remote_address as _slowapi_get_remote_address  # type: ignore
 
-    # Define re-usable strategies
-    RATE_LIMIT_STRATEGIES = {
-        "ip": get_remote_address,
-        # Can add more strategies like "user_id", etc.
-    }
-except ModuleNotFoundError:  # pragma: no cover - only in test env
-    # Create stub classes for testing without slowapi dependency
-    class Limiter:
-        def __init__(self, *args, **kwargs):
+    Limiter = _SlowapiLimiter  # noqa: N816  # Provide a uniform symbol regardless of branch
+    get_remote_address = _slowapi_get_remote_address  # noqa: N816
+except ModuleNotFoundError:  # pragma: no cover - slowapi not installed in some environments
+
+    class _StubLimiter:  # pylint: disable=too-few-public-methods
+        """Minimal stub with the same public surface to satisfy type-checkers."""
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401
             pass
 
-        def limit(self, *args, **kwargs):
-            # Return a no-op decorator in test environment
-            def decorator(func):
+        def limit(self, *args: Any, **kwargs: Any):  # noqa: ANN001, D401
+            """Return a no-op decorator so endpoints remain callable in tests."""
+
+            def decorator(func):  # type: ignore[no-any-unbound-method]
                 return func
 
             return decorator
 
-    def get_remote_address() -> str:
+    def get_remote_address(request: Any) -> str:  # noqa: D401
+        """Stubbed get_remote_address with matching signature."""
         return "127.0.0.1"
 
-    RATE_LIMIT_STRATEGIES = {
-        "ip": get_remote_address,
-    }
+    Limiter = _StubLimiter  # type: ignore[assignment]
+
+# Strategy mapping must be defined *after* Limiter / get_remote_address are finalised
+RATE_LIMIT_STRATEGIES: dict[str, Any] = {
+    "ip": get_remote_address,
+}
 
 from app.core.config.settings import Settings
 
