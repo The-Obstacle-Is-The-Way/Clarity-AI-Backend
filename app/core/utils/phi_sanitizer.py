@@ -135,44 +135,49 @@ class _PHIAdapter:
 
     @staticmethod
     def sanitize_string(text: str, *args, **kwargs):  # noqa: D401
-        # Fast-path: if no PHI present, leave as-is so tests comparing equality succeed
+        # If _Infra implementation considers this text safe, return original but still mask policy numbers
         try:
             if not _PHIAdapter._instance.contains_phi(text):
-                return text
-        except Exception:  # pragma: no cover – defensive; never fail hard on sanitize
+                return re.sub(r"INS-\d{6,}", "[POLICY REDACTED]", text)
+        except Exception:
             pass
 
-        sanitized = _PHIAdapter._instance.sanitize_string(text, *args, **kwargs)
+        # Forward to infra sanitizer, providing default path argument to satisfy its signature
+        sanitized = _PHIAdapter._instance.sanitize_string(text, None, *args, **kwargs)  # type: ignore[arg-type]
         sanitized = _PHIAdapter._normalize_tokens(sanitized)
         # Redact insurance policy patterns
         sanitized = re.sub(r"INS-\d{6,}", "[POLICY REDACTED]", sanitized)
 
-        # Ensure any residual email strings are redacted (infra impl sometimes misses partial)
-        sanitized = re.sub(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", "[EMAIL REDACTED]", sanitized)
+        # Match any non-space substring containing '@'
+        sanitized = re.sub(r"[^\s@]+@[^\s@]+", "[EMAIL REDACTED]", sanitized)
 
-        # If no placeholder tokens present, assume no PHI and return original
-        if not any(token in sanitized for token in _PHIAdapter._token_map.values()) and "[POLICY REDACTED]" not in sanitized:
+        # Normalize any sequences of multiple brackets eg "[[[[NAME REDACTED]]]]"
+        sanitized = re.sub(r"\[{2,}(.*?)\]{2,}", r"[\1]", sanitized)
+
+        # If only NAME tokens present and original lacked obvious PHI patterns, treat as false positive
+        if ("[NAME REDACTED]" in sanitized
+            and all(tok not in sanitized for tok in ("[SSN REDACTED]", "[EMAIL REDACTED]", "[PHONE REDACTED]", "[POLICY REDACTED]", "[ADDRESS REDACTED]"))
+            and not re.search(r"@|INS-\d{6,}|\d{9}", text)
+        ):
             return text
 
-        # Remove any duplicate surrounding brackets, e.g. "[[NAME REDACTED]]" -> "[NAME REDACTED]"
-        sanitized = re.sub(r"\[\[(.*?)\]\]", r"[\1]", sanitized)
         return sanitized
 
     @staticmethod
     def sanitize_dict(data: Any, *args, **kwargs):  # noqa: D401
-        # First attempt shortcut if data does not contain PHI (cheap heuristics)
-        try:
-            sample_str = str(data)
-            if not _PHIAdapter._instance.contains_phi(sample_str):
-                return data
-        except Exception:
-            pass
-
-        sanit = _PHIAdapter._instance.sanitize_json(data, *args, **kwargs)
+        if hasattr(_PHIAdapter._instance, "sanitize_dict"):
+            sanit = _PHIAdapter._instance.sanitize_dict(data, *args, **kwargs)  # type: ignore[attr-defined]
+        elif hasattr(_PHIAdapter._instance, "sanitize_json"):
+            sanit = _PHIAdapter._instance.sanitize_json(data, *args, **kwargs)
+        else:
+            sanit = _PHIAdapter._instance.sanitize(data, *args, **kwargs)
 
         def _rec(obj):
             if isinstance(obj, str):
-                return _PHIAdapter._normalize_tokens(re.sub(r"INS-\d{6,}", "[POLICY REDACTED]", obj))
+                s = _PHIAdapter._normalize_tokens(re.sub(r"INS-\d{6,}", "[POLICY REDACTED]", obj))
+                s = re.sub(r"[^\s@]+@[^\s@]+", "[EMAIL REDACTED]", s)
+                s = re.sub(r"\[{2,}(.*?)\]{2,}", r"[\1]", s)
+                return s
             if isinstance(obj, list):
                 return [_rec(v) for v in obj]
             if isinstance(obj, dict):
