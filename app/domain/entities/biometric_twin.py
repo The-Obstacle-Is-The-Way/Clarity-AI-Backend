@@ -146,7 +146,8 @@ class BiometricTwinState(BaseModel):
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the twin state to a dictionary, sanitizing PHI as needed."""
-        result = {
+        # Use explicit type to allow heterogeneous value types
+        result: dict[str, Any] = {
             "patient_id": str(self.patient_id),
             "last_updated": self.last_updated.isoformat(),
             "data_types": list(self.data_points.keys()),

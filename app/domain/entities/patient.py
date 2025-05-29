@@ -162,7 +162,7 @@ class Patient:
     def __post_init__(self):
         """Initialize the object after dataclass initialization."""
         # Convert string id to UUID if necessary
-        if isinstance(self.id, str):
+        if isinstance(self.id, str):  # type: ignore[redundant-expr]
             from uuid import UUID
 
             try:
@@ -210,8 +210,8 @@ class Patient:
                 # If audit_logger is not available, just log a warning
                 import logging
 
-                logging = logging.getLogger(__name__)
-                logging.warning(f"PHI field '{name}' accessed but audit_logger unavailable")
+                _logger = logging.getLogger(__name__)
+                _logger.warning("PHI field '%s' accessed but audit_logger unavailable", name)
 
         # Return the attribute normally
         return object.__getattribute__(self, name)
@@ -230,8 +230,8 @@ class Patient:
                 # In test environments where encryption service might not be available
                 import logging
 
-                logger = logging.getLogger(__name__)
-                logger.warning("Encryption service not available - PHI will not be encrypted")
+                _logger = logging.getLogger(__name__)
+                _logger.warning("Encryption service not available - PHI will not be encrypted")
                 self._encryption_service = None
         return self._encryption_service
 
@@ -442,8 +442,8 @@ class Patient:
                         except Exception as e:
                             import logging
 
-                            logger = logging.getLogger(__name__)
-                            logger.error(f"Failed to decrypt field {field}: {e}")
+                            _logger = logging.getLogger(__name__)
+                            _logger.error(f"Failed to decrypt field {field}: {e}")
 
         # Update fields from dictionary
         for key, value in data.items():
@@ -485,4 +485,4 @@ class Patient:
 
 
 # Attach the descriptor to the class after definition
-Patient.contact_info = PatientContactInfoDescriptor()
+Patient.contact_info = PatientContactInfoDescriptor()  # type: ignore[attr-defined]

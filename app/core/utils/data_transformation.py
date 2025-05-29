@@ -9,7 +9,7 @@ import hashlib
 import re
 from collections.abc import Callable
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -67,8 +67,7 @@ class DataAnonymizer:
             Anonymized patient ID
         """
         # Generate hash with salt
-        hash_value, _ = self.encryption_service.generate_hash(patient_id, salt)
-
+        hash_value, _ = self.encryption_service.generate_hash(patient_id)
         # Return first 8 characters of hash as anonymized ID
         return hash_value[:8]
 
@@ -112,7 +111,7 @@ class DataAnonymizer:
 
         # Return in original format
         if original_type is str:
-            if "/" in date_value:
+            if isinstance(date_value, str) and "/" in date_value:
                 return shifted_date.strftime("%m/%d/%Y")
             else:
                 return shifted_date.strftime("%Y-%m-%d")
@@ -164,7 +163,7 @@ class DataAnonymizer:
         if not data:
             return {}
 
-        anonymized = {}
+        anonymized: dict[str, Any] = {}
         id_fields = id_fields or []
         date_fields = date_fields or []
 
@@ -177,7 +176,7 @@ class DataAnonymizer:
                 anonymized[key] = self.anonymize_patient_id(value)
             elif key in date_fields:
                 # Shift date fields
-                anonymized[key] = self.anonymize_date(value)
+                anonymized[key] = self.anonymize_date(value)  # type: ignore[arg-type]
             elif isinstance(value, dict):
                 # Recursively anonymize nested dictionaries
                 anonymized[key] = self.anonymize_dict(value, phi_fields, id_fields, date_fields)
@@ -226,7 +225,7 @@ class DataNormalizer:
         if std == 0:
             return np.zeros_like(data_array)
 
-        return (data_array - mean) / std
+        return cast(np.ndarray, (data_array - mean) / std)
 
     @staticmethod
     def min_max_normalize(
@@ -252,7 +251,7 @@ class DataNormalizer:
             return np.full_like(data_array, feature_range[0])
 
         scaled = (data_array - min_val) / (max_val - min_val)
-        return scaled * (feature_range[1] - feature_range[0]) + feature_range[0]
+        return cast(np.ndarray, scaled * (feature_range[1] - feature_range[0]) + feature_range[0])
 
     @staticmethod
     def normalize_dataframe(
@@ -428,8 +427,8 @@ class TimeSeriesProcessor:
             Tuple of (X_sequences, y_targets) if target_column provided,
             otherwise just X_sequences
         """
-        X = []
-        y = [] if target_column is not None else None
+        X: list[np.ndarray] = []
+        y: list[Any] | None = [] if target_column is not None else None
 
         for i in range(len(data) - sequence_length):
             # Extract sequence
@@ -437,11 +436,11 @@ class TimeSeriesProcessor:
             X.append(sequence)
 
             # Extract target if specified
-            if target_column is not None:
+            if target_column is not None and y is not None:
                 target = data[i + sequence_length, target_column]
                 y.append(target)
 
-        return np.array(X), np.array(y) if y else None
+        return np.array(X), np.array(y) if y is not None else None
 
     @staticmethod
     def resample_time_series(
