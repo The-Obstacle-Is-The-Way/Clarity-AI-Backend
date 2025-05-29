@@ -213,6 +213,7 @@ class JWTServiceImpl(IJwtService):
         subject: Union[str, UUID, None] = None,
         roles: Optional[List[str]] = None,
         expires_delta_minutes: Optional[int] = None,
+        expires_delta: Optional[timedelta] = None,
         additional_claims: Optional[Dict[str, Any]] = None,
     ) -> str:
         subject_val = (
@@ -227,12 +228,18 @@ class JWTServiceImpl(IJwtService):
         # roles may come from dict
         if roles is None and isinstance(data, dict) and "roles" in data:
             roles = data["roles"]
+        # expiry minutes prioritisation: explicit minutes > timedelta > default
+        exp_minutes = (
+            expires_delta_minutes
+            if expires_delta_minutes is not None
+            else (int(expires_delta.total_seconds() / 60) if expires_delta else self.access_token_expire_minutes)
+        )
         token = self._encode(
             self._build_payload(
                 subject=subject_val,
                 token_type=TokenType.ACCESS,
                 roles=roles,
-                expires_in_minutes=expires_delta_minutes or self.access_token_expire_minutes,
+                expires_in_minutes=exp_minutes,
                 additional_claims=additional_claims,
             )
         )
@@ -244,6 +251,7 @@ class JWTServiceImpl(IJwtService):
         *,
         user_id: Union[str, UUID, None] = None,
         subject: Union[str, UUID, None] = None,
+        roles: Optional[List[str]] = None,
         expires_delta_minutes: Optional[int] = None,
         family_id: Optional[str] = None,
         additional_claims: Optional[Dict[str, Any]] = None,
@@ -255,10 +263,12 @@ class JWTServiceImpl(IJwtService):
         )
         if isinstance(subject_val, UUID):
             subject_val = str(subject_val)
+        if roles is None and isinstance(data, dict) and "roles" in data:
+            roles = data["roles"]
         payload = self._build_payload(
             subject=subject_val,
             token_type=TokenType.REFRESH,
-            roles=None,
+            roles=roles,
             expires_in_minutes=expires_delta_minutes or self.refresh_token_expire_minutes,
             additional_claims=additional_claims,
         )
@@ -345,3 +355,53 @@ class JWTServiceImpl(IJwtService):
     def get_token_identity(self, token: str):  # type: ignore[override]
         payload = self.decode_token(token, options={"verify_exp": False})
         return getattr(payload, "sub", None)
+
+    # ------------------------------------------------------------------
+    # Backwards-compatibility helpers for legacy tests
+    # ------------------------------------------------------------------
+
+    # Expose in-memory blacklist under legacy attribute name used by tests
+    @property
+    def _token_blacklist(self) -> Dict[str, datetime]:  # noqa: D401 – simple alias
+        return self._in_mem_blacklist
+
+    # Provide get/set access to collaborators expected in tests
+    @property
+    def settings(self):  # type: ignore[override]
+        return self._settings
+
+    @settings.setter
+    def settings(self, value):  # type: ignore[override]
+        self._settings = value
+
+    @property
+    def user_repository(self):  # type: ignore[override]
+        return self._user_repo
+
+    @user_repository.setter
+    def user_repository(self, value):  # type: ignore[override]
+        self._user_repo = value
+
+    # Async convenience wrappers expected by some async tests
+    async def revoke_token(self, token: str):  # type: ignore[override]
+        """Async wrapper delegating to sync blacklist_token for compatibility."""
+        payload = self.decode_token(token, options={"verify_exp": False})
+        exp_ts = getattr(payload, "exp", None)
+        if exp_ts is None:
+            raise InvalidTokenException("Token missing exp")
+        self.blacklist_token(token, datetime.fromtimestamp(exp_ts, tz=timezone.utc))
+
+    async def get_user_from_token(self, token: str):  # type: ignore[override]
+        """Retrieve user using configured repository; raises AuthenticationError if invalid."""
+        from app.domain.exceptions import AuthenticationError  # local import to avoid cycles
+
+        payload = self.decode_token(token, options={"verify_exp": False})
+        user_id = getattr(payload, "sub", None)
+        if user_id is None:
+            raise AuthenticationError("Invalid token: no subject")
+        if self._user_repo is None:
+            raise AuthenticationError("User repository not configured")
+        user = await self._user_repo.get_by_id(user_id)
+        if user is None:
+            raise AuthenticationError("User not found")
+        return user
