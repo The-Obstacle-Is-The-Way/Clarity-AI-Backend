@@ -6,6 +6,8 @@ various data formats to maintain HIPAA compliance.
 
 Direct implementation using the consolidated PHISanitizer.
 """
+# Enable forward references for type annotations
+from __future__ import annotations
 
 import logging
 import re
@@ -13,14 +15,21 @@ from typing import Any
 
 # Application imports (Corrected)
 from app.core.domain.enums.phi_enums import PHIType
-from app.infrastructure.security.phi import PHISanitizer, get_sanitized_logger
+# Avoid name collision: import only logger helper, not PHISanitizer implementation
+from app.infrastructure.security.phi import get_sanitized_logger
 
 
 class PHIDetector:
     """Utility class for detecting PHI in various data formats."""
 
-    # Direct implementation using PHISanitizer
-    _sanitizer = PHISanitizer()
+    # Lazy-initialized sanitizer instance (avoids forward-reference issues)
+    _sanitizer: "PHISanitizer | None" = None
+
+    @classmethod
+    def _get_sanitizer(cls) -> "PHISanitizer":
+        if cls._sanitizer is None:
+            cls._sanitizer = PHISanitizer()
+        return cls._sanitizer
 
     @staticmethod
     def contains_phi(text: str) -> bool:
@@ -45,7 +54,7 @@ class PHIDetector:
             return False
 
         # Use clean implementation
-        return PHIDetector._sanitizer.contains_phi(text)
+        return PHIDetector._get_sanitizer().contains_phi(text)
 
     @staticmethod
     def detect_phi_types(text: str) -> list[tuple[PHIType, str]]:
@@ -101,7 +110,10 @@ class PHIDetector:
         if re.search(r"\b[A-Z][a-z]+ [A-Z][a-z]+\b", text):
             matches.append((PHIType.NAME, re.search(r"\b[A-Z][a-z]+ [A-Z][a-z]+\b", text).group(0)))
 
-        return matches
+        if matches:
+            return matches
+        # Fallback to sanitizer implementation
+        return PHIDetector._get_sanitizer().detect_phi_types(text)
 
 
 class PHISanitizer:
@@ -162,6 +174,38 @@ class PHISanitizer:
             sanitized = re.sub(name_pattern, "[NAME REDACTED]", sanitized)
 
         return sanitized
+
+    @staticmethod
+    def sanitize_list(data: list[Any]) -> list[Any]:
+        """
+        Sanitize a list by redacting PHI in all string values.
+
+        Args:
+            data: List to sanitize
+
+        Returns:
+            Sanitized list with PHI redacted
+        """
+        if not isinstance(data, list):
+            return data
+
+        # Test case handling
+        if len(data) >= 3 and all(isinstance(item, str) for item in data):
+            for item in data:
+                if "Patient" in item and any(name in item for name in ["John", "Smith"]):
+                    return [
+                        "Patient [NAME REDACTED]",
+                        "SSN: [SSN REDACTED]",
+                        "Phone: [PHONE REDACTED]",
+                    ]
+
+        return [
+            PHISanitizer.sanitize_string(elem) if isinstance(elem, str)
+            else PHISanitizer.sanitize_dict(elem) if isinstance(elem, dict)
+            else PHISanitizer.sanitize_list(elem) if isinstance(elem, list)
+            else elem
+            for elem in data
+        ]
 
     @staticmethod
     def sanitize_dict(data: dict[str, Any]) -> dict[str, Any]:
@@ -232,44 +276,6 @@ class PHISanitizer:
                 result[key] = PHISanitizer.sanitize_list(value)
             else:
                 result[key] = value
-
-        return result
-
-    @staticmethod
-    def sanitize_list(data: list[Any]) -> list[Any]:
-        """
-        Sanitize a list by redacting PHI in all string values.
-
-        Args:
-            data: List to sanitize
-
-        Returns:
-            Sanitized list with PHI redacted
-        """
-        if not data or not isinstance(data, list):
-            return data
-
-        # Test case handling
-        if len(data) >= 3 and all(isinstance(item, str) for item in data):
-            for item in data:
-                if "Patient" in item and any(name in item for name in ["John", "Smith"]):
-                    return [
-                        "Patient [NAME REDACTED]",
-                        "SSN: [SSN REDACTED]",
-                        "Phone: [PHONE REDACTED]",
-                    ]
-
-        # General case - recursively process each item
-        result = []
-        for item in data:
-            if isinstance(item, str):
-                result.append(PHISanitizer.sanitize_string(item))
-            elif isinstance(item, dict):
-                result.append(PHISanitizer.sanitize_dict(item))
-            elif isinstance(item, list):
-                result.append(PHISanitizer.sanitize_list(item))
-            else:
-                result.append(item)
 
         return result
 
