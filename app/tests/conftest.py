@@ -350,8 +350,6 @@ def mock_token_blacklist_repository():
 
             return len(expired_jtis)
 
-    return InMemoryTokenBlacklistRepository()
-
 
 @pytest.fixture
 def mock_settings():
@@ -396,7 +394,7 @@ def provider_user():
 @pytest.fixture
 def provider_auth_headers(provider_user, jwt_service):
     """Fixture to provide provider authentication headers for tests."""
-    token = jwt_service.create_access_token_for_user(provider_user)
+    token = jwt_service.create_access_token(provider_user.email, roles=["provider"])  # type: ignore[arg-type]
     return {"Authorization": f"Bearer {token}"}
 
 
