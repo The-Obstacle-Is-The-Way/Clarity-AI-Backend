@@ -3,11 +3,12 @@ Application Service for Patient operations.
 
 Orchestrates use cases related to patient data management.
 """
+from __future__ import annotations
+
 import logging
-import uuid
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID, uuid4
-from datetime import date, datetime
 
 # Import necessary domain entities and repository interfaces
 from app.domain.entities.patient import Patient
