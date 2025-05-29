@@ -5,6 +5,7 @@ This module provides the database engine, session management,
 and connection utilities for the application.
 """
 from collections.abc import AsyncGenerator
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
@@ -24,8 +25,13 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.orm import declarative_base
 
 # Use the new canonical config location
 from app.config.settings import Settings, get_settings
@@ -35,7 +41,7 @@ logger = logging.getLogger(__name__)
 # Create the declarative base model
 Base = declarative_base()
 # For compatibility with older tests expecting metadata.is_bound()
-Base.metadata.is_bound = lambda: True
+Base.metadata.is_bound = lambda: True  # type: ignore[assignment]
 
 # --- Engine and Session Factory Creation (Deferred) ---
 
@@ -76,7 +82,7 @@ def get_engine(settings: Settings | None = None) -> AsyncEngine:
         )  # Log safely
         try:
             # Build engine kwargs
-            engine_kwargs = {
+            engine_kwargs: dict[str, Any] = {
                 "echo": settings.DATABASE_ECHO,
                 "future": True,
                 "pool_pre_ping": True,
@@ -93,10 +99,10 @@ def get_engine(settings: Settings | None = None) -> AsyncEngine:
 
 
 # Global variable for session factory
-_async_session_local: sessionmaker | None = None
+_async_session_local: async_sessionmaker[AsyncSession] | None = None
 
 
-def get_session_local(engine: AsyncEngine | None = None) -> sessionmaker:
+def get_session_local(engine: AsyncEngine | None = None) -> async_sessionmaker[AsyncSession]:
     """Gets or creates the async session factory."""
     global _async_session_local
     # If called with explicit engine, always recreate the session factory
@@ -105,7 +111,7 @@ def get_session_local(engine: AsyncEngine | None = None) -> sessionmaker:
     if _async_session_local is None:
         if engine is None:
             engine = get_engine()  # Get engine using current settings
-        _async_session_local = sessionmaker(
+        _async_session_local = async_sessionmaker(
             bind=engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
         )
     return _async_session_local
