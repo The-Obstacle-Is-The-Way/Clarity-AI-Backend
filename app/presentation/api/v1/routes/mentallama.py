@@ -75,7 +75,7 @@ async def process_text(
 
     options = {"user_id": user_id, "temperature": temperature, "max_tokens": max_tokens}
 
-    result = await service.process(text=prompt, model_type=model, options=options)
+    result = service.process(text=prompt, model_type=model, options=options)
 
     return result
 
@@ -104,7 +104,7 @@ async def analyze_text(
     # For tests, forward to the process method
     options = {"user_id": user_id, "analysis_type": analysis_type}
 
-    return await service.process(text=text, model_type="analysis", options=options)
+    return service.process(text=text, model_type="analysis", options=options)
 
 
 @router.post("/detect-conditions", response_model=dict[str, Any])
@@ -129,7 +129,7 @@ async def detect_conditions(
     # For tests, forward to the process method
     options = {"user_id": user_id}
 
-    return await service.process(text=text, model_type="conditions", options=options)
+    return service.process(text=text, model_type="conditions", options=options)
 
 
 @router.post("/therapeutic-response", response_model=dict[str, Any])
@@ -161,7 +161,7 @@ async def generate_therapeutic_response(
     # For tests, forward to the process method
     options = {"user_id": user_id}
 
-    return await service.process(text=prompt, model_type="therapeutic", options=options)
+    return service.process(text=prompt, model_type="therapeutic", options=options)
 
 
 @router.post("/assess-suicide-risk", response_model=dict[str, Any])
@@ -184,7 +184,7 @@ async def assess_suicide_risk(
     _check_health(service)
 
     # For tests, use a mock response that includes risk_level
-    response = await service.process(prompt=text, user_id=user_id, model="risk")
+    response = service.process(text=text, model_type="risk", options={"user_id": user_id})
 
     # Add risk_level to response for test compatibility
     if "risk_level" not in response:
@@ -217,6 +217,4 @@ async def assess_wellness_dimensions(
     _check_health(service)
 
     # For tests, forward to the process method
-    return await service.process(
-        prompt=text, user_id=user_id, model="wellness", dimensions=dimensions
-    )
+    return service.process(text=text, model_type="wellness", options={"user_id": user_id, "dimensions": dimensions})
