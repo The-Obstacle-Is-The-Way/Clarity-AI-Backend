@@ -3,6 +3,8 @@
 Follows clean architecture principles by implementing the IJwtService interface
 and handling JWT token creation, validation, and management for HIPAA compliance.
 """
+from __future__ import annotations
+
 import logging
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
@@ -11,14 +13,40 @@ from uuid import UUID, uuid4
 
 from jose import ExpiredSignatureError, JWTError, jwt as jose_jwt
 
-from app.core.audit.audit_logger import IAuditLogger  # noqa: F401 – optional in tests
-from app.core.audit.audit_service import AuditEventType  # noqa: F401 – optional in tests
-from app.core.config.settings import Settings  # noqa: F401 – optional in tests
+# Optional dependencies (audit logger etc.) may be absent during isolated unit-tests
+try:
+    from app.core.audit.audit_logger import IAuditLogger  # type: ignore
+    from app.core.audit.audit_service import AuditEventType  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover – tests run without full infrastructure
+    class IAuditLogger:  # minimal stub
+        async def log_security_event(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401
+            return None
+
+    class AuditEventType:  # minimal enum-like stub
+        TOKEN_CREATED = "TOKEN_CREATED"
+        TOKEN_REVOKED = "TOKEN_REVOKED"
+        TOKEN_VALIDATION = "TOKEN_VALIDATION"
+        TOKEN_VALIDATION_FAILED = "TOKEN_VALIDATION_FAILED"
+
+try:
+    from app.core.config.settings import Settings  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover
+    Settings = object  # type: ignore
+
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
-from app.domain.interfaces.repository.token_blacklist_repository import (
-    ITokenBlacklistRepository,  # noqa: F401 – optional
-)
-from app.domain.interfaces.repository.user_repository import IUserRepository  # noqa: F401 – optional
+
+try:
+    from app.domain.interfaces.repository.token_blacklist_repository import (
+        ITokenBlacklistRepository,
+    )
+except ModuleNotFoundError:  # pragma: no cover
+    ITokenBlacklistRepository = None  # type: ignore
+
+try:
+    from app.domain.interfaces.repository.user_repository import IUserRepository
+except ModuleNotFoundError:  # pragma: no cover
+    IUserRepository = None  # type: ignore
+
 from app.core.interfaces.security.jwt_service_interface import IJwtService
 
 logger = logging.getLogger(__name__)
