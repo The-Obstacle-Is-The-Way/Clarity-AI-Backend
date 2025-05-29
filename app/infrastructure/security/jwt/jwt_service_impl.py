@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Iterable
 from uuid import UUID, uuid4
 
 from jose import ExpiredSignatureError, JWTError, jwt as jose_jwt
@@ -27,6 +27,33 @@ except ModuleNotFoundError:  # pragma: no cover – tests run without full infra
         TOKEN_REVOKED = "TOKEN_REVOKED"
         TOKEN_VALIDATION = "TOKEN_VALIDATION"
         TOKEN_VALIDATION_FAILED = "TOKEN_VALIDATION_FAILED"
+
+
+# ------------------------------------------------------------------
+# Utility container allowing both dict-style and attribute-style access
+# ------------------------------------------------------------------
+
+class _AttrDict(dict):
+    """Dictionary that allows attribute access to its keys."""
+
+    # Dict values accessible as attributes
+
+    def __getattr__(self, item):  # noqa: D401 – simple helper
+        try:
+            return self[item]
+        except KeyError as exc:
+            raise AttributeError(item) from exc
+
+    __setattr__ = dict.__setitem__  # type: ignore[assignment]
+
+    def get(self, key, default=None):  # type: ignore[override]
+        return super().get(key, default)
+
+    # Provide SimpleNamespace-like repr for readability
+    def __repr__(self):  # noqa: D401 – repr helper
+        kv = ", ".join(f"{k}={v!r}" for k, v in self.items())
+        return f"AttrDict({kv})"
+
 
 try:
     from app.core.config.settings import Settings  # type: ignore
@@ -62,6 +89,31 @@ class TokenType(str):
 
     def __str__(self) -> str:  # noqa: D401 (simple str override)
         return str(self.value) if hasattr(self, "value") else str(self)
+
+
+# ------------------------------------------------------------------
+# Internal helpers
+# ------------------------------------------------------------------
+
+import inspect
+import asyncio
+
+
+def _safe_call_audit(logger: Optional["IAuditLogger"], *args: Any, **kwargs: Any) -> None:  # noqa: D401
+    """Invoke audit logger gracefully, supporting both sync and async loggers."""
+
+    if logger is None:
+        return
+    try:
+        result = logger.log_security_event(*args, **kwargs)  # type: ignore[attr-defined]
+        if inspect.isawaitable(result):  # Async logger – run safely
+            try:
+                asyncio.get_running_loop().create_task(result)  # fire-and-forget in existing loop
+            except RuntimeError:
+                # No running loop – run synchronously
+                asyncio.run(result)  # pragma: no cover
+    except Exception:  # pragma: no cover – audit must never break auth
+        logging.getLogger(__name__).debug("Audit logging failed", exc_info=True)
 
 
 class JWTServiceImpl(IJwtService):
@@ -243,6 +295,7 @@ class JWTServiceImpl(IJwtService):
                 additional_claims=additional_claims,
             )
         )
+        _safe_call_audit(self._audit, AuditEventType.TOKEN_CREATED, token_type="access", subject=subject_val)
         return token
 
     def create_refresh_token(
@@ -282,7 +335,10 @@ class JWTServiceImpl(IJwtService):
     def decode_token(self, token: str, *, options: Optional[dict] = None):  # noqa: D401
         payload = self._decode(token, options=options)
         # Return SimpleNamespace so attribute access works in tests
-        return SimpleNamespace(**payload)
+        container = _AttrDict(payload)
+        # Audit logging (best-effort)
+        _safe_call_audit(self._audit, AuditEventType.TOKEN_VALIDATION, payload=payload)  # type: ignore[arg-type]
+        return container
 
     def verify_token(self, token: str):  # type: ignore[override] – interface async
         return self.decode_token(token)
