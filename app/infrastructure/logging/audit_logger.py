@@ -10,6 +10,7 @@ import logging
 from datetime import date
 from pathlib import Path
 from tempfile import gettempdir
+from typing import Any
 
 # In Python 3.12, we use built-in dict and list types rather than importing from typing
 from app.core.config.settings import get_settings
@@ -214,17 +215,13 @@ class AuditLogger(IAuditLogger):
         # Log the transaction
         self.__class__.log_transaction(log_data)
 
-    def log_security_event(
+    async def log_security_event(
         self,
-        event_type: str,
-        description: str | None = None,
-        user_id: str | None = None,
-        actor_id: str | None = None,
+        event_type: AuditEventType | str,
+        description: str,
         severity: AuditSeverity = AuditSeverity.INFO,
-        details: str | None = None,
-        status: str | None = None,
-        metadata: dict | None = None,
-        ip_address: str | None = None,
+        user_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """
         Log a security-related event.
@@ -233,12 +230,8 @@ class AuditLogger(IAuditLogger):
             event_type: Type of security event (e.g., "LOGIN_SUCCESS", "ACCESS_DENIED")
             description: Human-readable description of the event
             user_id: ID of the user associated with the event (if applicable)
-            actor_id: Alternative identifier for the actor causing the event (alias for user_id)
             severity: Severity level of the event
-            details: Detailed information about the event (alias for description)
-            status: Status of the event (success/failure)
             metadata: Additional contextual information about the event
-            ip_address: IP address associated with the event
         """
         # Configure if not already done
         if not self.__class__._configured:
@@ -249,28 +242,18 @@ class AuditLogger(IAuditLogger):
             return
 
         # Normalize inputs for backward compatibility
-        effective_user_id = user_id or actor_id or "system"
-        effective_description = description or details or ""
+        effective_user_id = user_id or "system"
+        effective_description = description
 
         # Build log data
         log_data = {
-            "event_type": event_type,
+            "event_type": str(event_type),
             "user_id": effective_user_id,
             "timestamp": format_date_iso(utcnow()),
             "action": "security_event",
             "severity": severity.value if isinstance(severity, AuditSeverity) else str(severity),
-        }
-
-        # Add optional fields if provided
-        optional_fields = {
             "description": effective_description,
-            "status": status,
-            "ip_address": ip_address,
         }
-
-        for key, value in optional_fields.items():
-            if value is not None:
-                log_data[key] = value
 
         # Add any additional metadata
         if metadata:
@@ -350,7 +333,7 @@ class AuditLogger(IAuditLogger):
         # Log the transaction for persistent storage
         self.__class__.log_transaction(log_data)
 
-    def log_system_event(
+    def _legacy_log_system_event(
         self,
         event_type: str,
         description: str,
@@ -358,7 +341,7 @@ class AuditLogger(IAuditLogger):
         metadata: dict | None = None,
     ) -> None:
         """
-        Log a system-level event.
+        Log system-level events (startup, shutdown).
 
         Args:
             event_type: Type of system event (e.g., "STARTUP", "SHUTDOWN", "ERROR")
@@ -434,24 +417,6 @@ class AuditLogger(IAuditLogger):
     # IAuditLogger interface compliance helpers
     # ------------------------------------------------------------------
 
-    async def log_security_event(
-        self,
-        event_type: AuditEventType | str,  # type: ignore[override]
-        description: str,
-        severity: AuditSeverity = AuditSeverity.INFO,
-        user_id: str | None = None,
-        metadata: dict | None = None,
-    ) -> None:  # noqa: D401 – interface requires exact name
-        """Async wrapper for security event logging to satisfy ABC."""
-        # Delegate to sync implementation for backward compatibility
-        self.log_security_event(
-            event_type=str(event_type),
-            description=description,
-            user_id=user_id,
-            severity=severity,
-            metadata=metadata,
-        )
-
     def log_data_access(
         self,
         resource_type: str,
@@ -499,24 +464,9 @@ class AuditLogger(IAuditLogger):
             entry.update(metadata)
         self.__class__.log_transaction(entry)
 
-    def log_system_event(
-        self,
-        event_type: str,
-        description: str,
-        severity: AuditSeverity = AuditSeverity.INFO,
-        metadata: dict | None = None,
-    ) -> None:  # type: ignore[override]
-        """Log system-level events (startup, shutdown)."""
-        entry = {
-            "event_type": event_type,
-            "description": description,
-            "severity": severity.value if isinstance(severity, AuditSeverity) else str(severity),
-            "timestamp": format_date_iso(utcnow()),
-            "action": "system_event",
-        }
-        if metadata:
-            entry.update(metadata)
-        self.__class__.log_transaction(entry)
+    def _legacy_log_security_event(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401
+        """Deprecated duplicate method retained for backward compatibility (no-op)."""
+        return
 
 
 # Initialize the audit logger when the module is imported - but defer actual setup
