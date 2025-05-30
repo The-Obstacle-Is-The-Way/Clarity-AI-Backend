@@ -111,10 +111,10 @@ open http://localhost:8000/docs
 ## ⚠️ Known Issues (Non-Blocking)
 
 ### Minor Issues (Don't Affect Installation)
-1. **4 Logging Utility Test Failures**: Non-critical logging decorator tests
-2. **MyPy Warnings**: Some type annotations in development modules
-3. **Pydantic Warnings**: Model namespace conflicts (non-breaking)
-4. **Deprecated Warnings**: Third-party library deprecations
+1. **MyPy Warnings**: Some type annotations in development modules (95 errors)
+2. **Pydantic Warnings**: Model namespace conflicts (non-breaking)
+3. **Deprecated Warnings**: Third-party library deprecations (non-breaking)
+4. **Collection Warnings**: Test class naming conflicts (cosmetic)
 
 ### In Development (As Expected)
 1. **Some ML Model Endpoints**: Return 501 Not Implemented (architectural stubs)
