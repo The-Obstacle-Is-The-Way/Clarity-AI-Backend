@@ -1,0 +1,11 @@
+---
+# Detects passive voice in documentation
+extends: existence
+message: "Consider using active voice instead of passive voice ('%s')"
+level: suggestion
+ignorecase: true
+tokens:
+  - '(?:am|are|were|being|is|been|was|be)\s+\w+ed'
+  - '(?:am|are|were|being|is|been|was|be)\s+\w+en'
+  - '\w+\s+(?:is|are|were|was)\s+\w+ed\s+by'
+  - '\w+\s+(?:is|are|were|was)\s+\w+en\s+by'
