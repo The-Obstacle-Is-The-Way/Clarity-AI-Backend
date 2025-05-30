@@ -1,0 +1,147 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: clarity-ai-postgres
+    environment:
+      POSTGRES_DB: clarity_ai
+      POSTGRES_USER: clarity_user
+      POSTGRES_PASSWORD: clarity_pass
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clarity_user -d clarity_ai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - clarity-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: clarity-ai-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass clarity_redis_pass
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "clarity_redis_pass", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - clarity-network
+
+  # Clarity-AI Backend Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: clarity-ai-backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Database Configuration
+      DATABASE_URL: postgresql://clarity_user:clarity_pass@db:5432/clarity_ai
+      ASYNC_DATABASE_URL: postgresql+asyncpg://clarity_user:clarity_pass@db:5432/clarity_ai
+      
+      # Redis Configuration
+      REDIS_URL: redis://:clarity_redis_pass@redis:6379/0
+      
+      # Application Settings
+      ENVIRONMENT: development
+      SECRET_KEY: dev-secret-key-change-in-production-min-32-chars
+      API_VERSION: v1
+      PROJECT_NAME: Clarity-AI
+      
+      # JWT Settings
+      JWT_SECRET_KEY: dev-jwt-secret-change-in-production-must-be-32-chars-minimum
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
+      
+      # CORS Settings
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:8000,http://localhost:8080"
+      
+      # Logging
+      LOG_LEVEL: INFO
+      
+      # Development Settings
+      DEBUG: "true"
+      DB_ECHO_LOG: "false"
+      
+    volumes:
+      - .:/app
+      - /app/.venv  # Exclude venv from bind mount
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - clarity-network
+    restart: unless-stopped
+
+  # pgAdmin for Database Management (Optional)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: clarity-ai-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@clarity-ai.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - db
+    networks:
+      - clarity-network
+    profiles:
+      - admin
+
+  # Redis Commander for Redis Management (Optional)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: clarity-ai-redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379:0:clarity_redis_pass
+      HTTP_USER: admin
+      HTTP_PASSWORD: admin123
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - clarity-network
+    profiles:
+      - admin
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  clarity-network:
+    driver: bridge
+    name: clarity-ai-network

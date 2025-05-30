@@ -81,13 +81,25 @@ pytest-*/
 pytest-of-*/
 
 # -------------------
-# Logs
+# Logs and Reports (Large Files)
 # -------------------
 logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+# Large report files that clutter the repo
+pytest_output.log
+bandit-report.json
+lint_report.json
+linting_assessment.json
+typing_report.json
+report.json
+*.report.json
+security-reports/
+audit_exports/
+mypy-report.txt
+coverage-report.txt
 
 # -------------------
 # System files
@@ -116,9 +128,10 @@ app/infrastructure/persistence/data/*
 .ipynb_checkpoints
 
 # -------------------
-# Alembic migrations
+# Alembic migrations (keep template, ignore generated)
 # -------------------
-alembic/versions/*.py
+# Note: This was too aggressive - we want to keep migrations
+# alembic/versions/*.py
 
 # -------------------
 # Temp security reports
@@ -131,16 +144,44 @@ security-reports/temp*.html
 # Test‐result directories
 # -------------------
 test-results/
-report.json
 .aider*
 
-# Added by Claude Task Master
-logs
-dev-debug.log
+# -------------------
+# Cache directories
+# -------------------
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# -------------------
+# Development tools
+# -------------------
+# Task files (if using task runners)
+tasks.json
+tasks/
+
+# -------------------
+# OS specific
+# -------------------
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+# Linux
+*~
+
+# -------------------
 # Dependency directories
+# -------------------
 node_modules/
-# Environment variables
+
+# -------------------
 # Editor directories and files
+# -------------------
 .idea
 .vscode
 *.suo
@@ -148,7 +189,18 @@ node_modules/
 *.njsproj
 *.sln
 *.sw?
-# OS specific
+
+# -------------------
+# Additional CI/CD artifacts
+# -------------------
+.github/workflows/artifacts/
+dist/
+build/
+*.tar.gz
+
+# Added by Claude Task Master
+# Logs
+logs
+dev-debug.log
+# Environment variables
 # Task files
-tasks.json
-tasks/ 
