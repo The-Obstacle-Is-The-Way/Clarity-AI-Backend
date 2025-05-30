@@ -5,28 +5,34 @@ This module provides dependency injection functions for the Digital Twin
 service required by the v1 API endpoints, following clean architecture principles.
 """
 
+# Standard libs
 import logging
-from typing import Annotated
+from typing import Annotated, Protocol, TypeVar, cast
 
+# Third-party
 from fastapi import Depends
 
+# Project
 from app.core.interfaces.services.digital_twin_service_interface import (
     DigitalTwinServiceInterface,
 )
 from app.core.services.ml.interface import MentaLLaMAInterface
-from app.infrastructure.di.provider import get_service_instance
+from app.infrastructure.di.container import get_container
 
 logger = logging.getLogger(__name__)
 
+T = TypeVar("T")
+
+class _SupportsGet(Protocol):
+    """Minimal protocol exposing ``get`` used by the DI container."""
+
+    def get(self, interface: type[T]) -> T: ...
 
 def get_digital_twin_service() -> DigitalTwinServiceInterface:
-    """
-    Dependency for injecting the digital twin service.
+    """Return a concrete implementation of the `DigitalTwinServiceInterface`."""
 
-    Returns:
-        DigitalTwinServiceInterface: Instance of the digital twin service.
-    """
-    return get_service_instance(DigitalTwinServiceInterface)
+    container: _SupportsGet = get_container()
+    return container.get(DigitalTwinServiceInterface)
 
 
 # Type alias for cleaner dependency annotations
@@ -50,8 +56,7 @@ def get_mentallama_service() -> MentaLLaMAInterface:
         service = MockMentaLLaMAService()
         if not service.is_healthy():
             service.initialize({})
-        return service
-    except Exception as e:
-        logger.error(f"Failed to initialize MentaLLaMA service: {e}")
-        # Return a basic service that will indicate it's unhealthy
-        return MockMentaLLaMAService()
+        return cast(MentaLLaMAInterface, service)
+    except Exception as exc:  # pragma: no cover - log then fallback
+        logger.error("Failed to initialize MentaLLaMA service: %s", exc)
+        return cast(MentaLLaMAInterface, MockMentaLLaMAService())

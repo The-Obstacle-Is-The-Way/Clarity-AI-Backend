@@ -5,9 +5,12 @@ This module provides dependency functions for biometric alert components
 following clean architecture principles with proper separation of concerns.
 """
 
+from typing import Protocol, TypeVar
+
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# Application-specific imports (alphabetical within group)
 from app.application.services.biometric_alert_rule_service import (
     BiometricAlertRuleService,
 )
@@ -35,6 +38,14 @@ from app.infrastructure.repositories.sqlalchemy.biometric_alert_rule_repository 
 from app.presentation.api.dependencies.database import get_db
 from app.presentation.api.dependencies.repository import get_encryption_service
 
+T = TypeVar("T")
+
+
+class _SupportsGet(Protocol):
+    """Protocol describing container.get."""
+
+    def get(self, interface: type[T]) -> T: ...
+
 
 def get_alert_repository(
     db_session: AsyncSession = Depends(get_db_session),
@@ -54,14 +65,13 @@ def get_alert_repository(
     Returns:
         An instance of the alert repository
     """
-    # Use container to get or create repository
-    container = get_container()
+    container: _SupportsGet = get_container()
     try:
         return container.get(AlertRepositoryInterface)
     except KeyError:
-        # Create repository with proper dependencies
         repo = AlertRepository(db_session, encryption_service)
-        container.register(AlertRepositoryInterface, repo)
+        # Dynamically register for future resolutions
+        get_container().register(AlertRepositoryInterface, repo)  # type: ignore[attr-defined]
         return repo
 
 
@@ -77,7 +87,13 @@ async def get_biometric_alert_rule_repository(
     Returns:
         Implementation of BiometricAlertRuleRepository
     """
-    return SQLAlchemyBiometricAlertRuleRepository(db)
+    container = get_container()
+    try:
+        return container.get(BiometricAlertRuleRepository)  # reuse existing
+    except KeyError:
+        repo = SQLAlchemyBiometricAlertRuleRepository(db)
+        container.register(BiometricAlertRuleRepository, repo)  # type: ignore[attr-defined]
+        return repo
 
 
 async def get_biometric_alert_template_repository() -> BiometricAlertTemplateRepository:

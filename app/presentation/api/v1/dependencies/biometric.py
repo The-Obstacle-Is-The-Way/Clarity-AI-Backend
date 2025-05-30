@@ -6,7 +6,7 @@ and alert services required by the v1 API endpoints, following
 clean architecture principles.
 """
 
-from typing import Annotated
+from typing import Annotated, Protocol, TypeVar
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +26,16 @@ from app.domain.repositories.biometric_alert_template_repository import (
     BiometricAlertTemplateRepository,
 )
 from app.domain.repositories.biometric_rule_repository import BiometricRuleRepository
+from app.infrastructure.di.container import get_container
 from app.infrastructure.di.provider import get_repository_instance
+
+T = TypeVar("T")
+
+
+class _SupportsGet(Protocol):
+    """Protocol for DI container .get()"""
+
+    def get(self, interface: type[T]) -> T: ...
 
 
 def get_biometric_service() -> BiometricServiceInterface:
@@ -36,16 +45,14 @@ def get_biometric_service() -> BiometricServiceInterface:
     Returns:
         BiometricServiceInterface: Instance of the biometric service.
     """
-    from app.infrastructure.di.container import get_container
-
-    return get_container().get(BiometricServiceInterface)
+    container: _SupportsGet = get_container()
+    return container.get(BiometricServiceInterface)
 
 
 def get_alert_service() -> AlertServiceInterface:
     """Dependency injector for AlertServiceInterface."""
-    from app.infrastructure.di.container import get_container
-
-    return get_container().get(AlertServiceInterface)
+    container: _SupportsGet = get_container()
+    return container.get(AlertServiceInterface)
 
 
 def get_alert_rule_template_service(
@@ -63,10 +70,9 @@ def get_alert_rule_template_service(
     from app.application.services.alert_rule_template_service import (
         AlertRuleTemplateService,
     )
-    from app.infrastructure.di.container import get_container
 
-    # Get container
-    container = get_container()
+    # Obtain container once
+    container: _SupportsGet = get_container()
 
     # Try to get the service if already registered
     try:
@@ -84,10 +90,8 @@ def get_biometric_rule_repository(
     session: AsyncSession = Depends(get_db_session),
 ) -> BiometricRuleRepository:
     """Dependency injector for BiometricRuleRepository."""
-    # Use the correct provider for repositories requiring a session
-    from app.infrastructure.di.container import get_container
-
-    factory = get_container().get_repository_factory(BiometricRuleRepository)
+    container = get_container()
+    factory = container.get_repository_factory(BiometricRuleRepository)
     return factory(session)
 
 
@@ -95,9 +99,8 @@ def get_biometric_alert_template_repository(
     session: AsyncSession = Depends(get_db_session),
 ) -> BiometricAlertTemplateRepository:
     """Dependency injector for BiometricAlertTemplateRepository."""
-    from app.infrastructure.di.container import get_container
-
-    factory = get_container().get_repository_factory(BiometricAlertTemplateRepository)
+    container = get_container()
+    factory = container.get_repository_factory(BiometricAlertTemplateRepository)
     return factory(session)
 
 
