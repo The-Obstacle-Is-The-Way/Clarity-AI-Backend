@@ -164,7 +164,7 @@ class AuditVerifier:
         critical_files = [
             "app/__init__.py",
             "app/main.py",
-            "requirements.txt",
+            "pyproject.toml",  # Modern Python dependency management
             "README.md",
             ".env.example"
         ]
