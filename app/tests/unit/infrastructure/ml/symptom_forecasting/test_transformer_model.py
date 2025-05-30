@@ -93,7 +93,7 @@ class TestTransformerTimeSeriesModel:
             await model.initialize()
 
             # Verify
-            mock_torch.load.assert_called_once_with("test_model_path", map_location=model.device)
+            mock_torch.load.assert_called_once_with("test_model_path", map_location=model.device, weights_only=True)
             assert model.is_initialized
             assert model._model is mock_loaded_model
 
