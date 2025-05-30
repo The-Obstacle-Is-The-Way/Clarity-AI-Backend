@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Any
+from typing import Any, ClassVar
 from uuid import UUID
 
 from app.domain.value_objects.emergency_contact import EmergencyContact
