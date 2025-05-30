@@ -127,8 +127,7 @@ class SecurityTestRunner:
         print(f"Running: {cmd}")
         try:
             result = subprocess.run(
-                cmd,
-                shell=True,
+                shlex.split(cmd),
                 check=False,
                 capture_output=True,
                 text=True,
