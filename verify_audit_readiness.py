@@ -134,7 +134,7 @@ class AuditVerifier:
         """Check if test suite passes."""
         print("🧪 Running test suite...")
         
-        success, output = self.run_command("python -m pytest tests/ -x --tb=no --quiet")
+        success, output = self.run_command("python -m pytest app/tests/ -x --tb=no --quiet")
         if success:
             print("  ✅ All tests passing")
             return True
