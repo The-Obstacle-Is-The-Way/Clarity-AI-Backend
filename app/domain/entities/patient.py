@@ -117,6 +117,13 @@ class Patient:
         repr=False,
     )
 
+    # Special descriptor allowing both `Patient.contact_info` (returns ContactInfo
+    # class) and `patient.contact_info` (returns ContactInfo instance).  Declared
+    # as a ``ClassVar`` so dataclasses/attrs will not treat it as a field, and
+    # so that *mypy* recognizes the attribute at type-checking time (fixes
+    # ``attr-defined`` error).
+    contact_info: ClassVar[PatientContactInfoDescriptor] = PatientContactInfoDescriptor()
+
     # Required fields
     date_of_birth: datetime | str
 
@@ -490,6 +497,5 @@ class Patient:
         """LVE setter for social security number."""
         self.ssn = value
 
-
-# Attach the descriptor to the class after definition
-Patient.contact_info = PatientContactInfoDescriptor()  
+# NOTE: Descriptor now defined inside the class body (above) eliminating the
+# need for late binding and avoiding mypy ``attr-defined`` complaints.

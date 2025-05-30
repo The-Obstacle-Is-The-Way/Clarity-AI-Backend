@@ -205,12 +205,17 @@ def log_method_calls(
     Returns:
         Decorator function
     """
-    if isinstance(level, str):
+    # Normalize `level` to an integer understood by the stdlib `logging` module.
+    # Order of checks matters for mypy: evaluate the *most specific* Enum branch
+    # first, then strings, then fall back to ints.  This prevents the false
+    # positive "unreachable" error triggered when `LogLevel` values are
+    # considered a subtype of `int`.
+    if isinstance(level, LogLevel):
+        numeric_level: int = int(level.value)
+    elif isinstance(level, str):
         # Resolve string names (e.g., "INFO") to their numeric constant; default INFO
-        numeric_level: int = int(getattr(logging, level.upper(), logging.INFO))
-    elif isinstance(level, LogLevel):
-        numeric_level = int(level.value)
-    else:  # int already
+        numeric_level = int(getattr(logging, level.upper(), logging.INFO))
+    else:  # Already an int
         numeric_level = int(level)
 
     def decorator(cls: type) -> type:
