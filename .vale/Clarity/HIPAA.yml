@@ -1,0 +1,21 @@
+---
+# Ensures appropriate HIPAA-related terminology is used
+extends: existence
+message: "HIPAA compliance alert: Ensure '%s' is used in the proper context with appropriate safeguards described"
+level: warning
+ignorecase: true
+tokens:
+  - 'patient data'
+  - 'patient information'
+  - 'medical record'
+  - 'health information'
+  - 'PHI'
+  - 'protected health information'
+  - 'individually identifiable health information'
+  - 'electronic protected health information'
+  - 'ePHI'
+  - 'sensitive data'
+  - 'medical data'
+  - 'health data'
+  - 'personal health information'
+  - 'medical information'

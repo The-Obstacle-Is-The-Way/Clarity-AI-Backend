@@ -1,0 +1,73 @@
+site_name: Clarity-AI Backend Documentation
+site_description: Documentation for the Clarity-AI Digital Twin Backend
+site_author: Clarity-AI Team
+repo_url: https://github.com/yourorganization/Clarity-AI-Backend
+edit_uri: edit/main/docs/
+docs_dir: docs/content
+site_dir: site
+
+theme:
+  name: material
+  palette:
+    primary: blue
+    accent: blue
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.highlight
+    - search.share
+    - toc.integrate
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - attr_list
+  - md_in_html
+  - tables
+  - def_list
+
+plugins:
+  - search
+  - git-revision-date-localized:
+      type: date
+  - minify:
+      minify_html: true
+
+nav:
+  - Home: index.md
+  - Architecture:
+    - Overview: architecture/overview.md
+    - Clean Architecture: architecture/clean_architecture.md
+    - Interfaces: architecture/interfaces.md
+    - Services: architecture/services.md
+    - Design Patterns: architecture/patterns.md
+  - API Reference:
+    - Overview: api/overview.md
+    - Authentication: api/authentication.md
+    - Biometric Alerts: api/biometric_alerts.md
+    - Digital Twins: api/digital_twins.md
+    - Patients: api/patients.md
+  - Implementation:
+    - Domain Model: implementation/domain_model.md
+    - HIPAA Compliance: implementation/hipaa_compliance.md
+    - ML Integration: implementation/ml_integration.md
+  - Development:
+    - Installation: development/installation.md
+    - Contributing: development/contributing.md
+    - Testing: development/testing.md
+    - Security: development/security.md
+  - Project Structure: reference/project_structure.md

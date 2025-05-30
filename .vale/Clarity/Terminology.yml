@@ -1,0 +1,22 @@
+---
+# Enforces consistent terminology across documentation
+extends: substitution
+message: "Use '%s' instead of '%s' for consistent terminology"
+level: error
+ignorecase: true
+swap:
+  'digital replica|virtual model': 'digital twin'
+  'API route|API URL': 'API endpoint'
+  'data access layer|DAO': 'repository'
+  'model|object': 'entity'
+  'DTO|data model': 'schema'
+  'biosignal|biomarker': 'biometric'
+  'DB|database connection': 'database session'
+  'JWT token': 'JWT'
+  'config|configs': 'configuration'
+  'dev|development environment': 'development'
+  'prod|production environment': 'production'
+  'test environment': 'testing'
+  'CI|continuous integration': 'CI/CD'
+  'SOLID principle|SOLID design': 'SOLID principles'
+  'clean architecture pattern|clean arch': 'clean architecture'

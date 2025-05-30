@@ -1,0 +1,56 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.35.0
+    hooks:
+      - id: markdownlint
+        args: 
+          - --config
+          - .markdownlint.json
+
+  - repo: local
+    hooks:
+      - id: ruff-lint
+        name: ruff-lint
+        description: Run Ruff linter
+        entry: ruff check
+        language: system
+        types: [python]
+        args: [--fix]
+        
+      - id: ruff-format
+        name: ruff-format
+        description: Run Ruff formatter
+        entry: ruff format
+        language: system
+        types: [python]
+        
+      - id: mypy
+        name: mypy
+        description: Run mypy for static type checking
+        entry: mypy
+        language: system
+        types: [python]
+        args: [--no-incremental, --ignore-missing-imports]
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.26.3
+    hooks:
+      - id: check-github-workflows
+      - id: check-github-actions
+      - id: check-jsonschema
+        files: "mkdocs.yml"
+        types: [yaml]
+        args: ["--schemafile", "https://json.schemastore.org/mkdocs-1.0.json"]

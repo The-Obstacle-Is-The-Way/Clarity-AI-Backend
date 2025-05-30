@@ -1,0 +1,42 @@
+revolutionary
+groundbreaking
+unprecedented
+game-changing
+state-of-the-art
+best-in-class
+cutting-edge
+transformative
+disruptive
+unparalleled
+43% improved
+62% reduction
+78% increase
+34% reduction
+drastically improves
+significantly reduces
+dramatically increases
+dramatically decreases
+virtual model
+API route
+API URL
+data access layer
+DAO
+model
+object
+DTO
+data model
+biosignal
+biomarker
+DB
+database connection
+config
+configs
+dev
+prod
+test environment
+CI
+continuous integration
+SOLID principle
+SOLID design
+clean architecture pattern
+clean arch
