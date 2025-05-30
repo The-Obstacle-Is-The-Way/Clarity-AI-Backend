@@ -15,7 +15,7 @@ Thank you for your interest in contributing to the Clarity-AI Backend project. T
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/The-Obstacle-Is-The-Way/Clarity-AI-Backend.git
    cd Clarity-AI-Backend
    ```
 
@@ -89,29 +89,30 @@ The project uses several tools to maintain code quality:
 - **Mypy**: For static type checking
 - **Black**: For code formatting (when not using Ruff)
 
-Run these checks before committing:
+Run these checks locally before submitting:
 
 ```bash
-# Ruff linting
-ruff check .
+# Run ruff linting and formatting
+ruff check app
+ruff format app
 
-# Mypy type checking
+# Run mypy type checking
 mypy app
 
-# Fix formatting issues
-ruff format .
+# Run all pre-commit hooks
+pre-commit run --all-files
 ```
 
-### 4. Commit Your Changes
+### 4. Commit Guidelines
 
-Use conventional commit messages:
+Follow the conventional commit format:
 
 ```
-<type>(<scope>): <description>
+<type>(<scope>): <subject>
 
-[optional body]
+<body>
 
-[optional footer]
+<footer>
 ```
 
 Types include:
@@ -120,16 +121,18 @@ Types include:
 - `docs`: Documentation changes
 - `style`: Formatting changes
 - `refactor`: Code refactoring
-- `test`: Adding or modifying tests
+- `test`: Adding or updating tests
 - `chore`: Maintenance tasks
 
 Example:
-```
-feat(auth): implement JWT token refresh endpoint
 
-- Add refresh token endpoint to auth router
-- Add token refresh service method
-- Update tests for token refresh flow
+```
+feat(auth): add JWT refresh token support
+
+Implement JWT refresh token mechanism to enhance security.
+- Add refresh token generation
+- Add token rotation on refresh
+- Update tests for new flow
 
 Closes #123
 ```
@@ -150,7 +153,18 @@ When updating documentation:
 2. **Evidence-Based Claims**: Only include claims that can be substantiated with evidence
 3. **Clear Status**: Clearly indicate implementation status of features
 4. **Code Examples**: Keep code examples up-to-date with the codebase
-5. **Markdown Best Practices**: Use proper headings, lists, and code blocks
+5. **Markdown Style**: Follow the project's [Style Guide](./docs/STYLE_GUIDE.md)
+
+### Documentation Structure
+
+Our documentation follows a specific structure:
+
+- **API Documentation**: Details on endpoints, request/response formats
+- **Architecture Documentation**: System design, components, and interactions
+- **Development Guides**: How to develop specific features
+- **Compliance Documentation**: HIPAA and security considerations
+
+Use the templates in the [docs/templates](./docs/templates) directory when creating new documentation.
 
 ## Adding New Features
 
@@ -184,10 +198,10 @@ The project follows semantic versioning:
 
 If you need help with your contribution:
 
-- Review the [Architecture Overview](./docs/Architecture_Overview.md)
-- Check the [Project Structure](./docs/Project_Structure.md)
+- Review the [Architecture Overview](./docs/content/architecture/README.md)
+- Check the [Project Structure](./docs/content/development/project_structure.md)
 - Ask questions in the issue you're working on
-- Contact the maintainers via email or discussion forum
+- Contact the maintainers via the project discussion forum
 
 ## Thank You
 
