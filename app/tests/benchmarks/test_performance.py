@@ -10,13 +10,13 @@ import pytest
 import asyncio
 import time
 import json
+import uuid
 from datetime import datetime
 from unittest.mock import Mock, patch
 
 # Import core functions to benchmark
 from app.core.utils.logging import get_logger
 from app.infrastructure.security.password import get_password_hash, verify_password
-from app.core.utils.helpers import generate_uuid, datetime_to_str
 
 
 class TestCoreFunctionsBenchmarks:
@@ -55,18 +55,18 @@ class TestCoreFunctionsBenchmarks:
     def test_uuid_generation_benchmark(self, benchmark):
         """Benchmark UUID generation performance."""
         def generate_uuid_test():
-            return generate_uuid()
+            return str(uuid.uuid4())
         
         result = benchmark(generate_uuid_test)
         assert result is not None
-        assert len(str(result)) > 30  # UUIDs are long
+        assert len(result) > 30  # UUIDs are long
     
     def test_datetime_conversion_benchmark(self, benchmark):
         """Benchmark datetime to string conversion."""
         dt = datetime.now()
         
         def datetime_conversion():
-            return datetime_to_str(dt)
+            return dt.isoformat()
         
         result = benchmark(datetime_conversion)
         assert result is not None
