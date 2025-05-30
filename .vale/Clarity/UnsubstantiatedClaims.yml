@@ -1,0 +1,19 @@
+---
+# Detects potentially unsubstantiated statistical claims
+extends: existence
+message: "Potentially unsubstantiated claim: '%s'. Ensure this claim is supported by evidence, or use qualifiers like 'aims to', 'designed to', or 'potential to'."
+level: warning
+ignorecase: true
+link: https://docs.projectname.com/style-guide#evidence-based-claims
+tokens:
+  - '\d+%\s*(improvement|better|faster|reduction)'
+  - 'significantly\s*(improve|reduce|increase|decrease)'
+  - 'dramatically\s*(improve|reduce|increase|decrease)'
+  - 'revolutionize'
+  - 'groundbreaking'
+  - 'unprecedented'
+  - 'game-changing'
+  - 'state-of-the-art'
+  - 'best-in-class'
+  - 'cutting-edge'
+  - 'revolutionary'

@@ -1,0 +1,25 @@
+---
+# Detects hedging language that may indicate uncertainty
+extends: existence
+message: "Consider if hedging term '%s' is appropriate or if a more precise statement is possible."
+level: suggestion
+ignorecase: true
+tokens:
+  - 'may'
+  - 'might'
+  - 'could'
+  - 'appears to'
+  - 'seems to'
+  - 'possibly'
+  - 'potentially'
+  - 'likely'
+  - 'probably'
+  - 'perhaps'
+  - 'supposedly'
+  - 'ostensibly'
+  - 'generally'
+  - 'usually'
+  - 'often'
+  - 'sometimes'
+  - 'frequently'
+  - 'typically'
