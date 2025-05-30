@@ -8,10 +8,12 @@ NovaMind Digital Twin backend with HIPAA-compliant reporting.
 
 import json
 import os
+import shlex
 import subprocess
 import sys
 from datetime import datetime
 from typing import Any, Dict, List
+from pathlib import Path
 
 # Add the root directory to Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
