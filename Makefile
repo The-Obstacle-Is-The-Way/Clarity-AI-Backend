@@ -124,6 +124,60 @@ db-seed: ## Seed database with demo data
 	python scripts/seed_demo.py 2>/dev/null || echo "ℹ️  Demo seeding script not found"
 	@echo "✅ Database seeded"
 
+# Advanced Analysis & Security
+security-scan: ## 🛡️  Run comprehensive security vulnerability scan
+	@echo "🔍 Running security vulnerability scan..."
+	@echo "🛡️  Scanning code for security issues with Bandit..."
+	bandit -r app -f json -o bandit-report.json || echo "⚠️  Some security issues found - check bandit-report.json"
+	@echo "🔒 Checking dependencies for known vulnerabilities..."
+	safety check --json --output safety-report.json || echo "⚠️  Some dependency vulnerabilities found - check safety-report.json"
+	@echo "📊 Security scan complete! Check reports: bandit-report.json, safety-report.json"
+
+security-scan-detailed: ## 🔍 Detailed security scan with verbose output
+	@echo "🔍 Running detailed security analysis..."
+	bandit -r app -f screen --severity-level medium
+	@echo "\n🔒 Dependency vulnerability check:"
+	safety check --short-report
+
+dead-code: ## 🧹 Find unused/dead code
+	@echo "🧹 Scanning for dead code with Vulture..."
+	vulture app --min-confidence 80 --sort-by-size || echo "📊 Dead code analysis complete"
+
+benchmark: ## ⚡ Run performance benchmarks
+	@echo "⚡ Running performance benchmarks..."
+	pytest app/tests -k "benchmark" --benchmark-only --benchmark-sort=mean || echo "📈 Create benchmark tests with @pytest.mark.benchmark decorator"
+
+benchmark-compare: ## 📊 Run benchmarks and compare with previous results
+	@echo "📊 Running benchmark comparison..."
+	pytest app/tests -k "benchmark" --benchmark-only --benchmark-compare --benchmark-sort=mean || echo "📈 Create benchmark tests to compare performance"
+
+memory-profile: ## 🧠 Run memory profiling on key functions
+	@echo "🧠 Running memory profiling..."
+	@echo "💡 Add @profile decorator to functions you want to profile"
+	python -m memory_profiler app/main.py || echo "ℹ️  Add memory profiling decorators to see detailed analysis"
+
+load-test: ## 🔥 Run API load testing with Locust
+	@echo "🔥 Starting Locust load testing..."
+	@echo "🌐 Visit http://localhost:8089 to configure and run load tests"
+	@echo "⚡ Target your API at http://localhost:8000"
+	locust -f scripts/locustfile.py --host=http://localhost:8000 || echo "📝 Create scripts/locustfile.py for custom load tests"
+
+coverage-html: ## 📊 Generate beautiful HTML coverage report
+	@echo "📊 Generating detailed HTML coverage report..."
+	pytest app/tests --cov=app --cov-report=html --cov-report=term-missing
+	@echo "🌐 HTML report generated at: htmlcov/index.html"
+	@echo "💡 Open htmlcov/index.html in your browser for detailed coverage visualization"
+
+audit-full: ## 🔍 Complete security and code quality audit
+	@echo "🔍 Running comprehensive audit..."
+	@echo "1️⃣  Security vulnerabilities..."
+	make security-scan-detailed
+	@echo "\n2️⃣  Dead code analysis..."
+	make dead-code
+	@echo "\n3️⃣  Coverage analysis..."
+	make coverage-html
+	@echo "\n✅ Full audit complete! Check generated reports."
+
 # Docker and Deployment
 build: ## Build Docker image
 	@echo "🏗️  Building Docker image..."
