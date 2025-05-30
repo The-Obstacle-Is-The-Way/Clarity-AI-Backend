@@ -144,7 +144,7 @@ class ModelSerializer:
                 if model_class is None:
                     raise ValueError("model_class must be provided for PyTorch models")
                 model = model_class()
-                model.load_state_dict(torch.load(model_path))
+                model.load_state_dict(torch.load(model_path, map_location='cpu', weights_only=True))
                 model.eval()  # Set to evaluation mode
             elif model_type == "custom" or model_type == "unknown":
                 with open(model_path, "rb") as f:

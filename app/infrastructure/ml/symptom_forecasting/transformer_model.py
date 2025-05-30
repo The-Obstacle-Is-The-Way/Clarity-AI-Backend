@@ -521,7 +521,7 @@ class SymptomTransformerModel:
 
         # Load pretrained model if provided
         if model_path:
-            self.model.load_state_dict(torch.load(model_path, map_location=device))
+            self.model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
 
         self.model.eval()
 

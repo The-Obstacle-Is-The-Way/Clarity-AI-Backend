@@ -442,7 +442,7 @@ class MockXGBoostService(XGBoostInterface):
             Risk score between 0.0 and 1.0
         """
         # Create a seed for deterministic randomness
-        seed = int(hashlib.md5(f"{patient_id}:{risk_type}".encode()).hexdigest(), 16)
+        seed = int(hashlib.md5(f"{patient_id}:{risk_type}".encode(), usedforsecurity=False).hexdigest(), 16)
         random.seed(seed)
 
         # Base score is random but deterministic for the same patient and risk type
@@ -517,7 +517,7 @@ class MockXGBoostService(XGBoostInterface):
             Efficacy score between 0.0 and 1.0
         """
         # Create a seed for deterministic randomness
-        seed = int(hashlib.md5(f"{patient_id}:{treatment_type}".encode()).hexdigest(), 16)
+        seed = int(hashlib.md5(f"{patient_id}:{treatment_type}".encode(), usedforsecurity=False).hexdigest(), 16)
         random.seed(seed)
 
         # Base score is random but deterministic for the same patient and treatment type
@@ -606,7 +606,7 @@ class MockXGBoostService(XGBoostInterface):
         """
         # Create a seed for deterministic randomness
         seed = int(
-            hashlib.md5(f"{patient_id}:{outcome_type}:{time_frame_days}".encode()).hexdigest(),
+            hashlib.md5(f"{patient_id}:{outcome_type}:{time_frame_days}".encode(), usedforsecurity=False).hexdigest(),
             16,
         )
         random.seed(seed)
@@ -1940,7 +1940,7 @@ class MockXGBoostService(XGBoostInterface):
                 features_used = ["baseline_severity", "treatment_history", "functional_status"]
 
         # Generate deterministic feature importance scores
-        seed = int(hashlib.md5(f"{prediction_id}:{model_name}".encode()).hexdigest(), 16)
+        seed = int(hashlib.md5(f"{prediction_id}:{model_name}".encode(), usedforsecurity=False).hexdigest(), 16)
         random.seed(seed)
 
         # Generate importance scores that sum to 1.0
