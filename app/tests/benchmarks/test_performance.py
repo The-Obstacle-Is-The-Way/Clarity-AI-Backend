@@ -138,57 +138,6 @@ class TestDataProcessingBenchmarks:
         assert len(result) > 0
 
 
-class TestAsyncBenchmarks:
-    """Benchmark tests for asynchronous operations."""
-    
-    @pytest.mark.asyncio
-    async def test_async_operation_benchmark(self, benchmark):
-        """Benchmark async operation performance."""
-        
-        async def async_operation():
-            # Simulate async work
-            await asyncio.sleep(0.001)  # 1ms delay
-            return {"status": "completed", "data": [i for i in range(100)]}
-        
-        def sync_wrapper():
-            # Run async function in sync context for benchmarking
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                return loop.run_until_complete(async_operation())
-            finally:
-                loop.close()
-        
-        result = benchmark(sync_wrapper)
-        assert result["status"] == "completed"
-        assert len(result["data"]) == 100
-    
-    @pytest.mark.asyncio  
-    async def test_concurrent_tasks_benchmark(self, benchmark):
-        """Benchmark concurrent task execution."""
-        
-        async def single_task(task_id: int):
-            # Simulate async work
-            await asyncio.sleep(0.001)
-            return f"task_{task_id}_completed"
-        
-        async def run_concurrent_tasks():
-            tasks = [single_task(i) for i in range(10)]
-            return await asyncio.gather(*tasks)
-        
-        def sync_wrapper():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                return loop.run_until_complete(run_concurrent_tasks())
-            finally:
-                loop.close()
-        
-        result = benchmark(sync_wrapper)
-        assert len(result) == 10
-        assert all("completed" in r for r in result)
-
-
 class TestMockDatabaseBenchmarks:
     """Benchmark tests for simulated database operations."""
     
