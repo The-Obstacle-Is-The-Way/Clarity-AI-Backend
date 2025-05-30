@@ -7,8 +7,8 @@
       "temperature": 0.2
     },
     "research": {
-      "provider": "perplexity",
-      "modelId": "sonar-reasoning-pro",
+      "provider": "openai",
+      "modelId": "gpt-4o",
       "maxTokens": 8700,
       "temperature": 0.1
     },

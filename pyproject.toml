@@ -38,7 +38,7 @@ dependencies = [
     "pyyaml==6.0.2",
     "redis==5.0.8", # From requirements-standalone.txt
     "sentry-sdk>=2.8.0", # Application monitoring and error tracking
-    "slowapi==0.2.0", # From requirements-security.txt
+    "slowapi==0.1.9", # From requirements-security.txt - Fixed version
     "requests",
     "scikit-learn==1.5.2", # From requirements-analytics.txt
     "scipy==1.15.0", # From requirements-analytics.txt
