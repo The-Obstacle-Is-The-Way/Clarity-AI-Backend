@@ -9,7 +9,7 @@ the AI Models Core Implementation documentation and adhering to HIPAA compliance
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 from uuid import UUID
 
 import joblib
@@ -99,7 +99,7 @@ class PharmacogenomicsModel:
         ]
 
         # Initialize models dictionary
-        self.models: Dict[str, Any] = {}
+        self.models: dict[str, Any] = {}
 
         # Initialize preprocessors
         self._init_preprocessors()
@@ -282,7 +282,7 @@ class PharmacogenomicsModel:
                 raise ValidationError("No training data provided")
 
             # Prepare data for each medication
-            medication_data: Dict[str, Dict[str, Any]] = {med: {"X": [], "y": []} for med in self.medications}
+            medication_data: dict[str, dict[str, Any]] = {med: {"X": [], "y": []} for med in self.medications}
 
             # Process each training sample
             for sample in training_data:

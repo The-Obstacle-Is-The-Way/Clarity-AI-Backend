@@ -6,13 +6,11 @@ These tests measure the performance of critical functions and endpoints.
 Run with: make benchmark or pytest app/tests -k "benchmark" --benchmark-only
 """
 
-import pytest
-import asyncio
-import time
 import json
 import uuid
 from datetime import datetime
-from unittest.mock import Mock, patch
+
+import pytest
 
 # Import core functions to benchmark
 from app.core.utils.logging import get_logger
@@ -22,7 +20,7 @@ from app.infrastructure.security.password import get_password_hash, verify_passw
 class TestCoreFunctionsBenchmarks:
     """Benchmark tests for core utility functions."""
     
-    def test_logger_creation_benchmark(self, benchmark):
+    def test_logger_creation_benchmark(self, benchmark) -> None:
         """Benchmark logger creation performance."""
         def create_logger():
             return get_logger("test_logger")
@@ -30,7 +28,7 @@ class TestCoreFunctionsBenchmarks:
         result = benchmark(create_logger)
         assert result is not None
     
-    def test_password_hashing_benchmark(self, benchmark):
+    def test_password_hashing_benchmark(self, benchmark) -> None:
         """Benchmark password hashing performance."""
         password = "test_password_123!"
         
@@ -41,7 +39,7 @@ class TestCoreFunctionsBenchmarks:
         assert result is not None
         assert len(result) > 50  # Hashed passwords should be substantial
     
-    def test_password_verification_benchmark(self, benchmark):
+    def test_password_verification_benchmark(self, benchmark) -> None:
         """Benchmark password verification performance."""
         password = "test_password_123!"
         hashed = get_password_hash(password)
@@ -52,7 +50,7 @@ class TestCoreFunctionsBenchmarks:
         result = benchmark(verify_password_test)
         assert result is True
     
-    def test_uuid_generation_benchmark(self, benchmark):
+    def test_uuid_generation_benchmark(self, benchmark) -> None:
         """Benchmark UUID generation performance."""
         def generate_uuid_test():
             return str(uuid.uuid4())
@@ -61,7 +59,7 @@ class TestCoreFunctionsBenchmarks:
         assert result is not None
         assert len(result) > 30  # UUIDs are long
     
-    def test_datetime_conversion_benchmark(self, benchmark):
+    def test_datetime_conversion_benchmark(self, benchmark) -> None:
         """Benchmark datetime to string conversion."""
         dt = datetime.now()
         
@@ -76,7 +74,7 @@ class TestCoreFunctionsBenchmarks:
 class TestDataProcessingBenchmarks:
     """Benchmark tests for data processing operations."""
     
-    def test_json_serialization_benchmark(self, benchmark):
+    def test_json_serialization_benchmark(self, benchmark) -> None:
         """Benchmark JSON serialization of complex data."""
         complex_data = {
             "users": [
@@ -100,7 +98,7 @@ class TestDataProcessingBenchmarks:
         result = benchmark(serialize_json)
         assert len(result) > 1000
     
-    def test_json_deserialization_benchmark(self, benchmark):
+    def test_json_deserialization_benchmark(self, benchmark) -> None:
         """Benchmark JSON deserialization of complex data."""
         complex_data = {
             "items": [{"id": i, "value": f"item_{i}"} for i in range(1000)]
@@ -113,7 +111,7 @@ class TestDataProcessingBenchmarks:
         result = benchmark(deserialize_json)
         assert len(result["items"]) == 1000
     
-    def test_list_processing_benchmark(self, benchmark):
+    def test_list_processing_benchmark(self, benchmark) -> None:
         """Benchmark list processing operations."""
         large_list = list(range(10000))
         
@@ -123,7 +121,7 @@ class TestDataProcessingBenchmarks:
         result = benchmark(process_list)
         assert len(result) == 5000  # Half the numbers are even
     
-    def test_dictionary_operations_benchmark(self, benchmark):
+    def test_dictionary_operations_benchmark(self, benchmark) -> None:
         """Benchmark dictionary operations."""
         def create_and_process_dict():
             data = {f"key_{i}": f"value_{i}" for i in range(1000)}
@@ -141,7 +139,7 @@ class TestDataProcessingBenchmarks:
 class TestMockDatabaseBenchmarks:
     """Benchmark tests for simulated database operations."""
     
-    def test_mock_database_query_benchmark(self, benchmark):
+    def test_mock_database_query_benchmark(self, benchmark) -> None:
         """Benchmark simulated database query performance."""
         
         # Mock database data
@@ -157,7 +155,7 @@ class TestMockDatabaseBenchmarks:
         result = benchmark(query_active_users)
         assert len(result) == 500  # Half are active
     
-    def test_mock_database_insert_benchmark(self, benchmark):
+    def test_mock_database_insert_benchmark(self, benchmark) -> None:
         """Benchmark simulated database insert performance."""
         
         mock_db = []
@@ -174,7 +172,7 @@ class TestMockDatabaseBenchmarks:
         result = benchmark(insert_batch)
         assert result == 100
     
-    def test_mock_complex_query_benchmark(self, benchmark):
+    def test_mock_complex_query_benchmark(self, benchmark) -> None:
         """Benchmark complex query simulation."""
         
         # Mock data with relationships
@@ -200,7 +198,7 @@ class TestMockDatabaseBenchmarks:
 class TestSecurityBenchmarks:
     """Benchmark tests for security-related operations."""
     
-    def test_multiple_password_hashing_benchmark(self, benchmark):
+    def test_multiple_password_hashing_benchmark(self, benchmark) -> None:
         """Benchmark hashing multiple passwords."""
         passwords = [f"password_{i}!" for i in range(10)]
         
@@ -211,7 +209,7 @@ class TestSecurityBenchmarks:
         assert len(result) == 10
         assert all(len(h) > 50 for h in result)
     
-    def test_token_generation_simulation_benchmark(self, benchmark):
+    def test_token_generation_simulation_benchmark(self, benchmark) -> None:
         """Benchmark token generation simulation."""
         import secrets
         import string

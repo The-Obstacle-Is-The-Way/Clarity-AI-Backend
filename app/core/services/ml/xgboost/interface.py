@@ -14,12 +14,12 @@ from app.domain.interfaces.ml_service_interface import MLServiceInterface
 
 # Explicit exports for proper module interface
 __all__ = [
-    "XGBoostInterface",
-    "ModelType",
-    "ModelMetadata",
     "EventType",
+    "ModelMetadata",
+    "ModelType",
     "Observer",
-    "PrivacyLevel"
+    "PrivacyLevel",
+    "XGBoostInterface"
 ]
 
 

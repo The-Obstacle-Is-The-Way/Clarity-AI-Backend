@@ -12,7 +12,6 @@ from datetime import datetime
 from sqlalchemy import (
     JSON,
     Boolean,
-
     DateTime,
     ForeignKey,
     String,

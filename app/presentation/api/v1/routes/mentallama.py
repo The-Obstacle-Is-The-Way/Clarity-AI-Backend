@@ -5,9 +5,9 @@ This module provides routes for the MentaLLaMA natural language processing API,
 which is specialized for mental health text analysis and therapeutic response generation.
 """
 
+import asyncio
 from typing import Any
 
-import asyncio
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 
 from app.core.services.ml.interface import MentaLLaMAInterface

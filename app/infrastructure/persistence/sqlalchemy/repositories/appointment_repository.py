@@ -20,14 +20,13 @@ magic test attributes are absent.
 from __future__ import annotations
 
 import logging
-from typing import Any, cast
+from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.entities.appointment import Appointment
-from app.domain.entities.appointment import AppointmentStatus
+from app.domain.entities.appointment import Appointment, AppointmentStatus
 from app.domain.repositories.appointment_repository import IAppointmentRepository
-from datetime import datetime, timezone
 
 # Optional dependency – we accept *Any* to keep the repository agnostic.  For
 # the unit tests the service will be a simple ``MagicMock``.
@@ -177,7 +176,7 @@ class SQLAlchemyAppointmentRepository(IAppointmentRepository):
         # Fast-path for mock session
         if hasattr(self.db_session, "_query_results"):
             self.db_session._last_executed_query = "mock_list_by_date_range"  # type: ignore[attr-defined]
-            def _match(obj):
+            def _match(obj) -> bool:
                 if getattr(obj, "appointment_date", None) is None:
                     return False
                 if not (start_date <= obj.appointment_date <= end_date):

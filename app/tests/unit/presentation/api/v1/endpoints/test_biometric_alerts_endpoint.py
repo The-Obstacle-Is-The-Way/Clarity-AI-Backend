@@ -27,14 +27,16 @@ from app.core.config.settings import Settings as AppSettings
 from app.core.domain.entities.alert import AlertPriority, AlertStatus, AlertType
 from app.core.domain.entities.user import User, UserRole
 from app.core.exceptions import ApplicationError, ErrorCode
-from app.core.interfaces.services.alert_service_interface import AlertSeverity
 from app.core.interfaces.services.alert_rule_service_interface import (
     AlertRuleServiceInterface,
 )
 from app.core.interfaces.services.alert_rule_template_service_interface import (
     AlertRuleTemplateServiceInterface,
 )
-from app.core.interfaces.services.alert_service_interface import AlertServiceInterface
+from app.core.interfaces.services.alert_service_interface import (
+    AlertServiceInterface,
+    AlertSeverity,
+)
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
 from app.core.interfaces.services.jwt_service import JWTServiceInterface
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository

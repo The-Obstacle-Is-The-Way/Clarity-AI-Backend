@@ -718,7 +718,7 @@ class MockPATService(PATInterface):
                 field_id = f"phq9_{i}"
                 if field_id in assessment["data"]:
                     value = assessment["data"][field_id]
-                    if isinstance(value, (int, float)):
+                    if isinstance(value, int | float):
                         phq9_total += int(value)
 
             # If no data, generate random score
@@ -746,7 +746,7 @@ class MockPATService(PATInterface):
                 field_id = f"gad7_{i}"
                 if field_id in assessment["data"]:
                     value = assessment["data"][field_id]
-                    if isinstance(value, (int, float)):
+                    if isinstance(value, int | float):
                         gad7_total += int(value)
 
             # If no data, generate random score
@@ -1488,7 +1488,7 @@ class MockPATService(PATInterface):
             filtered_analyses.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
 
             # Apply pagination
-            total = len(filtered_analyses)
+            len(filtered_analyses)
             paginated_analyses = filtered_analyses[offset:offset + limit]
 
             # Return analyses list directly (Interface Segregation Principle)

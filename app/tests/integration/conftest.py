@@ -30,10 +30,8 @@ from app.core.interfaces.aws_service_interface import (
 from app.core.interfaces.services.encryption_service_interface import IEncryptionService
 
 # Import JWT service interface
-from app.core.interfaces.services.jwt_service import IJwtService
-
 # Added imports for mock JWT service
-from app.core.interfaces.services.jwt_service import JWTServiceInterface
+from app.core.interfaces.services.jwt_service import IJwtService, JWTServiceInterface
 
 # Import Redis service interface and mock implementation
 from app.core.interfaces.services.redis_service_interface import IRedisService

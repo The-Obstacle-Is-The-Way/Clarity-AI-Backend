@@ -95,7 +95,7 @@ async def create_access_token(
         return self._encode_token(payload)
     except Exception as e:
         # Log the error (with sensitive info removed)
-        logger.error(f"Error creating access token: {str(e)}")
+        logger.error(f"Error creating access token: {e!s}")
         raise
 
 
@@ -188,7 +188,7 @@ async def create_refresh_token(
         return self._encode_token(payload)
     except Exception as e:
         # Log the error (with sensitive info removed)
-        logger.error(f"Error creating refresh token: {str(e)}")
+        logger.error(f"Error creating refresh token: {e!s}")
         raise
 
 
@@ -213,7 +213,7 @@ async def revoke_token(self, token: str) -> bool:
         try:
             payload = self._decode_token(token, verify_exp=False, options=options)
         except (JWTError, ExpiredSignatureError) as e:
-            logger.error(f"Error decoding token for revocation: {str(e)}")
+            logger.error(f"Error decoding token for revocation: {e!s}")
             # Even if token is expired, we should still try to blacklist it
             # Use a relaxed decode approach for blacklisting
             try:
@@ -223,7 +223,7 @@ async def revoke_token(self, token: str) -> bool:
                     options={"verify_signature": True, "verify_exp": False, "verify_aud": False},
                 )
             except Exception as inner_err:
-                logger.error(f"Error during token revocation: {str(inner_err)}")
+                logger.error(f"Error during token revocation: {inner_err!s}")
                 return False
 
         if not payload or "jti" not in payload:
@@ -262,7 +262,7 @@ async def revoke_token(self, token: str) -> bool:
 
         return True
     except Exception as e:
-        logger.error(f"Error during token revocation: {str(e)}")
+        logger.error(f"Error during token revocation: {e!s}")
         return False
 
 
@@ -313,7 +313,7 @@ async def decode_token(self, token: str, options: dict | None = None) -> Any:
             AuditEventType.TOKEN_VALIDATION_FAILED,
             details={"reason": str(e)},
         )
-        raise InvalidTokenException(f"Failed to decode token: {str(e)}")
+        raise InvalidTokenException(f"Failed to decode token: {e!s}")
 
 
 def _decode_token(
@@ -355,8 +355,8 @@ def _decode_token(
             issuer=self._token_issuer,
         )
     except ExpiredSignatureError as e:
-        logger.warning(f"Token expired: {str(e)}")
+        logger.warning(f"Token expired: {e!s}")
         raise TokenExpiredException("Token has expired") from e
     except JWTError as e:
-        logger.warning(f"Invalid token: {str(e)}")
-        raise InvalidTokenException(f"Invalid token: {str(e)}") from e
+        logger.warning(f"Invalid token: {e!s}")
+        raise InvalidTokenException(f"Invalid token: {e!s}") from e

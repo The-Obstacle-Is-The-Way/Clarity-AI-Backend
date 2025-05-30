@@ -5,20 +5,18 @@ This module defines the SQLAlchemy ORM model for the Medication entity,
 mapping the domain entity to the database schema.
 """
 
-import uuid
 import datetime
+import uuid
 
 from sqlalchemy import UUID as SQLAlchemyUUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import (
     Boolean,
-    Column,
     Date,
     ForeignKey,
     String,
     Text,
 )
-
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.sqlalchemy.models.base import (
     AuditMixin,

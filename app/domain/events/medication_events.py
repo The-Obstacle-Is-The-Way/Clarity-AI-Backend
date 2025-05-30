@@ -9,8 +9,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
-from app.domain.utils.datetime_utils import UTC
-
 
 @dataclass
 class MedicationEvent:

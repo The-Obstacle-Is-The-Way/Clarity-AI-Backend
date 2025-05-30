@@ -14,7 +14,7 @@ import re
 import time
 from collections.abc import Callable
 from re import Pattern
-from typing import Callable, cast
+from typing import cast
 
 from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
@@ -184,7 +184,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
                 raise PHIInUrlError("PHI detected in URL path")
 
         # Check query parameters
-        for key, values in request.query_params.items():
+        for _key, values in request.query_params.items():
             if isinstance(values, str):
                 values = [values]
             for value in values:

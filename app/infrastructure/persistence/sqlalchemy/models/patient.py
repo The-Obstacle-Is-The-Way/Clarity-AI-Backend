@@ -21,8 +21,7 @@ from sqlalchemy import (
     String,
 )
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy.orm import relationship, Mapped, mapped_column
-from typing import Optional
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.entities.digital_twin_enums import Gender  # Corrected Gender import
 
@@ -86,8 +85,8 @@ class Patient(Base, TimestampMixin, AuditMixin):
     # SQLAlchemy 2.0+ with explicit type contracts - Interface Segregation Principle
     # Data Mapper pattern implemented through to_domain() and from_domain() methods
     id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4, nullable=False, index=True)
-    external_id: Mapped[Optional[str]] = mapped_column(String(64), unique=True, index=True, nullable=True)
-    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(GUID(), ForeignKey("users.id"), index=True, nullable=True)
+    external_id: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), ForeignKey("users.id"), index=True, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, onupdate=now_utc, nullable=False)
@@ -95,45 +94,45 @@ class Patient(Base, TimestampMixin, AuditMixin):
 
     # --- Encrypted PHI Fields (Stored as Text/Blob in DB) ---
     # Proper type annotations with HIPAA-compliant encryption infrastructure
-    _first_name: Mapped[Optional[str]] = mapped_column("first_name", EncryptedString, nullable=True)
-    _last_name: Mapped[Optional[str]] = mapped_column("last_name", EncryptedString, nullable=True)
-    _middle_name: Mapped[Optional[str]] = mapped_column("middle_name", EncryptedString, nullable=True)
-    _gender: Mapped[Optional[Gender]] = mapped_column("gender", SQLEnum(Gender, name="gender_enum"), nullable=True)
-    _date_of_birth: Mapped[Optional[str]] = mapped_column("date_of_birth", EncryptedString, nullable=True)
-    _ssn: Mapped[Optional[str]] = mapped_column("ssn", EncryptedString, nullable=True)
-    _mrn: Mapped[Optional[str]] = mapped_column("mrn", EncryptedString, nullable=True)
-    _email: Mapped[Optional[str]] = mapped_column("email", EncryptedString, nullable=True)
-    _phone_number: Mapped[Optional[str]] = mapped_column("phone_number", EncryptedString, nullable=True)
+    _first_name: Mapped[str | None] = mapped_column("first_name", EncryptedString, nullable=True)
+    _last_name: Mapped[str | None] = mapped_column("last_name", EncryptedString, nullable=True)
+    _middle_name: Mapped[str | None] = mapped_column("middle_name", EncryptedString, nullable=True)
+    _gender: Mapped[Gender | None] = mapped_column("gender", SQLEnum(Gender, name="gender_enum"), nullable=True)
+    _date_of_birth: Mapped[str | None] = mapped_column("date_of_birth", EncryptedString, nullable=True)
+    _ssn: Mapped[str | None] = mapped_column("ssn", EncryptedString, nullable=True)
+    _mrn: Mapped[str | None] = mapped_column("mrn", EncryptedString, nullable=True)
+    _email: Mapped[str | None] = mapped_column("email", EncryptedString, nullable=True)
+    _phone_number: Mapped[str | None] = mapped_column("phone_number", EncryptedString, nullable=True)
 
     # Insurance-related fields (PHI)
-    _insurance_provider: Mapped[Optional[str]] = mapped_column("insurance_provider", EncryptedString, nullable=True)
-    _insurance_policy_number: Mapped[Optional[str]] = mapped_column("insurance_policy_number", EncryptedString, nullable=True)
-    _insurance_group_number: Mapped[Optional[str]] = mapped_column("insurance_group_number", EncryptedString, nullable=True)
-    _address_line1: Mapped[Optional[str]] = mapped_column("address_line1", EncryptedString, nullable=True)
-    _address_line2: Mapped[Optional[str]] = mapped_column("address_line2", EncryptedString, nullable=True)
-    _city: Mapped[Optional[str]] = mapped_column("city", EncryptedString, nullable=True)
-    _state: Mapped[Optional[str]] = mapped_column("state", EncryptedString, nullable=True)
-    _zip_code: Mapped[Optional[str]] = mapped_column("zip_code", EncryptedString, nullable=True)
-    _country: Mapped[Optional[str]] = mapped_column("country", EncryptedString, nullable=True)
-    _emergency_contact_name: Mapped[Optional[str]] = mapped_column("emergency_contact_name", EncryptedString, nullable=True)
-    _emergency_contact_phone: Mapped[Optional[str]] = mapped_column("emergency_contact_phone", EncryptedString, nullable=True)
-    _emergency_contact_relationship: Mapped[Optional[str]] = mapped_column(
+    _insurance_provider: Mapped[str | None] = mapped_column("insurance_provider", EncryptedString, nullable=True)
+    _insurance_policy_number: Mapped[str | None] = mapped_column("insurance_policy_number", EncryptedString, nullable=True)
+    _insurance_group_number: Mapped[str | None] = mapped_column("insurance_group_number", EncryptedString, nullable=True)
+    _address_line1: Mapped[str | None] = mapped_column("address_line1", EncryptedString, nullable=True)
+    _address_line2: Mapped[str | None] = mapped_column("address_line2", EncryptedString, nullable=True)
+    _city: Mapped[str | None] = mapped_column("city", EncryptedString, nullable=True)
+    _state: Mapped[str | None] = mapped_column("state", EncryptedString, nullable=True)
+    _zip_code: Mapped[str | None] = mapped_column("zip_code", EncryptedString, nullable=True)
+    _country: Mapped[str | None] = mapped_column("country", EncryptedString, nullable=True)
+    _emergency_contact_name: Mapped[str | None] = mapped_column("emergency_contact_name", EncryptedString, nullable=True)
+    _emergency_contact_phone: Mapped[str | None] = mapped_column("emergency_contact_phone", EncryptedString, nullable=True)
+    _emergency_contact_relationship: Mapped[str | None] = mapped_column(
         "emergency_contact_relationship", EncryptedString, nullable=True
     )
 
     # Complex data fields (JSON/JSONB in PostgreSQL, stored as encrypted blobs)
-    _contact_info: Mapped[Optional[dict]] = mapped_column("contact_info", EncryptedJSON, nullable=True)
-    _address_details: Mapped[Optional[dict]] = mapped_column("address_details", EncryptedJSON, nullable=True)
-    _emergency_contact_details: Mapped[Optional[dict]] = mapped_column("emergency_contact_details", EncryptedJSON, nullable=True)
-    _preferences: Mapped[Optional[dict]] = mapped_column("preferences", EncryptedJSON, nullable=True)
+    _contact_info: Mapped[dict | None] = mapped_column("contact_info", EncryptedJSON, nullable=True)
+    _address_details: Mapped[dict | None] = mapped_column("address_details", EncryptedJSON, nullable=True)
+    _emergency_contact_details: Mapped[dict | None] = mapped_column("emergency_contact_details", EncryptedJSON, nullable=True)
+    _preferences: Mapped[dict | None] = mapped_column("preferences", EncryptedJSON, nullable=True)
 
     # Medical data fields (PHI - stored as encrypted text)
-    _medical_history: Mapped[Optional[str]] = mapped_column("medical_history", EncryptedText, nullable=True)
-    _medications: Mapped[Optional[str]] = mapped_column("medications", EncryptedText, nullable=True)
-    _allergies: Mapped[Optional[str]] = mapped_column("allergies", EncryptedText, nullable=True)
-    _notes: Mapped[Optional[str]] = mapped_column("notes", EncryptedText, nullable=True)
-    _custom_fields: Mapped[Optional[dict]] = mapped_column("custom_fields", EncryptedJSON, nullable=True)
-    _extra_data: Mapped[Optional[dict]] = mapped_column("extra_data", EncryptedJSON, nullable=True)
+    _medical_history: Mapped[str | None] = mapped_column("medical_history", EncryptedText, nullable=True)
+    _medications: Mapped[str | None] = mapped_column("medications", EncryptedText, nullable=True)
+    _allergies: Mapped[str | None] = mapped_column("allergies", EncryptedText, nullable=True)
+    _notes: Mapped[str | None] = mapped_column("notes", EncryptedText, nullable=True)
+    _custom_fields: Mapped[dict | None] = mapped_column("custom_fields", EncryptedJSON, nullable=True)
+    _extra_data: Mapped[dict | None] = mapped_column("extra_data", EncryptedJSON, nullable=True)
 
     # --- Relationships ---
     # Define relationships with string references to avoid circular imports

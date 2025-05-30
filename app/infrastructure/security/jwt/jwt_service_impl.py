@@ -7,11 +7,11 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
-from types import SimpleNamespace
-from typing import Any, Dict, List, Optional, Union, Iterable
+from typing import Any
 from uuid import UUID, uuid4
 
-from jose import ExpiredSignatureError, JWTError, jwt as jose_jwt
+from jose import ExpiredSignatureError, JWTError
+from jose import jwt as jose_jwt
 
 # Optional dependencies (audit logger etc.) may be absent during isolated unit-tests
 try:
@@ -19,7 +19,7 @@ try:
     from app.core.audit.audit_service import AuditEventType  # type: ignore
 except ModuleNotFoundError:  # pragma: no cover – tests run without full infrastructure
     class IAuditLogger:  # minimal stub
-        async def log_security_event(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401
+        async def log_security_event(self, *args: Any, **kwargs: Any) -> None:
             return None
 
     class AuditEventType:  # minimal enum-like stub
@@ -38,7 +38,7 @@ class _AttrDict(dict):
 
     # Dict values accessible as attributes
 
-    def __getattr__(self, item):  # noqa: D401 – simple helper
+    def __getattr__(self, item):
         try:
             return self[item]
         except KeyError as exc:
@@ -50,7 +50,7 @@ class _AttrDict(dict):
         return super().get(key, default)
 
     # Provide SimpleNamespace-like repr for readability
-    def __repr__(self):  # noqa: D401 – repr helper
+    def __repr__(self):
         kv = ", ".join(f"{k}={v!r}" for k, v in self.items())
         return f"AttrDict({kv})"
 
@@ -87,7 +87,7 @@ class TokenType(str):
     ACCESS = "access"
     REFRESH = "refresh"
 
-    def __str__(self) -> str:  # noqa: D401 (simple str override)
+    def __str__(self) -> str:
         return str(self.value) if hasattr(self, "value") else str(self)
 
 
@@ -95,11 +95,11 @@ class TokenType(str):
 # Internal helpers
 # ------------------------------------------------------------------
 
-import inspect
 import asyncio
+import inspect
 
 
-def _safe_call_audit(logger: Optional["IAuditLogger"], *args: Any, **kwargs: Any) -> None:  # noqa: D401
+def _safe_call_audit(logger: IAuditLogger | None, *args: Any, **kwargs: Any) -> None:
     """Invoke audit logger gracefully, supporting both sync and async loggers."""
 
     if logger is None:
@@ -128,15 +128,15 @@ try:
 
         sub: str
         type: str
-        roles: Optional[List[str]] = None
-        permissions: Optional[List[str]] = None
+        roles: list[str] | None = None
+        permissions: list[str] | None = None
         exp: int
         iat: int
-        jti: Union[str, UUID]
-        iss: Optional[str] = None
-        aud: Optional[str] = None
-        family_id: Optional[str] = None
-        refresh: Optional[bool] = None
+        jti: str | UUID
+        iss: str | None = None
+        aud: str | None = None
+        family_id: str | None = None
+        refresh: bool | None = None
         # Allow any additional custom claims
         model_config = ConfigDict(extra="allow")  # type: ignore[attr-defined]
 
@@ -180,17 +180,17 @@ class JWTServiceImpl(IJwtService):
     def __init__(
         self,
         *,
-        settings: Optional[Settings] = None,
-        token_blacklist_repository: Optional[ITokenBlacklistRepository] = None,
-        audit_logger: Optional[IAuditLogger] = None,
-        user_repository: Optional[IUserRepository] = None,
+        settings: Settings | None = None,
+        token_blacklist_repository: ITokenBlacklistRepository | None = None,
+        audit_logger: IAuditLogger | None = None,
+        user_repository: IUserRepository | None = None,
         # direct overrides (tests use these)
-        secret_key: Optional[str] = None,
-        algorithm: Optional[str] = None,
-        access_token_expire_minutes: Optional[int] = None,
-        refresh_token_expire_days: Optional[int] = None,
-        issuer: Optional[str] = None,
-        audience: Optional[str] = None,
+        secret_key: str | None = None,
+        algorithm: str | None = None,
+        access_token_expire_minutes: int | None = None,
+        refresh_token_expire_days: int | None = None,
+        issuer: str | None = None,
+        audience: str | None = None,
     ) -> None:
         # Persist collaborators (may be *None* in unit-tests)
         self._settings = settings
@@ -257,20 +257,20 @@ class JWTServiceImpl(IJwtService):
         )
 
         # In-memory blacklist fallback (used heavily by unit-tests)
-        self._in_mem_blacklist: Dict[str, datetime] = {}
+        self._in_mem_blacklist: dict[str, datetime] = {}
 
     # ------------------------------------------------------------------
     # Public convenience properties expected by legacy tests
     # ------------------------------------------------------------------
 
     @property
-    def issuer(self) -> Optional[str]:  # noqa: D401 – simple alias
+    def issuer(self) -> str | None:
         """Return configured issuer (may be *None*)."""
 
         return self.token_issuer
 
     @property
-    def audience(self) -> Optional[str]:  # noqa: D401 – simple alias
+    def audience(self) -> str | None:
         """Return configured audience (may be *None*)."""
 
         return self.token_audience
@@ -279,10 +279,10 @@ class JWTServiceImpl(IJwtService):
     # Helper methods
     # ------------------------------------------------------------------
 
-    def _encode(self, payload: Dict[str, Any]) -> str:
+    def _encode(self, payload: dict[str, Any]) -> str:
         return jose_jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
 
-    def _decode(self, token: str, *, options: Optional[dict] = None) -> Dict[str, Any]:
+    def _decode(self, token: str, *, options: dict | None = None) -> dict[str, Any]:
         opts = {"verify_aud": bool(self.token_audience), "verify_iss": bool(self.token_issuer)}
         if options:
             opts.update(options)
@@ -309,12 +309,12 @@ class JWTServiceImpl(IJwtService):
         *,
         subject: str,
         token_type: str,
-        roles: Optional[List[str]] = None,
+        roles: list[str] | None = None,
         expires_in_minutes: int,
-        additional_claims: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        additional_claims: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         now = datetime.now(timezone.utc)
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "sub": subject,
             "type": token_type,
             "iat": int(now.timestamp()),
@@ -349,14 +349,14 @@ class JWTServiceImpl(IJwtService):
     # Signature is deliberately flexible to satisfy both old + new tests
     def create_access_token(
         self,
-        data: Union[str, dict, UUID, None] = None,
+        data: str | dict | UUID | None = None,
         *,
-        user_id: Union[str, UUID, None] = None,
-        subject: Union[str, UUID, None] = None,
-        roles: Optional[List[str]] = None,
-        expires_delta_minutes: Optional[int] = None,
-        expires_delta: Optional[timedelta] = None,
-        additional_claims: Optional[Dict[str, Any]] = None,
+        user_id: str | UUID | None = None,
+        subject: str | UUID | None = None,
+        roles: list[str] | None = None,
+        expires_delta_minutes: int | None = None,
+        expires_delta: timedelta | None = None,
+        additional_claims: dict[str, Any] | None = None,
         **kwargs,
     ) -> str:
         subject_val = (
@@ -406,15 +406,15 @@ class JWTServiceImpl(IJwtService):
 
     def create_refresh_token(
         self,
-        data: Union[str, dict, UUID, None] = None,
+        data: str | dict | UUID | None = None,
         *,
-        user_id: Union[str, UUID, None] = None,
-        subject: Union[str, UUID, None] = None,
-        roles: Optional[List[str]] = None,
-        expires_delta_days: Optional[int] = None,
-        expires_delta: Optional[timedelta] = None,
-        family_id: Optional[str] = None,
-        additional_claims: Optional[Dict[str, Any]] = None,
+        user_id: str | UUID | None = None,
+        subject: str | UUID | None = None,
+        roles: list[str] | None = None,
+        expires_delta_days: int | None = None,
+        expires_delta: timedelta | None = None,
+        family_id: str | None = None,
+        additional_claims: dict[str, Any] | None = None,
     ) -> str:
         subject_val = (
             subject
@@ -470,7 +470,7 @@ class JWTServiceImpl(IJwtService):
         token: str,
         verify_signature: bool = True,
         *,
-        options: Optional[dict] = None,
+        options: dict | None = None,
         audience: str | None = None,
         algorithms: list[str] | None = None,
     ) -> TokenPayload:
@@ -495,7 +495,7 @@ class JWTServiceImpl(IJwtService):
         token: str,
         verify_signature: bool = True,
         *,
-        options: Optional[dict] = None,
+        options: dict | None = None,
         audience: str | None = None,
         algorithms: list[str] | None = None,
     ) -> TokenPayload:
@@ -524,7 +524,7 @@ class JWTServiceImpl(IJwtService):
     # Blacklisting / revocation
     # ------------------------------------------------------------------
 
-    def _blacklist_store(self, jti: str, exp_ts: int):
+    def _blacklist_store(self, jti: str, exp_ts: int) -> None:
         # Use repository if supplied else in-mem
         if self._blacklist_repo is not None:
             self._blacklist_repo.add(jti, datetime.fromtimestamp(exp_ts, tz=timezone.utc))
@@ -601,7 +601,7 @@ class JWTServiceImpl(IJwtService):
         cookies = getattr(request, "cookies", {}) if hasattr(request, "cookies") else {}
         return cookies.get("access_token")
 
-    def create_unauthorized_response(self, error_type: str, message: str):  # noqa: D401
+    def create_unauthorized_response(self, error_type: str, message: str):
         """Return simple dict-based HTTP response for tests (HIPAA-safe)."""
         status_code = 403 if error_type == "insufficient_permissions" else 401
         # Redact obvious PHI patterns (very naive) for tests
@@ -616,8 +616,8 @@ class JWTServiceImpl(IJwtService):
         request,
         *,
         resource_path: str,
-        resource_owner_id: Optional[str] = None,
-    ) -> bool:  # noqa: D401 – simplistic auth used only in unit-tests
+        resource_owner_id: str | None = None,
+    ) -> bool:
         """Naive RBAC check sufficient for current unit tests only."""
         token = self.extract_token_from_request(request)
         if token is None:
@@ -632,7 +632,7 @@ class JWTServiceImpl(IJwtService):
             return False
 
         # Simple role mapping from path
-        role = (payload.roles or [None])[0] if isinstance(payload.roles, (list, tuple)) else payload.roles
+        role = (payload.roles or [None])[0] if isinstance(payload.roles, list | tuple) else payload.roles
         if role is None:
             return False
         # For tests: allow admins everywhere, patients only on patient paths etc.
@@ -651,7 +651,7 @@ class JWTServiceImpl(IJwtService):
 
     # Expose in-memory blacklist under legacy attribute name used by tests
     @property
-    def _token_blacklist(self) -> Dict[str, datetime]:  # noqa: D401 – simple alias
+    def _token_blacklist(self) -> dict[str, datetime]:
         return self._in_mem_blacklist
 
     # Provide get/set access to collaborators expected in tests
@@ -660,7 +660,7 @@ class JWTServiceImpl(IJwtService):
         return self._settings
 
     @settings.setter
-    def settings(self, value):  # type: ignore[override]
+    def settings(self, value) -> None:  # type: ignore[override]
         self._settings = value
 
     @property
@@ -668,11 +668,11 @@ class JWTServiceImpl(IJwtService):
         return self._user_repo
 
     @user_repository.setter
-    def user_repository(self, value):  # type: ignore[override]
+    def user_repository(self, value) -> None:  # type: ignore[override]
         self._user_repo = value
 
     # Async convenience wrappers expected by some async tests
-    async def revoke_token_async(self, token: str):  # type: ignore[override]
+    async def revoke_token_async(self, token: str) -> None:  # type: ignore[override]
         """Async wrapper delegating to sync blacklist_token for compatibility."""
         payload = self.decode_token(token, options={"verify_exp": False})
         exp_ts = getattr(payload, "exp", None)

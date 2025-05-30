@@ -7,7 +7,7 @@ between biometric data and mental health indicators.
 
 import logging
 import os
-from typing import Any, Dict, cast
+from typing import Any, cast
 
 import numpy as np
 
@@ -237,8 +237,8 @@ class BiometricCorrelationModel:
             Dictionary containing anomaly detection results
         """
         # Initialize results
-        anomalies_by_feature: Dict[str, Any] = {}
-        anomalies_by_time: Dict[str, Any] = {}
+        anomalies_by_feature: dict[str, Any] = {}
+        anomalies_by_time: dict[str, Any] = {}
 
         # Detect anomalies for each feature
         for i in range(biometric_data.shape[1]):

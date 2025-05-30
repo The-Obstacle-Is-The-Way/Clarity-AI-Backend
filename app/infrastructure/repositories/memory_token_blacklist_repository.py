@@ -5,7 +5,7 @@ This is primarily for testing and development environments.
 For production, use RedisTokenBlacklistRepository or another persistent implementation.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from app.core.interfaces.repositories.token_blacklist_repository_interface import (
     ITokenBlacklistRepository,

@@ -14,9 +14,7 @@ import pytest
 try:
     from datetime import timezone  # Python 3.11+
 except ImportError:
-    from app.domain.utils.datetime_utils import (
-        UTC,
-    )  # Fallback to app's UTC implementation
+    pass  # Fallback to app's UTC implementation
 
 from typing import NoReturn
 

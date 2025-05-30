@@ -7,7 +7,7 @@ mapping the domain entity to the database schema.
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     DateTime,
@@ -73,11 +73,11 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
         SQLAlchemyEnum(AppointmentStatus), 
         nullable=False
     )
-    notes: Mapped[Optional[str]] = mapped_column(
+    notes: Mapped[str | None] = mapped_column(
         Text, 
         nullable=True
     )
-    location: Mapped[Optional[str]] = mapped_column(
+    location: Mapped[str | None] = mapped_column(
         String(255), 
         nullable=True
     )

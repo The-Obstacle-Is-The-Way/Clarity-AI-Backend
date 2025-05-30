@@ -6,13 +6,13 @@ which are generated from biometric data analysis to notify clinical staff
 of concerning patterns in patient biometric data.
 """
 
-import uuid
 import datetime
+import uuid
 
 from sqlalchemy import (
+    JSON,
     DateTime,
     ForeignKey,
-    JSON,
     String,
     Text,
 )

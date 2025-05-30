@@ -6,7 +6,7 @@ modified in the AWSXGBoostService class to fix test failures.
 """
 
 import json
-from typing import Any, List
+from typing import Any
 
 from app.core.services.ml.xgboost.exceptions import (
     ConfigurationError,
@@ -250,8 +250,8 @@ async def healthcheck(self) -> dict[str, Any]:
             response = self._sagemaker.list_endpoints()
 
             prefix = self._endpoint_prefix or ""
-            endpoints: List[dict[str, str]] = []
-            endpoint_statuses: List[str] = []
+            endpoints: list[dict[str, str]] = []
+            endpoint_statuses: list[str] = []
 
             endpoints_list = response.get("Endpoints", [])
             if endpoints_list:

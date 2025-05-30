@@ -6,9 +6,8 @@ interface using SQLAlchemy for database operations.
 """
 import dataclasses
 import json
-import uuid
-from datetime import date, datetime, timezone
-from typing import Any, Optional, Dict
+from datetime import datetime, timezone
+from typing import Any
 from uuid import UUID
 
 from pydantic import ValidationError
@@ -109,10 +108,10 @@ class PatientRepositoryImpl(PatientRepository):
 
     def __init__(
         self,
-        db_session: Optional[AsyncSession] = None,
+        db_session: AsyncSession | None = None,
         db_session_factory=None,
-        uow_session: Optional[AsyncSession] = None,
-        user_context: Optional[dict[str, Any]] = None,
+        uow_session: AsyncSession | None = None,
+        user_context: dict[str, Any] | None = None,
         **_,
     ):
         """
@@ -166,7 +165,7 @@ class PatientRepositoryImpl(PatientRepository):
     async def create(
         self, 
         patient: PatientEntity, 
-        context: Optional[dict[str, Any]] = None
+        context: dict[str, Any] | None = None
     ) -> PatientEntity:
         """Creates a new patient record in the database from a PatientEntity."""
         self.logger.debug(f"Attempting to create patient with entity ID: {patient.id}")
@@ -252,8 +251,8 @@ class PatientRepositoryImpl(PatientRepository):
     async def get_by_id(
         self, 
         patient_id: UUID, 
-        context: Optional[dict[str, Any]] = None
-    ) -> Optional[PatientEntity]:
+        context: dict[str, Any] | None = None
+    ) -> PatientEntity | None:
         """Retrieves a patient by their ID."""
         self.logger.debug(f"Attempting to retrieve patient with ID: {patient_id}")
         
@@ -284,8 +283,8 @@ class PatientRepositoryImpl(PatientRepository):
     async def update(
         self, 
         patient: PatientEntity, 
-        context: Optional[dict[str, Any]] = None
-    ) -> Optional[PatientEntity]:
+        context: dict[str, Any] | None = None
+    ) -> PatientEntity | None:
         """Updates an existing patient record from a PatientEntity."""
         patient_id = patient.id
         
@@ -301,7 +300,7 @@ class PatientRepositoryImpl(PatientRepository):
             action = context.get('action', 'update_patient')
             self.logger.info(f"HIPAA Audit: User {user_id} performing {action} on patient {patient_id}")
 
-        async def _update_operation(session: AsyncSession) -> Optional[PatientEntity]:
+        async def _update_operation(session: AsyncSession) -> PatientEntity | None:
             stmt = select(PatientModel).where(PatientModel.id == patient_id)
             result = await session.execute(stmt)
             db_patient = result.scalar_one_or_none()
@@ -361,7 +360,7 @@ class PatientRepositoryImpl(PatientRepository):
     async def delete(
         self, 
         patient_id: UUID, 
-        context: Optional[dict[str, Any]] = None
+        context: dict[str, Any] | None = None
     ) -> bool:
         """Deletes a patient by their ID."""
         self.logger.debug(f"Attempting to delete patient with ID: {patient_id}")
@@ -395,7 +394,7 @@ class PatientRepositoryImpl(PatientRepository):
         self, 
         limit: int = 100, 
         offset: int = 0,
-        context: Optional[dict[str, Any]] = None
+        context: dict[str, Any] | None = None
     ) -> list[PatientEntity]:
         """Retrieves all patients with pagination."""
         self.logger.debug(f"Attempting to retrieve all patients with limit={limit}, offset={offset}")
@@ -423,7 +422,7 @@ class PatientRepositoryImpl(PatientRepository):
 
     async def count(
         self,
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
         **filters
     ) -> int:
         """Count patients matching the given filters."""
@@ -457,18 +456,18 @@ class PatientRepositoryImpl(PatientRepository):
                 
             except SQLAlchemyError as e:
                 self.logger.error(f"Database error counting patients with filters {filters}: {e}", exc_info=True)
-                raise PersistenceError(f"Database error counting patients.") from e
+                raise PersistenceError("Database error counting patients.") from e
             except Exception as e:
                 self.logger.error(f"Unexpected error counting patients with filters {filters}: {e}", exc_info=True)
-                raise PersistenceError(f"Unexpected error counting patients.") from e
+                raise PersistenceError("Unexpected error counting patients.") from e
 
         return await self._with_session(_count_operation)
 
     async def get_by_email(
         self, 
         email: str,
-        context: Optional[dict[str, Any]] = None
-    ) -> Optional[PatientEntity]:
+        context: dict[str, Any] | None = None
+    ) -> PatientEntity | None:
         """Retrieve a patient by their email address."""
         self.logger.debug(f"Attempting to retrieve patient by email: {email}")
         
@@ -478,7 +477,7 @@ class PatientRepositoryImpl(PatientRepository):
             action = context.get('action', 'get_patient_by_email')
             self.logger.info(f"HIPAA Audit: User {user_id} performing {action} on email {email}")
 
-        async def _get_by_email_operation(session: AsyncSession) -> Optional[PatientEntity]:
+        async def _get_by_email_operation(session: AsyncSession) -> PatientEntity | None:
             try:
                 stmt = select(PatientModel).where(PatientModel._email == email)
                 result = await session.execute(stmt)

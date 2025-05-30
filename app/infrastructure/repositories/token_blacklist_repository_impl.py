@@ -6,10 +6,8 @@ for persistence, supporting HIPAA-compliant session management.
 """
 
 import logging
-import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
-from jose.jwt import decode
 from redis.asyncio import Redis as AsyncRedis
 from redis.exceptions import RedisError
 

@@ -11,22 +11,24 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, ClassVar, Dict, List, Tuple
+from typing import Any, ClassVar
 
 # Application imports (Corrected)
 from app.core.domain.enums.phi_enums import PHIType
+
 # Avoid name collision: import only logger helper, not PHISanitizer implementation
-from app.infrastructure.security.phi import PHISanitizer as _InfraPHISanitizer, get_sanitized_logger
+from app.infrastructure.security.phi import PHISanitizer as _InfraPHISanitizer
+from app.infrastructure.security.phi import get_sanitized_logger
 
 
 class PHIDetector:
     """Utility class for detecting PHI in various data formats."""
 
     # Lazy-initialized sanitizer instance (avoids forward-reference issues)
-    _sanitizer: ClassVar["_PHIAdapter | None"] = None
+    _sanitizer: ClassVar[_PHIAdapter | None] = None
 
     @classmethod
-    def _get_sanitizer(cls) -> "_PHIAdapter":
+    def _get_sanitizer(cls) -> _PHIAdapter:
         if cls._sanitizer is None:
             cls._sanitizer = PHISanitizer()
         return cls._sanitizer
@@ -57,7 +59,7 @@ class PHIDetector:
         return bool(PHIDetector._get_sanitizer().contains_phi(text))
 
     @staticmethod
-    def detect_phi_types(text: str) -> List[Tuple[PHIType, str]]:
+    def detect_phi_types(text: str) -> list[tuple[PHIType, str]]:
         """
         Detect specific PHI types in text.
 
@@ -117,7 +119,7 @@ class _PHIAdapter:
 
     _instance: ClassVar[_InfraPHISanitizer] = _InfraPHISanitizer()
 
-    _token_map: ClassVar[Dict[str, str]] = {
+    _token_map: ClassVar[dict[str, str]] = {
         "[REDACTED NAME]": "[NAME REDACTED]",
         "[REDACTED SSN]": "[SSN REDACTED]",
         "[REDACTED EMAIL]": "[EMAIL REDACTED]",
@@ -134,7 +136,7 @@ class _PHIAdapter:
         return text
 
     @staticmethod
-    def sanitize_string(text: str, *args: Any, **kwargs: Any) -> str:  # noqa: D401
+    def sanitize_string(text: str, *args: Any, **kwargs: Any) -> str:
         # If _Infra implementation considers this text safe, return original but still mask policy numbers
         try:
             if not _PHIAdapter._instance.contains_phi(text):
@@ -169,7 +171,7 @@ class _PHIAdapter:
         return sanitized
 
     @staticmethod
-    def sanitize_dict(data: Any, *args: Any, **kwargs: Any) -> Any:  # noqa: D401
+    def sanitize_dict(data: Any, *args: Any, **kwargs: Any) -> Any:
         if hasattr(_PHIAdapter._instance, "sanitize_dict"):
             sanit: Any = _PHIAdapter._instance.sanitize_dict(data, *args, **kwargs)  # type: ignore[attr-defined]
         elif hasattr(_PHIAdapter._instance, "sanitize_json"):
@@ -202,7 +204,7 @@ class _PHIAdapter:
     patterns = getattr(_instance, "patterns", [])
 
 # Re-export for external code/tests
-PHISanitizer = _PHIAdapter  # noqa: N816
+PHISanitizer = _PHIAdapter
 
 
 # Re-export note: PHISanitizer is imported above from infrastructure package.

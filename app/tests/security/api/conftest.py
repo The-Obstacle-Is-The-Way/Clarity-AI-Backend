@@ -15,14 +15,13 @@ from httpx import ASGITransport, AsyncClient
 from jose import jwt as jose_jwt  # Use jose for JWT operations in tests
 
 from app.core.config.settings import Settings
+
+# Import User entity for type hinting
+from app.core.domain.entities.user import User, UserRole, UserStatus
 from app.core.domain.entities.user import User as DomainUser
-from app.core.domain.entities.user import UserRole, UserStatus
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.jwt_service import JWTServiceInterface
-
-# Import User entity for type hinting
-from app.core.domain.entities.user import User
 from app.domain.exceptions.token_exceptions import (
     InvalidTokenException,
     TokenExpiredException,
@@ -30,10 +29,6 @@ from app.domain.exceptions.token_exceptions import (
 from app.factory import create_application
 
 # Custom token payload imports
-from app.infrastructure.security.jwt.jwt_service import (
-    TokenPayload,
-    TokenType,
-)
 from app.presentation.api.dependencies.auth import get_user_repository_dependency
 from app.presentation.api.dependencies.database import get_patient_repository_dependency
 
@@ -1139,7 +1134,7 @@ def jwt_service_patch():
             raise InvalidTokenError("Token is missing")
 
         # If options is provided with verify_exp=False, we'll skip expiration verification
-        skip_exp_verification = options and options.get("verify_exp") is False
+        options and options.get("verify_exp") is False
 
         try:
             # Try to decode without verification to check if it's a test token
@@ -1194,7 +1189,7 @@ def jwt_service_patch():
                 if "user_id" not in unverified_payload:
                     unverified_payload["user_id"] = unverified_payload["sub"]
                 if "email" not in unverified_payload:
-                    unverified_payload["email"] = f"test@example.com"
+                    unverified_payload["email"] = "test@example.com"
                 if "permissions" not in unverified_payload:
                     unverified_payload["permissions"] = []
                 if "session_id" not in unverified_payload:

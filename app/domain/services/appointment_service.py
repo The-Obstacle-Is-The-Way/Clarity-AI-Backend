@@ -6,8 +6,8 @@ rescheduling, and cancellation, as well as checking for conflicts.
 """
 
 from datetime import datetime, timedelta
+from typing import Any
 from uuid import UUID
-from typing import Optional, Dict, Any
 
 from app.domain.entities.appointment import (
     Appointment,
@@ -70,7 +70,7 @@ class AppointmentService:
     async def get_appointment(
         self, 
         appointment_id: UUID, 
-        context: Optional[Dict[str, Any]] = None
+        context: dict[str, Any] | None = None
     ) -> Appointment:
         """
         Get an appointment by ID.
@@ -95,10 +95,10 @@ class AppointmentService:
     async def get_appointments_for_patient(
         self,
         patient_id: UUID,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        status: Optional[AppointmentStatus] = None,
-        context: Optional[Dict[str, Any]] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        status: AppointmentStatus | None = None,
+        context: dict[str, Any] | None = None,
     ) -> list[Appointment]:
         """
         Get appointments for a patient.
@@ -130,10 +130,10 @@ class AppointmentService:
     async def get_appointments_for_provider(
         self,
         provider_id: UUID,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        status: Optional[AppointmentStatus] = None,
-        context: Optional[Dict[str, Any]] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        status: AppointmentStatus | None = None,
+        context: dict[str, Any] | None = None,
     ) -> list[Appointment]:
         """
         Get appointments for a provider.
@@ -167,13 +167,13 @@ class AppointmentService:
         patient_id: UUID,
         provider_id: UUID,
         start_time: datetime,
-        end_time: Optional[datetime] = None,
+        end_time: datetime | None = None,
         appointment_type: AppointmentType = AppointmentType.FOLLOW_UP,
         priority: AppointmentPriority = AppointmentPriority.NORMAL,
-        location: Optional[str] = None,
-        notes: Optional[str] = None,
-        reason: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
+        location: str | None = None,
+        notes: str | None = None,
+        reason: str | None = None,
+        context: dict[str, Any] | None = None,
     ) -> Appointment:
         """
         Create a new appointment.
@@ -241,10 +241,10 @@ class AppointmentService:
         self,
         appointment_id: UUID,
         new_start_time: datetime,
-        new_end_time: Optional[datetime] = None,
-        reason: Optional[str] = None,
-        user_id: Optional[UUID] = None,
-        context: Optional[Dict[str, Any]] = None,
+        new_end_time: datetime | None = None,
+        reason: str | None = None,
+        user_id: UUID | None = None,
+        context: dict[str, Any] | None = None,
     ) -> Appointment:
         """
         Reschedule an appointment.
@@ -292,8 +292,8 @@ class AppointmentService:
         self,
         appointment_id: UUID,
         cancelled_by: UUID,
-        reason: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
+        reason: str | None = None,
+        context: dict[str, Any] | None = None,
     ) -> Appointment:
         """
         Cancel an appointment.
@@ -323,7 +323,7 @@ class AppointmentService:
     async def confirm_appointment(
         self, 
         appointment_id: UUID,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> Appointment:
         """
         Confirm an appointment.
@@ -351,7 +351,7 @@ class AppointmentService:
     async def check_in_appointment(
         self, 
         appointment_id: UUID,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> Appointment:
         """
         Check in an appointment.
@@ -379,7 +379,7 @@ class AppointmentService:
     async def start_appointment(
         self, 
         appointment_id: UUID,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> Appointment:
         """
         Start an appointment.
@@ -407,7 +407,7 @@ class AppointmentService:
     async def complete_appointment(
         self, 
         appointment_id: UUID,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> Appointment:
         """
         Complete an appointment.
@@ -435,7 +435,7 @@ class AppointmentService:
     async def mark_no_show(
         self, 
         appointment_id: UUID,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> Appointment:
         """
         Mark an appointment as a no-show.
@@ -464,13 +464,13 @@ class AppointmentService:
         self,
         appointment_id: UUID,
         follow_up_start_time: datetime,
-        follow_up_end_time: Optional[datetime] = None,
+        follow_up_end_time: datetime | None = None,
         appointment_type: AppointmentType = AppointmentType.FOLLOW_UP,
         priority: AppointmentPriority = AppointmentPriority.NORMAL,
-        location: Optional[str] = None,
-        notes: Optional[str] = None,
-        reason: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
+        location: str | None = None,
+        notes: str | None = None,
+        reason: str | None = None,
+        context: dict[str, Any] | None = None,
     ) -> Appointment:
         """
         Schedule a follow-up appointment.
@@ -541,7 +541,7 @@ class AppointmentService:
     async def send_reminder(
         self, 
         appointment_id: UUID,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> Appointment:
         """
         Send a reminder for an appointment.
@@ -569,7 +569,7 @@ class AppointmentService:
         self, 
         appointment_id: UUID, 
         notes: str,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> Appointment:
         """
         Update the notes for an appointment.
@@ -599,7 +599,7 @@ class AppointmentService:
         provider_id: UUID,
         start_time: datetime,
         end_time: datetime,
-        exclude_appointment_id: Optional[UUID] = None,
+        exclude_appointment_id: UUID | None = None,
     ) -> None:
         """
         Check for conflicts with other appointments.

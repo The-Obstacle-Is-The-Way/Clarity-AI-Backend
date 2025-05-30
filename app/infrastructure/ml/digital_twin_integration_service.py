@@ -13,11 +13,12 @@ from uuid import UUID, uuid4
 # Core imports
 from app.core.interfaces.repositories.patient_repository_interface import IPatientRepository
 from app.domain.entities.digital_twin.digital_twin import DigitalTwin
-from app.domain.interfaces.ml.extended_digital_twin_service import IExtendedDigitalTwinIntegrationService
+from app.domain.interfaces.ml.extended_digital_twin_service import (
+    IExtendedDigitalTwinIntegrationService,
+)
 from app.domain.interfaces.ml.recommendation_engine import IRecommendationEngine
 from app.domain.interfaces.ml_services import (
     IBiometricCorrelationService,
-    IDigitalTwinIntegrationService,
     IPharmacogenomicsService,
     ISymptomForecastingService,
 )
@@ -154,7 +155,7 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
             logger.error(f"Error creating digital twin: {e}")
             return {
                 "success": False,
-                "error": f"Error creating digital twin: {str(e)}"
+                "error": f"Error creating digital twin: {e!s}"
             }
 
     async def _get_twin_by_id(self, twin_id: UUID) -> DigitalTwin | None:
@@ -371,8 +372,7 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
             logger.error(f"Error in symptom forecasting service: {e}")
             error_occurred = True
             # Explicitly ensure symptom_forecasting is not in result when there's an error
-            if "symptom_forecasting" in result:
-                del result["symptom_forecasting"]
+            result.pop("symptom_forecasting", None)
 
         # Try to get biometric correlation insights
         try:
@@ -387,8 +387,7 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
             logger.error(f"Error in biometric correlation service: {e}")
             error_occurred = True
             # Explicitly ensure biometric_correlation is not in result when there's an error
-            if "biometric_correlation" in result:
-                del result["biometric_correlation"]
+            result.pop("biometric_correlation", None)
 
         # Try to get pharmacogenomics insights
         try:
@@ -403,8 +402,7 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
             logger.error(f"Error in pharmacogenomics service: {e}")
             error_occurred = True
             # Explicitly ensure pharmacogenomics is not in result when there's an error
-            if "pharmacogenomics" in result:
-                del result["pharmacogenomics"]
+            result.pop("pharmacogenomics", None)
 
         # Generate integrated recommendations if we have enough data
         if len(result) > 0:
@@ -418,8 +416,7 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
                 logger.error(f"Error in recommendation engine: {e}")
                 error_occurred = True
                 # Explicitly ensure integrated_recommendations is not in result when there's an error
-                if "integrated_recommendations" in result:
-                    del result["integrated_recommendations"]
+                result.pop("integrated_recommendations", None)
 
         # Add error status if any service failed
         if error_occurred:
@@ -595,8 +592,7 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
                 logger.error(f"Error generating symptom forecast: {e!s}")
                 errors["symptom_forecast"] = str(e)
                 # Explicitly ensure symptom_forecast is not in insights when there's an error
-                if "symptom_forecast" in insights:
-                    del insights["symptom_forecast"]
+                insights.pop("symptom_forecast", None)
         
         # Generate biometric correlations if requested
         if options.get("include_biometric_correlations", True):
@@ -613,8 +609,7 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
                 logger.error(f"Error analyzing biometric correlations: {e!s}")
                 errors["biometric_correlations"] = str(e)
                 # Explicitly ensure biometric_correlations is not in insights when there's an error
-                if "biometric_correlations" in insights:
-                    del insights["biometric_correlations"]
+                insights.pop("biometric_correlations", None)
         
         # Generate medication predictions if requested
         if options.get("include_medication_predictions", True):
@@ -630,8 +625,7 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
                 logger.error(f"Error analyzing medication response: {e!s}")
                 errors["medication_predictions"] = str(e)
                 # Explicitly ensure medication_predictions is not in insights when there's an error
-                if "medication_predictions" in insights:
-                    del insights["medication_predictions"]
+                insights.pop("medication_predictions", None)
         
         # Generate integrated recommendations
         try:
@@ -641,8 +635,7 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
             logger.error(f"Error generating integrated recommendations: {e!s}")
             errors["integrated_recommendations"] = str(e)
             # Explicitly ensure integrated_recommendations is not in insights when there's an error
-            if "integrated_recommendations" in insights:
-                del insights["integrated_recommendations"]
+            insights.pop("integrated_recommendations", None)
         
         # Add errors to insights if any occurred
         if errors:

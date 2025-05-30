@@ -13,8 +13,7 @@ import re
 import time
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Sequence
-from uuid import UUID
+from typing import Any
 
 from app.core.services.ml.xgboost.constants import ModelType
 from app.core.services.ml.xgboost.exceptions import (
@@ -457,22 +456,22 @@ class MockXGBoostService(XGBoostInterface):
 
         if "medication_adherence" in clinical_data:
             adherence = clinical_data["medication_adherence"]
-            if isinstance(adherence, (int, float)) and adherence <= 0.7:
+            if isinstance(adherence, int | float) and adherence <= 0.7:
                 modifiers += 0.15 * (1 - adherence)
 
         if "symptom_severity" in clinical_data:
             severity = clinical_data["symptom_severity"]
-            if isinstance(severity, (int, float)):
+            if isinstance(severity, int | float):
                 modifiers += 0.2 * min(severity, 10) / 10
 
         if "stress_level" in clinical_data:
             stress = clinical_data["stress_level"]
-            if isinstance(stress, (int, float)):
+            if isinstance(stress, int | float):
                 modifiers += 0.1 * min(stress, 10) / 10
 
         if "social_support" in clinical_data:
             support = clinical_data["social_support"]
-            if isinstance(support, (int, float)):
+            if isinstance(support, int | float):
                 modifiers -= 0.1 * min(support, 10) / 10  # Negative modifier (reduces risk)
 
         # Risk type specific factors
@@ -532,14 +531,14 @@ class MockXGBoostService(XGBoostInterface):
             previous_response = clinical_data.get("previous_medication_response", {})
             if treatment_details.get("medication") in previous_response:
                 response_value = previous_response[treatment_details["medication"]]
-                if isinstance(response_value, (int, float)):
+                if isinstance(response_value, int | float):
                     modifiers += 0.2 * min(response_value, 10) / 10
 
             # Appropriateness of dose
             if "dose_mg" in treatment_details and "weight_kg" in clinical_data:
                 dose = treatment_details["dose_mg"]
                 weight = clinical_data["weight_kg"]
-                if isinstance(dose, (int, float)) and isinstance(weight, (int, float)):
+                if isinstance(dose, int | float) and isinstance(weight, int | float):
                     # Very simplified dose appropriateness check
                     dose_per_kg = dose / weight
                     if dose_per_kg < 0.01 or dose_per_kg > 0.5:
@@ -547,7 +546,7 @@ class MockXGBoostService(XGBoostInterface):
 
             # Medication adherence history
             adherence = clinical_data.get("medication_adherence", 0.5)
-            if isinstance(adherence, (int, float)):
+            if isinstance(adherence, int | float):
                 modifiers += 0.1 * min(adherence, 1.0)
 
         elif "therapy" in treatment_type:
@@ -556,7 +555,7 @@ class MockXGBoostService(XGBoostInterface):
             therapy_type = treatment_type.split("_")[1] if "_" in treatment_type else "unknown"
             if therapy_type in previous_response:
                 response_value = previous_response[therapy_type]
-                if isinstance(response_value, (int, float)):
+                if isinstance(response_value, int | float):
                     modifiers += 0.2 * min(response_value, 10) / 10
 
             # Session frequency
@@ -568,12 +567,12 @@ class MockXGBoostService(XGBoostInterface):
 
             # Patient motivation
             motivation = clinical_data.get("motivation_for_therapy", 5)
-            if isinstance(motivation, (int, float)):
+            if isinstance(motivation, int | float):
                 modifiers += 0.15 * min(motivation, 10) / 10
 
         # Common factors
         symptom_duration = clinical_data.get("symptom_duration_months", 6)
-        if isinstance(symptom_duration, (int, float)):
+        if isinstance(symptom_duration, int | float):
             # Longer duration may predict poorer response
             modifiers -= 0.05 * min(symptom_duration, 24) / 24
 
@@ -624,14 +623,14 @@ class MockXGBoostService(XGBoostInterface):
 
         # Baseline severity
         severity = clinical_data.get("symptom_severity", 5)
-        if isinstance(severity, (int, float)):
+        if isinstance(severity, int | float):
             # Higher severity might predict greater improvement (more room to improve)
             # but also might be harder to treat
             modifiers += 0.05 * (min(severity, 10) / 10) * 2 - 0.1
 
         # Treatment adherence
         adherence = clinical_data.get("treatment_adherence", 0.7)
-        if isinstance(adherence, (int, float)):
+        if isinstance(adherence, int | float):
             modifiers += 0.15 * min(adherence, 1.0)
 
         # Time frame effect
@@ -669,7 +668,7 @@ class MockXGBoostService(XGBoostInterface):
 
             # Social support is important for quality of life
             social_support = clinical_data.get("social_support", 5)
-            if isinstance(social_support, (int, float)):
+            if isinstance(social_support, int | float):
                 modifiers += 0.1 * min(social_support, 10) / 10
 
         # Clamp the final score between 0.0 and 1.0
@@ -734,7 +733,7 @@ class MockXGBoostService(XGBoostInterface):
         # Skip nested dictionaries and lists, just use top-level fields
         features: dict[str, Any] = {}
         for key, value in data.items():
-            if isinstance(value, (str, int, float, bool)):
+            if isinstance(value, str | int | float | bool):
                 features[key] = value
 
         return features
@@ -949,7 +948,7 @@ class MockXGBoostService(XGBoostInterface):
 
         # Adjust for severity
         severity = clinical_data.get("symptom_severity", 5)
-        if isinstance(severity, (int, float)):
+        if isinstance(severity, int | float):
             severity_factor = 1.0
             if severity > 7:
                 # Higher severity might show more dramatic improvement
@@ -1964,7 +1963,7 @@ class MockXGBoostService(XGBoostInterface):
         )
 
         # Update ranks
-        for rank, (feature, data) in enumerate(sorted_features, 1):
+        for rank, (feature, _data) in enumerate(sorted_features, 1):
             feature_importance[feature]["rank"] = rank
 
         # Create result

@@ -12,7 +12,7 @@ import re
 import subprocess
 import sys
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 # Add the root directory to Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
@@ -34,7 +34,7 @@ class DirectSecurityTestRunner:
         os.makedirs(self.output_path, exist_ok=True)
 
         # Define all test modules to run in priority order
-        self.tests: List[Dict[str, str]] = [
+        self.tests: list[dict[str, str]] = [
             # Core encryption tests
             {
                 "name": "Core Encryption",
@@ -56,13 +56,13 @@ class DirectSecurityTestRunner:
         ]
 
         # Results storage
-        self.results: Dict[str, Any] = {
+        self.results: dict[str, Any] = {
             "timestamp": datetime.now().isoformat(),
             "tests": {},
             "summary": {"total": 0, "passed": 0, "failed": 0, "errors": 0},
         }
 
-    def run_test(self, test_info: Dict[str, str]) -> Dict[str, Any]:
+    def run_test(self, test_info: dict[str, str]) -> dict[str, Any]:
         """Run a specific test module.
 
         Args:
@@ -79,14 +79,14 @@ class DirectSecurityTestRunner:
         print(f"{'=' * 60}")
 
         # Build the pytest command
-        cmd: List[str] = [sys.executable, "-m", "pytest", path, "-v"]
+        cmd: list[str] = [sys.executable, "-m", "pytest", path, "-v"]
 
         # Run the test and capture output
         process = subprocess.run(cmd, capture_output=True, text=True)
         output: str = process.stdout
 
         # Parse test results from output
-        test_results: Dict[str, Any] = self._parse_pytest_output(output)
+        test_results: dict[str, Any] = self._parse_pytest_output(output)
 
         # Print summary
         print(f"Tests found: {test_results['total']}")
@@ -109,7 +109,7 @@ class DirectSecurityTestRunner:
 
         return test_results
 
-    def _parse_pytest_output(self, output: str) -> Dict[str, Any]:
+    def _parse_pytest_output(self, output: str) -> dict[str, Any]:
         """Parse pytest output to extract test counts and details.
 
         Args:
@@ -118,10 +118,10 @@ class DirectSecurityTestRunner:
         Returns:
             Dictionary with test counts and details
         """
-        results: Dict[str, Any] = {"total": 0, "passed": 0, "failed": 0, "errors": 0, "details": []}
+        results: dict[str, Any] = {"total": 0, "passed": 0, "failed": 0, "errors": 0, "details": []}
 
         # Parse each line looking for test results
-        lines: List[str] = output.split("\n")
+        lines: list[str] = output.split("\n")
         for line in lines:
             # Skip empty lines
             if not line.strip():
@@ -131,7 +131,7 @@ class DirectSecurityTestRunner:
             if " PASSED " in line or " FAILED " in line or " ERROR " in line or " SKIPPED " in line:
                 try:
                     # Extract test name safely
-                    parts: List[str] = line.split("::")
+                    parts: list[str] = line.split("::")
                     test_name: str = ""
                     if len(parts) >= 2:
                         # Handle full test path with class and method
@@ -158,7 +158,7 @@ class DirectSecurityTestRunner:
                     results["total"] = int(results["total"]) + 1
 
                     # Add to details
-                    details_list: List[Dict[str, str]] = results["details"]
+                    details_list: list[dict[str, str]] = results["details"]
                     details_list.append(
                         {"name": test_name, "status": status, "full_line": line.strip()}
                     )
@@ -184,7 +184,7 @@ class DirectSecurityTestRunner:
 
         return results
 
-    def run_all_tests(self) -> Dict[str, Any]:
+    def run_all_tests(self) -> dict[str, Any]:
         """Run all defined tests.
 
         Returns:

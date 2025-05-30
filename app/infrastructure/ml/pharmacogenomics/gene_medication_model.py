@@ -16,7 +16,6 @@ from uuid import UUID
 import joblib
 import numpy as np
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestClassifier
-from sklearn.base import BaseEstimator
 
 from app.domain.utils.datetime_utils import UTC
 from app.infrastructure.ml.base.base_model import BaseModel

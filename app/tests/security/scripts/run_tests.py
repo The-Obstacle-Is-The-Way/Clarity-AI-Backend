@@ -12,8 +12,7 @@ import shlex
 import subprocess
 import sys
 from datetime import datetime
-from typing import Any, Dict, List
-from pathlib import Path
+from typing import Any
 
 # Add the root directory to Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
@@ -45,7 +44,7 @@ class SecurityTestRunner:
         os.makedirs(self.output_path, exist_ok=True)
 
         # Test categories in priority order
-        self.test_categories: List[Dict[str, str]] = [
+        self.test_categories: list[dict[str, str]] = [
             {"name": "Core Encryption", "pattern": "**/encryption/test_*.py"},
             {"name": "PHI Handling", "pattern": "**/phi/test_*.py"},
             {"name": "JWT Authentication", "pattern": "**/jwt/test_*.py"},
@@ -58,7 +57,7 @@ class SecurityTestRunner:
         ]
 
         # Test results collection
-        self.results: Dict[str, Any] = {
+        self.results: dict[str, Any] = {
             "timestamp": datetime.now().isoformat(),
             "summary": {
                 "total": 0,
@@ -70,7 +69,7 @@ class SecurityTestRunner:
             "categories": {},
         }
 
-    def find_test_files(self, pattern: str) -> List[str]:
+    def find_test_files(self, pattern: str) -> list[str]:
         """Find test files matching the pattern.
 
         Args:
@@ -89,11 +88,11 @@ class SecurityTestRunner:
             search_pattern = os.path.join(self.base_dir, pattern)
 
         print(f"Searching for files with pattern: {search_pattern}")
-        matching_files: List[str] = glob.glob(search_pattern, recursive=True)
+        matching_files: list[str] = glob.glob(search_pattern, recursive=True)
         print(f"Found {len(matching_files)} files")
         return matching_files
 
-    def run_pytest(self, test_file: str) -> Dict[str, Any]:
+    def run_pytest(self, test_file: str) -> dict[str, Any]:
         """Run pytest on a specific test file.
 
         Args:
@@ -139,7 +138,7 @@ class SecurityTestRunner:
             # Read the JSON report
             if os.path.exists(report_file):
                 with open(report_file) as f:
-                    loaded_data: Dict[str, Any] = json.load(f)
+                    loaded_data: dict[str, Any] = json.load(f)
                     return loaded_data
             else:
                 return {
@@ -151,7 +150,7 @@ class SecurityTestRunner:
         except Exception as e:
             return {"success": False, "error": f"Error running test {test_file}: {e!s}"}
 
-    def parse_test_results(self, results: Dict[str, Any]) -> Dict[str, Any]:
+    def parse_test_results(self, results: dict[str, Any]) -> dict[str, Any]:
         """Parse pytest JSON report into a simplified format.
 
         Args:
@@ -161,7 +160,7 @@ class SecurityTestRunner:
                 Simplified test results
         """
         # Extract summary statistics
-        summary: Dict[str, int] = {
+        summary: dict[str, int] = {
             "total": int(results.get("summary", {}).get("total", 0)),
             "passed": int(results.get("summary", {}).get("passed", 0)),
             "failed": int(results.get("summary", {}).get("failed", 0)),
@@ -170,10 +169,10 @@ class SecurityTestRunner:
         }
 
         # Extract individual test results
-        tests: List[Dict[str, Any]] = []
-        test_list: List[Dict[str, Any]] = results.get("tests", [])
+        tests: list[dict[str, Any]] = []
+        test_list: list[dict[str, Any]] = results.get("tests", [])
         for test_data in test_list:
-            test_result: Dict[str, Any] = {
+            test_result: dict[str, Any] = {
                 "name": test_data.get("name", ""),
                 "outcome": test_data.get("outcome", ""),
                 "duration": test_data.get("duration", 0),
@@ -183,7 +182,7 @@ class SecurityTestRunner:
 
         return {"summary": summary, "tests": tests}
 
-    def run_category(self, cat: Dict[str, str]) -> None:
+    def run_category(self, cat: dict[str, str]) -> None:
         """Run tests for a specific category.
 
         Args:
@@ -197,10 +196,10 @@ class SecurityTestRunner:
         print("=" * 60)
 
         # Find test files for this category
-        test_files: List[str] = self.find_test_files(pattern)
+        test_files: list[str] = self.find_test_files(pattern)
 
         # Initialize category results
-        category_results: Dict[str, Any] = {
+        category_results: dict[str, Any] = {
             "files_found": len(test_files),
             "files": [],
             "tests": {
@@ -215,11 +214,11 @@ class SecurityTestRunner:
         # Run tests for each file in the category
         for test_file in test_files:
             print(f"\nRunning tests in {test_file}...")
-            raw_results: Dict[str, Any] = self.run_pytest(test_file)
-            parsed_results: Dict[str, Any] = self.parse_test_results(raw_results)
+            raw_results: dict[str, Any] = self.run_pytest(test_file)
+            parsed_results: dict[str, Any] = self.parse_test_results(raw_results)
 
             # Store file results
-            files_list: List[Dict[str, Any]] = category_results["files"]
+            files_list: list[dict[str, Any]] = category_results["files"]
             files_list.append(
                 {
                     "file": test_file,
@@ -229,7 +228,7 @@ class SecurityTestRunner:
             )
 
             # Accumulate category summary
-            test_keys: List[str] = ["total", "passed", "failed", "skipped", "errors"]
+            test_keys: list[str] = ["total", "passed", "failed", "skipped", "errors"]
             for key in test_keys:
                 category_results["tests"][key] = int(category_results["tests"][key]) + int(parsed_results["summary"][key])
                 self.results["summary"][key] = int(self.results["summary"][key]) + int(parsed_results["summary"][key])  # Accumulate overall results here

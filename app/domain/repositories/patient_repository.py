@@ -2,8 +2,8 @@
 Interface for the Patient Repository.
 """
 from abc import abstractmethod
+from typing import Any
 from uuid import UUID
-from typing import Optional, Dict, Any
 
 from app.core.interfaces.repositories.base_repository import BaseRepositoryInterface
 from app.domain.entities.patient import Patient
@@ -93,8 +93,8 @@ class PatientRepository(BaseRepositoryInterface[Patient]):  # Renamed from Patie
     async def get_by_email(
         self, 
         email: str,
-        context: Optional[Dict[str, Any]] = None
-    ) -> Optional[Patient]:
+        context: dict[str, Any] | None = None
+    ) -> Patient | None:
         """Find a patient by email address.
         
         Args:

@@ -705,7 +705,7 @@ class AWSXGBoostService(XGBoostInterface, Observable):
         Returns:
             ISO formatted timestamp
         """
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         return datetime.now(timezone.utc).isoformat()
 

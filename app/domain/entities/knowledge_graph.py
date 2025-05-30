@@ -5,7 +5,7 @@ Pure domain models with no external dependencies.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, TypeVar, Generic
+from typing import Any, TypeVar
 from uuid import UUID, uuid4
 
 T = TypeVar('T', bound=Enum)

@@ -7,7 +7,7 @@ and authenticated user identity.
 """
 
 import logging
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 # Optional dependency handling - similar to the Redis pattern
 try:
@@ -15,17 +15,17 @@ try:
     from slowapi import Limiter as _SlowapiLimiter  # type: ignore
     from slowapi.util import get_remote_address as _slowapi_get_remote_address  # type: ignore
 
-    Limiter = _SlowapiLimiter  # noqa: N816  # Provide a uniform symbol regardless of branch
-    get_remote_address = _slowapi_get_remote_address  # noqa: N816
+    Limiter = _SlowapiLimiter  # Provide a uniform symbol regardless of branch
+    get_remote_address = _slowapi_get_remote_address
 except ModuleNotFoundError:  # pragma: no cover - slowapi not installed in some environments
 
     class _StubLimiter:  # pylint: disable=too-few-public-methods
         """Minimal stub with the same public surface to satisfy type-checkers."""
 
-        def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             pass
 
-        def limit(self, *args: Any, **kwargs: Any):  # noqa: ANN001, D401
+        def limit(self, *args: Any, **kwargs: Any):
             """Return a no-op decorator so endpoints remain callable in tests."""
 
             def decorator(func):  # type: ignore[no-any-unbound-method]
@@ -33,7 +33,7 @@ except ModuleNotFoundError:  # pragma: no cover - slowapi not installed in some 
 
             return decorator
 
-    def get_remote_address(request: Any) -> str:  # noqa: D401
+    def get_remote_address(request: Any) -> str:
         """Stubbed get_remote_address with matching signature."""
         return "127.0.0.1"
 

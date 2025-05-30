@@ -8,11 +8,11 @@ while maintaining HIPAA compliance and clean architecture.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 from uuid import UUID
 
 # Import domain types for proper type safety
-from app.core.domain.types.jwt_payload import AccessTokenPayload, JWTPayload, RefreshTokenPayload
+from app.core.domain.types.jwt_payload import JWTPayload, RefreshTokenPayload
 
 
 class IJwtService(ABC):

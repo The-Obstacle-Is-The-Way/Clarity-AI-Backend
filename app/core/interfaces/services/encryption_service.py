@@ -18,12 +18,12 @@ class IEncryptionService(Protocol):
     """
 
     # --- Primary crypto operations -------------------------------------------------
-    def encrypt(self, plaintext: str, *, key: str | None = None) -> str:  # noqa: D401
+    def encrypt(self, plaintext: str, *, key: str | None = None) -> str:
         """Encrypt *plaintext* returning a base-64-safe cipher-text string."""
 
     def decrypt(self, ciphertext: str, *, key: str | None = None) -> str:
         """Decrypt *ciphertext* back to UTF-8 text."""
 
     # --- Optional helpers ----------------------------------------------------------
-    def generate_hash(self, value: str, *, salt: str | None = None) -> str:  # noqa: D401
+    def generate_hash(self, value: str, *, salt: str | None = None) -> str:
         """Return a reproducible cryptographic hash for *value*."""

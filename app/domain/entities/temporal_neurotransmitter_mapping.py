@@ -1248,11 +1248,12 @@ def _simulate_cascade_effects(self, sequence_name, simulation_duration_hours, ti
 
 
 # Add missing methods to TemporalNeurotransmitterMapping class
-setattr(TemporalNeurotransmitterMapping, "add_temporal_sequence", _add_temporal_sequence)
-setattr(TemporalNeurotransmitterMapping, "add_neurotransmitter_connection", _add_neurotransmitter_connection)
-setattr(TemporalNeurotransmitterMapping, "calculate_receptor_response", _calculate_receptor_response)
-setattr(TemporalNeurotransmitterMapping, "simulate_cascade_effects", _simulate_cascade_effects)
+TemporalNeurotransmitterMapping.add_temporal_sequence = _add_temporal_sequence
+TemporalNeurotransmitterMapping.add_neurotransmitter_connection = _add_neurotransmitter_connection
+TemporalNeurotransmitterMapping.calculate_receptor_response = _calculate_receptor_response
+TemporalNeurotransmitterMapping.simulate_cascade_effects = _simulate_cascade_effects
 
 # Add logger for use in the module
 import logging
+
 logger = logging.getLogger(__name__)

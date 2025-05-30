@@ -7,7 +7,6 @@ for machine learning service tests, following clean architecture principles.
 
 import sys
 from types import ModuleType
-from typing import Any
 
 
 def pytest_collect_file(parent, path) -> None:

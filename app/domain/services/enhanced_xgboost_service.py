@@ -838,7 +838,7 @@ class EnhancedXGBoostService:
             )
 
         # Sort by overall score (descending)
-        recommendations.sort(key=lambda x: x["overall_score"] if isinstance(x["overall_score"], (int, float)) else 0.0, reverse=True)
+        recommendations.sort(key=lambda x: x["overall_score"] if isinstance(x["overall_score"], int | float) else 0.0, reverse=True)
 
         return recommendations
 
@@ -1068,6 +1068,6 @@ def _analyze_temporal_response(
 
 
 # Attach monkey-patched methods to the class using setattr to avoid MyPy errors
-setattr(EnhancedXGBoostService, "analyze_neurotransmitter_interactions", _analyze_neurotransmitter_interactions)
-setattr(EnhancedXGBoostService, "simulate_treatment_cascade", _simulate_treatment_cascade)
-setattr(EnhancedXGBoostService, "analyze_temporal_response", _analyze_temporal_response)
+EnhancedXGBoostService.analyze_neurotransmitter_interactions = _analyze_neurotransmitter_interactions
+EnhancedXGBoostService.simulate_treatment_cascade = _simulate_treatment_cascade
+EnhancedXGBoostService.analyze_temporal_response = _analyze_temporal_response

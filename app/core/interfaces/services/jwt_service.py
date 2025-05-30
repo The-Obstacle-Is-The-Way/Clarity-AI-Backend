@@ -13,8 +13,8 @@ from abc import ABC, abstractmethod
 from datetime import timedelta
 from typing import Any
 
-from app.core.domain.types.jwt_payload import JWTPayload, RefreshTokenPayload
 from app.core.domain.entities.user import User
+from app.core.domain.types.jwt_payload import JWTPayload, RefreshTokenPayload
 
 
 class IJwtService(ABC):

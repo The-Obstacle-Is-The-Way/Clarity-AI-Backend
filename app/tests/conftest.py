@@ -290,7 +290,7 @@ def mock_redis_cache_service(mock_redis_service):
 
 
 @pytest.fixture
-def mock_token_blacklist_repository():
+def mock_token_blacklist_repository() -> None:
     """
     Fixture to provide an in-memory token blacklist repository.
 
@@ -378,6 +378,7 @@ def mock_model_service():
 
 
 from app.core.schemas.users import UserCreateRequest
+
 
 @pytest.fixture
 def provider_user():

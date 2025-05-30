@@ -6,7 +6,7 @@ AWS SageMaker services following clean architecture principles.
 """
 import json
 import logging
-from typing import Any, Dict, cast
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
@@ -189,7 +189,7 @@ class SageMakerEndpoint:
             if not body:
                 return {}
 
-            parsed_response: Dict[str, Any] = json.loads(body)
+            parsed_response: dict[str, Any] = json.loads(body)
             return parsed_response
 
         except (json.JSONDecodeError, UnicodeDecodeError) as e:

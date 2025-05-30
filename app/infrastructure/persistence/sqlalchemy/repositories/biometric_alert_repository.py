@@ -11,8 +11,8 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from app.core.utils.logging import get_logger
-from app.domain.exceptions import EntityNotFoundError, RepositoryError
 from app.domain.entities.biometric_alert import AlertStatusEnum
+from app.domain.exceptions import EntityNotFoundError, RepositoryError
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 from app.domain.services.biometric_event_processor import AlertPriority, BiometricAlert
 from app.domain.utils.datetime_utils import now_utc

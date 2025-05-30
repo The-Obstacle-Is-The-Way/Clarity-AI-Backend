@@ -5,6 +5,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application.services.biometric_alert_rule_service import (
+    BiometricAlertRuleService,
+)
 from app.application.services.patient_service import PatientService
 from app.core.domain.entities.patient import Patient
 from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
@@ -24,10 +27,8 @@ from app.presentation.api.v1.endpoints.biometric_alert_rules import (
     get_patient_alert_rules,
     get_rule_service,
 )
-from app.application.services.biometric_alert_rule_service import (
-    BiometricAlertRuleService,
-)
 from app.presentation.api.v1.schemas.biometric_alert_rules import AlertRuleResponse
+
 
 # Placeholder dependency - replace with actual service implementation later
 def get_patient_service(db_session: AsyncSession = Depends(get_db)) -> PatientService:

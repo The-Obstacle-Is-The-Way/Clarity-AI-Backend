@@ -8,15 +8,15 @@ IMPORTANT: This module has been refactored to use a clean registry pattern
 that prevents SQLAlchemy conflicts during testing.
 """
 
-import uuid
 import datetime
+import uuid
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     Float,
     ForeignKey,
-    JSON,
     String,
 )
 from sqlalchemy import UUID as SQLAlchemyUUID

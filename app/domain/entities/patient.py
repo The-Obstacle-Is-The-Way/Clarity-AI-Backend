@@ -170,7 +170,7 @@ class Patient:
         """Initialize the object after dataclass initialization."""
         # Convert string id to UUID if necessary
         if isinstance(self.id, str):  
-            from uuid import UUID  
+            from uuid import UUID
             try:
                 # Only attempt conversion if it looks like a valid UUID
                 if len(self.id) == 36 and self.id.count("-") == 4:

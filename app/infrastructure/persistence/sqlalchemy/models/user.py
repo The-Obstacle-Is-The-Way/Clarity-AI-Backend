@@ -16,7 +16,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import (
     JSON,
@@ -140,12 +140,12 @@ class User(Base, TimestampMixin, AuditMixin):
         index=True,
         comment="Email address for user contact",
     )
-    first_name: Mapped[Optional[str]] = mapped_column(
+    first_name: Mapped[str | None] = mapped_column(
         String(100), 
         nullable=True, 
         comment="User's first name"
     )
-    last_name: Mapped[Optional[str]] = mapped_column(
+    last_name: Mapped[str | None] = mapped_column(
         String(100), 
         nullable=True, 
         comment="User's last name"
@@ -194,13 +194,13 @@ class User(Base, TimestampMixin, AuditMixin):
         default=UserRole.PATIENT,
         comment="Primary user role",
     )
-    roles: Mapped[Optional[dict]] = mapped_column(
+    roles: Mapped[dict | None] = mapped_column(
         JSONEncodedDict, 
         default=list, 
         nullable=False, 
         comment="List of all user roles"
     )
-    last_login: Mapped[Optional[datetime]] = mapped_column(
+    last_login: Mapped[datetime | None] = mapped_column(
         DateTime, 
         nullable=True, 
         comment="When user last logged in"
@@ -211,37 +211,37 @@ class User(Base, TimestampMixin, AuditMixin):
         nullable=False,
         comment="Number of consecutive failed login attempts",
     )
-    account_locked_until: Mapped[Optional[datetime]] = mapped_column(
+    account_locked_until: Mapped[datetime | None] = mapped_column(
         DateTime, 
         nullable=True, 
         comment="When account lockout expires"
     )
-    reset_token: Mapped[Optional[str]] = mapped_column(
+    reset_token: Mapped[str | None] = mapped_column(
         String(255), 
         nullable=True, 
         comment="Password reset token"
     )
-    reset_token_expires_at: Mapped[Optional[datetime]] = mapped_column(
+    reset_token_expires_at: Mapped[datetime | None] = mapped_column(
         DateTime, 
         nullable=True, 
         comment="When reset token expires"
     )
-    verification_token: Mapped[Optional[str]] = mapped_column(
+    verification_token: Mapped[str | None] = mapped_column(
         String(255), 
         nullable=True, 
         comment="Account verification token"
     )
-    bio: Mapped[Optional[str]] = mapped_column(
+    bio: Mapped[str | None] = mapped_column(
         Text, 
         nullable=True, 
         comment="Short bio for clinical staff"
     )
-    preferences: Mapped[Optional[dict]] = mapped_column(
+    preferences: Mapped[dict | None] = mapped_column(
         JSON, 
         nullable=True, 
         comment="User UI and system preferences"
     )
-    password_changed_at: Mapped[Optional[datetime]] = mapped_column(
+    password_changed_at: Mapped[datetime | None] = mapped_column(
         DateTime,
         nullable=True,
         comment="Timestamp when user last changed their password",
@@ -268,7 +268,7 @@ class User(Base, TimestampMixin, AuditMixin):
     )
 
     # Audit logging
-    access_logs: Mapped[Optional[dict]] = mapped_column(
+    access_logs: Mapped[dict | None] = mapped_column(
         JSON, 
         nullable=True,
         comment="Stores recent access logs"

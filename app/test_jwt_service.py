@@ -8,11 +8,11 @@ import asyncio
 from datetime import datetime, timedelta
 from uuid import uuid4
 
+from domain.exceptions import TokenBlacklistedException as TokenBlacklistedError
 from infrastructure.repositories.memory_token_blacklist_repository import (
     MemoryTokenBlacklistRepository,
 )
 from infrastructure.security.jwt.jwt_service import JWTService
-from domain.exceptions import TokenBlacklistedException as TokenBlacklistedError
 
 
 async def test_jwt_service() -> None:

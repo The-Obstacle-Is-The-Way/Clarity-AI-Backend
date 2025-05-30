@@ -8,8 +8,9 @@ communication between patients and providers.
 import base64
 import time
 import uuid
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend

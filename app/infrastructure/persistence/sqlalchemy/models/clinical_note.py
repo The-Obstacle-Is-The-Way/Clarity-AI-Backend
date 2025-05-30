@@ -6,7 +6,7 @@ mapping the domain entity to the database schema.
 """
 
 import uuid
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     ForeignKey,
@@ -54,7 +54,7 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
         nullable=False,
         index=True,
     )
-    appointment_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    appointment_id: Mapped[uuid.UUID | None] = mapped_column(
         GUID(), 
         ForeignKey("appointments.id"), 
         nullable=True
@@ -67,15 +67,15 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
         Text, 
         nullable=False
     )
-    redacted_content: Mapped[Optional[str]] = mapped_column(
+    redacted_content: Mapped[str | None] = mapped_column(
         Text, 
         nullable=True
     )
-    note_type: Mapped[Optional[str]] = mapped_column(
+    note_type: Mapped[str | None] = mapped_column(
         String(50), 
         nullable=True
     )
-    tags: Mapped[Optional[dict]] = mapped_column(
+    tags: Mapped[dict | None] = mapped_column(
         JSONEncodedDict,
         nullable=True
     )
@@ -84,7 +84,7 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
         default=1, 
         nullable=False
     )
-    parent_note_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    parent_note_id: Mapped[uuid.UUID | None] = mapped_column(
         GUID(), 
         ForeignKey("clinical_notes.id"), 
         nullable=True

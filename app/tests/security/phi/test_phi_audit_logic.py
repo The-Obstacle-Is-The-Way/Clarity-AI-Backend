@@ -278,7 +278,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         result.is_test_file = True
         result.is_allowed_phi_test = True
         # Add PHI manually to the result (simulate)
-        setattr(result, 'has_phi', True)  # Dynamic attribute setting
+        result.has_phi = True  # Dynamic attribute setting
         result.is_allowed = True
         # Verify result has PHI but is allowed
         assert getattr(result, 'has_phi', False) is True, "Result should have PHI"

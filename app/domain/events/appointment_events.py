@@ -10,7 +10,6 @@ from datetime import datetime
 from uuid import UUID
 
 from app.domain.entities.appointment import AppointmentType
-from app.domain.utils.datetime_utils import UTC
 
 
 @dataclass

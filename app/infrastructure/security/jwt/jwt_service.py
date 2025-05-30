@@ -15,24 +15,20 @@ from jose.jwt import decode as jwt_decode
 from jose.jwt import encode as jwt_encode
 from pydantic import BaseModel, Field
 
-# Import the correct interface
-from app.core.interfaces.security.jwt_service_interface import IJwtService
-
 # Import domain types for proper type safety
 from app.core.domain.types.jwt_payload import (
-    RefreshTokenPayload, 
-    AccessTokenPayload, 
     JWTPayload,
-    payload_from_dict
+    RefreshTokenPayload,
+    payload_from_dict,
 )
 
+# Import the correct interface
+from app.core.interfaces.security.jwt_service_interface import IJwtService
 from app.domain.enums.token_type import TokenType
 from app.domain.exceptions import (
-    AuthenticationError,
     InvalidTokenError,
     InvalidTokenException,
     TokenBlacklistedException,
-    TokenExpiredError,
     TokenExpiredException,
 )
 

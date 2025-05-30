@@ -5,6 +5,7 @@ from abc import abstractmethod
 from uuid import UUID
 
 from app.core.interfaces.repositories.base_repository import BaseRepositoryInterface
+
 # Import directly from the module, not the package
 from app.domain.entities.digital_twin import DigitalTwin
 

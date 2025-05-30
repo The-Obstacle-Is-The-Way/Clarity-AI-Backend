@@ -21,7 +21,6 @@ The implementation follows Clean Architecture principles:
 - Repositories handle persistence concerns
 - Service enforces business rules for token management
 """
-import asyncio
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -32,9 +31,13 @@ from pydantic import BaseModel
 
 from app.config.settings import Settings
 from app.core.exceptions.auth_exceptions import (
-    InvalidTokenError as InvalidTokenException,
-    TokenExpiredError as TokenExpiredException,
     AuthenticationError as TokenBlacklistedException,
+)
+from app.core.exceptions.auth_exceptions import (
+    InvalidTokenError as InvalidTokenException,
+)
+from app.core.exceptions.auth_exceptions import (
+    TokenExpiredError as TokenExpiredException,
 )
 from app.core.interfaces.repositories.token_blacklist_repository_interface import (
     ITokenBlacklistRepository,

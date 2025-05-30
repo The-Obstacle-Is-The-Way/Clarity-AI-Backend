@@ -5,14 +5,11 @@ This module defines the ORM models for analytics data,
 mapping domain entities to database tables.
 """
 
-import uuid
 import datetime
+import uuid
 
-from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.orm import relationship
-
-from app.infrastructure.persistence.sqlalchemy.types import JSONEncodedDict
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.utils.datetime_utils import now_utc
 
@@ -23,6 +20,7 @@ from app.infrastructure.persistence.sqlalchemy.models.base import (  # Canonical
     Base,
     TimestampMixin,
 )
+from app.infrastructure.persistence.sqlalchemy.types import JSONEncodedDict
 
 # from app.infrastructure.persistence.sqlalchemy.types import GUID # MODIFIED: Comment out GUID
 

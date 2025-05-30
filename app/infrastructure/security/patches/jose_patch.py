@@ -7,8 +7,9 @@ calls with the recommended datetime.now(datetime.UTC) approach.
 
 import functools
 import logging
+from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import Any
 
 from jose import jwt
 
@@ -34,7 +35,7 @@ def patch_jose_jwt() -> None:
         
         # Apply the patch only if the original function exists
         if original_get_now is not None:
-            setattr(jwt, "_get_now", patched_get_now)
+            jwt._get_now = patched_get_now
             logger.info("Successfully patched jose.jwt._get_now to use timezone-aware datetime")
         else:
             logger.warning("Could not patch jose.jwt: _get_now function not found")

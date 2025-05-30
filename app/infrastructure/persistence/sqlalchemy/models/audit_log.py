@@ -5,10 +5,10 @@ This model stores audit trail information according to HIPAA requirements,
 tracking access and modifications to sensitive data and system events.
 """
 
-import uuid
 import datetime
+import uuid
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 

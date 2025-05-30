@@ -13,13 +13,14 @@ import uuid
 from typing import TYPE_CHECKING
 
 from sqlalchemy import UUID as SQLAlchemyUUID
-from sqlalchemy import Column, DateTime
-from sqlalchemy.sql import func
+from sqlalchemy import Column
 
 # Import the proper type-safe Base from config
 from app.infrastructure.persistence.sqlalchemy.config.base import (
     Base,
     BaseSQLModel,
+)
+from app.infrastructure.persistence.sqlalchemy.config.base import (
     TimestampMixin as ConfigTimestampMixin,
 )
 
