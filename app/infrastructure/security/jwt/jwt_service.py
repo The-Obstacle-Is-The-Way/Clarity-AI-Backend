@@ -10,9 +10,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID, uuid4
 
-from jose.exceptions import ExpiredSignatureError, JWTError
-from jose.jwt import decode as jwt_decode
-from jose.jwt import encode as jwt_encode
+import jwt
+from jwt.exceptions import DecodeError, ExpiredSignatureError, InvalidSignatureError
 from pydantic import BaseModel, Field
 
 # Import domain types for proper type safety
@@ -373,7 +372,7 @@ class JWTServiceImpl(IJwtService):
     def _create_token(self, claims: dict[str, Any]) -> str:
         """Create a JWT token with the given claims."""
         try:
-            return jwt_encode(claims, self.secret_key, algorithm=self.algorithm)
+            return jwt.encode(claims, self.secret_key, algorithm=self.algorithm)
         except Exception as e:
             logger.error(f"Error creating token: {e}")
             raise InvalidTokenError(f"Token creation failed: {e}")
@@ -389,7 +388,7 @@ class JWTServiceImpl(IJwtService):
 
         try:
             # Decode the token
-            payload = jwt_decode(
+            payload = jwt.decode(
                 token=token,
                 key=self.secret_key,
                 algorithms=[self.algorithm],
@@ -448,14 +447,10 @@ class JWTServiceImpl(IJwtService):
 
         except ExpiredSignatureError as e:
             raise TokenExpiredException("Token has expired") from e
-        except JWTError as e:
-            error_message = str(e)
-            if "signature" in error_message.lower():
-                raise InvalidTokenException(f"Invalid token signature: {error_message}")
-            elif "Not enough segments" in error_message:
-                raise InvalidTokenException("Invalid token: Not enough segments")
-            else:
-                raise InvalidTokenException(f"Invalid token: {error_message}")
+        except InvalidSignatureError as e:
+            raise InvalidTokenException(f"Invalid token signature: {str(e)}")
+        except DecodeError as e:
+            raise InvalidTokenException(f"Invalid token: {str(e)}")
         except Exception as e:
             raise InvalidTokenException(f"Token decode error: {e}")
 
