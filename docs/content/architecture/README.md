@@ -7,6 +7,7 @@ This section contains documentation on the architecture of the Clarity-AI Backen
 - [Architecture Overview](./overview.md) - High-level overview of the system architecture
 - [Clean Architecture Diagram](./clean_architecture_diagram.md) - Visual representation of the clean architecture layers
 - [Domain Model](./domain_model.md) - Core domain entities and relationships
+- [Implementation Details](./implementation_details.md) - Detailed implementation of domain models and services
 - [ML Integration](./ml_integration.md) - Integration with machine learning services
 
 ## Clean Architecture
