@@ -5,7 +5,7 @@ Follows Clean-Architecture: purely data-centric, no framework imports.
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, EmailStr, Field, constr
+from pydantic import BaseModel, EmailStr, Field
 
 __all__ = [
     "UserCreateRequest",
@@ -26,7 +26,8 @@ class _UserBase(BaseModel):
 class UserCreateRequest(_UserBase):
     """Payload for creating a new user via the public API."""
 
-    password: constr(min_length=8) = Field(..., description="Raw password to hash & store")
+    # Use simple string with min_length constraint to avoid mypy incompatibility with `constr(...)`
+    password: str = Field(..., min_length=8, description="Raw password to hash & store")
 
 
 class UserCreateResponse(_UserBase):

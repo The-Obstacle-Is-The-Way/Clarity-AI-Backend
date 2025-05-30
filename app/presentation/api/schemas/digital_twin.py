@@ -94,13 +94,10 @@ class DigitalTwinStatusResponse(BaseModelConfig):
     components: dict[str, ComponentStatus]
     last_checked: datetime
 
-    # Modern Pydantic V2 configuration using ConfigDict
+    # pydantic v2: provide json_encoders directly in ConfigDict (keys must be types)
     model_config = ConfigDict(
-        json_schema_extra={
-            "json_encoders": {
-                # Format datetime fields as required by the tests
-                datetime: lambda v: v.isoformat()
-            }
+        json_encoders={
+            datetime: lambda v: v.isoformat(),
         }
     )
 
@@ -194,13 +191,10 @@ class PersonalizedInsightResponse(BaseModelConfig):
     pharmacogenomics: PharmacogenomicsData | None = None
     integrated_recommendations: list[Recommendation] | None = None
 
-    # Modern Pydantic V2 configuration using ConfigDict
+    # pydantic v2: provide json_encoders directly in ConfigDict
     model_config = ConfigDict(
-        json_schema_extra={
-            "json_encoders": {
-                # Format datetime fields as required by the tests
-                datetime: lambda v: v.isoformat()
-            }
+        json_encoders={
+            datetime: lambda v: v.isoformat(),
         }
     )
 
