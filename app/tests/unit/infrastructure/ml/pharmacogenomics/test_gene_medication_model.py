@@ -24,16 +24,17 @@ from app.infrastructure.ml.pharmacogenomics.gene_medication_model import (
 def model():
     """Create a GeneMedicationModel with mocked internals."""
     # Patch joblib during instantiation to avoid actual file loading
-    with patch(
-        "app.infrastructure.ml.pharmacogenomics.gene_medication_model.joblib",
-        autospec=True,
-    ) as mock_joblib, patch(
-        "app.infrastructure.ml.pharmacogenomics.gene_medication_model.json",
-        autospec=True,
-    ) as mock_json, patch(
-        "builtins.open", mock_open(read_data="{}")
-    ), patch(
-        "os.path.exists", return_value=True
+    with (
+        patch(
+            "app.infrastructure.ml.pharmacogenomics.gene_medication_model.joblib",
+            autospec=True,
+        ) as mock_joblib,
+        patch(
+            "app.infrastructure.ml.pharmacogenomics.gene_medication_model.json",
+            autospec=True,
+        ) as mock_json,
+        patch("builtins.open", mock_open(read_data="{}")),
+        patch("os.path.exists", return_value=True),
     ):  # Assume files exist for fixture setup
         # Mock joblib.load to return a mock model
         mock_ml_model = MagicMock()
@@ -134,16 +135,17 @@ class TestGeneMedicationModel:
     async def test_initialize_loads_model_and_knowledge_base(self) -> None:
         """Test that initialize loads the model and knowledge base correctly."""
         # Setup - Use patches within the test for clarity
-        with patch(
-            "app.infrastructure.ml.pharmacogenomics.gene_medication_model.joblib",
-            autospec=True,
-        ) as mock_joblib, patch(
-            "app.infrastructure.ml.pharmacogenomics.gene_medication_model.json",
-            autospec=True,
-        ) as mock_json, patch(
-            "builtins.open", mock_open(read_data="{}")
-        ) as mock_file, patch(
-            "os.path.exists", return_value=True
+        with (
+            patch(
+                "app.infrastructure.ml.pharmacogenomics.gene_medication_model.joblib",
+                autospec=True,
+            ) as mock_joblib,
+            patch(
+                "app.infrastructure.ml.pharmacogenomics.gene_medication_model.json",
+                autospec=True,
+            ) as mock_json,
+            patch("builtins.open", mock_open(read_data="{}")) as mock_file,
+            patch("os.path.exists", return_value=True),
         ):
             # Mock joblib.load to return a mock model
             mock_ml_model = MagicMock()
@@ -174,10 +176,13 @@ class TestGeneMedicationModel:
     async def test_initialize_handles_missing_files(self) -> None:
         """Test that initialize handles missing model and knowledge base files gracefully."""
         # Setup
-        with patch("os.path.exists", return_value=False), patch(
-            "app.infrastructure.ml.pharmacogenomics.gene_medication_model.logging",
-            autospec=True,
-        ) as mock_logging:
+        with (
+            patch("os.path.exists", return_value=False),
+            patch(
+                "app.infrastructure.ml.pharmacogenomics.gene_medication_model.logging",
+                autospec=True,
+            ) as mock_logging,
+        ):
             # Create model instance
             # Corrected instantiation
             model_instance = GeneMedicationModel(
@@ -200,7 +205,9 @@ class TestGeneMedicationModel:
             }  # KB should be empty
 
     @pytest.mark.asyncio  # Add async
-    async def test_predict_medication_interactions_success(self, model, sample_genetic_data) -> None:
+    async def test_predict_medication_interactions_success(
+        self, model, sample_genetic_data
+    ) -> None:
         """Test that predict_medication_interactions correctly processes genetic data and returns interactions."""
         # Setup
         medications = [

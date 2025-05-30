@@ -6,6 +6,7 @@ following pure clean architecture principles by separating interface from implem
 All concrete implementations must conform to these interfaces to ensure proper
 dependency inversion and modular design.
 """
+
 from abc import ABC, abstractmethod
 from typing import Any
 from uuid import UUID

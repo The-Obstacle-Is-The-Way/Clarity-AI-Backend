@@ -1,6 +1,5 @@
 """Unit tests for PhysiologicalRange value object."""
 
-
 import pytest
 
 from app.domain.value_objects.physiological_ranges import PhysiologicalRange

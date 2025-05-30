@@ -121,7 +121,9 @@ class TestSecureMessagingService:
         assert public_key.startswith(b"-----BEGIN PUBLIC KEY-----")
         assert public_key.endswith(b"-----END PUBLIC KEY-----\n")
 
-    def test_encrypt_decrypt_symmetric_key(self, secure_messaging_service, key_pair) -> None:  # Added colon
+    def test_encrypt_decrypt_symmetric_key(
+        self, secure_messaging_service, key_pair
+    ) -> None:  # Added colon
         """Test encrypting and decrypting a symmetric key."""
         private_key_bytes, public_key_bytes = key_pair
 
@@ -162,7 +164,9 @@ class TestSecureMessagingService:
         # Check that the decrypted message matches the original
         assert decrypted_message == original_message
 
-    def test_encrypt_message_for_recipient(self, secure_messaging_service, key_pair) -> None:  # Added colon
+    def test_encrypt_message_for_recipient(
+        self, secure_messaging_service, key_pair
+    ) -> None:  # Added colon
         """Test encrypting a message for a recipient."""
         _, public_key_bytes = key_pair
 
@@ -206,7 +210,9 @@ class TestSecureMessagingService:
         # Check that the decrypted message matches the original
         assert decrypted_message == original_message
 
-    def test_decrypt_expired_message(self, secure_messaging_service, key_pair) -> None:  # Added colon
+    def test_decrypt_expired_message(
+        self, secure_messaging_service, key_pair
+    ) -> None:  # Added colon
         """Test decrypting an expired message."""
         private_key_bytes, public_key_bytes = key_pair
 
@@ -381,7 +387,9 @@ class TestSecureMessagingService:
             )
 
     @pytest.mark.asyncio
-    async def test_mark_as_read(self, secure_messaging_service, message_repository) -> None:  # Added colon
+    async def test_mark_as_read(
+        self, secure_messaging_service, message_repository
+    ) -> None:  # Added colon
         """Test marking a message as read."""
         # Create a mock message
         message_id = str(uuid.uuid4())  # Removed extra comma

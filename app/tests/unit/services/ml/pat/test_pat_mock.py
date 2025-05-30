@@ -5,7 +5,6 @@ This module contains tests for all methods of the MockPAT class,
 verifying both success paths and error handling.
 """
 
-
 from datetime import datetime, timedelta, timezone
 
 import pytest

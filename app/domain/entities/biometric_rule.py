@@ -1,6 +1,7 @@
 """
 Domain entities related to Biometric Rules for the Digital Twin.
 """
+
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -177,7 +178,9 @@ class BiometricRule:
         return self
 
     def update_conditions(
-        self, conditions: list[dict | RuleCondition], logical_operator: LogicalOperator | None = None
+        self,
+        conditions: list[dict | RuleCondition],
+        logical_operator: LogicalOperator | None = None,
     ):
         """Update the conditions and logical operator for this rule.
 
@@ -394,12 +397,12 @@ class BiometricAlertRule:
             patient_id=patient_id,
             provider_id=provider_id,
         )
-        
+
         # Apply custom overrides with type validation
         for key, value in custom_overrides.items():
             if key not in ["id", "created_at", "updated_at", "version"] and hasattr(new_rule, key):
                 setattr(new_rule, key, value)
-        
+
         return new_rule
 
     def mark_updated(self) -> None:

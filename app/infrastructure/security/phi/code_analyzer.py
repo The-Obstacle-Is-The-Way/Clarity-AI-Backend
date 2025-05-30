@@ -453,9 +453,11 @@ class PHICodeAnalyzer:
                                     PHIFinding(
                                         file_path=self.file_path,
                                         line_number=self.current_line,
-                                        code_snippet=f'"{node.value[:20]}..."'
-                                        if len(node.value) > 20
-                                        else f'"{node.value}"',
+                                        code_snippet=(
+                                            f'"{node.value[:20]}..."'
+                                            if len(node.value) > 20
+                                            else f'"{node.value}"'
+                                        ),
                                         message="String literal contains PHI pattern",
                                         severity=CodeSeverity.CRITICAL,
                                     )
@@ -679,9 +681,11 @@ class PHICodeAnalyzer:
                                 PHIFinding(
                                     file_path=file_path,
                                     line_number=line,
-                                    code_snippet=f"{current_path} = {value[:20]}..."
-                                    if len(value) > 20
-                                    else f"{current_path} = {value}",
+                                    code_snippet=(
+                                        f"{current_path} = {value[:20]}..."
+                                        if len(value) > 20
+                                        else f"{current_path} = {value}"
+                                    ),
                                     message=f"Configuration value contains PHI pattern: {current_path}",
                                     severity=CodeSeverity.CRITICAL,
                                 )
@@ -700,9 +704,11 @@ class PHICodeAnalyzer:
                                 PHIFinding(
                                     file_path=file_path,
                                     line_number=line,
-                                    code_snippet=f"{current_path} = {item[:20]}..."
-                                    if len(item) > 20
-                                    else f"{current_path} = {item}",
+                                    code_snippet=(
+                                        f"{current_path} = {item[:20]}..."
+                                        if len(item) > 20
+                                        else f"{current_path} = {item}"
+                                    ),
                                     message=f"Configuration array contains PHI pattern: {current_path}",
                                     severity=CodeSeverity.CRITICAL,
                                 )
@@ -865,9 +871,11 @@ class PHICodeAnalyzer:
                                                 file_path=api_spec_file,
                                                 line_number=0,
                                                 message=f"Parameter '{param_name}' (in {param_in}) may contain PHI",
-                                                severity=CodeSeverity.WARNING
-                                                if param_in == "path"
-                                                else CodeSeverity.CRITICAL,
+                                                severity=(
+                                                    CodeSeverity.WARNING
+                                                    if param_in == "path"
+                                                    else CodeSeverity.CRITICAL
+                                                ),
                                                 code_snippet=f"Method: {method.upper()}, Path: {path_key}, Parameter: {param_name} (in {param_in})",
                                             )
                                         )

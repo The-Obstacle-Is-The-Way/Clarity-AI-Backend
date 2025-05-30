@@ -2,7 +2,6 @@
 Role validation service for checking user permissions and access control.
 """
 
-
 from app.domain.entities.user import User
 from app.domain.enums.role import Role as UserRole
 

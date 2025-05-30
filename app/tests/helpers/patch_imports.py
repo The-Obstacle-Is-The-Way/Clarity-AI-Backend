@@ -4,6 +4,7 @@ Test helper module to patch imports that are problematic during test collection.
 This module allows us to safely skip certain imports during test collection
 to work around FastAPI response model validation issues.
 """
+
 import builtins
 import sys
 import types

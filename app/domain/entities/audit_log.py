@@ -63,9 +63,9 @@ class AuditLog(BaseModel):
             action=self.action,
             status=self.status,
             # IP addresses can be masked for privacy
-            ip_address=".".join(self.ip_address.split(".")[:2] + ["*", "*"])
-            if self.ip_address
-            else None,
+            ip_address=(
+                ".".join(self.ip_address.split(".")[:2] + ["*", "*"]) if self.ip_address else None
+            ),
             # Strip any potential PHI from details
             details={
                 k: v

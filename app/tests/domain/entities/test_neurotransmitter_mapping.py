@@ -4,6 +4,7 @@ Unit tests for the NeurotransmitterMapping entity and related functionality.
 These tests verify that the neurotransmitter mapping models behave correctly
 and perform calculations accurately.
 """
+
 import uuid
 
 import pytest

@@ -4,6 +4,7 @@ Unit tests for the TemporalNeurotransmitterService.
 These tests ensure the service correctly orchestrates interactions between
 domain entities, repositories, and external services.
 """
+
 import uuid
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
@@ -322,7 +323,9 @@ class TestTemporalNeurotransmitterService:
         pass
 
     @pytest.mark.asyncio
-    async def test_calculate_average_concentration_invalid_range(self, service, test_patient_id) -> None:
+    async def test_calculate_average_concentration_invalid_range(
+        self, service, test_patient_id
+    ) -> None:
         """Test average concentration calculation with an invalid time range."""
         pass
 
@@ -332,7 +335,9 @@ class TestTemporalNeurotransmitterService:
         pass
 
     @pytest.mark.asyncio
-    async def test_identify_trend_insufficient_data(self, service, mock_sequence_repository) -> None:
+    async def test_identify_trend_insufficient_data(
+        self, service, mock_sequence_repository
+    ) -> None:
         """Test trend identification when there isn't enough data."""
         pass
 
@@ -352,7 +357,9 @@ class TestTemporalNeurotransmitterService:
         pass
 
     @pytest.mark.asyncio
-    async def test_predict_future_concentration_no_data(self, service, mock_sequence_repository) -> None:
+    async def test_predict_future_concentration_no_data(
+        self, service, mock_sequence_repository
+    ) -> None:
         """Test prediction when there's not enough historical data."""
         pass
 

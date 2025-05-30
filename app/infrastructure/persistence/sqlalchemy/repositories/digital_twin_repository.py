@@ -49,7 +49,11 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
         """Convert SQLAlchemy model to domain entity."""
         return DigitalTwin(
             id=model.id if isinstance(model.id, UUID) else UUID(str(model.id)),
-            patient_id=model.patient_id if isinstance(model.patient_id, UUID) else UUID(str(model.patient_id)),
+            patient_id=(
+                model.patient_id
+                if isinstance(model.patient_id, UUID)
+                else UUID(str(model.patient_id))
+            ),
             created_at=model.created_at,
             last_updated=model.updated_at,  # Map model's updated_at
             version=model.version,

@@ -1,6 +1,7 @@
 """
 BrainRegion entity for Digital Twin domain.
 """
+
 from dataclasses import dataclass
 
 

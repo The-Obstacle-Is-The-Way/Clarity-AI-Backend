@@ -28,12 +28,15 @@ class TestTransformerTimeSeriesModel:
     @pytest.fixture
     def model(self):
         """Create a TransformerTimeSeriesModel with mocked internals."""
-        with patch(
-            "app.infrastructure.ml.symptom_forecasting.transformer_model.torch",
-            autospec=True,
-        ), patch(
-            "app.infrastructure.ml.symptom_forecasting.transformer_model.TransformerModel",
-            autospec=True,
+        with (
+            patch(
+                "app.infrastructure.ml.symptom_forecasting.transformer_model.torch",
+                autospec=True,
+            ),
+            patch(
+                "app.infrastructure.ml.symptom_forecasting.transformer_model.TransformerModel",
+                autospec=True,
+            ),
         ):
             model = SymptomTransformerModel(
                 model_path="test_model_path",
@@ -72,15 +75,19 @@ class TestTransformerTimeSeriesModel:
     async def test_initialize_loads_model(self) -> None:
         """Test that initialize loads the model correctly."""
         # Setup with correct nested patching
-        with patch(
-            "app.infrastructure.ml.symptom_forecasting.transformer_model.torch",
-            autospec=True,
-        ) as mock_torch, patch(
-            "app.infrastructure.ml.symptom_forecasting.transformer_model.TransformerModel",
-            autospec=True,
-        ), patch(
-            "app.infrastructure.ml.symptom_forecasting.transformer_model.os.path.exists",
-            return_value=True,
+        with (
+            patch(
+                "app.infrastructure.ml.symptom_forecasting.transformer_model.torch",
+                autospec=True,
+            ) as mock_torch,
+            patch(
+                "app.infrastructure.ml.symptom_forecasting.transformer_model.TransformerModel",
+                autospec=True,
+            ),
+            patch(
+                "app.infrastructure.ml.symptom_forecasting.transformer_model.os.path.exists",
+                return_value=True,
+            ),
         ):
             # Create model instance
             model = SymptomTransformerModel(model_path="test_model_path")
@@ -93,7 +100,9 @@ class TestTransformerTimeSeriesModel:
             await model.initialize()
 
             # Verify
-            mock_torch.load.assert_called_once_with("test_model_path", map_location=model.device, weights_only=True)
+            mock_torch.load.assert_called_once_with(
+                "test_model_path", map_location=model.device, weights_only=True
+            )
             assert model.is_initialized
             assert model._model is mock_loaded_model
 
@@ -101,15 +110,19 @@ class TestTransformerTimeSeriesModel:
     async def test_initialize_handles_missing_model(self) -> None:
         """Test that initialize handles missing model files gracefully."""
         # Correct indentation for the with block
-        with patch(
-            "app.infrastructure.ml.symptom_forecasting.transformer_model.torch",
-            autospec=True,
-        ) as mock_torch, patch(
-            "app.infrastructure.ml.symptom_forecasting.transformer_model.TransformerModel",
-            autospec=True,
-        ) as mock_transformer_cls, patch(
-            "app.infrastructure.ml.symptom_forecasting.transformer_model.os.path.exists",
-            return_value=False,
+        with (
+            patch(
+                "app.infrastructure.ml.symptom_forecasting.transformer_model.torch",
+                autospec=True,
+            ) as mock_torch,
+            patch(
+                "app.infrastructure.ml.symptom_forecasting.transformer_model.TransformerModel",
+                autospec=True,
+            ) as mock_transformer_cls,
+            patch(
+                "app.infrastructure.ml.symptom_forecasting.transformer_model.os.path.exists",
+                return_value=False,
+            ),
         ):
             model = SymptomTransformerModel(model_path="nonexistent_path")
             await model.initialize()

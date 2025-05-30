@@ -2,6 +2,7 @@
 Domain service interface for XGBoost prediction engine.
 Pure domain interface with no infrastructure dependencies.
 """
+
 from abc import ABC, abstractmethod
 from typing import Any
 from uuid import UUID

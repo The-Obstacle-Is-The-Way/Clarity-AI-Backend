@@ -95,10 +95,18 @@ class DirectSecurityTestRunner:
         print(f"Tests with errors: {test_results['errors']}")
 
         # Update overall counts
-        self.results["summary"]["total"] = int(self.results["summary"]["total"]) + int(test_results["total"])
-        self.results["summary"]["passed"] = int(self.results["summary"]["passed"]) + int(test_results["passed"])
-        self.results["summary"]["failed"] = int(self.results["summary"]["failed"]) + int(test_results["failed"])
-        self.results["summary"]["errors"] = int(self.results["summary"]["errors"]) + int(test_results["errors"])
+        self.results["summary"]["total"] = int(self.results["summary"]["total"]) + int(
+            test_results["total"]
+        )
+        self.results["summary"]["passed"] = int(self.results["summary"]["passed"]) + int(
+            test_results["passed"]
+        )
+        self.results["summary"]["failed"] = int(self.results["summary"]["failed"]) + int(
+            test_results["failed"]
+        )
+        self.results["summary"]["errors"] = int(self.results["summary"]["errors"]) + int(
+            test_results["errors"]
+        )
 
         # Store detailed results
         self.results["tests"][name] = {
@@ -170,14 +178,18 @@ class DirectSecurityTestRunner:
         # If we couldn't parse any tests, try the summary line
         if int(results["total"]) == 0:
             # Look for the summary line (e.g., "5 passed, 2 failed in 0.23s")
-            summary_pattern: str = r"(\d+) passed(, (\d+) failed)?(, (\d+) error)?(, (\d+) skipped)? in"
+            summary_pattern: str = (
+                r"(\d+) passed(, (\d+) failed)?(, (\d+) error)?(, (\d+) skipped)? in"
+            )
             match = re.search(summary_pattern, output)
             if match:
                 try:
                     results["passed"] = int(match.group(1) or 0)
                     results["failed"] = int(match.group(3) or 0)
                     results["errors"] = int(match.group(5) or 0)
-                    results["total"] = int(results["passed"]) + int(results["failed"]) + int(results["errors"])
+                    results["total"] = (
+                        int(results["passed"]) + int(results["failed"]) + int(results["errors"])
+                    )
                 except (ValueError, IndexError):
                     # If summary parsing fails, keep zeros
                     pass

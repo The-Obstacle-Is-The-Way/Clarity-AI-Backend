@@ -636,11 +636,9 @@ class MockDigitalTwinService(DigitalTwinInterface):  # Corrected base class
                     "date": date,
                     "hours": round(hours, 1),
                     "quality": round(quality, 2),
-                    "quality_label": "good"
-                    if quality > 0.6
-                    else "fair"
-                    if quality > 0.4
-                    else "poor",
+                    "quality_label": (
+                        "good" if quality > 0.6 else "fair" if quality > 0.4 else "poor"
+                    ),
                 }
             )
 
@@ -700,11 +698,11 @@ class MockDigitalTwinService(DigitalTwinInterface):  # Corrected base class
                 day_data["medications"][med] = {
                     "taken": adherence,
                     "scheduled_time": "08:00 AM" if med == "Medication A" else "08:00 PM",
-                    "actual_time": "08:15 AM"
-                    if adherence and med == "Medication A"
-                    else "08:10 PM"
-                    if adherence
-                    else None,
+                    "actual_time": (
+                        "08:15 AM"
+                        if adherence and med == "Medication A"
+                        else "08:10 PM" if adherence else None
+                    ),
                 }
 
             adherence_data.append(day_data)
@@ -721,11 +719,11 @@ class MockDigitalTwinService(DigitalTwinInterface):  # Corrected base class
             "data": {
                 "daily_values": adherence_data,
                 "adherence_rate": adherence_rate,
-                "adherence_label": "excellent"
-                if adherence_rate >= 90
-                else "good"
-                if adherence_rate >= 80
-                else "needs improvement",
+                "adherence_label": (
+                    "excellent"
+                    if adherence_rate >= 90
+                    else "good" if adherence_rate >= 80 else "needs improvement"
+                ),
                 "reported_side_effects": [
                     {
                         "medication": "Medication A",

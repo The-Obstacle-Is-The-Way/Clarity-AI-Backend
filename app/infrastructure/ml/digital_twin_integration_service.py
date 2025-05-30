@@ -30,7 +30,7 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
     """
     Service that integrates multiple ML microservices to provide comprehensive
     patient insights through a digital twin.
-    
+
     This class implements the IExtendedDigitalTwinIntegrationService interface from the domain layer.
     """
 
@@ -59,14 +59,14 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
         self.patient_repository = patient_repository
         self._digital_twins: dict[UUID, DigitalTwin] = {}  # Cache for digital twins
         logger.info("Digital Twin Integration Service initialized")
-        
+
     def _ensure_uuid(self, id_value: str | UUID | None) -> UUID | None:
         """
         Convert string ID to UUID if needed.
-        
+
         Args:
             id_value: ID value as string or UUID
-            
+
         Returns:
             UUID object if conversion successful, None otherwise
         """
@@ -89,10 +89,12 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
             "updated_at": twin.last_updated.isoformat(),
             "version": twin.version,
             "state": {
-                "last_sync_time": twin.state.last_sync_time.isoformat() if twin.state.last_sync_time else None,
+                "last_sync_time": (
+                    twin.state.last_sync_time.isoformat() if twin.state.last_sync_time else None
+                ),
                 "overall_risk_level": twin.state.overall_risk_level,
                 "dominant_symptoms": twin.state.dominant_symptoms,
-                "current_treatment_effectiveness": twin.state.current_treatment_effectiveness
+                "current_treatment_effectiveness": twin.state.current_treatment_effectiveness,
             },
             "configuration": {
                 "simulation_granularity_hours": twin.configuration.simulation_granularity_hours,
@@ -126,7 +128,7 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
                 return {
                     "success": True,
                     "digital_twin_id": existing_twin_data["id"],
-                    "message": "Digital twin already exists for this patient"
+                    "message": "Digital twin already exists for this patient",
                 }
 
             # Combine initial_data and model_configuration
@@ -144,19 +146,16 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
             )
             self._digital_twins[digital_twin.id] = digital_twin
             logger.info(f"Created digital twin {digital_twin.id} for patient {patient_id}")
-            
+
             return {
                 "success": True,
                 "digital_twin_id": str(digital_twin.id),
                 "created_at": digital_twin.created_at.isoformat(),
-                "patient_id": str(patient_id)
+                "patient_id": str(patient_id),
             }
         except Exception as e:
             logger.error(f"Error creating digital twin: {e}")
-            return {
-                "success": False,
-                "error": f"Error creating digital twin: {e!s}"
-            }
+            return {"success": False, "error": f"Error creating digital twin: {e!s}"}
 
     async def _get_twin_by_id(self, twin_id: UUID) -> DigitalTwin | None:
         """Internal method to get a digital twin by ID."""
@@ -220,7 +219,9 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
         logger.info(f"No digital twin found for patient {patient_id}")
         return None
 
-    async def update_digital_twin(self, patient_id: UUID, patient_data: dict[str, Any]) -> dict[str, Any]:
+    async def update_digital_twin(
+        self, patient_id: UUID, patient_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Update the Digital Twin with new patient data.
 
@@ -250,7 +251,7 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
             updates["clinical_data"] = patient_data["clinical_data"]
         if "biometric_data" in patient_data:
             updates["biometric_data"] = patient_data["biometric_data"]
-        
+
         # Apply updates to the digital twin
         for key, value in updates.items():
             if hasattr(digital_twin, key):
@@ -259,17 +260,15 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
         digital_twin.last_updated = datetime.now()
         self._digital_twins[digital_twin.id] = digital_twin
         logger.info(f"Updated digital twin for patient {patient_id}")
-        
+
         return {
             "success": True,
             "digital_twin_id": str(digital_twin.id),
-            "updated_at": digital_twin.last_updated.isoformat()
+            "updated_at": digital_twin.last_updated.isoformat(),
         }
 
     async def simulate_intervention(
-        self,
-        twin_id: UUID,
-        intervention: dict[str, Any]
+        self, twin_id: UUID, intervention: dict[str, Any]
     ) -> dict[str, Any]:
         """
         Simulate the effect of an intervention on a digital twin.
@@ -317,7 +316,7 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
 
                     # Extract the medication response from the prediction results
                     med_response = response.get("medication_predictions", {}).get(med_name, {})
-                    
+
                     result["projected_outcomes"] = {
                         "efficacy": med_response.get("efficacy", {"score": 0.0}),
                         "side_effects": med_response.get("side_effects", []),
@@ -408,8 +407,10 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
         if len(result) > 0:
             try:
                 # The recommendation_engine.generate_recommendations returns list[dict[str, Any]]
-                recommendations: list[dict[str, Any]] = await self.recommendation_engine.generate_recommendations(
-                    patient_id=patient_id, insights=result
+                recommendations: list[dict[str, Any]] = (
+                    await self.recommendation_engine.generate_recommendations(
+                        patient_id=patient_id, insights=result
+                    )
                 )
                 result["integrated_recommendations"] = recommendations
             except Exception as e:
@@ -482,19 +483,20 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
             ModelInferenceError: If the status cannot be retrieved
         """
         logger.info(f"Getting digital twin status for patient {patient_id}")
-        
+
         twin_data = await self.get_digital_twin(patient_id=patient_id)
         if not twin_data:
             logger.warning(f"No digital twin found for patient {patient_id}")
             return {
                 "exists": False,
                 "patient_id": str(patient_id),
-                "message": "No digital twin exists for this patient"
+                "message": "No digital twin exists for this patient",
             }
-            
+
         # Add the exists flag to the twin data
         twin_data["exists"] = True
         return twin_data
+
     async def get_historical_insights(
         self, patient_id: UUID, start_date: datetime, end_date: datetime
     ) -> dict[str, Any]:
@@ -513,44 +515,43 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
             ValidationError: If the input data is invalid
             ModelInferenceError: If the retrieval fails
         """
-        logger.info(f"Getting historical insights for patient {patient_id} from {start_date} to {end_date}")
-        
+        logger.info(
+            f"Getting historical insights for patient {patient_id} from {start_date} to {end_date}"
+        )
+
         # Validate date range
         if end_date < start_date:
             logger.error(f"Invalid date range: {start_date} to {end_date}")
             return {
                 "error": "Invalid date range: end date must be after start date",
-                "patient_id": str(patient_id)
+                "patient_id": str(patient_id),
             }
-            
+
         # Get the digital twin
         twin_data = await self.get_digital_twin(patient_id=patient_id)
         if not twin_data:
             logger.warning(f"No digital twin found for patient {patient_id}")
             return {
                 "error": "No digital twin exists for this patient",
-                "patient_id": str(patient_id)
+                "patient_id": str(patient_id),
             }
-            
+
         # In a real implementation, we would query historical data from a database
         # For this implementation, we'll return a placeholder
         return {
             "patient_id": str(patient_id),
-            "time_range": {
-                "start": start_date.isoformat(),
-                "end": end_date.isoformat()
-            },
+            "time_range": {"start": start_date.isoformat(), "end": end_date.isoformat()},
             "generated_at": datetime.now().isoformat(),
             "insights": [],  # Placeholder for historical insights
-            "message": "Historical insights functionality is not fully implemented"
+            "message": "Historical insights functionality is not fully implemented",
         }
-        
+
     async def generate_comprehensive_insights(
         self, patient_id: UUID, options: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
         Generate comprehensive patient insights by integrating multiple ML services.
-        
+
         Args:
             patient_id: The ID of the patient
             options: Options for controlling which insights to generate
@@ -559,24 +560,24 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
                 include_medication_predictions: Whether to include medication predictions
                 forecast_days: Number of days to forecast symptoms
                 biometric_lookback_days: Number of days to look back for biometric data
-        
+
         Returns:
             A dictionary containing comprehensive patient insights
         """
         options = options or {}
-            
+
         # Get patient data
         patient_data = await self._get_patient_data(patient_id)
-        
+
         # Initialize insights dictionary
         insights: dict[str, Any] = {
             "patient_id": str(patient_id),
             "generated_at": datetime.now().isoformat(),
         }
-        
+
         # Track any errors that occur
         errors: dict[str, str] = {}
-        
+
         # Generate symptom forecast if requested
         if options.get("include_symptom_forecast", True):
             try:
@@ -593,7 +594,7 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
                 errors["symptom_forecast"] = str(e)
                 # Explicitly ensure symptom_forecast is not in insights when there's an error
                 insights.pop("symptom_forecast", None)
-        
+
         # Generate biometric correlations if requested
         if options.get("include_biometric_correlations", True):
             try:
@@ -610,7 +611,7 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
                 errors["biometric_correlations"] = str(e)
                 # Explicitly ensure biometric_correlations is not in insights when there's an error
                 insights.pop("biometric_correlations", None)
-        
+
         # Generate medication predictions if requested
         if options.get("include_medication_predictions", True):
             try:
@@ -626,7 +627,7 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
                 errors["medication_predictions"] = str(e)
                 # Explicitly ensure medication_predictions is not in insights when there's an error
                 insights.pop("medication_predictions", None)
-        
+
         # Generate integrated recommendations
         try:
             recommendations = await self._generate_integrated_recommendations(insights)
@@ -636,14 +637,16 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
             errors["integrated_recommendations"] = str(e)
             # Explicitly ensure integrated_recommendations is not in insights when there's an error
             insights.pop("integrated_recommendations", None)
-        
+
         # Add errors to insights if any occurred
         if errors:
             insights["errors"] = errors
-        
+
         return insights
 
-    async def _generate_integrated_recommendations(self, insights: dict[str, Any]) -> list[dict[str, Any]]:
+    async def _generate_integrated_recommendations(
+        self, insights: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """
         Generate integrated recommendations based on combined insights.
 
@@ -780,7 +783,9 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
             if not patient:
                 # Ensure ValueError is raised when patient not found
                 raise ValueError(f"Patient not found: {patient_id}")
-            return patient if isinstance(patient, dict) else {"id": str(patient_id), "data": patient}
+            return (
+                patient if isinstance(patient, dict) else {"id": str(patient_id), "data": patient}
+            )
         except ValueError as ve:
             # Re-raise ValueError to ensure it propagates correctly
             logger.error(f"Patient not found: {ve}")
@@ -810,7 +815,9 @@ class DigitalTwinIntegrationService(IExtendedDigitalTwinIntegrationService):
             if not patient:
                 logger.warning(f"Patient not found: {patient_id}")
                 raise ValueError(f"Patient not found: {patient_id}")
-            return patient if isinstance(patient, dict) else {"id": str(patient_id), "data": patient}
+            return (
+                patient if isinstance(patient, dict) else {"id": str(patient_id), "data": patient}
+            )
         except Exception as e:
             logger.error(f"Error retrieving patient data: {e}")
             raise ValueError(f"Error retrieving patient data: {e!s}")

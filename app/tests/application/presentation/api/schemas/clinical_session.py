@@ -1,6 +1,7 @@
 """
 Pydantic schemas for Clinical Session API endpoints.
 """
+
 from datetime import datetime
 from typing import Any
 from uuid import UUID

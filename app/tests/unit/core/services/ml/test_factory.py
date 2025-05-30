@@ -88,12 +88,15 @@ class TestMLServiceFactory:
     def test_create_mentalllama_service_aws(self, factory) -> None:
         """Test creating AWS MentaLLaMA service."""
         # Corrected patch path for MentaLLaMA
-        with patch(
-            "app.infrastructure.ml.mentallama.service.MentaLLaMA.initialize"
-        ) as mock_initialize, patch(
-            "app.core.services.ml.factory.MLServiceFactory.create_phi_detection_service",
-            return_value=MagicMock(),
-        ) as mock_create_phi:
+        with (
+            patch(
+                "app.infrastructure.ml.mentallama.service.MentaLLaMA.initialize"
+            ) as mock_initialize,
+            patch(
+                "app.core.services.ml.factory.MLServiceFactory.create_phi_detection_service",
+                return_value=MagicMock(),
+            ) as mock_create_phi,
+        ):
             # Note: Assuming create_mentalllama_service exists and works as intended for now
             # This method seems to have been removed or refactored in factory.py earlier
             # If tests fail later, this might need adjustment based on factory's actual methods
@@ -111,12 +114,15 @@ class TestMLServiceFactory:
     def test_create_mentalllama_service_mock(self, factory) -> None:
         """Test creating mock MentaLLaMA service."""
         # Corrected patch path for MockMentaLLaMA
-        with patch(
-            "app.infrastructure.ml.mentallama.mock.MockMentaLLaMA.initialize"
-        ) as mock_initialize, patch(
-            "app.core.services.ml.factory.MLServiceFactory.create_phi_detection_service",
-            return_value=MagicMock(),
-        ) as mock_create_phi:
+        with (
+            patch(
+                "app.infrastructure.ml.mentallama.mock.MockMentaLLaMA.initialize"
+            ) as mock_initialize,
+            patch(
+                "app.core.services.ml.factory.MLServiceFactory.create_phi_detection_service",
+                return_value=MagicMock(),
+            ) as mock_create_phi,
+        ):
             # Similar note as above regarding create_mentalllama_service
             try:
                 service = factory.create_mentalllama_service("mock", True)
@@ -131,11 +137,14 @@ class TestMLServiceFactory:
     def test_create_mentalllama_service_without_phi(self, factory) -> None:
         """Test creating MentaLLaMA service without PHI detection."""
         # Corrected patch path for MentaLLaMA
-        with patch(
-            "app.infrastructure.ml.mentallama.service.MentaLLaMA.initialize"
-        ) as mock_initialize, patch(
-            "app.core.services.ml.factory.MLServiceFactory.create_phi_detection_service"
-        ) as mock_create_phi:
+        with (
+            patch(
+                "app.infrastructure.ml.mentallama.service.MentaLLaMA.initialize"
+            ) as mock_initialize,
+            patch(
+                "app.core.services.ml.factory.MLServiceFactory.create_phi_detection_service"
+            ) as mock_create_phi,
+        ):
             # Similar note as above regarding create_mentalllama_service
             try:
                 service = factory.create_mentalllama_service("aws", False)
@@ -155,11 +164,14 @@ class TestMLServiceFactory:
     def test_service_caching(self, factory) -> None:
         """Test that services are cached and reused."""
         # Corrected patch paths
-        with patch(
-            "app.infrastructure.ml.mentallama.service.MentaLLaMA.initialize"
-        ) as mock_mentalllama_init, patch(
-            "app.infrastructure.ml.phi.aws_comprehend_medical.AWSComprehendMedicalPHIDetection.initialize"
-        ) as mock_phi_init:
+        with (
+            patch(
+                "app.infrastructure.ml.mentallama.service.MentaLLaMA.initialize"
+            ) as mock_mentalllama_init,
+            patch(
+                "app.infrastructure.ml.phi.aws_comprehend_medical.AWSComprehendMedicalPHIDetection.initialize"
+            ) as mock_phi_init,
+        ):
             # Assuming get_mentalllama_service exists - skip if not
             try:
                 service1_mentalllama = factory.get_mentalllama_service("aws")
@@ -179,13 +191,18 @@ class TestMLServiceFactory:
     def test_shutdown(self, factory) -> None:
         """Test factory shutdown."""
         # Corrected patch paths
-        with patch("app.infrastructure.ml.mentallama.service.MentaLLaMA.initialize"), patch(
-            "app.infrastructure.ml.mentallama.service.MentaLLaMA.shutdown"
-        ) as mock_mentalllama_shutdown, patch(
-            "app.infrastructure.ml.phi.aws_comprehend_medical.AWSComprehendMedicalPHIDetection.initialize"
-        ), patch(
-            "app.infrastructure.ml.phi.aws_comprehend_medical.AWSComprehendMedicalPHIDetection.shutdown"
-        ) as mock_phi_shutdown:
+        with (
+            patch("app.infrastructure.ml.mentallama.service.MentaLLaMA.initialize"),
+            patch(
+                "app.infrastructure.ml.mentallama.service.MentaLLaMA.shutdown"
+            ) as mock_mentalllama_shutdown,
+            patch(
+                "app.infrastructure.ml.phi.aws_comprehend_medical.AWSComprehendMedicalPHIDetection.initialize"
+            ),
+            patch(
+                "app.infrastructure.ml.phi.aws_comprehend_medical.AWSComprehendMedicalPHIDetection.shutdown"
+            ) as mock_phi_shutdown,
+        ):
             # Assuming get_mentalllama_service exists - skip if not
             mentallama_service_exists = hasattr(factory, "get_mentalllama_service")
             if mentallama_service_exists:

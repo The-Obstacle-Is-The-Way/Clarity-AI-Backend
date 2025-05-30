@@ -1,4 +1,5 @@
 """Unit tests for the Ensemble Model for symptom forecasting."""
+
 import pytest
 
 pytest.skip("Skipping ensemble model tests (torch unsupported)", allow_module_level=True)

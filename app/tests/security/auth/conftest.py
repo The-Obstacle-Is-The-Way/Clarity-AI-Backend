@@ -3,6 +3,7 @@ Fixtures for authentication API tests.
 
 This module provides fixture functions for testing authentication endpoints.
 """
+
 import uuid
 from collections.abc import AsyncGenerator, Generator
 from contextlib import asynccontextmanager
@@ -143,11 +144,14 @@ def jwt_service_patch(test_settings) -> Generator:
         The patch context
     """
     # Create a patched JWTService class
-    with patch(
-        "app.infrastructure.security.jwt.jwt_service.IJwtService.create_access_token"
-    ) as mock_create_access_token, patch(
-        "app.infrastructure.security.jwt.jwt_service.IJwtService.create_refresh_token"
-    ) as mock_create_refresh_token:
+    with (
+        patch(
+            "app.infrastructure.security.jwt.jwt_service.IJwtService.create_access_token"
+        ) as mock_create_access_token,
+        patch(
+            "app.infrastructure.security.jwt.jwt_service.IJwtService.create_refresh_token"
+        ) as mock_create_refresh_token,
+    ):
         # Configure mock methods
         mock_create_access_token.return_value = "test_access_token"
         mock_create_refresh_token.return_value = "test_refresh_token"

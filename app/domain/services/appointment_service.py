@@ -68,9 +68,7 @@ class AppointmentService:
         self.buffer_between_appointments = buffer_between_appointments
 
     async def get_appointment(
-        self, 
-        appointment_id: UUID, 
-        context: dict[str, Any] | None = None
+        self, appointment_id: UUID, context: dict[str, Any] | None = None
     ) -> Appointment:
         """
         Get an appointment by ID.
@@ -321,7 +319,7 @@ class AppointmentService:
         return await self.appointment_repository.save(appointment)
 
     async def confirm_appointment(
-        self, 
+        self,
         appointment_id: UUID,
         context: dict[str, Any] | None = None,
     ) -> Appointment:
@@ -349,7 +347,7 @@ class AppointmentService:
         return await self.appointment_repository.save(appointment)
 
     async def check_in_appointment(
-        self, 
+        self,
         appointment_id: UUID,
         context: dict[str, Any] | None = None,
     ) -> Appointment:
@@ -377,7 +375,7 @@ class AppointmentService:
         return await self.appointment_repository.save(appointment)
 
     async def start_appointment(
-        self, 
+        self,
         appointment_id: UUID,
         context: dict[str, Any] | None = None,
     ) -> Appointment:
@@ -405,7 +403,7 @@ class AppointmentService:
         return await self.appointment_repository.save(appointment)
 
     async def complete_appointment(
-        self, 
+        self,
         appointment_id: UUID,
         context: dict[str, Any] | None = None,
     ) -> Appointment:
@@ -433,7 +431,7 @@ class AppointmentService:
         return await self.appointment_repository.save(appointment)
 
     async def mark_no_show(
-        self, 
+        self,
         appointment_id: UUID,
         context: dict[str, Any] | None = None,
     ) -> Appointment:
@@ -539,7 +537,7 @@ class AppointmentService:
         return follow_up_appointment
 
     async def send_reminder(
-        self, 
+        self,
         appointment_id: UUID,
         context: dict[str, Any] | None = None,
     ) -> Appointment:
@@ -566,8 +564,8 @@ class AppointmentService:
         return await self.appointment_repository.save(appointment)
 
     async def update_notes(
-        self, 
-        appointment_id: UUID, 
+        self,
+        appointment_id: UUID,
         notes: str,
         context: dict[str, Any] | None = None,
     ) -> Appointment:

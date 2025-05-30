@@ -6,7 +6,7 @@ which provides actigraphy analysis and embedding generation capabilities.
 
 This follows clean architecture principles with:
 - Interface Segregation Principle: Properly separated methods for each responsibility
-- Dependency Inversion: Clients depend on this abstract interface not implementations 
+- Dependency Inversion: Clients depend on this abstract interface not implementations
 - Single Responsibility: Each method has one clear purpose
 """
 

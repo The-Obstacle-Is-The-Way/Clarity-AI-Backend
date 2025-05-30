@@ -1,7 +1,7 @@
 """
 Repository for HIPAA-compliant audit logs.
 
-This repository handles database operations for audit logs, providing a clean 
+This repository handles database operations for audit logs, providing a clean
 abstraction over the persistence layer for the audit logging system.
 """
 

@@ -4,6 +4,7 @@ Factory for creating enhanced mock Digital Twin components.
 This factory is responsible for creating and wiring up the enhanced mock implementations
 of the Digital Twin core service and its dependencies (MentalLLaMA, XGBoost, PAT).
 """
+
 import logging
 from uuid import UUID
 
@@ -296,14 +297,12 @@ class EnhancedMockDigitalTwinFactory:
     """
 
     @staticmethod
-    def create_enhanced_mock_services() -> (
-        tuple[
-            EnhancedDigitalTwinCoreService,
-            EnhancedMentalLLaMAService,
-            EnhancedXGBoostService,
-            EnhancedPATService,
-        ]
-    ):
+    def create_enhanced_mock_services() -> tuple[
+        EnhancedDigitalTwinCoreService,
+        EnhancedMentalLLaMAService,
+        EnhancedXGBoostService,
+        EnhancedPATService,
+    ]:
         """
         Create all enhanced mock services for the Digital Twin.
 

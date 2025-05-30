@@ -4,6 +4,7 @@ Tests for the neurotransmitter mapping methods in the MockEnhancedDigitalTwinCor
 These tests verify that the implementation of neurotransmitter mapping in the mock service
 behaves correctly, handles errors appropriately, and follows the expected patterns.
 """
+
 import uuid
 from datetime import datetime, timedelta
 from uuid import UUID
@@ -80,7 +81,9 @@ async def test_initialize_neurotransmitter_mapping_patient_not_found(mock_servic
 
 
 @pytest.mark.asyncio
-async def test_initialize_neurotransmitter_mapping_with_default(mock_service, test_patient_id) -> None:
+async def test_initialize_neurotransmitter_mapping_with_default(
+    mock_service, test_patient_id
+) -> None:
     """Test initializing a neurotransmitter mapping with default values."""
     # Initialize with default mapping
     mapping = await mock_service.initialize_neurotransmitter_mapping(
@@ -98,7 +101,9 @@ async def test_initialize_neurotransmitter_mapping_with_default(mock_service, te
 
 
 @pytest.mark.asyncio
-async def test_initialize_neurotransmitter_mapping_with_custom(mock_service, test_patient_id) -> None:
+async def test_initialize_neurotransmitter_mapping_with_custom(
+    mock_service, test_patient_id
+) -> None:
     """Test initializing a neurotransmitter mapping with a custom mapping."""
     # Create a custom mapping
     custom_mapping = NeurotransmitterMapping()
@@ -148,7 +153,9 @@ async def test_initialize_neurotransmitter_mapping_without_default_or_custom(
 
 
 @pytest.mark.asyncio
-async def test_update_receptor_profiles_creates_mapping_if_needed(mock_service, test_patient_id) -> None:
+async def test_update_receptor_profiles_creates_mapping_if_needed(
+    mock_service, test_patient_id
+) -> None:
     """Test that update_receptor_profiles creates a mapping if one doesn't exist."""
     # Define a profile
     profile = ReceptorProfile(
@@ -174,7 +181,9 @@ async def test_update_receptor_profiles_creates_mapping_if_needed(mock_service, 
 
 
 @pytest.mark.asyncio
-async def test_update_receptor_profiles_updates_existing_mapping(mock_service, test_patient_id) -> None:
+async def test_update_receptor_profiles_updates_existing_mapping(
+    mock_service, test_patient_id
+) -> None:
     """Test that update_receptor_profiles updates an existing mapping."""
     # Initialize a mapping first
     await mock_service.initialize_neurotransmitter_mapping(
@@ -394,7 +403,9 @@ async def test_simulate_neurotransmitter_cascade_creates_mapping_if_needed(
 
 
 @pytest.mark.asyncio
-async def test_simulate_neurotransmitter_cascade_with_parameters(mock_service, test_patient_id) -> None:
+async def test_simulate_neurotransmitter_cascade_with_parameters(
+    mock_service, test_patient_id
+) -> None:
     """Test simulating neurotransmitter cascade with various parameters."""
     # Initialize mapping first
     await mock_service.initialize_neurotransmitter_mapping(

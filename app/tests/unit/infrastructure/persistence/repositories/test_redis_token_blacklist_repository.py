@@ -116,7 +116,9 @@ class TestRedisTokenBlacklistRepository:
         mock_redis_service.get.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_is_blacklisted_found(self, token_blacklist_repo, mock_redis_service, mock_token) -> None:
+    async def test_is_blacklisted_found(
+        self, token_blacklist_repo, mock_redis_service, mock_token
+    ) -> None:
         """Test checking a token that is blacklisted."""
         # Arrange
         mock_redis_service.get.return_value = "mock_jti"
@@ -129,7 +131,9 @@ class TestRedisTokenBlacklistRepository:
         mock_redis_service.get.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_is_jti_blacklisted(self, token_blacklist_repo, mock_redis_service, mock_jti) -> None:
+    async def test_is_jti_blacklisted(
+        self, token_blacklist_repo, mock_redis_service, mock_jti
+    ) -> None:
         """Test checking if JTI is blacklisted."""
         # Arrange
         mock_redis_service.get.return_value = None
@@ -143,7 +147,9 @@ class TestRedisTokenBlacklistRepository:
         assert mock_jti in str(mock_redis_service.get.call_args)
 
     @pytest.mark.asyncio
-    async def test_blacklist_session(self, token_blacklist_repo, mock_redis_service, mock_jti) -> None:
+    async def test_blacklist_session(
+        self, token_blacklist_repo, mock_redis_service, mock_jti
+    ) -> None:
         """Test blacklisting a session."""
         # Arrange
         session_id = "test-session-123"

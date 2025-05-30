@@ -3,6 +3,7 @@
 This module tests that the TypeDecorators (EncryptedString, EncryptedText, EncryptedJSON)
 used on the PatientModel correctly interact with the EncryptionService.
 """
+
 import json
 import logging
 import uuid  # Added import for uuid

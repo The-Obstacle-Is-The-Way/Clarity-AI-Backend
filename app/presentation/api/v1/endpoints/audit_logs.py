@@ -129,9 +129,9 @@ async def search_audit_logs(
         status="success",
         details={
             "filters": search_request.filters,
-            "start_date": search_request.start_date.isoformat()
-            if search_request.start_date
-            else None,
+            "start_date": (
+                search_request.start_date.isoformat() if search_request.start_date else None
+            ),
             "end_date": search_request.end_date.isoformat() if search_request.end_date else None,
             "limit": search_request.limit,
             "offset": search_request.offset,

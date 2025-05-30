@@ -238,7 +238,9 @@ class TestJWTAuthentication:
         # assert payload.exp > int(time.time()), "Expiration time should be in the future"
 
     @pytest.mark.asyncio
-    async def test_token_validation(self, jwt_service: JWTService, token_factory, monkeypatch) -> None:
+    async def test_token_validation(
+        self, jwt_service: JWTService, token_factory, monkeypatch
+    ) -> None:
         """Verify valid tokens and rejection of invalid ones."""
         # Test valid token
         valid_token = await token_factory(user_type="admin")
@@ -441,7 +443,9 @@ class TestJWTAuthentication:
         ), "Error message should mention permissions"
 
     @pytest.mark.asyncio
-    async def test_refresh_token(self, jwt_service: JWTService, client: TestClient, token_factory) -> None:
+    async def test_refresh_token(
+        self, jwt_service: JWTService, client: TestClient, token_factory
+    ) -> None:
         """Test refresh token functionality.
         Now updated to work with our test client and verify_refresh_token implementation.
         """

@@ -21,14 +21,14 @@ class TestXGBoostSymptomModel:
     def model(self):
         """Create a XGBoostSymptomModel with mocked internals."""
         # Mock the xgboost library and os.path.exists to prevent FileNotFoundError
-        with patch(
-            "app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb"
-        ), patch(
-            "app.infrastructure.ml.symptom_forecasting.xgboost_model.os.path.exists",
-            return_value=True,
-        ), patch(
-            "app.infrastructure.ml.symptom_forecasting.xgboost_model.joblib"
-        ) as mock_joblib:
+        with (
+            patch("app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb"),
+            patch(
+                "app.infrastructure.ml.symptom_forecasting.xgboost_model.os.path.exists",
+                return_value=True,
+            ),
+            patch("app.infrastructure.ml.symptom_forecasting.xgboost_model.joblib") as mock_joblib,
+        ):
             # Mock the joblib.load return value to simulate loading a model
             mock_model = MagicMock()
             mock_joblib.load.return_value = {
@@ -128,9 +128,7 @@ class TestXGBoostSymptomModel:
         horizon = 3
 
         # Mock the internal dmatrix and predict function
-        with patch(
-            "app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb.DMatrix"
-        ):
+        with patch("app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb.DMatrix"):
             # Setup the mock prediction
             # Correct np.array definition
             model.models["depression_score"].predict.return_value = np.array([4.2, 3.8, 4.5])

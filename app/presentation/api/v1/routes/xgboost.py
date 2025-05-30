@@ -1,7 +1,7 @@
 """
 XGBoost service routes - Legacy compatibility module.
 
-This module provides a bridge between the legacy API routes and 
+This module provides a bridge between the legacy API routes and
 the clean architecture implementation. It redirects requests to
 the new presentation layer endpoints following SOLID principles.
 """
@@ -422,9 +422,9 @@ async def predict_risk(
             visualization_data=prediction_result.get("visualization_data", {}),
             # Use the extracted feature_importance
             feature_importance=feature_importance,
-            explainability=prediction_result.get("explainability", {})
-            if include_explainability
-            else None,
+            explainability=(
+                prediction_result.get("explainability", {}) if include_explainability else None
+            ),
         )
 
         # DIAGNOSTIC: Log response object

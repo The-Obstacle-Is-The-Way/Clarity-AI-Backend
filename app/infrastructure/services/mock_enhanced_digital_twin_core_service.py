@@ -4,6 +4,7 @@ Mock implementation of the Enhanced Digital Twin Core Service.
 Provides realistic mock data for testing enhanced Digital Twin functionality.
 Follows SOLID principles with proper dependency injection and type safety.
 """
+
 import asyncio
 import logging
 import random
@@ -391,11 +392,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             "neurotransmitter_mapping.initialized",
             {
                 "patient_id": str(patient_id),
-                "mapping_type": "default"
-                if use_default_mapping
-                else "custom"
-                if custom_mapping
-                else "empty",
+                "mapping_type": (
+                    "default" if use_default_mapping else "custom" if custom_mapping else "empty"
+                ),
             },
             patient_id,
         )
@@ -492,9 +491,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         for insight_type in insight_types:
             insights.append(
                 {
-                    "type": insight_type.value
-                    if hasattr(insight_type, "value")
-                    else str(insight_type),
+                    "type": (
+                        insight_type.value if hasattr(insight_type, "value") else str(insight_type)
+                    ),
                     "description": f"Mock insight for {insight_type}",
                     "significance": random.choice(
                         [
@@ -785,9 +784,11 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             effects[region] = {
                 "net_effect": random.uniform(0.3, 0.8),
                 "confidence": random.uniform(0.7, 0.9),
-                "receptor_types": ["5HT1A", "5HT2A"]
-                if neurotransmitter == Neurotransmitter.SEROTONIN
-                else ["D1", "D2"],
+                "receptor_types": (
+                    ["5HT1A", "5HT2A"]
+                    if neurotransmitter == Neurotransmitter.SEROTONIN
+                    else ["D1", "D2"]
+                ),
                 "receptor_count": random.randint(
                     500, 1000
                 ),  # FIXED: Added missing receptor_count field
@@ -903,7 +904,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         self.event_subscribers.append(callback)
         return uuid.uuid4()
 
-    async def _publish_event(self, event_type: str, data: dict, patient_id: UUID | None = None) -> None:
+    async def _publish_event(
+        self, event_type: str, data: dict, patient_id: UUID | None = None
+    ) -> None:
         """Publish an event to all subscribers."""
         # FIXED: Call subscribers with correct signature (event_type, event_data, source, patient_id)
         for callback in self.event_subscribers:

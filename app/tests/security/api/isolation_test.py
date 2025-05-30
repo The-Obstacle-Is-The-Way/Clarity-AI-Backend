@@ -1,6 +1,6 @@
 """Isolation test for error masking.
 
-This module tests error masking functionality in isolation, 
+This module tests error masking functionality in isolation,
 completely bypassing the middleware chain issues.
 """
 

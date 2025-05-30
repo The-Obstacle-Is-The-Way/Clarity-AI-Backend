@@ -41,6 +41,7 @@ class TokenPayload(BaseModel):
 
     JWT claims spec: https://tools.ietf.org/html/rfc7519#section-4.1
     """
+
     # Required JWT claims (RFC 7519)
     iss: str | None = None  # Issuer
     subject: str | None = Field(None, alias="sub")  # Subject
@@ -126,7 +127,7 @@ class JWTServiceImpl(IJwtService):
         # Determine expiration time
         expires_minutes = expires_delta_minutes or self.access_token_expire_minutes
         expires_delta = timedelta(minutes=expires_minutes)
-        
+
         # Calculate expiration timestamp
         now = datetime.now(timezone.utc)
         expires_at = now + expires_delta
@@ -151,18 +152,18 @@ class JWTServiceImpl(IJwtService):
         return self._create_token(claims)
 
     async def create_refresh_token(
-        self, 
-        user_id: str | UUID, 
-        expires_delta_minutes: int | None = None
+        self, user_id: str | UUID, expires_delta_minutes: int | None = None
     ) -> str:
         """Create a JWT refresh token."""
         # Convert minutes to days or use default (ensure float for timedelta)
         expires_days: float = float(self.refresh_token_expire_days)
         if expires_delta_minutes is not None:
-            expires_days = expires_delta_minutes / (24 * 60)  # Convert to days (float for timedelta)
-        
+            expires_days = expires_delta_minutes / (
+                24 * 60
+            )  # Convert to days (float for timedelta)
+
         expires_delta = timedelta(days=expires_days)
-        
+
         # Calculate expiration timestamp
         now = datetime.now(timezone.utc)
         expires_at = now + expires_delta
@@ -200,7 +201,7 @@ class JWTServiceImpl(IJwtService):
             # Convert to structured JWTPayload
             payload_dict = self._extract_payload_dict(payload)
             jwt_payload = payload_from_dict(payload_dict)
-            
+
             return jwt_payload
 
         except TokenBlacklistedException:
@@ -217,11 +218,8 @@ class JWTServiceImpl(IJwtService):
 
             # Verify it's a refresh token
             token_type = payload.get("type")
-            is_refresh = (
-                token_type == TokenType.REFRESH.value or
-                payload.get("refresh") is True
-            )
-            
+            is_refresh = token_type == TokenType.REFRESH.value or payload.get("refresh") is True
+
             if not is_refresh:
                 raise InvalidTokenError("Token is not a refresh token")
 
@@ -238,17 +236,14 @@ class JWTServiceImpl(IJwtService):
         try:
             # Verify the refresh token
             payload = self.verify_refresh_token(refresh_token)
-            
+
             # Extract user ID
             user_id = payload.sub
             if not user_id:
                 raise InvalidTokenError("Refresh token missing user ID")
 
             # Create new access token with same roles
-            return await self.create_access_token(
-                user_id=user_id,
-                roles=payload.roles
-            )
+            return await self.create_access_token(user_id=user_id, roles=payload.roles)
 
         except Exception as e:
             logger.error(f"Error refreshing access token: {e}")
@@ -260,21 +255,19 @@ class JWTServiceImpl(IJwtService):
             # Decode token to get JTI
             payload = self._decode_token(token, verify_exp=False)
             jti = payload.get("jti")
-            
+
             if not jti:
                 jti = str(uuid4())  # Generate JTI if missing
 
             # Add to blacklist repository if available
             if self.token_blacklist_repository:
-                await self.token_blacklist_repository.add_to_blacklist(
-                    jti, expires_at
-                )
+                await self.token_blacklist_repository.add_to_blacklist(jti, expires_at)
 
             # Add to in-memory blacklist
             self._token_blacklist[jti] = {
                 "blacklisted_at": datetime.now(timezone.utc).isoformat(),
                 "expires_at": expires_at.isoformat(),
-                "reason": "Explicitly blacklisted"
+                "reason": "Explicitly blacklisted",
             }
 
         except Exception as e:
@@ -287,7 +280,7 @@ class JWTServiceImpl(IJwtService):
             # Decode token to get JTI
             payload = self._decode_token(token, verify_exp=False)
             jti = payload.get("jti")
-            
+
             if not jti:
                 return False
 
@@ -302,13 +295,13 @@ class JWTServiceImpl(IJwtService):
         try:
             payload = self._decode_token(token)
             subject = payload.get("sub")
-            
+
             if not subject:
                 raise InvalidTokenError("Token does not contain identity")
 
             # Ensure subject is a string for proper typing
             subject_str = str(subject)
-            
+
             # Try to return as UUID if possible, otherwise as string
             try:
                 return UUID(subject_str)
@@ -368,7 +361,9 @@ class JWTServiceImpl(IJwtService):
         """
         try:
             payload = self._decode_token(token, verify_exp=False)
-            exp_ts = payload.get("exp", int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp()))
+            exp_ts = payload.get(
+                "exp", int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp())
+            )
             await self.blacklist_token(token, datetime.fromtimestamp(exp_ts, tz=timezone.utc))  # type: ignore[arg-type]
             return True
         except Exception as exc:
@@ -433,7 +428,18 @@ class JWTServiceImpl(IJwtService):
                         token_data[key] = str(value)
                 else:
                     # Add non-standard claims to custom_fields
-                    standard_claims = ["iss", "sub", "aud", "exp", "nbf", "iat", "jti", "type", "roles", "refresh"]
+                    standard_claims = [
+                        "iss",
+                        "sub",
+                        "aud",
+                        "exp",
+                        "nbf",
+                        "iat",
+                        "jti",
+                        "type",
+                        "roles",
+                        "refresh",
+                    ]
                     if key not in standard_claims:
                         custom_fields[key] = value
 
@@ -456,7 +462,7 @@ class JWTServiceImpl(IJwtService):
     def _extract_payload_dict(self, payload: TokenPayload) -> dict[str, Any]:
         """Extract payload data as dictionary for type conversion."""
         payload_dict = {}
-        
+
         if hasattr(payload, "model_dump"):
             payload_dict = payload.model_dump()
         elif hasattr(payload, "__dict__"):
@@ -465,13 +471,17 @@ class JWTServiceImpl(IJwtService):
             payload_dict = {}
 
         # Ensure required fields
-        payload_dict.setdefault("sub", str(payload.subject) if hasattr(payload, "subject") else "unknown")
+        payload_dict.setdefault(
+            "sub", str(payload.subject) if hasattr(payload, "subject") else "unknown"
+        )
         payload_dict.setdefault("iat", int(datetime.now(timezone.utc).timestamp()))
-        payload_dict.setdefault("exp", int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp()))
+        payload_dict.setdefault(
+            "exp", int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp())
+        )
         payload_dict.setdefault("jti", str(uuid4()))
         payload_dict.setdefault("roles", [])
         payload_dict.setdefault("custom_fields", {})
-        
+
         return payload_dict
 
     async def _is_token_blacklisted(self, jti: str) -> bool:
@@ -497,14 +507,22 @@ def get_jwt_service(
     """Dependency injection factory for JWT service."""
     # Extract secret key from settings
     secret_key = None
-    
+
     if hasattr(settings, "JWT_SECRET_KEY"):
         jwt_secret = settings.JWT_SECRET_KEY
-        secret_key = jwt_secret.get_secret_value() if hasattr(jwt_secret, "get_secret_value") else str(jwt_secret)
+        secret_key = (
+            jwt_secret.get_secret_value()
+            if hasattr(jwt_secret, "get_secret_value")
+            else str(jwt_secret)
+        )
     elif hasattr(settings, "SECRET_KEY"):
         secret_key_obj = settings.SECRET_KEY
-        secret_key = secret_key_obj.get_secret_value() if hasattr(secret_key_obj, "get_secret_value") else str(secret_key_obj)
-    
+        secret_key = (
+            secret_key_obj.get_secret_value()
+            if hasattr(secret_key_obj, "get_secret_value")
+            else str(secret_key_obj)
+        )
+
     if not secret_key:
         secret_key = "default-insecure-secret-key-for-testing-only"
         logger.warning("Using insecure default JWT secret key!")

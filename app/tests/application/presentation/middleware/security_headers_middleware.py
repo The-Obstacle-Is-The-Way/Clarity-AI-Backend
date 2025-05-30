@@ -1,10 +1,9 @@
 """
 Security Headers Middleware for FastAPI applications.
 
-This middleware adds standard security headers to HTTP responses to protect 
+This middleware adds standard security headers to HTTP responses to protect
 against common web vulnerabilities like XSS, clickjacking, and MIME sniffing.
 """
-
 
 from fastapi import FastAPI, Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -97,9 +96,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # Apply HSTS header only on HTTPS connections (except in local development)
         if self.settings.ENVIRONMENT != "development" and request.url.scheme == "https":
-            response.headers[
-                "Strict-Transport-Security"
-            ] = f"max-age={self.hsts_max_age}; includeSubDomains; preload"
+            response.headers["Strict-Transport-Security"] = (
+                f"max-age={self.hsts_max_age}; includeSubDomains; preload"
+            )
 
         # Special handling for API responses
         if request.url.path.startswith("/api/"):

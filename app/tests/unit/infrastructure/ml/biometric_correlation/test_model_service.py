@@ -176,7 +176,9 @@ class TestBiometricCorrelationService:
             assert "action" in insight
 
     @pytest.mark.asyncio
-    async def test_analyze_correlations_empty_data(self, service, sample_patient_id) -> None:  # Added async
+    async def test_analyze_correlations_empty_data(
+        self, service, sample_patient_id
+    ) -> None:  # Added async
         """Test that analyze_correlations handles empty biometric data gracefully."""
         # Setup
         empty_data = {}

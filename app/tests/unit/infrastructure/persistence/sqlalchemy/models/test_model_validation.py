@@ -4,6 +4,7 @@ User Model Validation Tests
 This test suite validates the proper consolidation of User model representations
 across domain, persistence, and legacy layers to ensure clean architecture alignment.
 """
+
 import uuid
 
 # Import our models

@@ -2,6 +2,7 @@
 Domain entities for the Digital Twin core component.
 Pure domain models with no external dependencies.
 """
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum

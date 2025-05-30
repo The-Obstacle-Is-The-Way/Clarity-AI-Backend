@@ -115,7 +115,9 @@ class TestAWSComprehendMedicalPHIDetection:
 
         assert not service.is_healthy()
 
-    def test_detect_phi_with_phi(self, phi_detection_service, mock_comprehend_response_with_phi) -> None:
+    def test_detect_phi_with_phi(
+        self, phi_detection_service, mock_comprehend_response_with_phi
+    ) -> None:
         """Test PHI detection with text containing PHI."""
         # Configure the mock service to return the sample response
         phi_detection_service._comprehend_medical_service.detect_phi.return_value = (
@@ -177,7 +179,9 @@ class TestAWSComprehendMedicalPHIDetection:
         with pytest.raises(ServiceUnavailableError):
             phi_detection_service.detect_phi("Patient is John Doe")
 
-    def test_redact_phi_with_phi(self, phi_detection_service, mock_comprehend_response_with_phi) -> None:
+    def test_redact_phi_with_phi(
+        self, phi_detection_service, mock_comprehend_response_with_phi
+    ) -> None:
         """Test PHI redaction with text containing PHI."""
         # Configure the mock service to return the sample response
         phi_detection_service._comprehend_medical_service.detect_phi.return_value = (

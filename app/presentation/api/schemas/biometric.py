@@ -79,7 +79,9 @@ class BiometricBatchItem(BiometricCreateRequest):
 class BiometricBatchUploadRequest(BaseModelConfig):
     """Request schema for batch uploading multiple biometric records."""
 
-    records: list[BiometricBatchItem] = Field(..., description="List of biometric records to upload")
+    records: list[BiometricBatchItem] = Field(
+        ..., description="List of biometric records to upload"
+    )
 
     @field_validator("records")
     @classmethod

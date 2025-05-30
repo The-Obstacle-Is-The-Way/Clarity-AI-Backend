@@ -80,12 +80,12 @@ class MessageNotFoundException(SecureMessagingException):
 
 class EncryptionServiceProtocol(Protocol):
     """Protocol for encryption service dependencies."""
-    
+
     def encrypt_file(self, data: str) -> str: ...
     def decrypt_file(self, encrypted_data: str) -> str: ...
     def encrypt(self, data: str) -> str: ...
     def decrypt(self, encrypted_data: str) -> str: ...
-    
+
     # Allow dynamic field encryption/decryption methods
     encrypt_field: Callable[[str], str]
     decrypt_field: Callable[[str], str]
@@ -93,7 +93,7 @@ class EncryptionServiceProtocol(Protocol):
 
 class MessageRepositoryProtocol(Protocol):
     """Protocol for message repository dependencies."""
-    
+
     async def save(self, message: dict[str, Any]) -> dict[str, Any]: ...
     async def get_by_id(self, message_id: str) -> dict[str, Any] | None: ...
 
@@ -178,10 +178,12 @@ class SecureMessagingService:
             loaded_public_key = serialization.load_pem_public_key(
                 recipient_public_key, backend=default_backend()
             )
-            
+
             # Ensure we have an RSA public key for encryption
             if not isinstance(loaded_public_key, rsa.RSAPublicKey):
-                raise MessageEncryptionException("Only RSA public keys are supported for encryption")
+                raise MessageEncryptionException(
+                    "Only RSA public keys are supported for encryption"
+                )
 
             # Encrypt the symmetric key
             encrypted_key = loaded_public_key.encrypt(
@@ -219,8 +221,10 @@ class SecureMessagingService:
 
             # Decrypt the symmetric key - ensure we have an RSA key
             if not isinstance(key, rsa.RSAPrivateKey):
-                raise MessageDecryptionException("Invalid key type for decryption. Expected RSA private key.")
-                
+                raise MessageDecryptionException(
+                    "Invalid key type for decryption. Expected RSA private key."
+                )
+
             symmetric_key = key.decrypt(
                 encrypted_key,
                 padding.OAEP(
@@ -413,7 +417,9 @@ class SecureMessagingService:
 
         return message
 
-    async def send_message(self, message: dict[str, Any], message_repository: MessageRepositoryProtocol) -> dict[str, Any]:
+    async def send_message(
+        self, message: dict[str, Any], message_repository: MessageRepositoryProtocol
+    ) -> dict[str, Any]:
         """
         Send a message.
 
@@ -438,7 +444,9 @@ class SecureMessagingService:
         except Exception as e:
             raise MessageSendException(f"Failed to send message: {e!s}")
 
-    async def mark_as_delivered(self, message_id: str, message_repository: MessageRepositoryProtocol) -> dict[str, Any]:
+    async def mark_as_delivered(
+        self, message_id: str, message_repository: MessageRepositoryProtocol
+    ) -> dict[str, Any]:
         """
         Mark a message as delivered.
 
@@ -471,7 +479,9 @@ class SecureMessagingService:
         except Exception as e:
             raise SecureMessagingException(f"Failed to mark message as delivered: {e!s}")
 
-    async def mark_as_read(self, message_id: str, message_repository: MessageRepositoryProtocol) -> dict[str, Any]:
+    async def mark_as_read(
+        self, message_id: str, message_repository: MessageRepositoryProtocol
+    ) -> dict[str, Any]:
         """
         Mark a message as read.
 

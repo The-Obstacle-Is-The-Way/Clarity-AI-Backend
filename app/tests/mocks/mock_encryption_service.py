@@ -162,11 +162,15 @@ class MockEncryptionService(BaseEncryptionService):
                 # Handle lists - encrypt each item if it's a string or dict
                 elif isinstance(result[key], list):
                     result[key] = [
-                        self.encrypt_dict(item)
-                        if isinstance(item, dict)
-                        else self.encrypt(json.dumps(item))
-                        if not isinstance(item, str | bytes)
-                        else self.encrypt(item)
+                        (
+                            self.encrypt_dict(item)
+                            if isinstance(item, dict)
+                            else (
+                                self.encrypt(json.dumps(item))
+                                if not isinstance(item, str | bytes)
+                                else self.encrypt(item)
+                            )
+                        )
                         for item in result[key]
                     ]
                 # Handle simple values - convert to string first if not already
@@ -202,11 +206,15 @@ class MockEncryptionService(BaseEncryptionService):
                 # Handle lists - decrypt each item if it looks encrypted
                 elif isinstance(result[key], list):
                     result[key] = [
-                        self.decrypt_dict(item)
-                        if isinstance(item, dict)
-                        else self.decrypt(item)
-                        if isinstance(item, str | bytes) and self._looks_encrypted(item)
-                        else item
+                        (
+                            self.decrypt_dict(item)
+                            if isinstance(item, dict)
+                            else (
+                                self.decrypt(item)
+                                if isinstance(item, str | bytes) and self._looks_encrypted(item)
+                                else item
+                            )
+                        )
                         for item in result[key]
                     ]
                 # Handle simple values - decrypt if it looks encrypted

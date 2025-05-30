@@ -141,9 +141,9 @@ class DigitalTwin:
         """
         return {
             "id": self.id,
-            "twin_type": self.twin_type.value
-            if isinstance(self.twin_type, TwinType)
-            else self.twin_type,
+            "twin_type": (
+                self.twin_type.value if isinstance(self.twin_type, TwinType) else self.twin_type
+            ),
             "name": self.name,
             "description": self.description,
             "created_at": self.created_at.isoformat() if self.created_at else None,

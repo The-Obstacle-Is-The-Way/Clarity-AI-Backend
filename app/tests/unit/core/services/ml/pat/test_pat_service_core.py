@@ -4,7 +4,6 @@ Unit tests for the PAT (Patient Assessment Tool) service.
 These tests validate the functionality of the PAT service implementation.
 """
 
-
 import pytest
 
 # Import exceptions directly

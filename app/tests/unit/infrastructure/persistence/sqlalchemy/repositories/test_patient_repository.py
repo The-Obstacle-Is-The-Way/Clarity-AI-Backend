@@ -293,7 +293,7 @@ class TestPatientRepository:
                     state=mock_patient_model._state or "",
                     zip_code=mock_patient_model._zip_code or "",
                     country=mock_patient_model._country or "",
-                )
+                ),
                 # ... other necessary fields from PatientEntity that PatientModel.to_domain constructs
             )
 
@@ -482,7 +482,7 @@ class TestPatientRepository:
                             state=current_model_data_dict["_state"] or "",
                             zip_code=current_model_data_dict["_zip_code"] or "",
                             country=current_model_data_dict["_country"] or "",
-                        )
+                        ),
                         # Ensure all required fields for PatientEntity are present
                     )
 

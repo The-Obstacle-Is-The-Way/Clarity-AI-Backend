@@ -85,7 +85,7 @@ class ApplicationError(BaseApplicationError):
         detail: str | list[str] | dict[str, Any] | None = None,
         code: ErrorCode = ErrorCode.INTERNAL_ERROR,
         *args: Any,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         """
         Initialize an application error.

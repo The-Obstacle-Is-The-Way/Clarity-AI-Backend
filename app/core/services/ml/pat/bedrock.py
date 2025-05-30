@@ -752,9 +752,11 @@ class BedrockPAT(PATInterface):
                         analysis_data = {
                             "analysis_id": item["analysis_id"],
                             "patient_id": item["patient_id_hash"],
-                            "timestamp": parse(item["timestamp"])
-                            if isinstance(item["timestamp"], str)
-                            else item["timestamp"],
+                            "timestamp": (
+                                parse(item["timestamp"])
+                                if isinstance(item["timestamp"], str)
+                                else item["timestamp"]
+                            ),
                             "analysis_type": analysis_type,
                             "model_version": item["model_version"],
                             "confidence_score": data_dict.get("confidence_score", 0.0),
@@ -927,9 +929,11 @@ class BedrockPAT(PATInterface):
         placeholder_twin.update_state(
             {
                 "last_pat_analysis_id": analysis_result.analysis_id,
-                "last_pat_analysis_type": analysis_result.analysis_type.value
-                if hasattr(analysis_result.analysis_type, "value")
-                else str(analysis_result.analysis_type),
+                "last_pat_analysis_type": (
+                    analysis_result.analysis_type.value
+                    if hasattr(analysis_result.analysis_type, "value")
+                    else str(analysis_result.analysis_type)
+                ),
             }
         )
 

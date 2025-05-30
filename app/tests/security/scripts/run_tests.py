@@ -230,8 +230,12 @@ class SecurityTestRunner:
             # Accumulate category summary
             test_keys: list[str] = ["total", "passed", "failed", "skipped", "errors"]
             for key in test_keys:
-                category_results["tests"][key] = int(category_results["tests"][key]) + int(parsed_results["summary"][key])
-                self.results["summary"][key] = int(self.results["summary"][key]) + int(parsed_results["summary"][key])  # Accumulate overall results here
+                category_results["tests"][key] = int(category_results["tests"][key]) + int(
+                    parsed_results["summary"][key]
+                )
+                self.results["summary"][key] = int(self.results["summary"][key]) + int(
+                    parsed_results["summary"][key]
+                )  # Accumulate overall results here
 
         # Store category results (moved outside the inner loop)
         self.results["categories"][category_name] = category_results

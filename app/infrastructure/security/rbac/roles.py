@@ -4,6 +4,7 @@ Role definitions for the Novamind Digital Twin Platform.
 This module defines the available roles and permissions in the system.
 Roles are used for authorization and access control throughout the application.
 """
+
 from enum import Enum
 
 

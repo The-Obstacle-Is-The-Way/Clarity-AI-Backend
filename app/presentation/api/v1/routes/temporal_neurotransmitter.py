@@ -286,9 +286,9 @@ async def analyze_neurotransmitter(
         "confidence_interval": effect.confidence_interval,
         "p_value": effect.p_value,
         "is_statistically_significant": effect.p_value is not None and effect.p_value < 0.05,
-        "clinical_significance": effect.clinical_significance.value
-        if effect.clinical_significance
-        else None,
+        "clinical_significance": (
+            effect.clinical_significance.value if effect.clinical_significance else None
+        ),
         "time_series_data": time_series_data,
         "comparison_periods": comparison_periods,
     }

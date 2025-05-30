@@ -2,7 +2,7 @@
 SQLAlchemy implementation of the BiometricRuleRepository for the Novamind platform.
 
 This module provides a concrete implementation of the BiometricRuleRepository interface
-using SQLAlchemy as the ORM for database interactions. It handles the translation 
+using SQLAlchemy as the ORM for database interactions. It handles the translation
 between domain entities and database models.
 """
 

@@ -5,6 +5,7 @@ This module defines the core domain entities related to machine learning models
 following Clean Architecture principles. These entities are used across the application
 and represent the core business logic around ML models.
 """
+
 from enum import Enum
 from typing import Any
 

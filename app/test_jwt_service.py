@@ -40,7 +40,7 @@ async def test_jwt_service() -> None:
         issuer=mock_settings.JWT_ISSUER,
         audience=mock_settings.JWT_AUDIENCE,
         settings=mock_settings,
-        token_blacklist_repository=blacklist_repo
+        token_blacklist_repository=blacklist_repo,
     )
 
     # Test token creation

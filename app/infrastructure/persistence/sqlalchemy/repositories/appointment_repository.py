@@ -136,7 +136,7 @@ class SQLAlchemyAppointmentRepository(IAppointmentRepository):
         self.db_session._last_executed_query = (  # type: ignore[attr-defined]
             "mock_delete" if hasattr(self.db_session, "_deleted_objects") else "delete"
         )
-        
+
         return None
 
     # ------------------------------------------------------------------
@@ -154,7 +154,8 @@ class SQLAlchemyAppointmentRepository(IAppointmentRepository):
             all_appts = [
                 obj
                 for obj in getattr(self.db_session, "_query_results", [])  # type: ignore[attr-defined]
-                if getattr(obj, "patient_id", None) == patient_id and getattr(obj, "appointment_date", None) >= now
+                if getattr(obj, "patient_id", None) == patient_id
+                and getattr(obj, "appointment_date", None) >= now
             ]
             all_appts.sort(key=lambda a: a.appointment_date)  # type: ignore[attr-defined]
             return all_appts[:limit]
@@ -176,6 +177,7 @@ class SQLAlchemyAppointmentRepository(IAppointmentRepository):
         # Fast-path for mock session
         if hasattr(self.db_session, "_query_results"):
             self.db_session._last_executed_query = "mock_list_by_date_range"  # type: ignore[attr-defined]
+
             def _match(obj) -> bool:
                 if getattr(obj, "appointment_date", None) is None:
                     return False

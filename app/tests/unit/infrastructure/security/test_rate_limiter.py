@@ -1,4 +1,5 @@
 """Unit tests for the rate limiter functionality."""
+
 import asyncio
 import time
 from datetime import datetime, timedelta, timezone  # Added timezone
@@ -110,7 +111,9 @@ class TestInMemoryRateLimiter:
     # Remove tests for internal methods (_add_request, _clean_old_requests, etc.)
     # Tests should focus on the public interface (check_rate_limit, reset_limits)
 
-    def test_check_rate_limit_under_limit(self, in_memory_rate_limiter: InMemoryRateLimiter) -> None:
+    def test_check_rate_limit_under_limit(
+        self, in_memory_rate_limiter: InMemoryRateLimiter
+    ) -> None:
         """Test check_rate_limit when under the limit."""
         config = RateLimitConfig(requests=5, window_seconds=60)
         key = "test-key-under"
@@ -137,7 +140,9 @@ class TestInMemoryRateLimiter:
         # Check the internal state used for blocking
         assert key in in_memory_rate_limiter._blocked_until
 
-    def test_check_rate_limit_blocked_key(self, in_memory_rate_limiter: InMemoryRateLimiter) -> None:
+    def test_check_rate_limit_blocked_key(
+        self, in_memory_rate_limiter: InMemoryRateLimiter
+    ) -> None:
         """Test check_rate_limit with a blocked key."""
         config = RateLimitConfig(requests=5, window_seconds=60, block_seconds=300)
         key = "test-key-blocked"
@@ -228,7 +233,9 @@ class TestRedisRateLimiter:
         mock_redis.zadd.assert_not_called()  # zadd should NOT be called if over limit
 
     @pytest.mark.asyncio
-    async def test_reset_limits(self, redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock) -> None:
+    async def test_reset_limits(
+        self, redis_rate_limiter: RedisRateLimiter, mock_redis: MagicMock
+    ) -> None:
         """Test resetting limits for a key in Redis."""
         key = "test-key-redis-reset"
         await redis_rate_limiter.reset_limits(key)

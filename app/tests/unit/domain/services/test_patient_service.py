@@ -4,6 +4,7 @@ VENV-dependent tests for the Patient Service.
 These tests require Python packages but mock database access.
 They test service layer functionality in isolation from actual database.
 """
+
 import asyncio
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock

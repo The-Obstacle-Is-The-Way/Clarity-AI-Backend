@@ -264,9 +264,9 @@ async def test_app(
 
     app.dependency_overrides[get_aws_service_factory] = lambda: mock_aws_factory
     app.dependency_overrides[get_encryption_service] = lambda: mock_encryption_service
-    app.dependency_overrides[
-        get_jwt_service_provider
-    ] = lambda: mock_jwt_service_with_placeholder_handling
+    app.dependency_overrides[get_jwt_service_provider] = (
+        lambda: mock_jwt_service_with_placeholder_handling
+    )
 
     # Removed: async with LifespanManager(app):
     yield app  # Just yield the configured app
@@ -728,9 +728,9 @@ async def authenticated_client(
     test_app_with_db_session.dependency_overrides[get_current_user] = lambda: mock_auth_dependency(
         "PATIENT"
     )
-    test_app_with_db_session.dependency_overrides[
-        get_current_active_user
-    ] = lambda: mock_auth_dependency("PATIENT")
+    test_app_with_db_session.dependency_overrides[get_current_active_user] = (
+        lambda: mock_auth_dependency("PATIENT")
+    )
 
     # Create the client with the authenticated app
     async with AsyncClient(

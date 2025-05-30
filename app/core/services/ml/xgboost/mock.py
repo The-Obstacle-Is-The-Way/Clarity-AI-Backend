@@ -37,7 +37,7 @@ class MockXGBoostService(XGBoostInterface):
     @property
     def is_initialized(self) -> bool:
         """Check if the service is initialized."""
-        return getattr(self, '_initialized', True)
+        return getattr(self, "_initialized", True)
 
     async def get_available_models(self) -> list[dict[str, Any]]:
         """Get list of available models."""
@@ -295,7 +295,8 @@ class MockXGBoostService(XGBoostInterface):
     async def _simulate_delay(self) -> None:
         """Simulate processing delay for realistic mock behavior."""
         import asyncio
-        if hasattr(self, '_mock_delay_ms'):
+
+        if hasattr(self, "_mock_delay_ms"):
             await asyncio.sleep(self._mock_delay_ms / 1000.0)
 
     async def initialize(self, config: dict[str, Any]) -> None:
@@ -309,18 +310,18 @@ class MockXGBoostService(XGBoostInterface):
         """
         try:
             self._logger.info("Initializing mock XGBoost service...")
-            
+
             # Validate configuration
             if not isinstance(config, dict):
                 raise ConfigurationError("Configuration must be a dictionary")
-            
+
             # Apply configuration
             if "mock_delay_ms" in config:
                 self._mock_delay_ms = config["mock_delay_ms"]
-            
+
             if "risk_level_distribution" in config:
                 self._risk_level_distribution = config["risk_level_distribution"]
-            
+
             if "privacy_level" in config:
                 privacy_level = config["privacy_level"]
                 if isinstance(privacy_level, str):
@@ -332,10 +333,8 @@ class MockXGBoostService(XGBoostInterface):
                             f"Valid values are: {', '.join([pl.name for pl in PrivacyLevel])}"
                         )
                 elif not isinstance(privacy_level, PrivacyLevel):
-                    raise ConfigurationError(
-                        "Privacy level must be a string or PrivacyLevel enum"
-                    )
-                
+                    raise ConfigurationError("Privacy level must be a string or PrivacyLevel enum")
+
                 self._privacy_level = privacy_level
 
             # Mark as initialized
@@ -415,7 +414,7 @@ class MockXGBoostService(XGBoostInterface):
                 try:
                     self._check_phi_in_data(value)
                 except DataPrivacyError as e:
-                    phi_found.extend(getattr(e, 'pattern_types', []))
+                    phi_found.extend(getattr(e, "pattern_types", []))
 
         # If PHI found, raise exception
         if phi_found:
@@ -441,7 +440,9 @@ class MockXGBoostService(XGBoostInterface):
             Risk score between 0.0 and 1.0
         """
         # Create a seed for deterministic randomness
-        seed = int(hashlib.md5(f"{patient_id}:{risk_type}".encode(), usedforsecurity=False).hexdigest(), 16)
+        seed = int(
+            hashlib.md5(f"{patient_id}:{risk_type}".encode(), usedforsecurity=False).hexdigest(), 16
+        )
         random.seed(seed)
 
         # Base score is random but deterministic for the same patient and risk type
@@ -516,7 +517,12 @@ class MockXGBoostService(XGBoostInterface):
             Efficacy score between 0.0 and 1.0
         """
         # Create a seed for deterministic randomness
-        seed = int(hashlib.md5(f"{patient_id}:{treatment_type}".encode(), usedforsecurity=False).hexdigest(), 16)
+        seed = int(
+            hashlib.md5(
+                f"{patient_id}:{treatment_type}".encode(), usedforsecurity=False
+            ).hexdigest(),
+            16,
+        )
         random.seed(seed)
 
         # Base score is random but deterministic for the same patient and treatment type
@@ -605,7 +611,9 @@ class MockXGBoostService(XGBoostInterface):
         """
         # Create a seed for deterministic randomness
         seed = int(
-            hashlib.md5(f"{patient_id}:{outcome_type}:{time_frame_days}".encode(), usedforsecurity=False).hexdigest(),
+            hashlib.md5(
+                f"{patient_id}:{outcome_type}:{time_frame_days}".encode(), usedforsecurity=False
+            ).hexdigest(),
             16,
         )
         random.seed(seed)
@@ -1398,7 +1406,7 @@ class MockXGBoostService(XGBoostInterface):
                     value=value,
                 )
 
-# Abstract method implementations required by interfaces
+    # Abstract method implementations required by interfaces
 
     async def predict(
         self, patient_id: uuid.UUID, features: dict[str, Any], model_type: str, **kwargs
@@ -1444,27 +1452,35 @@ class MockXGBoostService(XGBoostInterface):
             risk_type = kwargs.get("risk_type", "general")
             time_frame_days = kwargs.get("time_frame_days", 30)
             return await self.predict_risk(patient_id_str, risk_type, features, time_frame_days)
-        
+
         elif "treatment" in model_type.lower() or "medication" in model_type.lower():
             # Delegate to treatment response prediction
             treatment_type = kwargs.get("treatment_type", "medication")
             treatment_details = kwargs.get("treatment_details", {})
-            return await self.predict_treatment_response(patient_id_str, treatment_type, treatment_details, features)
-        
+            return await self.predict_treatment_response(
+                patient_id_str, treatment_type, treatment_details, features
+            )
+
         elif "outcome" in model_type.lower():
             # Delegate to outcome prediction
-            outcome_timeframe = kwargs.get("outcome_timeframe", {"timeframe_months": 6, "outcome_type": "symptom_reduction"})
+            outcome_timeframe = kwargs.get(
+                "outcome_timeframe", {"timeframe_months": 6, "outcome_type": "symptom_reduction"}
+            )
             treatment_plan = kwargs.get("treatment_plan", {})
             return await self.predict_outcome(
-                patient_id_str, outcome_timeframe, features, treatment_plan,
-                kwargs.get("social_determinants"), kwargs.get("comorbidities")
+                patient_id_str,
+                outcome_timeframe,
+                features,
+                treatment_plan,
+                kwargs.get("social_determinants"),
+                kwargs.get("comorbidities"),
             )
-        
+
         else:
             # Generic prediction for unknown model types
             score = random.random()
             confidence = 0.7 + random.random() * 0.25
-            
+
             result = {
                 "prediction_id": prediction_id,
                 "patient_id": patient_id_str,
@@ -1473,7 +1489,7 @@ class MockXGBoostService(XGBoostInterface):
                 "confidence": round(confidence, 3),
                 "features_used": list(features.keys()),
                 "timestamp": datetime.now().isoformat(),
-                "status": "completed"
+                "status": "completed",
             }
 
             # Store prediction
@@ -1534,7 +1550,7 @@ class MockXGBoostService(XGBoostInterface):
             "status": service_status,
             "timestamp": datetime.now().isoformat(),
             "version": "1.0.0",
-            "uptime_seconds": time.time() - getattr(self, '_start_time', time.time()),
+            "uptime_seconds": time.time() - getattr(self, "_start_time", time.time()),
             "dependencies": dependencies,
             "metrics": {
                 "total_predictions": len(self._predictions),
@@ -1707,7 +1723,9 @@ class MockXGBoostService(XGBoostInterface):
         features = self._extract_features(clinical_data)
 
         # Generate side effect risk
-        side_effects = self._generate_side_effect_risk(treatment_type, treatment_details, clinical_data)
+        side_effects = self._generate_side_effect_risk(
+            treatment_type, treatment_details, clinical_data
+        )
 
         # Generate expected outcome
         expected_outcome = self._generate_expected_outcome(treatment_type, efficacy_score)
@@ -1789,8 +1807,10 @@ class MockXGBoostService(XGBoostInterface):
         # which expects different structure than what MLServiceInterface specifies
         # We need to adapt the input to match existing validation
         if not isinstance(outcome_timeframe, dict):
-            raise ValidationError("Outcome timeframe must be a dictionary", field="outcome_timeframe")
-        
+            raise ValidationError(
+                "Outcome timeframe must be a dictionary", field="outcome_timeframe"
+            )
+
         # Convert modern format to legacy format if needed
         legacy_timeframe = outcome_timeframe.copy()
         if "timeframe_months" in outcome_timeframe:
@@ -1802,7 +1822,7 @@ class MockXGBoostService(XGBoostInterface):
             outcome_type = "general"
 
         self._validate_outcome_params(legacy_timeframe)
-        
+
         if not clinical_data:
             raise ValidationError("Clinical data cannot be empty", field="clinical_data")
         if not treatment_plan:
@@ -1821,7 +1841,12 @@ class MockXGBoostService(XGBoostInterface):
 
         # Generate deterministic outcome score
         outcome_score = self._generate_deterministic_outcome_score(
-            patient_id, outcome_timeframe, clinical_data, treatment_plan, social_determinants, comorbidities
+            patient_id,
+            outcome_timeframe,
+            clinical_data,
+            treatment_plan,
+            social_determinants,
+            comorbidities,
         )
 
         # Extract relevant features
@@ -1930,7 +1955,12 @@ class MockXGBoostService(XGBoostInterface):
         if not features_used:
             # Generate default features based on model type
             if "risk" in model_name.lower():
-                features_used = ["symptom_severity", "medication_adherence", "previous_episodes", "social_support"]
+                features_used = [
+                    "symptom_severity",
+                    "medication_adherence",
+                    "previous_episodes",
+                    "social_support",
+                ]
             elif "medication" in model_name.lower():
                 features_used = ["age", "weight", "previous_response", "comorbidities"]
             elif "therapy" in model_name.lower():
@@ -1939,7 +1969,12 @@ class MockXGBoostService(XGBoostInterface):
                 features_used = ["baseline_severity", "treatment_history", "functional_status"]
 
         # Generate deterministic feature importance scores
-        seed = int(hashlib.md5(f"{prediction_id}:{model_name}".encode(), usedforsecurity=False).hexdigest(), 16)
+        seed = int(
+            hashlib.md5(
+                f"{prediction_id}:{model_name}".encode(), usedforsecurity=False
+            ).hexdigest(),
+            16,
+        )
         random.seed(seed)
 
         # Generate importance scores that sum to 1.0

@@ -1,7 +1,7 @@
 """
 Tests for the PHI code pattern detection mechanisms.
 
-These tests verify that the PHI code analyzer can properly detect PHI 
+These tests verify that the PHI code analyzer can properly detect PHI
 in various types of source code files.
 """
 

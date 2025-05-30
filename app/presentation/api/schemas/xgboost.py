@@ -181,7 +181,7 @@ class ModelInfoResponse(BaseModelConfig):
     supports_features: list[str]
     description: str
     performance_metrics: PerformanceMetrics | None = None
-    
+
     model_config = ConfigDict(protected_namespaces=())
 
 
@@ -329,7 +329,7 @@ class XGBoostPredictionResponse(BaseModelConfig):
     feature_importance: dict[str, float] | None = Field(
         None, description="Feature importance scores, if available"
     )
-    
+
     model_config = ConfigDict(protected_namespaces=())
 
 
@@ -346,5 +346,5 @@ class FeatureImportanceResponse(BaseModelConfig):
     explanation_method: str = Field(
         default="SHAP", description="Method used to calculate feature importance"
     )
-    
+
     model_config = ConfigDict(protected_namespaces=())

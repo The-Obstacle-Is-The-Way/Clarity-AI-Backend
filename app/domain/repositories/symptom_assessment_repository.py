@@ -1,6 +1,7 @@
 """
 Interface for the Symptom Assessment Repository.
 """
+
 from abc import ABC, abstractmethod
 from datetime import datetime
 from uuid import UUID

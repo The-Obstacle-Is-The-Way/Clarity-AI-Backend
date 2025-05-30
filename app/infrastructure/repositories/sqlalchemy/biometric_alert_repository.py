@@ -1,6 +1,7 @@
 """
 SQLAlchemy implementation of the BiometricAlertRepository.
 """
+
 from datetime import datetime
 from uuid import UUID
 

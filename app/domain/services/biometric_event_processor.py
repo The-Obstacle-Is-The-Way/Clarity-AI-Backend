@@ -34,7 +34,7 @@ AlertStatus = AlertStatusEnum
 # Protocol interfaces for service dependencies (SOLID Interface Segregation)
 class EmailService(Protocol):
     """Protocol for email notification services."""
-    
+
     def send_email(self, recipient: str, subject: str, message: str) -> None:
         """Send an email notification."""
         ...
@@ -42,7 +42,7 @@ class EmailService(Protocol):
 
 class SMSService(Protocol):
     """Protocol for SMS notification services."""
-    
+
     def send_sms(self, recipient: str, message: str) -> None:
         """Send an SMS notification."""
         ...
@@ -50,7 +50,7 @@ class SMSService(Protocol):
 
 class NotificationService(Protocol):
     """Protocol for in-app notification services."""
-    
+
     def send_notification(
         self, recipient: UUID, priority: str, message: str, metadata: dict[str, Any]
     ) -> None:
@@ -423,7 +423,7 @@ class EmailAlertObserver(AlertObserver):
             raise ValidationError("Alert must have a valid patient_id for email notification")
         if alert.priority is None:
             raise ValidationError("Alert must have a valid priority for email notification")
-            
+
         # In a real implementation, this would use the email service
         # to send a HIPAA-compliant email notification
         recipient = self._get_recipient_for_patient(alert.patient_id)
@@ -506,7 +506,7 @@ class SMSAlertObserver(AlertObserver):
         # Type safety guard to ensure patient_id is present
         if alert.patient_id is None:
             raise ValidationError("Alert must have a valid patient_id for SMS notification")
-            
+
         # In a real implementation, this would use the SMS service
         # to send a HIPAA-compliant SMS notification
         recipient = self._get_recipient_for_patient(alert.patient_id)
@@ -583,7 +583,7 @@ class InAppAlertObserver(AlertObserver):
             raise ValidationError("Alert must have a valid patient_id for in-app notification")
         if alert.priority is None:
             raise ValidationError("Alert must have a valid priority for in-app notification")
-            
+
         # In a real implementation, this would use the notification service
         # to send an in-app notification
         recipients = self._get_recipients_for_patient(alert.patient_id)
@@ -800,7 +800,9 @@ class ClinicalRuleEngine:
         self.rule_templates: dict[str, dict[str, Any]] = {}
         self.custom_conditions: dict[str, Callable] = {}
 
-    def register_rule_template(self, template: dict[str, Any], template_id: str | None = None) -> None:
+    def register_rule_template(
+        self, template: dict[str, Any], template_id: str | None = None
+    ) -> None:
         """
         Register a rule template.
 

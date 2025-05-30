@@ -4,6 +4,7 @@ Temporal neurotransmitter mapping module for the Temporal Neurotransmitter Syste
 This module defines the core classes that map neurotransmitter activity across brain regions
 over time, including mechanisms for modeling cascading effects and treatment responses.
 """
+
 import math
 import random
 import uuid
@@ -96,7 +97,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
 
         # Baseline activity levels for each region and neurotransmitter
         self.baseline_levels: dict[BrainRegion, dict[Neurotransmitter, float]] = {}
-        
+
         # Track event chains for temporal analysis
         self.event_chains: dict[str, Any] = {}
 
@@ -599,7 +600,12 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
             )
 
         # Initialize results
-        results: dict[str, dict[str, Any]] = {"trends": {}, "patterns": {}, "correlations": {}, "statistics": {}}
+        results: dict[str, dict[str, Any]] = {
+            "trends": {},
+            "patterns": {},
+            "correlations": {},
+            "statistics": {},
+        }
 
         # Extract data as numpy array for analysis
         np.array(sequence.values)
@@ -744,9 +750,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
             direction_factor = (
                 1.0
                 if trend_data["direction"] == "increase"
-                else -1.0
-                if trend_data["direction"] == "decrease"
-                else 0.0
+                else -1.0 if trend_data["direction"] == "decrease" else 0.0
             )
             effect_size = direction_factor * abs(
                 trend_data["rate_of_change"] * 10
@@ -1168,7 +1172,9 @@ def _add_temporal_sequence(self, sequence) -> None:
     self.temporal_sequences[sequence.name] = sequence
 
 
-def _add_neurotransmitter_connection(self, source, target, connection_type, strength, delay_hours) -> None:
+def _add_neurotransmitter_connection(
+    self, source, target, connection_type, strength, delay_hours
+) -> None:
     """Record a neurotransmitter connection for cascade simulations."""
     if not hasattr(self, "neurotransmitter_connections"):
         self.neurotransmitter_connections = []

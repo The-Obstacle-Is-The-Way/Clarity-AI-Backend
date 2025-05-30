@@ -43,7 +43,9 @@ class PHISecurityError(MLServiceError):
     such as detection failures that could lead to PHI leakage.
     """
 
-    def __init__(self, message: str = "PHI security error detected", *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, message: str = "PHI security error detected", *args: Any, **kwargs: Any
+    ) -> None:
         """
         Initialize PHI security error.
 
@@ -130,7 +132,9 @@ class MentalLLaMAInferenceError(MLServiceError):
 class XGBoostServiceError(MLServiceError):
     """Exception raised for errors in XGBoost service."""
 
-    def __init__(self, message: str = "Error in XGBoost service", *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, message: str = "Error in XGBoost service", *args: Any, **kwargs: Any
+    ) -> None:
         """
         Initialize XGBoost service error.
 
@@ -187,7 +191,9 @@ class ModelNotFoundError(MLServiceError):
 class ServiceUnavailableError(MLServiceError):
     """Exception raised when an ML service is unavailable or uninitialized."""
 
-    def __init__(self, service_name: str | None = None, reason: str | None = None, *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, service_name: str | None = None, reason: str | None = None, *args: Any, **kwargs: Any
+    ) -> None:
         """
         Initialize service unavailable error.
 
@@ -210,7 +216,9 @@ class ServiceUnavailableError(MLServiceError):
 class DigitalTwinError(MLServiceError):
     """Exception raised for errors specific to Digital Twin operations."""
 
-    def __init__(self, message: str = "Error in Digital Twin operation", *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, message: str = "Error in Digital Twin operation", *args: Any, **kwargs: Any
+    ) -> None:
         """
         Initialize Digital Twin error.
 

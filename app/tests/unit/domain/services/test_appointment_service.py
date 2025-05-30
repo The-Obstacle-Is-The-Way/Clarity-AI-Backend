@@ -91,7 +91,7 @@ def valid_appointment_data(future_datetime):
         # "priority": AppointmentPriority.NORMAL, # Removed
         "location": "Office 101",
         "notes": "Initial consultation for anxiety",
-        "reason": "Anxiety and depression"
+        "reason": "Anxiety and depression",
         # Removed created_at/updated_at as they are usually set by the entity/repo
     }
 
@@ -122,7 +122,9 @@ class TestAppointmentService:
     # Ensure tests use the service methods and rely on the valid_appointment fixture
 
     @pytest.mark.asyncio
-    async def test_get_appointment(self, appointment_service, appointment_repository, valid_appointment) -> None:
+    async def test_get_appointment(
+        self, appointment_service, appointment_repository, valid_appointment
+    ) -> None:
         """Test getting an appointment."""
         appointment_repository.get_by_id.return_value = valid_appointment
         appointment = await appointment_service.get_appointment(valid_appointment.id)
@@ -148,7 +150,7 @@ class TestAppointmentService:
                 start_time=future_datetime - timedelta(minutes=30),
                 end_time=future_datetime + timedelta(minutes=30),
                 appointment_type=AppointmentType.FOLLOW_UP,
-                status=AppointmentStatus.SCHEDULED
+                status=AppointmentStatus.SCHEDULED,
                 # Assuming priority is gone
             )
         ]
@@ -160,7 +162,7 @@ class TestAppointmentService:
                 patient_id=patient_id,
                 provider_id=provider_id,
                 start_time=future_datetime,
-                end_time=future_datetime + timedelta(hours=1)
+                end_time=future_datetime + timedelta(hours=1),
                 # Assuming priority is gone
             )
 

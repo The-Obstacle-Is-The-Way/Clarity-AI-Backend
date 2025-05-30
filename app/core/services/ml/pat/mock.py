@@ -45,10 +45,18 @@ class MockPATService(PATInterface):
         self._assessments: dict[str, dict[str, Any]] = {}
         self._form_templates: dict[str, dict[str, Any]] = {}
         self._analyses: dict[str, dict[str, Any]] = {}  # Private storage for analyses
-        self._patients_analyses: dict[str, list[str]] = {}  # Add patients_analyses dict for test compatibility
-        self._embeddings: dict[str, dict[str, Any]] = {}  # Add embeddings dict for test compatibility
-        self._profiles: dict[str, dict[str, Any]] = {}  # Add profiles dictionary for digital twin tests
-        self._integrations: dict[str, dict[str, Any]] = {}  # Add _integrations dictionary to store integration results
+        self._patients_analyses: dict[str, list[str]] = (
+            {}
+        )  # Add patients_analyses dict for test compatibility
+        self._embeddings: dict[str, dict[str, Any]] = (
+            {}
+        )  # Add embeddings dict for test compatibility
+        self._profiles: dict[str, dict[str, Any]] = (
+            {}
+        )  # Add profiles dictionary for digital twin tests
+        self._integrations: dict[str, dict[str, Any]] = (
+            {}
+        )  # Add _integrations dictionary to store integration results
 
         # Enable test mode for deterministic timestamps
         self._test_mode = True
@@ -157,7 +165,11 @@ class MockPATService(PATInterface):
         # Handle the test_initialization_error test case specifically
         # We only want to check _simulate_delay when the config is empty (for test_initialization_error)
         # and we've been triggered to simulate that specific test case
-        if not config and hasattr(self, "_force_init_error") and getattr(self, "_force_init_error", False):
+        if (
+            not config
+            and hasattr(self, "_force_init_error")
+            and getattr(self, "_force_init_error", False)
+        ):
             from app.core.services.ml.pat.exceptions import InitializationError
 
             self._force_init_error = False  # Reset for future tests
@@ -373,7 +385,7 @@ class MockPATService(PATInterface):
         # Generate mock analysis result with explicit typing
         recommendations: list[str] = []
         details: dict[str, Any] = {}
-        
+
         result = {
             "analysis_type": analysis_type,
             "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -847,15 +859,17 @@ class MockPATService(PATInterface):
             "activity_levels": activity_levels,
             "sleep_metrics": sleep_metrics,
             # Add specific analysis types as top-level fields when requested
-            "circadian_rhythm": self._generate_circadian_rhythm()
-            if "circadian_rhythm" in analysis_types
-            else None,
-            "behavioral_patterns": self._generate_behavioral_patterns()
-            if "behavioral_patterns" in analysis_types
-            else None,
-            "mood_indicators": self._generate_mood_indicators()
-            if "mood_indicators" in analysis_types
-            else None,
+            "circadian_rhythm": (
+                self._generate_circadian_rhythm() if "circadian_rhythm" in analysis_types else None
+            ),
+            "behavioral_patterns": (
+                self._generate_behavioral_patterns()
+                if "behavioral_patterns" in analysis_types
+                else None
+            ),
+            "mood_indicators": (
+                self._generate_mood_indicators() if "mood_indicators" in analysis_types else None
+            ),
             "results": {},  # Initialize empty results
             "metrics": self._generate_mock_actigraphy_metrics(readings, analysis_types),
             "interpretation": self._generate_mock_interpretation(analysis_types),
@@ -906,7 +920,7 @@ class MockPATService(PATInterface):
         if patient_id == "patient123":  # Special case for the test
             # Store globally for the specific test
             # Store globally for the specific test - using instance attribute instead of class attribute
-            if not hasattr(self, 'test_analyses'):
+            if not hasattr(self, "test_analyses"):
                 self.test_analyses: list[dict[str, Any]] = []
             self.test_analyses.append(result)
 
@@ -1415,7 +1429,7 @@ class MockPATService(PATInterface):
         # This provides better test compatibility and robustness
         if analysis_id in self._analyses:
             return self._analyses[analysis_id]
-        elif hasattr(self, 'analyses') and analysis_id in self.analyses:
+        elif hasattr(self, "analyses") and analysis_id in self.analyses:
             return self.analyses[analysis_id]
 
         # Analysis not found in either location
@@ -1432,7 +1446,7 @@ class MockPATService(PATInterface):
         **kwargs: Any,
     ) -> list[dict[str, Any]]:
         """Get analyses for a specific patient with optional filtering.
-        
+
         Args:
             patient_id: The patient ID
             analysis_type: Optional filter by analysis type
@@ -1440,10 +1454,10 @@ class MockPATService(PATInterface):
             end_date: Optional filter by end date
             limit: Optional limit of results returned
             offset: Optional offset for pagination
-            
+
         Returns:
             List of analysis results or paginated dictionary
-        
+
         Raises:
             InitializationError: If service is not initialized
         """
@@ -1489,7 +1503,7 @@ class MockPATService(PATInterface):
 
             # Apply pagination
             len(filtered_analyses)
-            paginated_analyses = filtered_analyses[offset:offset + limit]
+            paginated_analyses = filtered_analyses[offset : offset + limit]
 
             # Return analyses list directly (Interface Segregation Principle)
             return paginated_analyses
@@ -1582,7 +1596,7 @@ class MockPATService(PATInterface):
         # Store the analyses with explicit type annotations
         analysis_id_1: str = str(result1["analysis_id"])
         analysis_id_2: str = str(result2["analysis_id"])
-        
+
         self._analyses[analysis_id_1] = result1
         self._analyses[analysis_id_2] = result2
 
@@ -2130,9 +2144,9 @@ class MockPATService(PATInterface):
             sleep_quality = ["poor", "fair", "good", "excellent"][uuid.uuid4().int % 4]
             interpretation["sleep"] = {
                 "quality": sleep_quality,
-                "issues": ["difficulty falling asleep"]
-                if sleep_quality in ["poor", "fair"]
-                else [],
+                "issues": (
+                    ["difficulty falling asleep"] if sleep_quality in ["poor", "fair"] else []
+                ),
             }
 
         if any(
@@ -2163,18 +2177,22 @@ class MockPATService(PATInterface):
         return {
             "patient_id": patient_id,
             "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "anomalies_detected": [
-                {
-                    "type": "sleep_pattern_shift",
-                    "severity": "low",
-                    "timestamp": readings[-1]["timestamp"]
-                    if readings
-                    else datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                    "details": "Mock anomaly: Slight shift detected.",
-                }
-            ]
-            if len(readings) > 50
-            else [],  # Example condition
+            "anomalies_detected": (
+                [
+                    {
+                        "type": "sleep_pattern_shift",
+                        "severity": "low",
+                        "timestamp": (
+                            readings[-1]["timestamp"]
+                            if readings
+                            else datetime.datetime.now(datetime.timezone.utc).isoformat()
+                        ),
+                        "details": "Mock anomaly: Slight shift detected.",
+                    }
+                ]
+                if len(readings) > 50
+                else []
+            ),  # Example condition
             "baseline_period": baseline_period,
         }
 

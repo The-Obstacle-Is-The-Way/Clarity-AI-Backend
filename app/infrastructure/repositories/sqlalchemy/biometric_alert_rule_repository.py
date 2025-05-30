@@ -1,6 +1,7 @@
 """
 SQLAlchemy implementation of the BiometricAlertRuleRepository.
 """
+
 from uuid import UUID, uuid4  # Standard library
 
 from sqlalchemy.ext.asyncio import AsyncSession  # Third-party

@@ -1,6 +1,7 @@
 """
 Interface for the Clinical Session Repository.
 """
+
 from abc import ABC, abstractmethod
 from datetime import datetime
 from uuid import UUID

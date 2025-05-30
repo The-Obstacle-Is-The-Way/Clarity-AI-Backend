@@ -37,11 +37,7 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
 
     __tablename__ = "clinical_notes"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        GUID(), 
-        primary_key=True, 
-        default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
     patient_id: Mapped[uuid.UUID] = mapped_column(
         GUID(),
         ForeignKey("patients.id"),
@@ -55,39 +51,16 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
         index=True,
     )
     appointment_id: Mapped[uuid.UUID | None] = mapped_column(
-        GUID(), 
-        ForeignKey("appointments.id"), 
-        nullable=True
+        GUID(), ForeignKey("appointments.id"), nullable=True
     )
-    title: Mapped[str] = mapped_column(
-        String(255), 
-        nullable=False
-    )
-    content: Mapped[str] = mapped_column(
-        Text, 
-        nullable=False
-    )
-    redacted_content: Mapped[str | None] = mapped_column(
-        Text, 
-        nullable=True
-    )
-    note_type: Mapped[str | None] = mapped_column(
-        String(50), 
-        nullable=True
-    )
-    tags: Mapped[dict | None] = mapped_column(
-        JSONEncodedDict,
-        nullable=True
-    )
-    version: Mapped[int] = mapped_column(
-        Integer, 
-        default=1, 
-        nullable=False
-    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    redacted_content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    note_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    tags: Mapped[dict | None] = mapped_column(JSONEncodedDict, nullable=True)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     parent_note_id: Mapped[uuid.UUID | None] = mapped_column(
-        GUID(), 
-        ForeignKey("clinical_notes.id"), 
-        nullable=True
+        GUID(), ForeignKey("clinical_notes.id"), nullable=True
     )
 
     # Relationships with correct model references
@@ -141,10 +114,10 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
         if self.tags:
             # Tags can be stored as dict or list/set in JSON format
             try:
-                if hasattr(self.tags, 'values'):
+                if hasattr(self.tags, "values"):
                     # Dict-like format
                     domain_tags = {str(v) for v in self.tags.values()}
-                elif hasattr(self.tags, '__iter__'):
+                elif hasattr(self.tags, "__iter__"):
                     # List/set-like format
                     domain_tags = {str(tag) for tag in self.tags}
                 else:

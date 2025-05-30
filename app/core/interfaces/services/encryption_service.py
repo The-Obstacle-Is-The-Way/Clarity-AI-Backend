@@ -4,6 +4,7 @@ Defines the contract for encryption providers used across layers. Keeping it in
 `core.interfaces` avoids infrastructure-layer leakage and lets middleware or
 services depend on abstractions.
 """
+
 from __future__ import annotations
 
 from typing import Protocol

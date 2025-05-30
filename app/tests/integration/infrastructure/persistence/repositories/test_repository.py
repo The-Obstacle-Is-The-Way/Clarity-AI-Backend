@@ -40,7 +40,9 @@ class TestPatientRepository:
     """
 
     @pytest.fixture(autouse=True)
-    async def setup(self, db_session: AsyncSession, encryption_service: BaseEncryptionService) -> None:
+    async def setup(
+        self, db_session: AsyncSession, encryption_service: BaseEncryptionService
+    ) -> None:
         """Initialize the repository with required dependencies."""
         self.db_session = db_session
         self.encryption_service = encryption_service

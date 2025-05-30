@@ -4,6 +4,7 @@ Neurotransmitter effect models for the Temporal Neurotransmitter System.
 This module defines the data structures for representing neurotransmitter effects
 and their clinical significance.
 """
+
 from datetime import datetime
 from typing import Any
 

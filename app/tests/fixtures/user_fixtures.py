@@ -3,6 +3,7 @@ User fixtures for testing authentication and authorization.
 
 This module provides common user test fixtures used across test cases.
 """
+
 from uuid import UUID
 
 from app.domain.enums.role import Role

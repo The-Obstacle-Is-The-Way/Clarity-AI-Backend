@@ -4,6 +4,7 @@ Exceptions for ML and LLM operations in the Novamind Digital Twin Platform.
 This module defines custom exception types for interacting with
 machine learning and large language models, particularly MentalLLaMA.
 """
+
 from typing import Any
 
 

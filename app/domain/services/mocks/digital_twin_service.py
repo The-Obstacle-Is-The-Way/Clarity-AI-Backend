@@ -1,7 +1,7 @@
 """
 Mock Digital Twin service for testing.
 
-This module provides a simplified, synchronous implementation 
+This module provides a simplified, synchronous implementation
 of the DigitalTwinService for test purposes.
 """
 

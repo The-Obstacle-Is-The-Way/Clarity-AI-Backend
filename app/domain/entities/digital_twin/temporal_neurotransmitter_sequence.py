@@ -4,6 +4,7 @@ Temporal neurotransmitter sequence model for the Enhanced Digital Twin.
 This module defines the class for representing time series data specifically for
 neurotransmitter levels across different brain regions.
 """
+
 import uuid
 from datetime import datetime, timedelta
 from typing import Any, cast

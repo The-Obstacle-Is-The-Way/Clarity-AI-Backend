@@ -16,9 +16,21 @@ from app.domain.enums.token_type import TokenType
 
 # Define PHI fields as a constant
 PHI_FIELDS = [
-    "name", "email", "dob", "ssn", "address", "phone_number", "birth_date",
-    "social_security", "medical_record_number", "first_name", "last_name",
-    "date_of_birth", "phone", "patient_id", "provider_id"
+    "name",
+    "email",
+    "dob",
+    "ssn",
+    "address",
+    "phone_number",
+    "birth_date",
+    "social_security",
+    "medical_record_number",
+    "first_name",
+    "last_name",
+    "date_of_birth",
+    "phone",
+    "patient_id",
+    "provider_id",
 ]
 
 
@@ -129,7 +141,7 @@ def create_access_token_payload(
     filtered_claims = {}
     if additional_claims:
         filtered_claims = {k: v for k, v in additional_claims.items() if k not in PHI_FIELDS}
-    
+
     return AccessTokenPayload(
         sub=subject,
         iat=now,
@@ -182,7 +194,7 @@ def create_refresh_token_payload(
     filtered_claims = {}
     if additional_claims:
         filtered_claims = {k: v for k, v in additional_claims.items() if k not in PHI_FIELDS}
-    
+
     return RefreshTokenPayload(
         sub=subject,
         iat=now,
@@ -233,6 +245,7 @@ def payload_from_dict(data: dict[str, Any]) -> JWTPayload:
     # Extract standard claims
     subject = data.get("sub", "default-subject-for-tests")
     from datetime import timezone
+
     issued_at = data.get("iat", int(datetime.now(timezone.utc).timestamp()))
     expires_at = data.get("exp", int(datetime.now(timezone.utc).timestamp()) + 3600)
     token_id = data.get("jti", str(UUID(int=0).hex))
@@ -269,8 +282,9 @@ def payload_from_dict(data: dict[str, Any]) -> JWTPayload:
         "original_iat",
         "permissions",
     }
-    custom_fields = {k: v for k, v in data.items()
-                    if k not in standard_claims and k not in PHI_FIELDS}
+    custom_fields = {
+        k: v for k, v in data.items() if k not in standard_claims and k not in PHI_FIELDS
+    }
 
     # Extract permissions (handle both string and list formats)
     permissions_data = data.get("permissions", [])

@@ -1,6 +1,7 @@
 """
 Interface for the Appointment Repository.
 """
+
 from abc import ABC, abstractmethod
 from datetime import datetime
 from uuid import UUID
@@ -68,16 +69,16 @@ class IAppointmentRepository(ABC):
     async def save(self, appointment: Appointment) -> Appointment:
         """
         Save an appointment (create if new, update if existing).
-        
+
         This convenience method maintains backward compatibility with domain services
         that expect a single save() method.
-        
+
         Args:
             appointment: Appointment entity to save
-            
+
         Returns:
             Saved appointment entity
-            
+
         Raises:
             ValueError: If appointment ID exists but appointment is not found for update
         """

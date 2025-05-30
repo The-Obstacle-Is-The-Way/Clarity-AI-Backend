@@ -4,6 +4,7 @@ Mock implementation of persistence.db for testing.
 This module provides mock versions of the database classes and functions
 to allow tests to run without actual database connections.
 """
+
 from unittest.mock import AsyncMock, MagicMock
 
 

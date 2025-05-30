@@ -230,7 +230,7 @@ class BiometricAlertService(AlertServiceInterface):
 
         # For testing, always return true
         return True
-        
+
     async def evaluate_biometric_data(
         self,
         patient_id: UUID,
@@ -250,70 +250,72 @@ class BiometricAlertService(AlertServiceInterface):
         Returns:
             List of generated alerts (if any)
         """
-        logger.debug(f"Evaluating biometric data for patient {patient_id}: {data_type}={data_value}")
-        
+        logger.debug(
+            f"Evaluating biometric data for patient {patient_id}: {data_type}={data_value}"
+        )
+
         # For testing, return an empty list
         return []
-        
+
     async def get_rule_by_id(self, rule_id: UUID) -> BiometricAlertRule | None:
         """
         Get a rule by its ID.
-        
+
         Args:
             rule_id: Unique identifier for the rule
-            
+
         Returns:
             BiometricAlertRule if found, None otherwise
         """
         logger.debug(f"Getting rule with ID: {rule_id}")
-        
+
         # For testing, return None
         return None
-        
+
     async def create_rule(self, rule_data: BiometricAlertRule) -> BiometricAlertRule:
         """
         Create a new alert rule.
-        
+
         Args:
             rule_data: The rule data to create
-            
+
         Returns:
             The created BiometricAlertRule
         """
         logger.info(f"Creating new alert rule: {rule_data.name}")
-        
+
         # For testing, just return the input
         return rule_data
-        
+
     async def update_rule(
         self, rule_id: UUID, rule_data: BiometricAlertRule
     ) -> BiometricAlertRule | None:
         """
         Update an existing alert rule.
-        
+
         Args:
             rule_id: Unique identifier for the rule to update
             rule_data: The updated rule data
-            
+
         Returns:
             The updated BiometricAlertRule if found, None otherwise
         """
         logger.info(f"Updating rule {rule_id}")
-        
+
         # For testing, just return the input
         return rule_data
-        
+
     async def list_rules(self, user_id: UUID | None = None) -> list[BiometricAlertRule]:
         """
         List alert rules, optionally filtered by user.
-        
+
         Args:
             user_id: Optional user ID to filter rules by
-            
+
         Returns:
             List of BiometricAlertRule entities
         """
         logger.debug(f"Listing rules for user: {user_id}")
-        
+
         # For testing, return an empty list
         return []

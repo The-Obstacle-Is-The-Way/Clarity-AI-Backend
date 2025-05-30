@@ -44,7 +44,7 @@ def setup_yaml_mocking() -> None:
             # Create a module instance with the mock attributes
             mock_module = ModuleType("yaml")
             mock_module.safe_load = mock_safe_load  # type: ignore[attr-defined]
-            mock_module.dump = mock_dump  # type: ignore[attr-defined]  
+            mock_module.dump = mock_dump  # type: ignore[attr-defined]
             mock_module._is_mocked = True  # type: ignore[attr-defined]
             sys.modules["yaml"] = mock_module
     except ImportError:

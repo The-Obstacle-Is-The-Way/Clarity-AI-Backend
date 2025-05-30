@@ -90,23 +90,25 @@ class MockPATService:
             "session_id": session_id,
             "model_id": self._analysis_model_id,
             "input_text": text,
-            "sentiment": "neutral"
-            if "neutral" in text.lower()
-            else "positive"
-            if "good" in text.lower()
-            else "negative",
+            "sentiment": (
+                "neutral"
+                if "neutral" in text.lower()
+                else "positive" if "good" in text.lower() else "negative"
+            ),
             "patterns": [
-                {
-                    "name": "concern",
-                    "confidence": 0.85,
-                    "matches": ["worried", "concern", "afraid"],
-                }
-                if "worried" in text.lower()
-                else {
-                    "name": "satisfaction",
-                    "confidence": 0.92,
-                    "matches": ["happy", "glad", "satisfied"],
-                }
+                (
+                    {
+                        "name": "concern",
+                        "confidence": 0.85,
+                        "matches": ["worried", "concern", "afraid"],
+                    }
+                    if "worried" in text.lower()
+                    else {
+                        "name": "satisfaction",
+                        "confidence": 0.92,
+                        "matches": ["happy", "glad", "satisfied"],
+                    }
+                )
             ],
             "metadata": {
                 "analysis_timestamp": "2025-05-14T15:00:00Z",

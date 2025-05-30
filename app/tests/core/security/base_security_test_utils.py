@@ -1,6 +1,7 @@
 """
 Tests for the BaseSecurityTest class and authentication infrastructure.
 """
+
 from uuid import UUID, uuid4
 
 import pytest

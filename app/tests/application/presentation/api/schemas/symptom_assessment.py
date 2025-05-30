@@ -1,6 +1,7 @@
 """
 Pydantic schemas for Symptom Assessment API endpoints.
 """
+
 from datetime import datetime
 from typing import Any
 from uuid import UUID

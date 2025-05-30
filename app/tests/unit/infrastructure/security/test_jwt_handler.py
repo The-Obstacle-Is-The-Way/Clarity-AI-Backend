@@ -85,7 +85,9 @@ class TestJWTService:
 
     # --- Initialization Tests (implicitly tested by fixture) ---
     @pytest.mark.asyncio
-    async def test_init_with_valid_settings(self, jwt_service: JWTServiceImpl, test_settings) -> None:
+    async def test_init_with_valid_settings(
+        self, jwt_service: JWTServiceImpl, test_settings
+    ) -> None:
         """Test initialization uses the injected mock settings."""
         # The jwt_service fixture should inject mock_settings.
         # We verify that the service instance is indeed using the mock settings object.
@@ -176,7 +178,9 @@ class TestJWTService:
         assert payload.type == TokenType.REFRESH
 
     @pytest.mark.asyncio
-    async def test_decode_expired_token(self, jwt_service: JWTServiceImpl, sample_user_data: dict) -> None:
+    async def test_decode_expired_token(
+        self, jwt_service: JWTServiceImpl, sample_user_data: dict
+    ) -> None:
         """Test decoding an expired token raises TokenExpiredException."""
         token = jwt_service.create_access_token(data=sample_user_data, expires_delta_minutes=-1)
         await asyncio.sleep(0.1)

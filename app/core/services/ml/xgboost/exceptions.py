@@ -40,7 +40,9 @@ class XGBoostServiceError(Exception):
 class ValidationError(XGBoostServiceError):
     """Exception raised when request validation fails."""
 
-    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs: Any) -> None:
+    def __init__(
+        self, message: str, field: str | None = None, value: Any = None, **kwargs: Any
+    ) -> None:
         """
         Initialize a validation error.
 
@@ -143,9 +145,9 @@ class ModelNotFoundError(ResourceNotFoundError):
         super().__init__(
             message,
             resource_type="model",
-            resource_id=f"{model_type}:{model_version}"
-            if model_type and model_version
-            else model_type,
+            resource_id=(
+                f"{model_type}:{model_version}" if model_type and model_version else model_type
+            ),
             model_type=model_type,
             model_version=model_version,
             **kwargs,
@@ -199,7 +201,9 @@ class ServiceConnectionError(XGBoostServiceError):
 class ConfigurationError(XGBoostServiceError):
     """Exception raised when there is a configuration error."""
 
-    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs: Any) -> None:
+    def __init__(
+        self, message: str, field: str | None = None, value: Any = None, **kwargs: Any
+    ) -> None:
         """
         Initialize a configuration error.
 

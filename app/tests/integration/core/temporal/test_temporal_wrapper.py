@@ -4,6 +4,7 @@ Integration test wrapper for temporal neurotransmitter system.
 This wrapper avoids directly importing the router to prevent
 FastAPI from analyzing AsyncSession dependencies at module import time.
 """
+
 import pytest
 
 pytest.skip(
@@ -36,9 +37,12 @@ async def test_temporal_endpoints_integration(
     without directly importing the router module.
     """
     # Setup - patch dependencies to use our service instance
-    with mock_current_user, patch(
-        "app.api.routes.temporal_neurotransmitter.get_temporal_neurotransmitter_service",
-        new=AsyncMock(return_value=temporal_service),
+    with (
+        mock_current_user,
+        patch(
+            "app.api.routes.temporal_neurotransmitter.get_temporal_neurotransmitter_service",
+            new=AsyncMock(return_value=temporal_service),
+        ),
     ):
         # Test 1: Generate time series
         time_series_response = test_client.post(

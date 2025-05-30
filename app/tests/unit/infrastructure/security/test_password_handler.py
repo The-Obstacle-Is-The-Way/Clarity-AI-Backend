@@ -1,4 +1,5 @@
 """Unit tests for password handling functionality."""
+
 import time
 from unittest.mock import MagicMock, patch
 

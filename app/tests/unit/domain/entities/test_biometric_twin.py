@@ -1,4 +1,5 @@
 """Unit tests for BiometricTwin entity."""
+
 import uuid
 from datetime import datetime, timedelta
 

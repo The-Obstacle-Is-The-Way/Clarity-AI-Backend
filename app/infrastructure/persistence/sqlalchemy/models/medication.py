@@ -35,10 +35,14 @@ class MedicationModel(Base, TimestampMixin, AuditMixin):
 
     __tablename__ = "medications"
 
-    id: Mapped[uuid.UUID] = mapped_column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    form: Mapped[str | None] = mapped_column(String(100), nullable=True)  # e.g., tablet, capsule, liquid
+    form: Mapped[str | None] = mapped_column(
+        String(100), nullable=True
+    )  # e.g., tablet, capsule, liquid
     strength: Mapped[str | None] = mapped_column(String(100), nullable=True)  # e.g., 10mg, 50mg/mL
     # manufacturer = Column(String(255), nullable=True) # Optional
 
@@ -58,7 +62,9 @@ class PatientMedicationModel(Base, TimestampMixin, AuditMixin):
 
     __tablename__ = "patient_medications"
 
-    id: Mapped[uuid.UUID] = mapped_column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     patient_id: Mapped[uuid.UUID] = mapped_column(
         SQLAlchemyUUID(as_uuid=True),
         ForeignKey("patients.id"),

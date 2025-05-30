@@ -542,9 +542,9 @@ class TestBiometricAlertsEndpoints:
 
         # Apply mock to app
         app, _ = test_app
-        app.dependency_overrides[
-            get_alert_rule_template_service
-        ] = lambda: alert_template_service_mock
+        app.dependency_overrides[get_alert_rule_template_service] = (
+            lambda: alert_template_service_mock
+        )
 
         # Prepare request
         headers = get_valid_provider_auth_headers
@@ -1659,7 +1659,7 @@ class TestBiometricAlertsEndpoints:
 
 @pytest_asyncio.fixture
 async def app_with_mock_template_service(
-    test_app: tuple[FastAPI, AsyncClient]
+    test_app: tuple[FastAPI, AsyncClient],
 ) -> AsyncGenerator[None, None]:
     """Setup a mock template service for testing."""
 

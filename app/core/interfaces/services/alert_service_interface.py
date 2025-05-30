@@ -26,7 +26,7 @@ class AlertServiceInterface(ABC):
     This interface defines the contract for operations related to generating,
     managing, and resolving clinical alerts, allowing for different implementations
     while maintaining a consistent interface throughout the application.
-    
+
     Follows SOLID principles with domain-driven design.
     """
 
@@ -173,14 +173,14 @@ class AlertServiceInterface(ABC):
     async def validate_access(self, user_id: UUID, patient_id: UUID) -> bool:
         """
         Validate if a user has access to a patient's alerts.
-        
+
         Args:
             user_id: ID of the user requesting access
             patient_id: ID of the patient whose alerts are being accessed
-            
+
         Returns:
             True if access is allowed, raises exception if not
-            
+
         Raises:
             PermissionError: If access is denied
         """
@@ -190,14 +190,14 @@ class AlertServiceInterface(ABC):
     async def get_alert_by_id(self, alert_id: UUID, user_id: UUID | None = None) -> Alert | None:
         """
         Get a specific alert by ID with access validation.
-        
+
         Args:
             alert_id: Unique identifier for the alert
             user_id: Optional ID of the user requesting the alert
-            
+
         Returns:
             Alert domain entity if found and accessible, None otherwise
-            
+
         Raises:
             PermissionError: If user doesn't have access to this alert
         """

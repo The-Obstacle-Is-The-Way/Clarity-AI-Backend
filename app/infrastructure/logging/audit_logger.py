@@ -403,7 +403,9 @@ class AuditLogger(IAuditLogger):
 
         # Severity is inferred from status code
         severity = (
-            AuditSeverity.ERROR if status_code >= 500 else AuditSeverity.WARNING if status_code >= 400 else AuditSeverity.INFO
+            AuditSeverity.ERROR
+            if status_code >= 500
+            else AuditSeverity.WARNING if status_code >= 400 else AuditSeverity.INFO
         )
         log_data["severity"] = severity.value
 

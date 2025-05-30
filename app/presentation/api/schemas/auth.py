@@ -1,6 +1,7 @@
 """
 Pydantic schemas for authentication-related requests and responses.
 """
+
 import uuid
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field

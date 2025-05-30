@@ -5,7 +5,6 @@ This test suite provides comprehensive coverage for the encryption module,
 ensuring secure data handling and HIPAA-compliant data protection.
 """
 
-
 import pytest
 from cryptography.fernet import Fernet
 
@@ -258,7 +257,9 @@ class TestEnhancedEncryptionService:
         assert decrypted_file.exists()
         assert decrypted_file.read_text() == test_content
 
-    def test_encrypt_file_nonexistent(self, encryption_service: BaseEncryptionService, tmp_path) -> None:
+    def test_encrypt_file_nonexistent(
+        self, encryption_service: BaseEncryptionService, tmp_path
+    ) -> None:
         """Test encrypting a nonexistent file raises FileNotFoundError."""
         nonexistent_file = tmp_path / "nonexistent.txt"
         output_file = tmp_path / "output.bin"
@@ -267,7 +268,9 @@ class TestEnhancedEncryptionService:
         with pytest.raises(FileNotFoundError):
             encryption_service.encrypt_file(str(nonexistent_file), str(output_file))
 
-    def test_decrypt_file_nonexistent(self, encryption_service: BaseEncryptionService, tmp_path) -> None:
+    def test_decrypt_file_nonexistent(
+        self, encryption_service: BaseEncryptionService, tmp_path
+    ) -> None:
         """Test decrypting a nonexistent file raises FileNotFoundError."""
         nonexistent_file = tmp_path / "nonexistent.bin"
         output_file = tmp_path / "output.txt"

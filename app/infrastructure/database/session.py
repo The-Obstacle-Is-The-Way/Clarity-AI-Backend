@@ -61,7 +61,7 @@ def create_db_engine_and_session(
 # MODIFIED: This is now a utility, not a direct FastAPI dependency function.
 # It no longer takes 'request'.
 async def get_async_session_utility(
-    session_factory: Callable[[], AsyncSession] | None
+    session_factory: Callable[[], AsyncSession] | None,
 ) -> AsyncGenerator[AsyncSession, None]:
     """Utility to get an async database session using a provided factory."""
     logger.debug("GET_ASYNC_SESSION_UTILITY: Entered.")

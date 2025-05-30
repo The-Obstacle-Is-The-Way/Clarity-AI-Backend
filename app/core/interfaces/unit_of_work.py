@@ -1,7 +1,7 @@
 """Unit of Work interface definition.
 
 This module defines the Unit of Work pattern interface which provides
-a transactional boundary for database operations across multiple repositories, 
+a transactional boundary for database operations across multiple repositories,
 ensuring HIPAA-compliant data consistency in the application's persistence layer.
 """
 

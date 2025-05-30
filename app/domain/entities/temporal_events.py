@@ -1,8 +1,8 @@
 """
 Temporal event entities for digital twin neural network modeling.
 
-This module defines the core entities used to represent temporal events and their 
-correlations in the digital twin system, providing the foundation for neural network 
+This module defines the core entities used to represent temporal events and their
+correlations in the digital twin system, providing the foundation for neural network
 modeling and temporal analysis.
 """
 

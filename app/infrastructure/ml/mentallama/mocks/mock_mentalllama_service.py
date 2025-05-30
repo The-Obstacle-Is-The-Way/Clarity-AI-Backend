@@ -52,7 +52,9 @@ class MockMentalLLaMAService(MockMentaLLaMA):
         """Detect depression indicators in text."""
         return super().detect_depression(text, options)
 
-    def assess_risk(self, text: str, risk_type: str | None = None, options: dict[str, Any] | None = None) -> dict[str, Any]:
+    def assess_risk(
+        self, text: str, risk_type: str | None = None, options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Assess risk factors in text."""
         return super().assess_risk(text, risk_type, options)
 
@@ -67,7 +69,7 @@ class MockMentalLLaMAService(MockMentaLLaMA):
     ) -> dict[str, Any]:
         """
         Generate a digital twin based on user profile and clinical data.
-        
+
         This implementation adapts the service interface to match the parent class signature.
         """
         # For backward compatibility with old code that might call this with the old signature
@@ -92,6 +94,8 @@ class MockMentalLLaMAService(MockMentaLLaMA):
         """Send a message to a digital twin session."""
         return super().send_message_to_session(session_id, message, options)
 
-    def end_digital_twin_session(self, session_id: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
+    def end_digital_twin_session(
+        self, session_id: str, options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """End a digital twin session."""
         return super().end_digital_twin_session(session_id, options)

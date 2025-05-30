@@ -1,6 +1,7 @@
 """
 Patch for MFAService to fix backup code generation.
 """
+
 from typing import Any
 
 

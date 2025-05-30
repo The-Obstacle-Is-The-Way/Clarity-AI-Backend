@@ -1,6 +1,7 @@
 """
 Tests for the SQL Alchemy implementation of the temporal event repository.
 """
+
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -219,7 +220,9 @@ class TestSqlAlchemyEventRepository:
         mock_session.execute.assert_called_once()
 
     @pytest.mark.asyncio()
-    async def test_get_event_chain(self, mock_session, mock_event_model, mock_child_event_model) -> None:
+    async def test_get_event_chain(
+        self, mock_session, mock_event_model, mock_child_event_model
+    ) -> None:
         """Test getting an event chain by correlation ID."""
         # Setup
         repo = SqlAlchemyEventRepository(session=mock_session)
@@ -251,7 +254,9 @@ class TestSqlAlchemyEventRepository:
             )
 
     @pytest.mark.asyncio()
-    async def test_get_patient_events(self, mock_session, mock_event_model, mock_child_event_model) -> None:
+    async def test_get_patient_events(
+        self, mock_session, mock_event_model, mock_child_event_model
+    ) -> None:
         """Test getting events associated with a patient."""
         # Setup
         repo = SqlAlchemyEventRepository(session=mock_session)

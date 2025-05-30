@@ -1,6 +1,7 @@
 """
 Application service for temporal neurotransmitter analysis.
 """
+
 from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
@@ -643,9 +644,11 @@ class TemporalNeurotransmitterService:
                 "effect_size": effect.effect_size,
                 "p_value": effect.p_value,
                 "is_significant": effect.is_statistically_significant,
-                "clinical_significance": effect.clinical_significance.value
-                if effect.clinical_significance
-                else "unknown",
+                "clinical_significance": (
+                    effect.clinical_significance.value
+                    if effect.clinical_significance
+                    else "unknown"
+                ),
                 "timestamp": datetime.now(UTC).isoformat(),
             },
         )

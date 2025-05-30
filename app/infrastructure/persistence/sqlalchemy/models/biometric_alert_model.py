@@ -41,7 +41,9 @@ class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
 
     __tablename__ = "biometric_alerts"
 
-    id: Mapped[uuid.UUID] = mapped_column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     patient_id: Mapped[uuid.UUID] = mapped_column(
         SQLAlchemyUUID(as_uuid=True),
         ForeignKey("patients.id"),
@@ -50,7 +52,9 @@ class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
     )
     alert_type: Mapped[str] = mapped_column(String, index=True, nullable=False)
     description: Mapped[str] = mapped_column(String, nullable=False)
-    priority: Mapped[AlertPriorityEnum] = mapped_column(SQLAlchemyEnum(AlertPriorityEnum), nullable=False)
+    priority: Mapped[AlertPriorityEnum] = mapped_column(
+        SQLAlchemyEnum(AlertPriorityEnum), nullable=False
+    )
     rule_id: Mapped[uuid.UUID] = mapped_column(
         SQLAlchemyUUID(as_uuid=True),
         ForeignKey("biometric_rules.id"),
@@ -65,8 +69,12 @@ class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
     )
 
     # Timestamps
-    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, default=now_utc, index=True)
-    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime, nullable=False, default=now_utc, index=True
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime, nullable=False, default=now_utc, onupdate=now_utc
+    )
 
     # Acknowledgment and resolution
     acknowledged_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)
@@ -83,7 +91,9 @@ class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
     data_points: Mapped[dict] = mapped_column(
         JSON, nullable=False
     )  # Serialized list of data points that triggered the alert
-    alert_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # Renamed from metadata
+    alert_metadata: Mapped[dict | None] = mapped_column(
+        JSON, nullable=True
+    )  # Renamed from metadata
 
     triggering_event_details: Mapped[dict | None] = mapped_column(JSONEncodedDict, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

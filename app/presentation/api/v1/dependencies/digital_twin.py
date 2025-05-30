@@ -23,10 +23,12 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
+
 class _SupportsGet(Protocol):
     """Minimal protocol exposing ``get`` used by the DI container."""
 
     def get(self, interface: type[T]) -> T: ...
+
 
 def get_digital_twin_service() -> DigitalTwinServiceInterface:
     """Return a concrete implementation of the `DigitalTwinServiceInterface`."""

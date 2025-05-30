@@ -557,11 +557,11 @@ class BaseEncryptionService:
                     else:
                         # Regular list handling
                         result[key] = [
-                            self.encrypt_dict(item)
-                            if isinstance(item, dict)
-                            else self.encrypt_string(item)
-                            if is_sensitive
-                            else item
+                            (
+                                self.encrypt_dict(item)
+                                if isinstance(item, dict)
+                                else self.encrypt_string(item) if is_sensitive else item
+                            )
                             for item in value
                         ]
                 # Handle simple values - encrypt if sensitive
@@ -618,11 +618,16 @@ class BaseEncryptionService:
                     # Handle lists by processing each item
                     elif isinstance(value, list):
                         result[key] = [
-                            self.decrypt_dict(item)
-                            if isinstance(item, dict)
-                            else self.decrypt_string(item)
-                            if isinstance(item, str) and item.startswith(self.VERSION_PREFIX)
-                            else item
+                            (
+                                self.decrypt_dict(item)
+                                if isinstance(item, dict)
+                                else (
+                                    self.decrypt_string(item)
+                                    if isinstance(item, str)
+                                    and item.startswith(self.VERSION_PREFIX)
+                                    else item
+                                )
+                            )
                             for item in value
                         ]
                     # Handle encrypted strings

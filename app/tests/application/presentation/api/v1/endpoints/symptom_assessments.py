@@ -4,6 +4,7 @@ API Endpoints for Symptom Assessment Records.
 Provides endpoints for creating and retrieving symptom assessment data
 (e.g., PHQ-9, GAD-7 scores).
 """
+
 from datetime import datetime
 from uuid import UUID
 
@@ -179,10 +180,12 @@ async def list_symptom_assessments(
         ..., description="ID of the patient whose assessments to list"
     ),  # Require patient_id for listing
     assessment_type: AssessmentType | None = Query(None, description="Filter by assessment type"),
-    start_date: datetime
-    | None = Query(None, description="Filter by assessment start date (inclusive)"),
-    end_date: datetime
-    | None = Query(None, description="Filter by assessment end date (exclusive)"),
+    start_date: datetime | None = Query(
+        None, description="Filter by assessment start date (inclusive)"
+    ),
+    end_date: datetime | None = Query(
+        None, description="Filter by assessment end date (exclusive)"
+    ),
     source: str | None = Query(None, description="Filter by assessment source"),
     limit: int = Query(50, ge=1, le=200, description="Maximum assessments to return"),
     offset: int = Query(0, ge=0, description="Number of assessments to skip"),
@@ -201,7 +204,6 @@ async def list_symptom_assessments(
     #    if not (user_role in ['admin', 'clinician'] or str(patient_id) == user_id_str):
     #        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to list assessments for this patient.")
 
-
     # Mock list_by_patient_id
     async def mock_list_pat(pid, assessment_type, start_date, end_date):
         return []  # Adjusted signature
@@ -212,7 +214,7 @@ async def list_symptom_assessments(
         patient_id=patient_id,
         assessment_type=assessment_type,
         start_date=start_date,
-        end_date=end_date
+        end_date=end_date,
         # Add limit/offset later
     )
 

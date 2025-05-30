@@ -6,7 +6,6 @@ identifies and redacts Protected Health Information (PHI) in text.
 These tests are security-critical as they validate HIPAA compliance mechanisms.
 """
 
-
 import pytest
 
 from app.core.exceptions import (

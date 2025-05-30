@@ -4,6 +4,7 @@ Unit tests for EnhancedXGBoostService.
 Tests the treatment response prediction and interaction analysis capabilities
 of the XGBoost-based machine learning service.
 """
+
 import uuid
 
 import numpy as np
@@ -60,7 +61,9 @@ class TestEnhancedXGBoostService:
         assert 0 <= prediction["confidence"] <= 1.0
         assert prediction["timeframe_days"] > 0
 
-    def test_predict_treatment_response_multiple_regions(self, xgboost_service, test_patient_id) -> None:
+    def test_predict_treatment_response_multiple_regions(
+        self, xgboost_service, test_patient_id
+    ) -> None:
         """Test treatment response prediction across multiple brain regions."""
         # Test predictions for different brain regions
         regions = [
@@ -122,7 +125,9 @@ class TestEnhancedXGBoostService:
         response_values = [p["predicted_response"] for p in predictions]
         assert len(set(response_values)) > 1, "Predictions should vary by neurotransmitter"
 
-    def test_predict_treatment_response_effect_magnitude(self, xgboost_service, test_patient_id) -> None:
+    def test_predict_treatment_response_effect_magnitude(
+        self, xgboost_service, test_patient_id
+    ) -> None:
         """Test that treatment effect magnitude influences prediction."""
         # Test predictions for different effect magnitudes
         effect_magnitudes = [0.1, 0.3, 0.5, 0.7, 0.9]
@@ -181,7 +186,9 @@ class TestEnhancedXGBoostService:
         # Verify effect magnitude is a string like 'large' or 'medium'
         assert first_interaction["effect_magnitude"] in ["large", "medium", "small"]
 
-    def test_simulate_treatment_cascade(self, xgboost_service, test_patient_id, test_baseline_data) -> None:
+    def test_simulate_treatment_cascade(
+        self, xgboost_service, test_patient_id, test_baseline_data
+    ) -> None:
         """Test simulation of treatment cascade effects."""
         # Test cascade simulation
         cascade = xgboost_service.simulate_treatment_cascade(

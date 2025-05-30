@@ -85,7 +85,9 @@ class TestBedrockPAT:
         assert service._dynamodb_table == "test-table"
 
     @pytest.mark.asyncio
-    async def test_analyze_actigraphy(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture) -> None:
+    async def test_analyze_actigraphy(
+        self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture
+    ) -> None:
         """Test analyzing actigraphy data."""
         service = bedrock_pat_service
         patient_id = f"patient-{uuid.uuid4()}"
@@ -458,7 +460,7 @@ class TestBedrockPAT:
                 "deep_percentage": 0.22,
             },
             "insights": ["Good sleep quality detected"],  # Changed to List[str]
-            "warnings": ["Slightly high sleep latency."]  # Added warnings
+            "warnings": ["Slightly high sleep latency."],  # Added warnings
             # Removed raw_results as it's not in the base AnalysisResult model definition
             # raw_results: {'raw': 'data'}
         }
@@ -508,7 +510,7 @@ class TestBedrockPAT:
         result = await service.integrate_with_digital_twin(
             patient_id=patient_id,  # Pass the generated UUID string
             analysis_result=mock_analysis_result,  # Pass the AnalysisResult object
-            twin_profile=mock_digital_twin_profile  # Pass the DigitalTwin object or None
+            twin_profile=mock_digital_twin_profile,  # Pass the DigitalTwin object or None
             # Removed analysis_id and integration_types
         )
 

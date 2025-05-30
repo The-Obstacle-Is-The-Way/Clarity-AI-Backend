@@ -135,9 +135,7 @@ class DigitalTwinIntegrationServiceImpl(IDigitalTwinIntegrationService):
             updates = {}
 
             if clinical_data:
-                symptom_forecast = await self._generate_symptom_forecast(
-                    patient_id, clinical_data
-                )
+                symptom_forecast = await self._generate_symptom_forecast(patient_id, clinical_data)
                 updates["symptom_forecast"] = symptom_forecast
 
             if biometric_data:
@@ -262,9 +260,13 @@ class DigitalTwinIntegrationServiceImpl(IDigitalTwinIntegrationService):
         }
 
         # Convert dict data to list format expected by interface
-        biometric_data_list = [biometric_data] if isinstance(biometric_data, dict) else biometric_data
-        mental_health_data_list = [mental_health_data] if isinstance(mental_health_data, dict) else mental_health_data
-        
+        biometric_data_list = (
+            [biometric_data] if isinstance(biometric_data, dict) else biometric_data
+        )
+        mental_health_data_list = (
+            [mental_health_data] if isinstance(mental_health_data, dict) else mental_health_data
+        )
+
         # Analyze correlations
         correlations = await self.biometric_correlation_service.analyze_correlations(
             patient_id, biometric_data_list, mental_health_data_list
@@ -308,7 +310,7 @@ class DigitalTwinIntegrationServiceImpl(IDigitalTwinIntegrationService):
         prediction_results = {
             "genetic_markers": genetic_data,
             "condition": condition,
-            "gene_interactions": interactions.get("gene_interactions", {})
+            "gene_interactions": interactions.get("gene_interactions", {}),
         }
         treatment_plan = await self.pharmacogenomics_service.generate_treatment_recommendations(
             patient_id, prediction_results, medication_history

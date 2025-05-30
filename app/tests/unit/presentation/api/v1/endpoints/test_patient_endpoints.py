@@ -108,9 +108,9 @@ async def client(
     app_instance = create_application(settings_override=test_settings, skip_auth_middleware=True)
 
     # Override the JWT service dependency to use our global mock
-    app_instance.dependency_overrides[
-        get_jwt_service_from_request
-    ] = lambda: global_mock_jwt_service
+    app_instance.dependency_overrides[get_jwt_service_from_request] = (
+        lambda: global_mock_jwt_service
+    )
 
     # Override the authentication dependency to always return our authenticated user
     app_instance.dependency_overrides[get_current_user] = lambda: authenticated_user

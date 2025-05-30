@@ -255,7 +255,7 @@ def test_token_with_phi_fields(jwt_service) -> None:
     for field in phi_fields:
         assert field not in payload_dict, f"PHI field '{field}' found in payload"
         assert field not in custom_fields, f"PHI field '{field}' found in custom_fields"
-        
+
         # Skip string representation check - this is handled by the TokenPayload class
         # and is not relevant for HIPAA compliance since the actual data is sanitized
 

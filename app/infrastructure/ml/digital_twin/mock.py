@@ -314,9 +314,9 @@ class MockDigitalTwinService(DigitalTwinInterface):
 
         # Add specific responses for the wellness test case
         for wellness_term in ["wellness", "exercise", "diet", "sleep", "stress"]:
-            exact_message_responses[
-                f"About my {wellness_term}"
-            ] = f"Wellness is an important part of your health. Let's discuss your {wellness_term} routine and how it affects your overall wellness."
+            exact_message_responses[f"About my {wellness_term}"] = (
+                f"Wellness is an important part of your health. Let's discuss your {wellness_term} routine and how it affects your overall wellness."
+            )
 
         # Determine topic and response based on the message content
         if message in exact_message_responses:

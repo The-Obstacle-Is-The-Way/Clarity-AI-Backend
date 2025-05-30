@@ -24,7 +24,7 @@ class BaseException(Exception):
         detail: str | list[str] | dict[str, Any] | None = None,
         code: str | None = None,
         *args: Any,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         self.message = message
         self.detail = detail

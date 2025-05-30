@@ -357,7 +357,9 @@ class TestAuthenticationMiddleware:
         # So we can't reliably check the call arguments here
 
     @pytest.mark.asyncio
-    async def test_missing_token(self, auth_middleware_fixture, unauthenticated_request_fixture) -> None:
+    async def test_missing_token(
+        self, auth_middleware_fixture, unauthenticated_request_fixture
+    ) -> None:
         # Ensure app.state attributes are set for this request fixture too
         # For consistency, even if not strictly needed for this specific early exit path:
         mock_session_factory_on_state = MagicMock()

@@ -38,22 +38,40 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     first_name: Mapped[str] = mapped_column(String(100), nullable=False)
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    provider_type: Mapped[str] = mapped_column(String(50), nullable=False)  # Maps to ProviderType enum
-    specialties: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)  # Array of specialties
+    provider_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # Maps to ProviderType enum
+    specialties: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )  # Array of specialties
     license_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
     npi_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    address: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)  # Address as JSON
+    address: Mapped[dict[str, Any]] = mapped_column(
+        JSON, nullable=False, default=dict
+    )  # Address as JSON
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
-    education: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)  # Education history
-    certifications: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)  # Certifications
-    languages: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)  # Languages spoken
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")  # Maps to ProviderStatus enum
-    availability: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)  # Availability schedule
+    education: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )  # Education history
+    certifications: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )  # Certifications
+    languages: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )  # Languages spoken
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="active"
+    )  # Maps to ProviderStatus enum
+    availability: Mapped[dict[str, Any]] = mapped_column(
+        JSON, nullable=False, default=dict
+    )  # Availability schedule
     max_patients: Mapped[str | None] = mapped_column(String(10), nullable=True)  # Maximum patients
     current_patient_count: Mapped[str] = mapped_column(String(10), nullable=False, default="0")
-    model_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)  # Additional metadata
+    model_metadata: Mapped[dict[str, Any]] = mapped_column(
+        JSON, nullable=False, default=dict
+    )  # Additional metadata
 
     # Relationships
     appointments = relationship(

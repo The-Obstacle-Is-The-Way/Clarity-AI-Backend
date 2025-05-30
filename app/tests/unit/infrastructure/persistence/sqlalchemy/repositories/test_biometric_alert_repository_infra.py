@@ -410,15 +410,18 @@ class TestSQLAlchemyBiometricAlertRepository:
         assert repository.session == mock_session
 
     @pytest.mark.asyncio
-    async def test_save_new_alert(self, mock_session: AsyncMock, sample_alert: BiometricAlert) -> None:
+    async def test_save_new_alert(
+        self, mock_session: AsyncMock, sample_alert: BiometricAlert
+    ) -> None:
         """Test saving a new biometric alert."""
         # Arrange
         # Use patch to mock the internal implementation of the repository methods
-        with patch.object(
-            SQLAlchemyBiometricAlertRepository, "_map_to_model"
-        ) as mock_map_to_model, patch.object(
-            SQLAlchemyBiometricAlertRepository, "_map_to_entity"
-        ) as mock_map_to_entity:
+        with (
+            patch.object(SQLAlchemyBiometricAlertRepository, "_map_to_model") as mock_map_to_model,
+            patch.object(
+                SQLAlchemyBiometricAlertRepository, "_map_to_entity"
+            ) as mock_map_to_entity,
+        ):
             # Create the repository with our mocked session
             repository = SQLAlchemyBiometricAlertRepository(mock_session)
 

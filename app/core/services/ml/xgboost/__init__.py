@@ -1,7 +1,7 @@
 """
 XGBoost Service module for the Concierge Psychiatry Platform.
 
-This module provides machine learning capabilities using XGBoost models, 
+This module provides machine learning capabilities using XGBoost models,
 specifically designed for psychiatric risk assessment, treatment response
 prediction, and clinical outcome forecasting.
 

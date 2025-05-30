@@ -1,6 +1,7 @@
 """
 Interface for the Digital Twin Repository.
 """
+
 from abc import abstractmethod
 from uuid import UUID
 
@@ -11,7 +12,9 @@ from app.domain.entities.digital_twin import DigitalTwin
 
 
 # Rename class to match import in DI container -> Renaming back to DigitalTwinRepository
-class DigitalTwinRepository(BaseRepositoryInterface[DigitalTwin]):  # Renamed from DigitalTwinRepositoryInterface
+class DigitalTwinRepository(
+    BaseRepositoryInterface[DigitalTwin]
+):  # Renamed from DigitalTwinRepositoryInterface
     """Abstract base class defining the digital twin repository interface."""
 
     @abstractmethod

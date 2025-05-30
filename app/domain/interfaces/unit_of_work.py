@@ -35,7 +35,7 @@ class UnitOfWork(abc.ABC):
         self,
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
-        exc_tb: TracebackType | None
+        exc_tb: TracebackType | None,
     ) -> None:
         """
         Exit the unit of work context, committing or rolling back the transaction.

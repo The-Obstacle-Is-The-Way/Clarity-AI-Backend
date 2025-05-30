@@ -2,6 +2,7 @@
 Enhanced domain service interface for PAT (Pretrained Actigraphy Transformer) with advanced capabilities.
 Pure domain interface with no infrastructure dependencies.
 """
+
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any
@@ -110,7 +111,10 @@ class EnhancedPATService(ABC):
 
     @abstractmethod
     async def process_electrodermal_activity(
-        self, patient_id: UUID, eda_data: dict[str, Any], contextual_data: dict[str, Any] | None = None
+        self,
+        patient_id: UUID,
+        eda_data: dict[str, Any],
+        contextual_data: dict[str, Any] | None = None,
     ) -> dict:
         """
         Process skin conductance data for sympathetic nervous system activation.
@@ -521,7 +525,10 @@ class EnhancedPATService(ABC):
 
     @abstractmethod
     async def analyze_slow_wave_sleep(
-        self, patient_id: UUID, sleep_data: dict[str, Any], cognitive_data: dict[str, Any] | None = None
+        self,
+        patient_id: UUID,
+        sleep_data: dict[str, Any],
+        cognitive_data: dict[str, Any] | None = None,
     ) -> dict:
         """
         Analyze slow-wave sleep quality and cognitive function correlation.
@@ -560,7 +567,10 @@ class EnhancedPATService(ABC):
 
     @abstractmethod
     async def analyze_sleep_spindles(
-        self, patient_id: UUID, sleep_eeg_data: dict[str, Any], memory_context: dict[str, Any] | None = None
+        self,
+        patient_id: UUID,
+        sleep_eeg_data: dict[str, Any],
+        memory_context: dict[str, Any] | None = None,
     ) -> dict:
         """
         Analyze sleep spindles for memory consolidation assessment.

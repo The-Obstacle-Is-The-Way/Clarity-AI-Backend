@@ -280,10 +280,18 @@ class ContactInfo:
             # Create new instance with decrypted fields
             email_decrypted = encryption_service.decrypt(self.email) if self.email else None
             phone_decrypted = encryption_service.decrypt(self.phone) if self.phone else None
-            
+
             # Ensure decrypted values are strings (convert bytes if necessary)
-            email_str = email_decrypted.decode('utf-8') if isinstance(email_decrypted, bytes) else email_decrypted
-            phone_str = phone_decrypted.decode('utf-8') if isinstance(phone_decrypted, bytes) else phone_decrypted
+            email_str = (
+                email_decrypted.decode("utf-8")
+                if isinstance(email_decrypted, bytes)
+                else email_decrypted
+            )
+            phone_str = (
+                phone_decrypted.decode("utf-8")
+                if isinstance(phone_decrypted, bytes)
+                else phone_decrypted
+            )
 
             # Create a new instance with the _is_encrypted flag explicitly set to False
             result = ContactInfo(

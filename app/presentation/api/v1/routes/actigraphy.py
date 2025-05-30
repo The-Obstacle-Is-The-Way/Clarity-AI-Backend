@@ -56,9 +56,9 @@ class MockPATService(IPATService):
 
         # Create a mock ActigraphyAnalysisResult
         mock_analysis_result = ActigraphyAnalysisResult(
-            analysis_type=data.analysis_types[0]
-            if data.analysis_types
-            else AnalysisType.SLEEP_QUALITY,  # Use first requested or default
+            analysis_type=(
+                data.analysis_types[0] if data.analysis_types else AnalysisType.SLEEP_QUALITY
+            ),  # Use first requested or default
             analysis_time=now,
             # sleep_metrics, activity_metrics, circadian_metrics can be None or mocked simply
             raw_results={"mock_key": "mock_value"},
@@ -71,7 +71,7 @@ class MockPATService(IPATService):
                 "start_time": data.start_time if data.start_time else now,
                 "end_time": data.end_time if data.end_time else now,
             },
-            "results": [mock_analysis_result]  # List of results
+            "results": [mock_analysis_result],  # List of results
             # Fields like 'analysis_id', 'timestamp', 'message', 'status' from the simpler version are not in the main AnalyzeActigraphyResponse
         }
 
@@ -274,7 +274,7 @@ async def get_actigraphy_summary_stub(patient_id: str, current_user: CurrentUser
         patient_id=patient_id,
         interval="day",
         summaries=[mock_daily_summary],
-        trends={"sleep_trend": 0.05, "activity_trend": -0.02}
+        trends={"sleep_trend": 0.05, "activity_trend": -0.02},
         # Removed: summary_data={}, message="..."
     )
 

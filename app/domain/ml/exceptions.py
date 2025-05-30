@@ -4,6 +4,7 @@ Machine Learning exceptions for the Novamind Digital Twin Backend.
 This module defines domain-level exceptions related to ML operations,
 particularly for the MentalLLaMA model interactions.
 """
+
 from typing import Any
 
 

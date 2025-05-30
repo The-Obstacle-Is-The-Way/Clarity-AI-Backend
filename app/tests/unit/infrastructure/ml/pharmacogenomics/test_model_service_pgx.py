@@ -403,7 +403,9 @@ class TestPharmacogenomicsService:
         assert await service.is_model_healthy() is True
 
     @pytest.mark.asyncio  # Add async
-    async def test_get_model_info(self, service, mock_gene_medication_model, mock_treatment_model) -> None:
+    async def test_get_model_info(
+        self, service, mock_gene_medication_model, mock_treatment_model
+    ) -> None:
         """Test the get_model_info method."""
         # Setup mock responses
         # Corrected return value structure

@@ -3,6 +3,7 @@
 Shared across layers (domain, application, presentation) while remaining UI-
 framework agnostic. Avoids duplicate definitions in tests.
 """
+
 from __future__ import annotations
 
 from datetime import datetime

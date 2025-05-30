@@ -725,7 +725,7 @@ class AWSXGBoostService(XGBoostInterface):
         try:
             # Retrieve the prediction data from DynamoDB
             prediction_data = await self._retrieve_prediction_data(prediction_id, patient_id)
-            
+
             # Validate no PHI in additional data (HIPAA compliance)
             if additional_data:
                 await self._validate_no_phi(additional_data)
@@ -830,7 +830,9 @@ class AWSXGBoostService(XGBoostInterface):
                     "error_type": "UnexpectedError",
                 },
             )
-            raise ServiceConnectionError(f"Unexpected error in digital twin integration: {e!s}") from e
+            raise ServiceConnectionError(
+                f"Unexpected error in digital twin integration: {e!s}"
+            ) from e
 
     async def healthcheck(self) -> dict[str, Any]:
         """
@@ -1050,7 +1052,9 @@ class AWSXGBoostService(XGBoostInterface):
                 }
             )
 
-    def _validate_integration_params(self, patient_id: str, profile_id: str, prediction_id: str) -> None:
+    def _validate_integration_params(
+        self, patient_id: str, profile_id: str, prediction_id: str
+    ) -> None:
         """Validate digital twin integration parameters."""
         if not patient_id or not isinstance(patient_id, str):
             raise ValidationError(
@@ -1073,7 +1077,9 @@ class AWSXGBoostService(XGBoostInterface):
                 value=prediction_id,
             )
 
-    async def _retrieve_prediction_data(self, prediction_id: str, patient_id: str) -> dict[str, Any]:
+    async def _retrieve_prediction_data(
+        self, prediction_id: str, patient_id: str
+    ) -> dict[str, Any]:
         """Retrieve prediction data from DynamoDB for integration."""
         if self._dynamodb is None:
             raise ServiceConnectionError("DynamoDB service not available")
@@ -1142,7 +1148,9 @@ class AWSXGBoostService(XGBoostInterface):
 
         try:
             self._dynamodb.put_item(integration_table, item)
-            self._logger.info(f"Stored integration result {integration_id} for patient {patient_id}")
+            self._logger.info(
+                f"Stored integration result {integration_id} for patient {patient_id}"
+            )
         except Exception as e:
             self._logger.error(f"Failed to store integration result: {e}")
 

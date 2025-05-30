@@ -5,7 +5,6 @@ This module contains tests for the BaseSecurityTest class to ensure
 proper functionality of the security test infrastructure.
 """
 
-
 from app.tests.security.utils.base_security_test import BaseSecurityTest
 
 # Mocks are likely not needed directly in this test file anymore

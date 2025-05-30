@@ -1,7 +1,7 @@
 """
 Role-Based Access Control (RBAC) module for the Novamind Digital Twin Backend.
 
-This module provides role and permission management for restricting 
+This module provides role and permission management for restricting
 access to resources based on user roles.
 """
 

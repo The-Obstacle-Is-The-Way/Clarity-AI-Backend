@@ -108,10 +108,13 @@ class TestBiometricLSTMModel:
     def test_initialize_loads_model(self) -> None:  # Added self
         """Test that initialize loads the model correctly when file exists."""
         # Setup
-        with patch("os.path.exists", return_value=True), patch(
-            "app.infrastructure.ml.biometric_correlation.lstm_model.load_model",
-            return_value=MagicMock(),
-        ) as mock_load:
+        with (
+            patch("os.path.exists", return_value=True),
+            patch(
+                "app.infrastructure.ml.biometric_correlation.lstm_model.load_model",
+                return_value=MagicMock(),
+            ) as mock_load,
+        ):
             # Create model instance
             model_instance = BiometricCorrelationModel(model_path="test_model_path")
             # Execute initialization
@@ -150,10 +153,13 @@ class TestBiometricLSTMModel:
                 return None
 
         # Patch the key components we need
-        with patch("os.path.exists", return_value=False), patch(
-            "app.infrastructure.ml.biometric_correlation.lstm_model.Sequential",
-            return_value=MockSequential(),
-        ) as mock_sequential:
+        with (
+            patch("os.path.exists", return_value=False),
+            patch(
+                "app.infrastructure.ml.biometric_correlation.lstm_model.Sequential",
+                return_value=MockSequential(),
+            ) as mock_sequential,
+        ):
             # Create model instance
             model_instance = BiometricCorrelationModel(model_path="nonexistent_path")
 

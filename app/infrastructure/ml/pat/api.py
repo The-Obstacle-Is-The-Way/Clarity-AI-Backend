@@ -36,9 +36,11 @@ async def get_pat_service() -> PATService:
     """
     settings = get_settings()
     service = PATService(
-        model_size=PATModelSizeEnum(settings.ml.pat.model_path.split("-")[-1])
-        if "pat-" in settings.ml.pat.model_path
-        else PATModelSizeEnum.MEDIUM,  # Infer size from path or default
+        model_size=(
+            PATModelSizeEnum(settings.ml.pat.model_path.split("-")[-1])
+            if "pat-" in settings.ml.pat.model_path
+            else PATModelSizeEnum.MEDIUM
+        ),  # Infer size from path or default
         model_path=settings.ml.pat.model_path,  # Use nested settings
         cache_dir=settings.ml.pat.cache_dir,
         use_gpu=settings.ml.pat.use_gpu,

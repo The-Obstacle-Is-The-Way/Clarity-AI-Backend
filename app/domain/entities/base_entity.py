@@ -1,6 +1,7 @@
 """
 Base class for domain entities.
 """
+
 from dataclasses import dataclass, field
 from uuid import UUID, uuid4
 

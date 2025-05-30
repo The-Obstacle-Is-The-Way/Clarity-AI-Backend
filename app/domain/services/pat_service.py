@@ -2,6 +2,7 @@
 Domain service interface for PAT (Pretrained Actigraphy Transformer).
 Pure domain interface with no infrastructure dependencies.
 """
+
 from abc import ABC, abstractmethod
 from datetime import datetime
 from uuid import UUID

@@ -5,7 +5,6 @@ This module ensures proper encryption of address data structures
 while maintaining HIPAA compliance.
 """
 
-
 from app.infrastructure.security.encryption.base_encryption_service import (
     BaseEncryptionService,
 )

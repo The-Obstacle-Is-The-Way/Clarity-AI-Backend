@@ -1,7 +1,7 @@
 """
 Psychiatric Assessment Tool (PAT) Interface.
 
-This module defines the interface for psychiatric assessment tools 
+This module defines the interface for psychiatric assessment tools
 that analyze patient data to provide clinical insights and predictions.
 """
 

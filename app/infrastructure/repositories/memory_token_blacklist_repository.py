@@ -1,7 +1,7 @@
 """
 In-memory implementation of the token blacklist repository.
 
-This is primarily for testing and development environments. 
+This is primarily for testing and development environments.
 For production, use RedisTokenBlacklistRepository or another persistent implementation.
 """
 
@@ -26,9 +26,7 @@ class MemoryTokenBlacklistRepository(ITokenBlacklistRepository):
         self._blacklist: dict[str, dict] = {}  # JTI -> token info
         self._token_to_jti: dict[str, str] = {}  # token -> JTI mapping
 
-    async def add_to_blacklist(
-        self, token_jti: str, expires_at: datetime
-    ) -> None:
+    async def add_to_blacklist(self, token_jti: str, expires_at: datetime) -> None:
         """
         Add a token to the blacklist.
 
@@ -53,10 +51,6 @@ class MemoryTokenBlacklistRepository(ITokenBlacklistRepository):
             True if the token is blacklisted, False otherwise
         """
         return token_jti in self._blacklist
-
-
-
-
 
     async def remove_expired(self) -> int:
         """

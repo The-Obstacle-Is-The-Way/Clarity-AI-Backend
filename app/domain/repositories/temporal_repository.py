@@ -1,6 +1,7 @@
 """
 Repository interfaces for temporal data storage and retrieval.
 """
+
 from abc import ABC, abstractmethod
 from uuid import UUID
 

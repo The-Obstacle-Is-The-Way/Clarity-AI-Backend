@@ -1,7 +1,7 @@
 """
 HIPAA-compliant audit logging service for PHI access and security events.
 
-This module provides a comprehensive audit logging mechanism for Protected Health 
+This module provides a comprehensive audit logging mechanism for Protected Health
 Information (PHI) access and security events, ensuring compliance with HIPAA audit
 requirements (45 CFR § 164.312(b) and 45 CFR § 164.308(a)(1)(ii)(D)).
 """

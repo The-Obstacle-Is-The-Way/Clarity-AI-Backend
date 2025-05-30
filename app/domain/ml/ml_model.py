@@ -1,6 +1,7 @@
 """
 Domain entities related to Machine Learning Models.
 """
+
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone

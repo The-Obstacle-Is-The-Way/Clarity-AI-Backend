@@ -336,7 +336,9 @@ class TestTreatmentResponseModel:
         assert 0 <= result["percentile"] <= 100  # Added indentation for block
 
     @pytest.mark.asyncio
-    async def test_format_side_effects_result(self, model) -> None:  # Added colon, corrected indentation
+    async def test_format_side_effects_result(
+        self, model
+    ) -> None:  # Added colon, corrected indentation
         """Test side effects result formatting."""
         # Setup # Corrected indentation
         medication = "fluoxetine"

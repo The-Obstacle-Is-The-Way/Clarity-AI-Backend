@@ -169,7 +169,9 @@ class TestAWSXGBoostServicePrediction:
         """Test predict_risk failure due to AWS service unavailability."""
         # Directly override the predict_risk method to raise the specific error we want to test
 
-        async def connection_error_predict_risk(patient_id, risk_type, clinical_data, **kwargs) -> NoReturn:
+        async def connection_error_predict_risk(
+            patient_id, risk_type, clinical_data, **kwargs
+        ) -> NoReturn:
             # Raise the exact error type we want to test
             raise ServiceConnectionError("Failed to connect to SageMaker endpoint: test-endpoint")
 

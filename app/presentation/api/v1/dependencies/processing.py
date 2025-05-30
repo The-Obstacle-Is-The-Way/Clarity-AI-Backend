@@ -20,8 +20,7 @@ T = TypeVar("T")
 class _SupportsGet(Protocol):
     """Minimal protocol for DI containers that expose ``get``."""
 
-    def get(self, interface: type[T]) -> T:
-        ...
+    def get(self, interface: type[T]) -> T: ...
 
 
 def get_event_processor() -> IBiometricEventProcessor:

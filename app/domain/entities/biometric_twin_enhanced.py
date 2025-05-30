@@ -293,9 +293,9 @@ class BiometricTimeseriesData:
             "biometric_type": self.biometric_type.value,
             "unit": self.unit,
             "data_points": [dp.to_dict() for dp in self.data_points],
-            "physiological_range": self.physiological_range.to_dict()
-            if self.physiological_range
-            else None,
+            "physiological_range": (
+                self.physiological_range.to_dict() if self.physiological_range else None
+            ),
         }
 
     @classmethod

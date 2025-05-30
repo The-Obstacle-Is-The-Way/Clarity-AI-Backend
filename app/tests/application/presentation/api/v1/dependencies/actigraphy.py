@@ -4,6 +4,7 @@ Actigraphy request validation dependencies.
 Provides reusable dependencies to validate and parse actigraphy API payloads
 using Pydantic models, decoupling schema validation from endpoint logic.
 """
+
 from fastapi import HTTPException, Request, status
 from pydantic import ValidationError as PydanticValidationError
 

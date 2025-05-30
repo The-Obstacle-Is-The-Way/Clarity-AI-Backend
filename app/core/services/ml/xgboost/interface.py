@@ -19,7 +19,7 @@ __all__ = [
     "ModelType",
     "Observer",
     "PrivacyLevel",
-    "XGBoostInterface"
+    "XGBoostInterface",
 ]
 
 

@@ -216,7 +216,9 @@ class TestDBPHIProtection:
         return {"role": "guest", "user_id": None}
 
     @pytest.mark.asyncio
-    async def test_data_encryption_at_rest(self, unit_of_work, admin_context, mock_logger, db) -> None:
+    async def test_data_encryption_at_rest(
+        self, unit_of_work, admin_context, mock_logger, db
+    ) -> None:
         """Test that PHI is encrypted when stored in the database."""
         uow = unit_of_work
 
@@ -581,7 +583,9 @@ class TestDBPHIProtection:
             pytest.fail("Cannot proceed to get/update tests as patient creation failed.")
 
     @pytest.mark.asyncio
-    async def test_phi_filtering_by_role(self, unit_of_work, admin_context, patient_context) -> None:
+    async def test_phi_filtering_by_role(
+        self, unit_of_work, admin_context, patient_context
+    ) -> None:
         """Test PHI filtering based on user roles."""
         uow = unit_of_work
         patient_id = uuid.uuid4()

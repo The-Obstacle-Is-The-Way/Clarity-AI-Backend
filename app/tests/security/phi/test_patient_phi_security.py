@@ -7,7 +7,7 @@ for Protected Health Information (PHI) in the patient model, including:
     - Secure logging (no PHI in logs)
     - Audit trail for PHI access
     - Secure error handling
-    """
+"""
 
 import io
 import logging
@@ -105,9 +105,10 @@ class TestPatientPHISecurity(BaseSecurityTest):
     def test_no_phi_in_logs(self) -> None:
         patient = self._create_sample_patient_with_phi()
         logger = logging.getLogger(__name__)
-        with patch.object(logger, "info") as mock_log_info, patch.object(
-            logger, "debug"
-        ) as mock_log_debug:
+        with (
+            patch.object(logger, "info") as mock_log_info,
+            patch.object(logger, "debug") as mock_log_debug,
+        ):
             logger.info(f"Processing patient {patient.id}")
             logger.debug(f"Patient details accessed for {patient.id}")
             for call in mock_log_info.call_args_list + mock_log_debug.call_args_list:

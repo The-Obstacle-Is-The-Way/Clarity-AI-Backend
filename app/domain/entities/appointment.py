@@ -2,6 +2,7 @@
 Appointment entity for managing clinical appointments.
 Domain model representing scheduled meetings between patients and providers.
 """
+
 from dataclasses import InitVar, dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum

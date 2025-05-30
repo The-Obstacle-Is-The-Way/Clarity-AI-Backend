@@ -3,6 +3,7 @@ Tests for the MockAsyncSession class.
 
 This module tests the mock database session used for testing.
 """
+
 import pytest
 from sqlalchemy import select
 
@@ -10,6 +11,8 @@ from sqlalchemy import select
 # Override select to avoid SQLAlchemy coercion for object type
 def select(*args, **kwargs) -> str:
     return "select"
+
+
 from uuid import uuid4
 
 from app.tests.fixtures.mock_db_fixture import MockAsyncSession

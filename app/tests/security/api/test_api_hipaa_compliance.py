@@ -93,9 +93,7 @@ class TestAPIHIPAACompliance:
         # Use a context manager to patch settings for the duration of the fixture setup
         # Use the actual Settings class, perhaps configured for testing
         test_settings = Settings()
-        with patch(
-            "app.config.settings.get_settings", return_value=test_settings
-        ):
+        with patch("app.config.settings.get_settings", return_value=test_settings):
             # mock_settings = mock_get_settings() # No longer needed, use test_settings
 
             # --- Create App Instance ---
@@ -490,7 +488,9 @@ class TestAPIHIPAACompliance:
         """Return a valid token for a different patient."""
         return "Bearer valid-other-patient-token"
 
-    def test_patient_data_isolation(self, client, api_prefix, patient_token, other_patient_token) -> None:
+    def test_patient_data_isolation(
+        self, client, api_prefix, patient_token, other_patient_token
+    ) -> None:
         """Test that patients can only access their own data."""
         # Patient can access their own data
         response = client.get(

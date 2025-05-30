@@ -42,8 +42,8 @@ class ClinicalTextAnalysisResponse(BaseModel):
     timestamp: datetime
     status: str  # e.g., 'completed', 'processing', 'failed'
     summary: str | None = None
-    extracted_entities: list[
-        dict[str, Any]
-    ] | None = None  # e.g., [{'text': 'anxiety', 'label': 'SYMPTOM'}]
+    extracted_entities: list[dict[str, Any]] | None = (
+        None  # e.g., [{'text': 'anxiety', 'label': 'SYMPTOM'}]
+    )
     sentiment: dict[str, float] | None = None  # e.g., {'score': -0.5, 'magnitude': 0.8}
     risk_assessment: dict[str, Any] | None = None  # e.g., {'suicidal_ideation': 'low'}

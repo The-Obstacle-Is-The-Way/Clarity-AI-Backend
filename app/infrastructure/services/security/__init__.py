@@ -1,7 +1,7 @@
 """
 Security services implementation package.
 
-This package contains implementations of security-related services 
+This package contains implementations of security-related services
 following clean architecture principles.
 """
 

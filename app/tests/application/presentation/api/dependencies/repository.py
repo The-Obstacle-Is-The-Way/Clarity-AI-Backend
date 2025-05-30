@@ -33,8 +33,8 @@ async def get_encryption_service() -> BaseEncryptionService:
 
     mock_service = MagicMock(spec=BaseEncryptionService)
     mock_service.encrypt.side_effect = lambda x: f"encrypted_{x}"
-    mock_service.decrypt.side_effect = (
-        lambda x: x.replace("encrypted_", "") if isinstance(x, str) else x
+    mock_service.decrypt.side_effect = lambda x: (
+        x.replace("encrypted_", "") if isinstance(x, str) else x
     )
     return mock_service
 

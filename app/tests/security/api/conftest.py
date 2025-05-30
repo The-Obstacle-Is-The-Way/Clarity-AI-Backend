@@ -776,13 +776,17 @@ async def get_valid_auth_headers(
         "roles": [
             role.value if hasattr(role, "value") else role for role in authenticated_user.roles
         ],
-        "status": authenticated_user.status.value
-        if hasattr(authenticated_user.status, "value")
-        else authenticated_user.status,
+        "status": (
+            authenticated_user.status.value
+            if hasattr(authenticated_user.status, "value")
+            else authenticated_user.status
+        ),
         "is_active": authenticated_user.is_active,
-        "created_at": int(authenticated_user.created_at.timestamp())
-        if authenticated_user.created_at
-        else int(datetime.now(timezone.utc).timestamp()),
+        "created_at": (
+            int(authenticated_user.created_at.timestamp())
+            if authenticated_user.created_at
+            else int(datetime.now(timezone.utc).timestamp())
+        ),
         "jti": str(uuid.uuid4()),
         "iss": "test-issuer",
         "aud": "test-audience",
@@ -1119,7 +1123,9 @@ def jwt_service_patch():
     # Dummy key for test tokens
     test_secret_key = "test_secret_key_for_testing_only"
 
-    async def patched_decode_token(self, token: str, token_type: str = "access", options: dict[str, bool] | None = None) -> TokenPayload:
+    async def patched_decode_token(
+        self, token: str, token_type: str = "access", options: dict[str, bool] | None = None
+    ) -> TokenPayload:
         """
         Patched version of decode_token that accepts test tokens without verification.
         For non-test tokens, falls back to the original implementation.
@@ -1131,6 +1137,7 @@ def jwt_service_patch():
         """
         if not token:
             from app.core.exceptions.auth_exceptions import InvalidTokenError
+
             raise InvalidTokenError("Token is missing")
 
         # If options is provided with verify_exp=False, we'll skip expiration verification
@@ -1155,7 +1162,7 @@ def jwt_service_patch():
                 logger.warning(f"Failed to decode token even without verification: {e}")
                 # If we can't even decode it unverified, call original method
                 # But we need to call it properly on the instance
-                original_method = JWTService.__dict__['decode_token']
+                original_method = JWTService.__dict__["decode_token"]
                 return await original_method(self, token, token_type, options)
 
             # Check if this seems like a test token
@@ -1197,16 +1204,16 @@ def jwt_service_patch():
 
                 # Create and return TokenPayload
                 return TokenPayload(**unverified_payload)
-                
+
         except Exception as e:
             logger.warning(f"Error in patched decode_token: {e}", exc_info=True)
 
         # Fall back to original implementation for non-test tokens or if test token processing fails
-        original_method = JWTService.__dict__['decode_token']
+        original_method = JWTService.__dict__["decode_token"]
         return await original_method(self, token, token_type, options)
 
     # Use patch.object to properly patch the instance method
-    with patch.object(JWTService, 'decode_token', patched_decode_token):
+    with patch.object(JWTService, "decode_token", patched_decode_token):
         yield
 
 

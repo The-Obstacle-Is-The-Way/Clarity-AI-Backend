@@ -6,6 +6,7 @@ to maintain backward compatibility while ensuring type consistency across the co
 
 All new code should import User directly from app.core.domain.entities.user.
 """
+
 # Python 3.9 compatibility layer
 from __future__ import annotations
 

@@ -234,7 +234,9 @@ async def assess_wellness_dimensions(
     _check_health(service)
 
     # For tests, forward to the process method
-    result = service.process(text=text, model_type="wellness", options={"user_id": user_id, "dimensions": dimensions})
+    result = service.process(
+        text=text, model_type="wellness", options={"user_id": user_id, "dimensions": dimensions}
+    )
     if asyncio.iscoroutine(result):
         result = await result
 

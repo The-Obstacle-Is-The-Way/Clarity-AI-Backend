@@ -2,13 +2,14 @@
 Domain entities for the Knowledge Graph component of the Digital Twin.
 Pure domain models with no external dependencies.
 """
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, TypeVar
 from uuid import UUID, uuid4
 
-T = TypeVar('T', bound=Enum)
+T = TypeVar("T", bound=Enum)
 
 
 class EdgeType(Enum):
@@ -45,14 +46,14 @@ class NodeType(Enum):
 
 def ensure_enum_value(value: str | T, enum_class: type[T]) -> T:
     """Convert string to enum value if necessary, or keep as enum value.
-    
+
     Args:
         value: The value to convert, either a string or an enum value
         enum_class: The enum class to convert to
-        
+
     Returns:
         The enum value
-        
+
     Raises:
         ValueError: If the string cannot be converted to an enum value
     """

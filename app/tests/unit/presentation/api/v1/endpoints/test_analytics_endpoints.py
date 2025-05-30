@@ -171,12 +171,12 @@ async def client(
         )
 
         # Override dependencies for the specific use cases
-        app_instance.dependency_overrides[
-            get_process_analytics_event_use_case
-        ] = lambda: mock_process_event_use_case
-        app_instance.dependency_overrides[
-            get_batch_process_analytics_use_case
-        ] = lambda: mock_batch_process_use_case
+        app_instance.dependency_overrides[get_process_analytics_event_use_case] = (
+            lambda: mock_process_event_use_case
+        )
+        app_instance.dependency_overrides[get_batch_process_analytics_use_case] = (
+            lambda: mock_batch_process_use_case
+        )
 
         # Override the get_current_user dependency to return the mock_user directly
         from app.presentation.api.dependencies.auth import get_current_user

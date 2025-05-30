@@ -282,7 +282,9 @@ class PharmacogenomicsModel:
                 raise ValidationError("No training data provided")
 
             # Prepare data for each medication
-            medication_data: dict[str, dict[str, Any]] = {med: {"X": [], "y": []} for med in self.medications}
+            medication_data: dict[str, dict[str, Any]] = {
+                med: {"X": [], "y": []} for med in self.medications
+            }
 
             # Process each training sample
             for sample in training_data:

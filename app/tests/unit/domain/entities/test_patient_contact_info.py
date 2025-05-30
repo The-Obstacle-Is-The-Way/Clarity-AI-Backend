@@ -1,8 +1,8 @@
 """
 QUANTUM CLEAN TESTS FOR PATIENT CONTACT_INFO
 
-These tests verify the core functional correctness of Patient entity's 
-contact_info initialization and access patterns, focusing only on the 
+These tests verify the core functional correctness of Patient entity's
+contact_info initialization and access patterns, focusing only on the
 behaviors that work as expected in the real implementation.
 """
 

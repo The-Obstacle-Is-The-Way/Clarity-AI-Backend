@@ -1,6 +1,7 @@
 """
 Domain entity representing a Clinical Session record.
 """
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -21,14 +22,14 @@ class SessionType(str, Enum):
 @dataclass(kw_only=True)
 class ClinicalSession(BaseEntity):
     """Clinical Session entity."""
-    
+
     # Required fields (no defaults) must come first
     patient_id: UUID
     provider_id: UUID
     session_datetime: datetime  # Actual time the session occurred
     duration_minutes: int
     session_type: SessionType
-    
+
     # Optional/defaulted fields come after required fields
     id: UUID = field(default_factory=uuid4)
     appointment_id: UUID | None = None  # Link to appointment if scheduled

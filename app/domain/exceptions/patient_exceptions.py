@@ -12,10 +12,7 @@ class PatientError(Exception):
     """Base exception class for all patient-related errors."""
 
     def __init__(
-        self,
-        message: str = "An error occurred with patient operation",
-        *args: Any,
-        **kwargs: Any
+        self, message: str = "An error occurred with patient operation", *args: Any, **kwargs: Any
     ) -> None:
         """
         Initialize a PatientError exception.
@@ -54,7 +51,7 @@ class PatientValidationError(PatientError):
         message: str = "Invalid patient data",
         field: str | None = None,
         *args: Any,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         """
         Initialize a PatientValidationError exception.
@@ -92,11 +89,7 @@ class PatientOperationError(PatientError):
     """Exception raised when a patient operation fails due to a system error."""
 
     def __init__(
-        self,
-        operation: str,
-        message: str = "Operation failed",
-        *args: Any,
-        **kwargs: Any
+        self, operation: str, message: str = "Operation failed", *args: Any, **kwargs: Any
     ) -> None:
         """
         Initialize a PatientOperationError exception.

@@ -41,16 +41,17 @@ __all__ = [
 
 class TimestampMixin(ConfigTimestampMixin):
     """Mixin for timestamp fields using Column syntax.
-    
+
     Inherits from the config TimestampMixin for consistency.
     Follows SOLID principles by extending the base functionality.
     """
+
     pass
 
 
 class AuditMixin:
     """Mixin for audit trail fields using Column syntax.
-    
+
     Provides HIPAA-compliant audit tracking for all models.
     Follows Single Responsibility Principle - handles only audit concerns.
     """

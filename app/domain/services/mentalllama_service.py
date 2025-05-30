@@ -2,6 +2,7 @@
 Domain service interface for MentalLLaMA-33B NLP analysis.
 Pure domain interface with no infrastructure dependencies.
 """
+
 from abc import ABC, abstractmethod
 from uuid import UUID
 

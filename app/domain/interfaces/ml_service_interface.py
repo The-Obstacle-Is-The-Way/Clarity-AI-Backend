@@ -5,6 +5,7 @@ Defines the contract for various ML model services used within the application,
 ensuring a consistent interaction pattern regardless of the underlying model
 or implementation (e.g., XGBoost, MentaLLaMA, PAT).
 """
+
 from abc import ABC, abstractmethod
 from typing import Any
 from uuid import UUID

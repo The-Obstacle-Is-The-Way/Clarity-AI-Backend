@@ -120,7 +120,9 @@ def jwt_service(test_settings: Settings) -> JWTServiceImpl:
 class TestJWTService:
     """Comprehensive tests for the JWTService class."""
 
-    def test_initialization(self, jwt_service: JWTServiceInterface, test_settings: Settings) -> None:
+    def test_initialization(
+        self, jwt_service: JWTServiceInterface, test_settings: Settings
+    ) -> None:
         """Test JWT service initialization with settings."""
         assert jwt_service.secret_key == TEST_SECRET_KEY
         assert jwt_service.algorithm == TEST_ALGORITHM
@@ -426,7 +428,9 @@ class TestJWTService:
 
     # @pytest.mark.asyncio # Test no longer needs to be async
     @freeze_time("2024-01-01 12:00:00")
-    def test_refresh_access_token_with_non_refresh_token(self, jwt_service: JWTServiceInterface) -> None:
+    def test_refresh_access_token_with_non_refresh_token(
+        self, jwt_service: JWTServiceInterface
+    ) -> None:
         """Test that attempting to refresh with a non-refresh token (e.g., an access token) fails at payload check."""
         user_data = {"sub": "user123", "role": "patient"}
         non_refresh_token = jwt_service.create_access_token(data=user_data)

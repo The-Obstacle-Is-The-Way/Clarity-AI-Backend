@@ -40,11 +40,7 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
 
     __tablename__ = "appointments"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        GUID(), 
-        primary_key=True, 
-        default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
     patient_id: Mapped[uuid.UUID] = mapped_column(
         GUID(),
         ForeignKey("patients.id"),
@@ -57,30 +53,14 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
         nullable=False,
         index=True,
     )
-    start_time: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), 
-        nullable=False
-    )
-    end_time: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), 
-        nullable=False
-    )
-    appointment_type: Mapped[str] = mapped_column(
-        String(50), 
-        nullable=False
-    )
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    appointment_type: Mapped[str] = mapped_column(String(50), nullable=False)
     status: Mapped[AppointmentStatus] = mapped_column(
-        SQLAlchemyEnum(AppointmentStatus), 
-        nullable=False
+        SQLAlchemyEnum(AppointmentStatus), nullable=False
     )
-    notes: Mapped[str | None] = mapped_column(
-        Text, 
-        nullable=True
-    )
-    location: Mapped[str | None] = mapped_column(
-        String(255), 
-        nullable=True
-    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Note: created_at and updated_at are provided by TimestampMixin
     # Removed duplicate definitions to avoid conflicts

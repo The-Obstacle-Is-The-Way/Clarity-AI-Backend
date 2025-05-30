@@ -2,7 +2,7 @@
 SQLAlchemy database access module.
 
 This module provides functions for accessing the SQLAlchemy database session.
-It serves as a bridge between the old-style session management and the new 
+It serves as a bridge between the old-style session management and the new
 unit-of-work pattern, ensuring backward compatibility during the transition.
 """
 

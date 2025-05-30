@@ -53,7 +53,7 @@ def with_query_params(
 
 
 def create_query_param_wrapper(
-    params: dict[str, Any] | None = None
+    params: dict[str, Any] | None = None,
 ) -> Callable[[Callable[..., T | Awaitable[T]]], Callable[..., T | Awaitable[T]]]:
     """
     Creates a wrapper for route handlers that adds required query parameters.
@@ -78,7 +78,7 @@ def create_query_param_wrapper(
 
             # Call the original handler
             result = handler(*args, **kwargs)
-            
+
             # Handle awaitable results
             if inspect.isawaitable(result):
                 awaited_result = await result

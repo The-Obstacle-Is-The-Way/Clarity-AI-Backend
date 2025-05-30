@@ -13,7 +13,9 @@ from app.domain.exceptions.base_exceptions import BaseApplicationError
 class AppointmentError(BaseApplicationError):
     """Base class for appointment-related exceptions."""
 
-    def __init__(self, message: str = "Appointment operation failed", *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, message: str = "Appointment operation failed", *args: Any, **kwargs: Any
+    ) -> None:
         super().__init__(message, *args, **kwargs)
 
 
@@ -42,7 +44,9 @@ class InvalidAppointmentStateError(AppointmentError):
 class InvalidAppointmentTimeError(AppointmentError):
     """Raised when an invalid appointment time is specified."""
 
-    def __init__(self, message: str = "Invalid appointment time", *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, message: str = "Invalid appointment time", *args: Any, **kwargs: Any
+    ) -> None:
         super().__init__(message, *args, **kwargs)
 
 

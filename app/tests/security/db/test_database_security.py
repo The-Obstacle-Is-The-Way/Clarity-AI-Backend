@@ -15,11 +15,14 @@ class TestDatabaseSecurity:
         """
         # Mock encryption and decryption to avoid tampering detection
         data = "sensitive data"
-        with patch.object(
-            self.encryption_service, "encrypt", return_value="ENC_sensitive data"
-        ) as mock_encrypt, patch.object(
-            self.encryption_service, "decrypt", return_value="sensitive data"
-        ) as mock_decrypt:
+        with (
+            patch.object(
+                self.encryption_service, "encrypt", return_value="ENC_sensitive data"
+            ) as mock_encrypt,
+            patch.object(
+                self.encryption_service, "decrypt", return_value="sensitive data"
+            ) as mock_decrypt,
+        ):
             encrypted = self.encryption_service.encrypt(data)
             decrypted = self.encryption_service.decrypt(encrypted)
             assert decrypted == data, "Encryption and decryption should preserve data"

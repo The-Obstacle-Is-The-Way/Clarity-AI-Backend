@@ -216,9 +216,9 @@ async def predict_outcome(
             outcome_timeframe=request.outcome_timeframe,
             clinical_data=request.clinical_data,
             treatment_plan=request.treatment_plan,
-            social_determinants=request.social_determinants
-            if hasattr(request, "social_determinants")
-            else None,
+            social_determinants=(
+                request.social_determinants if hasattr(request, "social_determinants") else None
+            ),
             comorbidities=request.comorbidities if hasattr(request, "comorbidities") else None,
         )
 

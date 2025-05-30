@@ -5,6 +5,7 @@ This module contains tests for the Symptom Forecasting Service, which
 implements psychiatric symptom forecasting using an ensemble of models,
 following Clean Architecture principles and ensuring HIPAA compliance.
 """
+
 import pytest
 
 pytest.skip(
@@ -61,12 +62,15 @@ def mock_xgboost_model():
 @pytest.fixture
 def forecasting_service(mock_transformer_model, mock_xgboost_model):
     """Create a Symptom Forecasting Service with mock models."""
-    with patch(
-        "app.infrastructure.ml.symptom_forecasting.model_service.SymptomTransformerModel",
-        return_value=mock_transformer_model,
-    ), patch(
-        "app.infrastructure.ml.symptom_forecasting.model_service.XGBoostSymptomModel",
-        return_value=mock_xgboost_model,
+    with (
+        patch(
+            "app.infrastructure.ml.symptom_forecasting.model_service.SymptomTransformerModel",
+            return_value=mock_transformer_model,
+        ),
+        patch(
+            "app.infrastructure.ml.symptom_forecasting.model_service.XGBoostSymptomModel",
+            return_value=mock_xgboost_model,
+        ),
     ):
         service = SymptomForecastingService(
             model_dir="./test_models",

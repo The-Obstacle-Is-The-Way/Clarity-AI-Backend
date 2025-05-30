@@ -83,15 +83,17 @@ class UserMapper:
             "roles": domain_roles,
             "hashed_password": password_hash,  # Use hashed_password
             "password_hash": password_hash,  # Also set password_hash for compatibility
-            "first_name": model.first_name
-            if hasattr(model, "first_name") and model.first_name
-            else "Test",
-            "last_name": model.last_name
-            if hasattr(model, "last_name") and model.last_name
-            else "User",
-            "created_at": model.created_at
-            if hasattr(model, "created_at") and model.created_at
-            else datetime.now(timezone.utc),
+            "first_name": (
+                model.first_name if hasattr(model, "first_name") and model.first_name else "Test"
+            ),
+            "last_name": (
+                model.last_name if hasattr(model, "last_name") and model.last_name else "User"
+            ),
+            "created_at": (
+                model.created_at
+                if hasattr(model, "created_at") and model.created_at
+                else datetime.now(timezone.utc)
+            ),
         }
 
         # Add optional fields with defaults if they exist on the model
@@ -181,9 +183,9 @@ class UserMapper:
             created_at=entity.created_at if hasattr(entity, "created_at") else None,
             updated_at=datetime.now(timezone.utc) if hasattr(entity, "updated_at") else None,
             last_login=entity.last_login if hasattr(entity, "last_login") else None,
-            failed_login_attempts=entity.failed_login_attempts
-            if hasattr(entity, "failed_login_attempts")
-            else 0,
+            failed_login_attempts=(
+                entity.failed_login_attempts if hasattr(entity, "failed_login_attempts") else 0
+            ),
         )
 
         # Map additional fields if present

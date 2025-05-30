@@ -34,8 +34,9 @@ router = APIRouter(
 
 @router.get("", response_model=list[AlertResponse])
 async def get_alerts(
-    status_param: AlertStatus
-    | None = Query(None, alias="status", description="Filter by alert status"),
+    status_param: AlertStatus | None = Query(
+        None, alias="status", description="Filter by alert status"
+    ),
     severity: AlertPriority | None = Query(None, description="Filter by alert severity"),
     alert_type: AlertType | None = Query(None, description="Filter by alert type"),
     start_date: str | None = Query(None, description="Filter by start date (ISO format)"),
@@ -429,7 +430,9 @@ class ManualAlertRequest(BaseModel):
 async def trigger_alert_manually(
     patient_id: UUID = Path(..., description="Patient ID"),
     message: str = Body(..., description="Alert message content"),
-    severity: AlertPriority = Body(default=AlertPriority.MEDIUM, description="Alert severity level"),
+    severity: AlertPriority = Body(
+        default=AlertPriority.MEDIUM, description="Alert severity level"
+    ),
     alert_type: AlertType = Body(default=AlertType.BIOMETRIC_ANOMALY, description="Type of alert"),
     data: dict[str, Any] = Body(default_factory=dict, description="Additional alert data"),
     alert_service: AlertServiceInterface = Depends(get_alert_service),

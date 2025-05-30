@@ -1,6 +1,7 @@
 """
 Tests for the SQL Alchemy implementation of the temporal sequence repository.
 """
+
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -139,7 +140,9 @@ class TestSqlAlchemyTemporalSequenceRepository:
             assert point.values == test_sequence.values[i]
 
     @pytest.mark.asyncio()
-    async def test_get_by_id_found(self, mock_session, mock_sequence_model, mock_data_points) -> None:
+    async def test_get_by_id_found(
+        self, mock_session, mock_sequence_model, mock_data_points
+    ) -> None:
         """Test getting a sequence by ID when found."""
         # Setup
         repo = SqlAlchemyTemporalSequenceRepository(session=mock_session)
@@ -194,7 +197,9 @@ class TestSqlAlchemyTemporalSequenceRepository:
         mock_session.execute.assert_called_once()
 
     @pytest.mark.asyncio()
-    async def test_get_by_patient_id(self, mock_session, mock_sequence_model, mock_data_points) -> None:
+    async def test_get_by_patient_id(
+        self, mock_session, mock_sequence_model, mock_data_points
+    ) -> None:
         """Test getting sequences by patient ID."""
         # Setup
         repo = SqlAlchemyTemporalSequenceRepository(session=mock_session)
@@ -270,7 +275,9 @@ class TestSqlAlchemyTemporalSequenceRepository:
         assert mock_session.execute.call_count == 2
 
     @pytest.mark.asyncio()
-    async def test_get_latest_by_feature(self, mock_session, mock_sequence_model, mock_data_points) -> None:
+    async def test_get_latest_by_feature(
+        self, mock_session, mock_sequence_model, mock_data_points
+    ) -> None:
         """Test getting the latest sequence containing a specific feature."""
         # Setup
         repo = SqlAlchemyTemporalSequenceRepository(session=mock_session)

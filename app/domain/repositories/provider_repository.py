@@ -23,9 +23,7 @@ class ProviderRepository(ABC):
 
     @abstractmethod
     async def get_by_id(
-        self, 
-        provider_id: UUID, 
-        context: dict[str, Any] | None = None
+        self, provider_id: UUID, context: dict[str, Any] | None = None
     ) -> Provider | None:
         """
         Get a provider by ID.
@@ -41,9 +39,7 @@ class ProviderRepository(ABC):
 
     @abstractmethod
     async def get_by_email(
-        self, 
-        email: str,
-        context: dict[str, Any] | None = None
+        self, email: str, context: dict[str, Any] | None = None
     ) -> Provider | None:
         """
         Get a provider by email.
@@ -59,9 +55,7 @@ class ProviderRepository(ABC):
 
     @abstractmethod
     async def get_by_license_number(
-        self, 
-        license_number: str,
-        context: dict[str, Any] | None = None
+        self, license_number: str, context: dict[str, Any] | None = None
     ) -> Provider | None:
         """
         Get a provider by license number.
@@ -76,11 +70,7 @@ class ProviderRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_npi(
-        self,
-        npi: str,
-        context: dict[str, Any] | None = None
-    ) -> Provider | None:
+    async def get_by_npi(self, npi: str, context: dict[str, Any] | None = None) -> Provider | None:
         """
         Get a provider by NPI (National Provider Identifier).
 
@@ -94,11 +84,7 @@ class ProviderRepository(ABC):
         pass
 
     @abstractmethod
-    async def create(
-        self, 
-        provider: Provider,
-        context: dict[str, Any] | None = None
-    ) -> Provider:
+    async def create(self, provider: Provider, context: dict[str, Any] | None = None) -> Provider:
         """
         Create a new provider record.
 
@@ -113,9 +99,7 @@ class ProviderRepository(ABC):
 
     @abstractmethod
     async def update(
-        self, 
-        provider: Provider,
-        context: dict[str, Any] | None = None
+        self, provider: Provider, context: dict[str, Any] | None = None
     ) -> Provider | None:
         """
         Update an existing provider record.
@@ -130,11 +114,7 @@ class ProviderRepository(ABC):
         pass
 
     @abstractmethod
-    async def delete(
-        self, 
-        provider_id: UUID, 
-        context: dict[str, Any] | None = None
-    ) -> bool:
+    async def delete(self, provider_id: UUID, context: dict[str, Any] | None = None) -> bool:
         """
         Delete a provider.
 
@@ -149,11 +129,7 @@ class ProviderRepository(ABC):
 
     @abstractmethod
     async def search(
-        self, 
-        query: str, 
-        limit: int = 10, 
-        offset: int = 0,
-        context: dict[str, Any] | None = None
+        self, query: str, limit: int = 10, offset: int = 0, context: dict[str, Any] | None = None
     ) -> list[Provider]:
         """
         Search for providers.
@@ -176,7 +152,7 @@ class ProviderRepository(ABC):
         offset: int = 0,
         sort_by: str = "last_name",
         sort_order: str = "asc",
-        context: dict[str, Any] | None = None
+        context: dict[str, Any] | None = None,
     ) -> list[Provider]:
         """
         Get all providers with pagination.
@@ -207,11 +183,7 @@ class ProviderRepository(ABC):
         pass
 
     @abstractmethod
-    async def exists(
-        self, 
-        provider_id: UUID, 
-        context: dict[str, Any] | None = None
-    ) -> bool:
+    async def exists(self, provider_id: UUID, context: dict[str, Any] | None = None) -> bool:
         """
         Check if a provider exists.
 
@@ -225,11 +197,7 @@ class ProviderRepository(ABC):
         pass
 
     @abstractmethod
-    async def exists_by_email(
-        self, 
-        email: str,
-        context: dict[str, Any] | None = None
-    ) -> bool:
+    async def exists_by_email(self, email: str, context: dict[str, Any] | None = None) -> bool:
         """
         Check if a provider exists by email.
 
@@ -244,9 +212,7 @@ class ProviderRepository(ABC):
 
     @abstractmethod
     async def exists_by_license_number(
-        self, 
-        license_number: str,
-        context: dict[str, Any] | None = None
+        self, license_number: str, context: dict[str, Any] | None = None
     ) -> bool:
         """
         Check if a provider exists by license number.
@@ -266,7 +232,7 @@ class ProviderRepository(ABC):
         start_time: datetime,
         end_time: datetime,
         specialties: list[str] | None = None,
-        context: dict[str, Any] | None = None
+        context: dict[str, Any] | None = None,
     ) -> list[Provider]:
         """
         Get providers available during a time range.
@@ -284,11 +250,11 @@ class ProviderRepository(ABC):
 
     @abstractmethod
     async def get_providers_by_specialty(
-        self, 
-        specialty: str, 
-        limit: int = 100, 
+        self,
+        specialty: str,
+        limit: int = 100,
         offset: int = 0,
-        context: dict[str, Any] | None = None
+        context: dict[str, Any] | None = None,
     ) -> list[Provider]:
         """
         Get providers by specialty.
@@ -306,11 +272,11 @@ class ProviderRepository(ABC):
 
     @abstractmethod
     async def get_provider_availability(
-        self, 
-        provider_id: UUID, 
-        start_date: datetime, 
+        self,
+        provider_id: UUID,
+        start_date: datetime,
         end_date: datetime,
-        context: dict[str, Any] | None = None
+        context: dict[str, Any] | None = None,
     ) -> dict[str, list[dict[str, datetime]]]:
         """
         Get a provider's availability.
@@ -328,9 +294,7 @@ class ProviderRepository(ABC):
 
     @abstractmethod
     async def get_available_on_day(
-        self,
-        day: date,
-        context: dict[str, Any] | None = None
+        self, day: date, context: dict[str, Any] | None = None
     ) -> list[Provider]:
         """
         Get providers available on a specific day.
@@ -345,10 +309,7 @@ class ProviderRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_prescribers(
-        self,
-        context: dict[str, Any] | None = None
-    ) -> list[Provider]:
+    async def get_prescribers(self, context: dict[str, Any] | None = None) -> list[Provider]:
         """
         Get providers who can prescribe medications.
 
@@ -362,11 +323,7 @@ class ProviderRepository(ABC):
 
     # Convenience method for backward compatibility
     @abstractmethod
-    async def save(
-        self,
-        provider: Provider,
-        context: dict[str, Any] | None = None
-    ) -> Provider:
+    async def save(self, provider: Provider, context: dict[str, Any] | None = None) -> Provider:
         """
         Save a provider (create if new, update if existing).
 

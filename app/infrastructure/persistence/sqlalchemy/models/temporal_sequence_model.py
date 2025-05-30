@@ -5,7 +5,6 @@ This module defines the ORM models for temporal sequences and events,
 supporting neural network modeling and temporal analysis.
 """
 
-
 import sqlalchemy as sa
 
 from app.domain.utils.datetime_utils import now_utc

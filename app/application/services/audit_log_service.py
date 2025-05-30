@@ -108,9 +108,9 @@ class AuditLogService(IAuditLogger):
         log = AuditLog(
             id=event_id,
             timestamp=timestamp,
-            event_type=event_type.value
-            if isinstance(event_type, AuditEventType)
-            else str(event_type),
+            event_type=(
+                event_type.value if isinstance(event_type, AuditEventType) else str(event_type)
+            ),
             actor_id=actor_id,
             action=action,
             status=status,

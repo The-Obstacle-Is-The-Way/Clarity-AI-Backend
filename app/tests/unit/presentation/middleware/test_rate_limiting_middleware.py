@@ -1,4 +1,5 @@
 """Unit tests for the rate limiting middleware."""
+
 import asyncio
 from typing import NoReturn
 from unittest.mock import MagicMock

@@ -1,4 +1,5 @@
 """Unit tests for enhanced logging functionality."""
+
 import logging
 import os
 import tempfile

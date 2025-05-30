@@ -1,6 +1,7 @@
 """
 Domain entity representing a Symptom Assessment.
 """
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -40,7 +41,7 @@ class SymptomAssessment(BaseEntity):
 
     def __post_init__(self) -> None:
         """Initialize the symptom assessment entity."""
-        pass        # Call BaseEntity's post_init if it exists
+        pass  # Call BaseEntity's post_init if it exists
         # Add validation if needed (e.g., score range for known types)
 
     def touch(self) -> None:

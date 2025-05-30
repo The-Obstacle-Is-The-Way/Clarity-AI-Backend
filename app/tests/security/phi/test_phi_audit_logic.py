@@ -281,7 +281,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         result.has_phi = True  # Dynamic attribute setting
         result.is_allowed = True
         # Verify result has PHI but is allowed
-        assert getattr(result, 'has_phi', False) is True, "Result should have PHI"
+        assert getattr(result, "has_phi", False) is True, "Result should have PHI"
         assert result.is_allowed is True, "PHI should be allowed in test file"
 
     def test_run_audit_with_clean_app_directory(self) -> None:

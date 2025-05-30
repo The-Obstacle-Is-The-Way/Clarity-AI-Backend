@@ -5,6 +5,7 @@ This module defines the standardized prediction types used across the system.
 Following clean architecture principles, these enums exist in the core domain layer
 to maintain consistency across all application layers.
 """
+
 from enum import Enum
 
 

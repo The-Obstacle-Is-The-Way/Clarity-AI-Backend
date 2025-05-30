@@ -4,6 +4,7 @@ Test suite for auth endpoints using async httpx client.
 These tests verify the functionality of the authentication endpoints
 using direct API calls to ensure proper behavior with async handling.
 """
+
 import logging
 import uuid
 from unittest.mock import AsyncMock
@@ -330,7 +331,7 @@ async def test_refresh_token_invalid(
 
 @pytest.mark.asyncio
 async def test_refresh_token_missing(
-    client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI]
+    client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI],
 ) -> None:
     """Test refresh with missing token using async client."""
     client, _ = client_app_tuple_func_scoped

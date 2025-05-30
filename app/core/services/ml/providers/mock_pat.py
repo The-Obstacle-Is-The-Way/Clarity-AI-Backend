@@ -436,15 +436,17 @@ class MockPAT(PATInterface):
             "anomalies": anomalies,
             "summary": {
                 "total_anomalies": len(anomalies),
-                "average_severity": sum(a["severity"] for a in anomalies) / len(anomalies)
-                if anomalies
-                else 0,
-                "most_common_type": max(
-                    ["activity", "sleep", "circadian"],
-                    key=lambda t: sum(1 for a in anomalies if a["type"] == t),
-                )
-                if anomalies
-                else None,
+                "average_severity": (
+                    sum(a["severity"] for a in anomalies) / len(anomalies) if anomalies else 0
+                ),
+                "most_common_type": (
+                    max(
+                        ["activity", "sleep", "circadian"],
+                        key=lambda t: sum(1 for a in anomalies if a["type"] == t),
+                    )
+                    if anomalies
+                    else None
+                ),
             },
         }
 

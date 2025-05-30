@@ -38,7 +38,9 @@ class AuditLog(Base):
     event_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
 
     # Link to user table (nullable for system events without a specific user context)
-    user_id: Mapped[str | None] = mapped_column(GUID(), ForeignKey("users.id"), nullable=True, index=True)
+    user_id: Mapped[str | None] = mapped_column(
+        GUID(), ForeignKey("users.id"), nullable=True, index=True
+    )
     # TEMP: Comment out relationship until User model is implemented
     # user = relationship("User")
 

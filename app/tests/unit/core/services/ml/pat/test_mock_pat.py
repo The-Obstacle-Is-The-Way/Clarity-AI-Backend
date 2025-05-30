@@ -87,7 +87,9 @@ class TestMockPAT:
         assert pat.configured is True
         assert pat.delay_ms == 100
 
-    def test_analyze_actigraphy_success(self, mock_pat, sample_readings, sample_device_info) -> None:
+    def test_analyze_actigraphy_success(
+        self, mock_pat, sample_readings, sample_device_info
+    ) -> None:
         """Test successful actigraphy analysis."""
         result = mock_pat.analyze_actigraphy(
             patient_id="test-patient",
@@ -106,7 +108,9 @@ class TestMockPAT:
         assert "metrics" in result
         assert "general" in result["metrics"]
 
-    def test_analyze_actigraphy_with_all_types(self, mock_pat, sample_readings, sample_device_info) -> None:
+    def test_analyze_actigraphy_with_all_types(
+        self, mock_pat, sample_readings, sample_device_info
+    ) -> None:
         """Test actigraphy analysis with all analysis types."""
         result = mock_pat.analyze_actigraphy(
             patient_id="test-patient",
@@ -275,7 +279,9 @@ class TestMockPAT:
         magnitude = sum(x**2 for x in vector) ** 0.5
         assert abs(magnitude - 1.0) < 1e-6  # Should be very close to 1.0
 
-    def test_get_analysis_by_id_success(self, mock_pat, sample_readings, sample_device_info) -> None:
+    def test_get_analysis_by_id_success(
+        self, mock_pat, sample_readings, sample_device_info
+    ) -> None:
         """Test successful retrieval of analysis by ID."""
         # First, create an analysis
         result = mock_pat.analyze_actigraphy(
@@ -307,7 +313,9 @@ class TestMockPAT:
 
         excinfo.match(r"^Analysis not found")
 
-    def test_get_patient_analyses_success(self, mock_pat, sample_readings, sample_device_info) -> None:
+    def test_get_patient_analyses_success(
+        self, mock_pat, sample_readings, sample_device_info
+    ) -> None:
         """Test successful retrieval of patient analyses."""
         # Create multiple analyses for the same patient
         for i in range(3):

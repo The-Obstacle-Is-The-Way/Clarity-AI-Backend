@@ -40,9 +40,11 @@ class PsychiatricAssessment:
     def to_dict(self) -> dict[str, str | date | None]:
         """Convert to dictionary."""
         return {
-            "assessment_date": self.assessment_date.isoformat()
-            if isinstance(self.assessment_date, date)
-            else self.assessment_date,
+            "assessment_date": (
+                self.assessment_date.isoformat()
+                if isinstance(self.assessment_date, date)
+                else self.assessment_date
+            ),
             "diagnosis": self.diagnosis,
             "severity": self.severity,
             "treatment_plan": self.treatment_plan,

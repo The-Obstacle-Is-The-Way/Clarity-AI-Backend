@@ -3,6 +3,7 @@ API Endpoints for Appointment Scheduling.
 
 Provides endpoints for creating, retrieving, updating, and deleting appointments.
 """
+
 from datetime import datetime
 from uuid import UUID
 
@@ -183,7 +184,6 @@ async def list_appointments(
     # E.g., Patient can only list their own appointments (patient_id must match user ID)
     # Clinician can list their own or their patients' appointments
     # Admin/Scheduler can list any
-
 
     # Simplistic fetch - replace with specific repo calls based on params
     if patient_id:

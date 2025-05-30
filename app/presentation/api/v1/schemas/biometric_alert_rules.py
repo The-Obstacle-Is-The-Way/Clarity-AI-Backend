@@ -266,7 +266,7 @@ class AlertRuleTemplateResponse(BaseModel):
     customizable_fields: list[str] = Field([], description="Fields that can be customized")
 
     model_config = ConfigDict(
-        json_schema_extra = {
+        json_schema_extra={
             "example": {
                 "template_id": "high_heart_rate",
                 "name": "High Heart Rate Template",

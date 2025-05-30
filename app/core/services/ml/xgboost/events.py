@@ -4,6 +4,7 @@ Event types and observer patterns for the XGBoost service.
 This module defines event types and observer interfaces for implementing
 the Observer pattern in the XGBoost service.
 """
+
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any

@@ -4,6 +4,7 @@ Domain service for preprocessing neurotransmitter data for visualization.
 This module contains preprocessing logic to optimize neurotransmitter data
 for efficient visualization in the frontend.
 """
+
 import math
 import random
 from datetime import datetime, timedelta
@@ -62,8 +63,9 @@ class NeurotransmitterVisualizationPreprocessor:
 
     def precompute_cascade_geometry(
         self,
-        cascade_data: dict[BrainRegion, dict[Neurotransmitter, float]]
-        | dict[BrainRegion, list[float]],
+        cascade_data: (
+            dict[BrainRegion, dict[Neurotransmitter, float]] | dict[BrainRegion, list[float]]
+        ),
     ) -> dict[str, Any]:
         """
         Precompute geometry data for visualizing neurotransmitter cascades.
@@ -370,14 +372,14 @@ class NeurotransmitterVisualizationPreprocessor:
             "total_effects": len(effects),
             "significant_count": len(significant_effects),
             "neurotransmitters": [e.neurotransmitter.value for e in effects],
-            "most_significant": most_significant.neurotransmitter.value
-            if most_significant
-            else None,
+            "most_significant": (
+                most_significant.neurotransmitter.value if most_significant else None
+            ),
             "largest_effect": largest_effect.neurotransmitter.value if largest_effect else None,
             "magnitude_ranking": [e.neurotransmitter.value for e in effects_by_magnitude],
-            "mean_effect_size": sum(abs(e.effect_size) for e in effects) / len(effects)
-            if effects
-            else 0,
+            "mean_effect_size": (
+                sum(abs(e.effect_size) for e in effects) / len(effects) if effects else 0
+            ),
             "max_effect_size": max(abs(e.effect_size) for e in effects) if effects else 0,
         }
 
@@ -425,9 +427,9 @@ class NeurotransmitterVisualizationPreprocessor:
                     "confidence_interval": e.confidence_interval,
                     "p_value": e.p_value,
                     "sample_size": e.sample_size,
-                    "clinical_significance": e.clinical_significance.value
-                    if e.clinical_significance
-                    else None,
+                    "clinical_significance": (
+                        e.clinical_significance.value if e.clinical_significance else None
+                    ),
                     "is_statistically_significant": e.is_statistically_significant,
                 }
             )
@@ -441,9 +443,9 @@ class NeurotransmitterVisualizationPreprocessor:
             for e in sorted(effects, key=lambda e: abs(e.effect_size), reverse=True)
         ]
         summary: dict[str, Any] = {
-            "most_significant": most_significant.neurotransmitter.value
-            if most_significant
-            else None,
+            "most_significant": (
+                most_significant.neurotransmitter.value if most_significant else None
+            ),
             "largest_effect": largest_effect.neurotransmitter.value if largest_effect else None,
             "magnitude_ranking": magnitude_ranking,
         }
@@ -488,9 +490,9 @@ class NeurotransmitterEffectVisualizer:
                     "effect_size": effect.effect_size,
                     "p_value": effect.p_value,
                     "confidence_interval": effect.confidence_interval,
-                    "clinical_significance": effect.clinical_significance.value
-                    if effect.clinical_significance
-                    else None,
+                    "clinical_significance": (
+                        effect.clinical_significance.value if effect.clinical_significance else None
+                    ),
                     "is_significant": effect.is_statistically_significant,
                 }
                 for effect in effects
@@ -530,14 +532,14 @@ class NeurotransmitterEffectVisualizer:
             sorted_effects = sorted(effects, key=lambda e: abs(e.effect_size), reverse=True)
             comparison["comparison_metrics"] = {
                 "neurotransmitters": [e.neurotransmitter.value for e in effects],
-                "most_significant": sorted_effects[0].neurotransmitter.value
-                if sorted_effects
-                else None,
-                "largest_effect": max(
-                    effects, key=lambda e: abs(e.effect_size)
-                ).neurotransmitter.value
-                if effects
-                else None,
+                "most_significant": (
+                    sorted_effects[0].neurotransmitter.value if sorted_effects else None
+                ),
+                "largest_effect": (
+                    max(effects, key=lambda e: abs(e.effect_size)).neurotransmitter.value
+                    if effects
+                    else None
+                ),
                 "magnitude_ranking": [e.neurotransmitter.value for e in sorted_effects],
                 "total_effects": len(effects),
                 "significant_count": sum(1 for e in effects if e.is_statistically_significant),
@@ -631,8 +633,8 @@ class NeurotransmitterEffectVisualizer:
             "neurotransmitter": effect.neurotransmitter.value,
             "timeline": timeline,
             "metrics": metrics,
-            "clinical_significance": effect.clinical_significance.value
-            if effect.clinical_significance
-            else None,
+            "clinical_significance": (
+                effect.clinical_significance.value if effect.clinical_significance else None
+            ),
             "statistical_significance": effect.is_statistically_significant,
         }

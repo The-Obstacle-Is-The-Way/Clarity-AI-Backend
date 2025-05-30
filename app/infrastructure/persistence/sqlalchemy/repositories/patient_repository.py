@@ -4,6 +4,7 @@ SQLAlchemy implementation of Patient repository for the Novamind Digital Twin pl
 This module provides a concrete implementation of the patient repository
 interface using SQLAlchemy for database operations.
 """
+
 import dataclasses
 import json
 from datetime import datetime, timezone
@@ -163,18 +164,18 @@ class PatientRepositoryImpl(PatientRepository):
             raise RuntimeError("No database session or factory available")
 
     async def create(
-        self, 
-        patient: PatientEntity, 
-        context: dict[str, Any] | None = None
+        self, patient: PatientEntity, context: dict[str, Any] | None = None
     ) -> PatientEntity:
         """Creates a new patient record in the database from a PatientEntity."""
         self.logger.debug(f"Attempting to create patient with entity ID: {patient.id}")
-        
+
         # Log HIPAA audit if context provided
         if context:
-            user_id = context.get('user_id')
-            action = context.get('action', 'create_patient')
-            self.logger.info(f"HIPAA Audit: User {user_id} performing {action} on patient {patient.id}")
+            user_id = context.get("user_id")
+            action = context.get("action", "create_patient")
+            self.logger.info(
+                f"HIPAA Audit: User {user_id} performing {action} on patient {patient.id}"
+            )
 
         async def _create_operation(session: AsyncSession) -> PatientEntity:
             try:
@@ -224,9 +225,7 @@ class PatientRepositoryImpl(PatientRepository):
                 return created_entity
             except ValidationError as e:
                 await session.rollback()
-                raise PersistenceError(
-                    f"Validation Error: {e.errors()}", original_exception=e
-                )
+                raise PersistenceError(f"Validation Error: {e.errors()}", original_exception=e)
             except IntegrityError as e:
                 await session.rollback()
                 self.logger.error(f"Integrity error creating patient: {e}", exc_info=True)
@@ -249,18 +248,18 @@ class PatientRepositoryImpl(PatientRepository):
         return await self._with_session(_create_operation)
 
     async def get_by_id(
-        self, 
-        patient_id: UUID, 
-        context: dict[str, Any] | None = None
+        self, patient_id: UUID, context: dict[str, Any] | None = None
     ) -> PatientEntity | None:
         """Retrieves a patient by their ID."""
         self.logger.debug(f"Attempting to retrieve patient with ID: {patient_id}")
-        
+
         # Log HIPAA audit if context provided
         if context:
-            user_id = context.get('user_id')
-            action = context.get('action', 'get_patient_by_id')
-            self.logger.info(f"HIPAA Audit: User {user_id} performing {action} on patient {patient_id}")
+            user_id = context.get("user_id")
+            action = context.get("action", "get_patient_by_id")
+            self.logger.info(
+                f"HIPAA Audit: User {user_id} performing {action} on patient {patient_id}"
+            )
 
         async def _get_by_id_operation(session):
             stmt = select(PatientModel).where(PatientModel.id == patient_id)
@@ -281,24 +280,24 @@ class PatientRepositoryImpl(PatientRepository):
         return await self._with_session(_get_by_id_operation)
 
     async def update(
-        self, 
-        patient: PatientEntity, 
-        context: dict[str, Any] | None = None
+        self, patient: PatientEntity, context: dict[str, Any] | None = None
     ) -> PatientEntity | None:
         """Updates an existing patient record from a PatientEntity."""
         patient_id = patient.id
-        
+
         if patient_id is None:
             self.logger.error("Cannot update patient without ID")
             return None
 
         self.logger.debug(f"Attempting to update patient with ID: {patient_id}")
-        
+
         # Log HIPAA audit if context provided
         if context:
-            user_id = context.get('user_id')
-            action = context.get('action', 'update_patient')
-            self.logger.info(f"HIPAA Audit: User {user_id} performing {action} on patient {patient_id}")
+            user_id = context.get("user_id")
+            action = context.get("action", "update_patient")
+            self.logger.info(
+                f"HIPAA Audit: User {user_id} performing {action} on patient {patient_id}"
+            )
 
         async def _update_operation(session: AsyncSession) -> PatientEntity | None:
             stmt = select(PatientModel).where(PatientModel.id == patient_id)
@@ -321,7 +320,7 @@ class PatientRepositoryImpl(PatientRepository):
                     # Map domain fields to model fields
                     field_map = {
                         "first_name": "_first_name",
-                        "last_name": "_last_name", 
+                        "last_name": "_last_name",
                         "email": "_email",
                         "phone": "_phone_number",
                         "date_of_birth": "_date_of_birth",
@@ -340,7 +339,7 @@ class PatientRepositoryImpl(PatientRepository):
                         db_patient.updated_at = datetime.now(timezone.utc)
                         await session.commit()
                         await session.refresh(db_patient)
-                        
+
                         self.logger.info(f"Successfully updated patient with ID: {patient_id}")
                         return await db_patient.to_domain()
                     else:
@@ -357,19 +356,17 @@ class PatientRepositoryImpl(PatientRepository):
 
         return await self._with_session(_update_operation)
 
-    async def delete(
-        self, 
-        patient_id: UUID, 
-        context: dict[str, Any] | None = None
-    ) -> bool:
+    async def delete(self, patient_id: UUID, context: dict[str, Any] | None = None) -> bool:
         """Deletes a patient by their ID."""
         self.logger.debug(f"Attempting to delete patient with ID: {patient_id}")
-        
+
         # Log HIPAA audit if context provided
         if context:
-            user_id = context.get('user_id')
-            action = context.get('action', 'delete_patient')
-            self.logger.info(f"HIPAA Audit: User {user_id} performing {action} on patient {patient_id}")
+            user_id = context.get("user_id")
+            action = context.get("action", "delete_patient")
+            self.logger.info(
+                f"HIPAA Audit: User {user_id} performing {action} on patient {patient_id}"
+            )
 
         async def _delete_operation(session: AsyncSession) -> bool:
             try:
@@ -391,19 +388,20 @@ class PatientRepositoryImpl(PatientRepository):
         return await self._with_session(_delete_operation)
 
     async def list_all(
-        self, 
-        limit: int = 100, 
-        offset: int = 0,
-        context: dict[str, Any] | None = None
+        self, limit: int = 100, offset: int = 0, context: dict[str, Any] | None = None
     ) -> list[PatientEntity]:
         """Retrieves all patients with pagination."""
-        self.logger.debug(f"Attempting to retrieve all patients with limit={limit}, offset={offset}")
-        
+        self.logger.debug(
+            f"Attempting to retrieve all patients with limit={limit}, offset={offset}"
+        )
+
         # Log HIPAA audit if context provided
         if context:
-            user_id = context.get('user_id')
-            action = context.get('action', 'list_all_patients')
-            self.logger.info(f"HIPAA Audit: User {user_id} performing {action} (limit={limit}, offset={offset})")
+            user_id = context.get("user_id")
+            action = context.get("action", "list_all_patients")
+            self.logger.info(
+                f"HIPAA Audit: User {user_id} performing {action} (limit={limit}, offset={offset})"
+            )
 
         async def _list_all_operation(session):
             stmt = select(PatientModel).limit(limit).offset(offset)
@@ -420,61 +418,62 @@ class PatientRepositoryImpl(PatientRepository):
 
         return await self._with_session(_list_all_operation)
 
-    async def count(
-        self,
-        context: dict[str, Any] | None = None,
-        **filters
-    ) -> int:
+    async def count(self, context: dict[str, Any] | None = None, **filters) -> int:
         """Count patients matching the given filters."""
         self.logger.debug(f"Attempting to count patients with filters: {filters}")
-        
+
         # Log HIPAA audit if context provided
         if context:
-            user_id = context.get('user_id')
-            action = context.get('action', 'count_patients')
-            self.logger.info(f"HIPAA Audit: User {user_id} performing {action} with filters {filters}")
+            user_id = context.get("user_id")
+            action = context.get("action", "count_patients")
+            self.logger.info(
+                f"HIPAA Audit: User {user_id} performing {action} with filters {filters}"
+            )
 
         async def _count_operation(session: AsyncSession) -> int:
             try:
                 stmt = select(PatientModel)
-                
+
                 # Apply filters if provided
                 for key, value in filters.items():
                     if hasattr(PatientModel, f"_{key}"):
                         stmt = stmt.where(getattr(PatientModel, f"_{key}") == value)
                     elif hasattr(PatientModel, key):
                         stmt = stmt.where(getattr(PatientModel, key) == value)
-                
+
                 # Convert to count query
                 from sqlalchemy import func
+
                 count_stmt = select(func.count()).select_from(stmt.subquery())
                 result = await session.execute(count_stmt)
                 count = result.scalar() or 0
-                
+
                 self.logger.debug(f"Patient count with filters {filters}: {count}")
                 return count
-                
+
             except SQLAlchemyError as e:
-                self.logger.error(f"Database error counting patients with filters {filters}: {e}", exc_info=True)
+                self.logger.error(
+                    f"Database error counting patients with filters {filters}: {e}", exc_info=True
+                )
                 raise PersistenceError("Database error counting patients.") from e
             except Exception as e:
-                self.logger.error(f"Unexpected error counting patients with filters {filters}: {e}", exc_info=True)
+                self.logger.error(
+                    f"Unexpected error counting patients with filters {filters}: {e}", exc_info=True
+                )
                 raise PersistenceError("Unexpected error counting patients.") from e
 
         return await self._with_session(_count_operation)
 
     async def get_by_email(
-        self, 
-        email: str,
-        context: dict[str, Any] | None = None
+        self, email: str, context: dict[str, Any] | None = None
     ) -> PatientEntity | None:
         """Retrieve a patient by their email address."""
         self.logger.debug(f"Attempting to retrieve patient by email: {email}")
-        
+
         # Log HIPAA audit if context provided
         if context:
-            user_id = context.get('user_id')
-            action = context.get('action', 'get_patient_by_email')
+            user_id = context.get("user_id")
+            action = context.get("action", "get_patient_by_email")
             self.logger.info(f"HIPAA Audit: User {user_id} performing {action} on email {email}")
 
         async def _get_by_email_operation(session: AsyncSession) -> PatientEntity | None:
@@ -484,18 +483,28 @@ class PatientRepositoryImpl(PatientRepository):
                 patient_model = result.scalars().one_or_none()
 
                 if patient_model:
-                    self.logger.debug(f"Patient model found for email {email}. Converting to domain entity.")
+                    self.logger.debug(
+                        f"Patient model found for email {email}. Converting to domain entity."
+                    )
                     patient_entity = await patient_model.to_domain()
                     return patient_entity
                 else:
                     self.logger.debug(f"No patient model found for email {email}.")
                     return None
             except SQLAlchemyError as e:
-                self.logger.error(f"Database error retrieving patient by email {email}: {e}", exc_info=True)
-                raise PersistenceError(f"Database error retrieving patient by email {email}.") from e
+                self.logger.error(
+                    f"Database error retrieving patient by email {email}: {e}", exc_info=True
+                )
+                raise PersistenceError(
+                    f"Database error retrieving patient by email {email}."
+                ) from e
             except Exception as e:
-                self.logger.error(f"Unexpected error retrieving patient by email {email}: {e}", exc_info=True)
-                raise PersistenceError(f"Unexpected error retrieving patient by email {email}.") from e
+                self.logger.error(
+                    f"Unexpected error retrieving patient by email {email}: {e}", exc_info=True
+                )
+                raise PersistenceError(
+                    f"Unexpected error retrieving patient by email {email}."
+                ) from e
 
         return await self._with_session(_get_by_email_operation)
 

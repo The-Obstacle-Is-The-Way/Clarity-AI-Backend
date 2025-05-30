@@ -6,7 +6,6 @@ biometric alerts in a HIPAA-compliant manner with strict security controls
 and proper audit logging.
 """
 
-
 import uuid
 
 from fastapi import (
@@ -47,14 +46,16 @@ router = APIRouter(
     description="Get a list of biometric alerts with optional filtering",
 )
 async def get_alerts(
-    status_param: AlertStatus
-    | None = Query(None, alias="status", description="Filter by alert status"),
+    status_param: AlertStatus | None = Query(
+        None, alias="status", description="Filter by alert status"
+    ),
     priority: AlertPriority | None = Query(None, description="Filter by alert priority"),
     alert_type: AlertType | None = Query(None, description="Filter by alert type"),
     start_date: str | None = Query(None, description="Filter by start date (ISO format)"),
     end_date: str | None = Query(None, description="Filter by end date (ISO format)"),
-    patient_id_str: str
-    | None = Query(None, alias="patient_id", description="Patient ID if accessing as provider"),
+    patient_id_str: str | None = Query(
+        None, alias="patient_id", description="Patient ID if accessing as provider"
+    ),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     offset: int = Query(0, ge=0, description="Number of records to skip"),
     alert_service: AlertServiceInterface = Depends(get_alert_service),
@@ -335,9 +336,11 @@ async def update_alert(
             message=alert_data.message or existing_alert.message,
             data=alert_data.data or existing_alert.data,
             user_id=existing_alert.user_id,  # User ID cannot be changed
-            resolved_at=alert_data.resolved_at
-            if alert_data.status == AlertStatus.RESOLVED
-            else existing_alert.resolved_at,
+            resolved_at=(
+                alert_data.resolved_at
+                if alert_data.status == AlertStatus.RESOLVED
+                else existing_alert.resolved_at
+            ),
             resolution_notes=alert_data.resolution_notes or existing_alert.resolution_notes,
         )
 

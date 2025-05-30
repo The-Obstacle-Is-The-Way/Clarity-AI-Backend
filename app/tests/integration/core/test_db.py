@@ -4,6 +4,7 @@ Tests for the database utilities using the standardized test_db_initializer.
 This module verifies that our core database functionality works correctly
 with the standardized test database infrastructure.
 """
+
 import pytest
 import pytest_asyncio
 from sqlalchemy import Column, String, text

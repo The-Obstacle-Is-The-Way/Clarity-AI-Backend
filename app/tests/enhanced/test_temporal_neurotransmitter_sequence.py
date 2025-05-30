@@ -1,6 +1,7 @@
 """
 Standalone test for the TemporalNeurotransmitterSequence class.
 """
+
 import datetime
 import sys
 import uuid

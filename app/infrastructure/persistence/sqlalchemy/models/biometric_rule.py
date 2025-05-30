@@ -33,12 +33,20 @@ class BiometricRuleModel(Base, TimestampMixin, AuditMixin):
     __tablename__ = "biometric_rules"
 
     # Core fields
-    id: Mapped[uuid.UUID] = mapped_column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name: Mapped[str] = mapped_column(String(255), nullable=False, doc="Name of the rule", unique=True)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True, doc="Description of the rule")
+    id: Mapped[uuid.UUID] = mapped_column(
+        SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(
+        String(255), nullable=False, doc="Name of the rule", unique=True
+    )
+    description: Mapped[str | None] = mapped_column(
+        Text, nullable=True, doc="Description of the rule"
+    )
 
     # Rule configuration
-    conditions: Mapped[dict] = mapped_column(JSON, nullable=False, doc="JSON array of rule conditions")
+    conditions: Mapped[dict] = mapped_column(
+        JSON, nullable=False, doc="JSON array of rule conditions"
+    )
     logical_operator: Mapped[str] = mapped_column(
         String(10),
         nullable=False,
@@ -79,8 +87,12 @@ class BiometricRuleModel(Base, TimestampMixin, AuditMixin):
         default=datetime.now,
         doc="When the rule was created",
     )
-    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, doc="When the rule was last updated")
-    rule_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True, doc="Additional metadata for the rule")
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True, doc="When the rule was last updated"
+    )
+    rule_metadata: Mapped[dict | None] = mapped_column(
+        JSON, nullable=True, doc="Additional metadata for the rule"
+    )
 
     def __repr__(self) -> str:
         """Get string representation of the model."""
@@ -90,7 +102,9 @@ class BiometricRuleModel(Base, TimestampMixin, AuditMixin):
 class PatientBiometricRuleModel(Base, TimestampMixin):
     __tablename__ = "patient_biometric_rules"
 
-    id: Mapped[uuid.UUID] = mapped_column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     patient_id: Mapped[uuid.UUID | None] = mapped_column(
         SQLAlchemyUUID(as_uuid=True),
         ForeignKey("patients.id"),

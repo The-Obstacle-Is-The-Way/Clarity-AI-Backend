@@ -162,9 +162,11 @@ async def client_app_tuple_func_scoped(
         test_settings.ASYNC_DATABASE_URL,
         echo=False,
         # For SQLite, important to enable check_same_thread=False for tests
-        connect_args={"check_same_thread": False}
-        if test_settings.ASYNC_DATABASE_URL.startswith("sqlite")
-        else {},
+        connect_args=(
+            {"check_same_thread": False}
+            if test_settings.ASYNC_DATABASE_URL.startswith("sqlite")
+            else {}
+        ),
     )
 
     # Create an async session factory

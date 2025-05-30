@@ -4,6 +4,7 @@ API endpoints for the Temporal Neurotransmitter System.
 Provides FastAPI routes for generating and analyzing neurotransmitter time series,
 simulating treatments, and retrieving visualization data.
 """
+
 from typing import Any
 from uuid import UUID
 
@@ -147,9 +148,9 @@ async def simulate_treatment(
         simulation_days=request.simulation_days,
     )
     return {
-        "sequence_ids": dict(sequence_ids.items())
-        if isinstance(sequence_ids, dict)
-        else sequence_ids,
+        "sequence_ids": (
+            dict(sequence_ids.items()) if isinstance(sequence_ids, dict) else sequence_ids
+        ),
         "patient_id": request.patient_id,
         "brain_region": request.brain_region.value,
         "target_neurotransmitter": request.target_neurotransmitter.value,
@@ -222,9 +223,9 @@ async def analyze_neurotransmitter(
         "confidence_interval": effect.confidence_interval,
         "p_value": effect.p_value,
         "is_statistically_significant": effect.p_value is not None and effect.p_value < 0.05,
-        "clinical_significance": effect.clinical_significance.value
-        if effect.clinical_significance
-        else None,
+        "clinical_significance": (
+            effect.clinical_significance.value if effect.clinical_significance else None
+        ),
         "time_series_data": time_series_data,
         "comparison_periods": comparison_periods,
     }

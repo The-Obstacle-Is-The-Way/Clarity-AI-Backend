@@ -6,6 +6,7 @@ This module provides test infrastructure for security-related tests,
 focusing on HIPAA compliance, PHI protection, authentication, authorization,
 and other security concerns in the Novamind Digital Twin Platform.
 """
+
 import os
 from typing import Any
 from unittest import TestCase

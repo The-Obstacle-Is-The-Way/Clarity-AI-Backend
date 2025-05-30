@@ -55,21 +55,27 @@ class AlertRepository(IAlertRepository):
         """
         # Create ORM model from domain entity
         alert_model = AlertModel(
-            alert_type=alert.alert_type.value
-            if isinstance(alert.alert_type, AlertType)
-            else alert.alert_type,
+            alert_type=(
+                alert.alert_type.value
+                if isinstance(alert.alert_type, AlertType)
+                else alert.alert_type
+            ),
             timestamp=alert.timestamp,
             status=alert.status.value if isinstance(alert.status, AlertStatus) else alert.status,
-            priority=alert.priority.value
-            if isinstance(alert.priority, AlertPriority)
-            else alert.priority,
+            priority=(
+                alert.priority.value
+                if isinstance(alert.priority, AlertPriority)
+                else alert.priority
+            ),
             message=self._encryption_service.encrypt(alert.message),  # Encrypt PHI
             data=self._encryption_service.encrypt_json(alert.data),  # Encrypt PHI
             user_id=alert.user_id,
             resolved_at=alert.resolved_at,
-            resolution_notes=self._encryption_service.encrypt(alert.resolution_notes)
-            if alert.resolution_notes
-            else None,
+            resolution_notes=(
+                self._encryption_service.encrypt(alert.resolution_notes)
+                if alert.resolution_notes
+                else None
+            ),
         )
 
         # Add to session and flush to get ID

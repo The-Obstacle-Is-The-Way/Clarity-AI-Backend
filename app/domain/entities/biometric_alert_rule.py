@@ -5,6 +5,7 @@ This module defines the core domain entities for biometric alert rules,
 including value objects and enums for use throughout the application.
 Following proper domain-driven design principles.
 """
+
 from datetime import datetime
 from enum import Enum
 from typing import Union

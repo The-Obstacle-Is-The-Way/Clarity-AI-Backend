@@ -53,9 +53,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
                 logger.error(f"Failed to initialize Redis client: {e}")
                 raise
 
-    async def add_to_blacklist(
-        self, token_jti: str, expires_at: datetime
-    ) -> None:
+    async def add_to_blacklist(self, token_jti: str, expires_at: datetime) -> None:
         """
         Add a token to the blacklist.
 
@@ -109,7 +107,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
     async def remove_expired(self) -> int:
         """
         Remove expired tokens from the blacklist.
-        
+
         Redis automatically handles expiration, so this method
         primarily serves to count expired keys if needed.
 
@@ -130,17 +128,19 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         try:
             pattern = f"{self._key_prefix}jti:*"
             keys = await self._redis.keys(pattern)
-            
+
             result = []
             for key in keys:
                 data = await self._redis.get(key)
                 if data:
                     token_data = json.loads(data)
-                    result.append({
-                        "token_jti": token_data["jti"],
-                        "expires_at": datetime.fromisoformat(token_data["expires_at"])
-                    })
-            
+                    result.append(
+                        {
+                            "token_jti": token_data["jti"],
+                            "expires_at": datetime.fromisoformat(token_data["expires_at"]),
+                        }
+                    )
+
             return result
         except RedisError as e:
             logger.error(f"Redis error when getting all blacklisted tokens: {e}")

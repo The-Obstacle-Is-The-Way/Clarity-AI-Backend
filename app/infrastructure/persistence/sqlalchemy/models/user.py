@@ -128,10 +128,7 @@ class User(Base, TimestampMixin, AuditMixin):
         comment="Unique user identifier - HIPAA compliance: Not PHI, used only for internal references",
     )
     username: Mapped[str] = mapped_column(
-        String(64), 
-        unique=True, 
-        nullable=False, 
-        comment="Username for login"
+        String(64), unique=True, nullable=False, comment="Username for login"
     )
     email: Mapped[str] = mapped_column(
         String(255),
@@ -141,14 +138,10 @@ class User(Base, TimestampMixin, AuditMixin):
         comment="Email address for user contact",
     )
     first_name: Mapped[str | None] = mapped_column(
-        String(100), 
-        nullable=True, 
-        comment="User's first name"
+        String(100), nullable=True, comment="User's first name"
     )
     last_name: Mapped[str | None] = mapped_column(
-        String(100), 
-        nullable=True, 
-        comment="User's last name"
+        String(100), nullable=True, comment="User's last name"
     )
 
     @declared_attr
@@ -162,21 +155,13 @@ class User(Base, TimestampMixin, AuditMixin):
         )
 
     password_hash: Mapped[str] = mapped_column(
-        String(255), 
-        nullable=False, 
-        comment="Securely hashed password"
+        String(255), nullable=False, comment="Securely hashed password"
     )
     is_active: Mapped[bool] = mapped_column(
-        Boolean, 
-        default=True, 
-        nullable=False, 
-        comment="Whether account is active"
+        Boolean, default=True, nullable=False, comment="Whether account is active"
     )
     is_verified: Mapped[bool] = mapped_column(
-        Boolean, 
-        default=False, 
-        nullable=False, 
-        comment="Whether account is verified"
+        Boolean, default=False, nullable=False, comment="Whether account is verified"
     )
 
     @declared_attr
@@ -195,15 +180,10 @@ class User(Base, TimestampMixin, AuditMixin):
         comment="Primary user role",
     )
     roles: Mapped[dict | None] = mapped_column(
-        JSONEncodedDict, 
-        default=list, 
-        nullable=False, 
-        comment="List of all user roles"
+        JSONEncodedDict, default=list, nullable=False, comment="List of all user roles"
     )
     last_login: Mapped[datetime | None] = mapped_column(
-        DateTime, 
-        nullable=True, 
-        comment="When user last logged in"
+        DateTime, nullable=True, comment="When user last logged in"
     )
     failed_login_attempts: Mapped[int] = mapped_column(
         Integer,
@@ -212,34 +192,22 @@ class User(Base, TimestampMixin, AuditMixin):
         comment="Number of consecutive failed login attempts",
     )
     account_locked_until: Mapped[datetime | None] = mapped_column(
-        DateTime, 
-        nullable=True, 
-        comment="When account lockout expires"
+        DateTime, nullable=True, comment="When account lockout expires"
     )
     reset_token: Mapped[str | None] = mapped_column(
-        String(255), 
-        nullable=True, 
-        comment="Password reset token"
+        String(255), nullable=True, comment="Password reset token"
     )
     reset_token_expires_at: Mapped[datetime | None] = mapped_column(
-        DateTime, 
-        nullable=True, 
-        comment="When reset token expires"
+        DateTime, nullable=True, comment="When reset token expires"
     )
     verification_token: Mapped[str | None] = mapped_column(
-        String(255), 
-        nullable=True, 
-        comment="Account verification token"
+        String(255), nullable=True, comment="Account verification token"
     )
     bio: Mapped[str | None] = mapped_column(
-        Text, 
-        nullable=True, 
-        comment="Short bio for clinical staff"
+        Text, nullable=True, comment="Short bio for clinical staff"
     )
     preferences: Mapped[dict | None] = mapped_column(
-        JSON, 
-        nullable=True, 
-        comment="User UI and system preferences"
+        JSON, nullable=True, comment="User UI and system preferences"
     )
     password_changed_at: Mapped[datetime | None] = mapped_column(
         DateTime,
@@ -269,9 +237,7 @@ class User(Base, TimestampMixin, AuditMixin):
 
     # Audit logging
     access_logs: Mapped[dict | None] = mapped_column(
-        JSON, 
-        nullable=True,
-        comment="Stores recent access logs"
+        JSON, nullable=True, comment="Stores recent access logs"
     )
 
     # Add property aliases for field name compatibility across layers

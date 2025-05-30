@@ -3,7 +3,7 @@ HIPAA-compliant audit logging service for healthcare applications.
 
 This module provides the audit logging functionality required by HIPAA regulations,
 specifically §164.312(b) - Audit controls, which requires implementing:
-"Hardware, software, and/or procedural mechanisms that record and examine 
+"Hardware, software, and/or procedural mechanisms that record and examine
 activity in information systems that contain or use electronic protected health information."
 
 This implementation creates tamper-resistant audit logs that track all PHI access events,

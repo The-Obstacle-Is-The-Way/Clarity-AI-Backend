@@ -267,12 +267,12 @@ class TestAuthorization:
 
         mock_patient_repo.get_by_id = mock_get_patient_record
 
-        current_fastapi_app.dependency_overrides[
-            get_user_repository_dependency
-        ] = lambda: mock_user_repo
-        current_fastapi_app.dependency_overrides[
-            get_patient_repository_dependency
-        ] = lambda: mock_patient_repo
+        current_fastapi_app.dependency_overrides[get_user_repository_dependency] = (
+            lambda: mock_user_repo
+        )
+        current_fastapi_app.dependency_overrides[get_patient_repository_dependency] = (
+            lambda: mock_patient_repo
+        )
 
         # Use the patient headers for this test
         response = await client.get(
@@ -351,12 +351,12 @@ class TestAuthorization:
 
         mock_patient_repo.get_by_id = mock_get_patient2_record
 
-        current_fastapi_app.dependency_overrides[
-            get_user_repository_dependency
-        ] = lambda: mock_user_repo
-        current_fastapi_app.dependency_overrides[
-            get_patient_repository_dependency
-        ] = lambda: mock_patient_repo
+        current_fastapi_app.dependency_overrides[get_user_repository_dependency] = (
+            lambda: mock_user_repo
+        )
+        current_fastapi_app.dependency_overrides[get_patient_repository_dependency] = (
+            lambda: mock_patient_repo
+        )
 
         response = await client.get(f"/api/v1/patients/{user2_patient_id}", headers=headers_user1)
 
@@ -437,12 +437,12 @@ class TestAuthorization:
 
         mock_patient_repo.get_by_id = mock_get_patient_record
 
-        current_fastapi_app.dependency_overrides[
-            get_user_repository_dependency
-        ] = lambda: mock_user_repo
-        current_fastapi_app.dependency_overrides[
-            get_patient_repository_dependency
-        ] = lambda: mock_patient_repo
+        current_fastapi_app.dependency_overrides[get_user_repository_dependency] = (
+            lambda: mock_user_repo
+        )
+        current_fastapi_app.dependency_overrides[get_patient_repository_dependency] = (
+            lambda: mock_patient_repo
+        )
 
         response = await client.get(f"/api/v1/patients/{patient_to_access_id}", headers=headers)
 
@@ -839,9 +839,9 @@ async def test_authenticated_but_unknown_role(
 
     mock_user_repo.get_by_id = mock_get_user_for_unknown_role
     mock_user_repo.get_user_by_id = mock_get_user_for_unknown_role
-    current_fastapi_app.dependency_overrides[
-        get_user_repository_dependency
-    ] = lambda: mock_user_repo
+    current_fastapi_app.dependency_overrides[get_user_repository_dependency] = (
+        lambda: mock_user_repo
+    )
 
     # Attempt to access a generic authenticated endpoint
     response = await client.get("/api/v1/auth/me", headers=headers_unknown_role)

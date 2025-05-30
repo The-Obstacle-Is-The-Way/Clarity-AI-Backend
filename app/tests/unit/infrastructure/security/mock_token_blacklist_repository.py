@@ -26,9 +26,7 @@ class MockTokenBlacklistRepository(ITokenBlacklistRepository):
         self._token_blacklist: dict[str, Any] = {}  # token -> jti
         self._jti_blacklist: dict[str, Any] = {}  # jti -> expiry_info
 
-    async def add_to_blacklist(
-        self, token_jti: str, expires_at: datetime
-    ) -> None:
+    async def add_to_blacklist(self, token_jti: str, expires_at: datetime) -> None:
         """
         Add a token to the blacklist.
 
@@ -49,8 +47,6 @@ class MockTokenBlacklistRepository(ITokenBlacklistRepository):
             True if the token is blacklisted, False otherwise
         """
         return token_jti in self._jti_blacklist
-
-
 
     async def remove_expired(self) -> int:
         """

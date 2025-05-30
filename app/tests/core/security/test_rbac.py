@@ -5,7 +5,6 @@ This module contains tests for the RBAC component, ensuring
 proper role and permission management for security.
 """
 
-
 import pytest
 
 # Keep User import if needed for setup, but roles list is passed to check_permission

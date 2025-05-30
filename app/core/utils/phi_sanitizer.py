@@ -1,11 +1,12 @@
 """
 PHI (Protected Health Information) sanitizer utility.
 
-This module provides utilities for detecting and sanitizing PHI in 
+This module provides utilities for detecting and sanitizing PHI in
 various data formats to maintain HIPAA compliance.
 
 Direct implementation using the consolidated PHISanitizer.
 """
+
 # Enable forward references for type annotations
 from __future__ import annotations
 
@@ -153,10 +154,14 @@ class _PHIAdapter:
         # Perform fallback masking for common PHI patterns in case infrastructure missed them
         sanitized = re.sub(r"[^\s@]+@[^\s@]+", "[EMAIL REDACTED]", sanitized)  # Email
         sanitized = re.sub(r"\b\d{3}-\d{2}-\d{4}\b", "[SSN REDACTED]", sanitized)  # SSN
-        sanitized = re.sub(r"\(\d{3}\)\s*\d{3}-\d{4}|\b\d{3}-\d{3}-\d{4}\b", "[PHONE REDACTED]", sanitized)  # Phone
+        sanitized = re.sub(
+            r"\(\d{3}\)\s*\d{3}-\d{4}|\b\d{3}-\d{3}-\d{4}\b", "[PHONE REDACTED]", sanitized
+        )  # Phone
 
         # Guarantee token presence: if original contained pattern but token missing, append
-        if "[EMAIL REDACTED]" not in sanitized and re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}", text):
+        if "[EMAIL REDACTED]" not in sanitized and re.search(
+            r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}", text
+        ):
             sanitized += " [EMAIL REDACTED]"
 
         # Normalize any sequences of multiple brackets eg "[[[[NAME REDACTED]]]]"
@@ -164,8 +169,18 @@ class _PHIAdapter:
 
         # False-positive guard: if only NAME token present without other PHI tokens and text lacks PHI patterns, return original
         phi_pattern = re.compile(r"@|INS-\d{6,}|\d{3}-\d{2}-\d{4}|\(\d{3}\)\s*\d{3}-\d{4}")
-        other_tokens = ("[SSN REDACTED]", "[EMAIL REDACTED]", "[PHONE REDACTED]", "[POLICY REDACTED]", "[ADDRESS REDACTED]")
-        if "[NAME REDACTED]" in sanitized and not any(tok in sanitized for tok in other_tokens) and not phi_pattern.search(text):
+        other_tokens = (
+            "[SSN REDACTED]",
+            "[EMAIL REDACTED]",
+            "[PHONE REDACTED]",
+            "[POLICY REDACTED]",
+            "[ADDRESS REDACTED]",
+        )
+        if (
+            "[NAME REDACTED]" in sanitized
+            and not any(tok in sanitized for tok in other_tokens)
+            and not phi_pattern.search(text)
+        ):
             return text
 
         return sanitized
@@ -190,6 +205,7 @@ class _PHIAdapter:
             if isinstance(obj, dict):
                 return {k: _rec(v) for k, v in obj.items()}
             return obj
+
         return _rec(sanit)
 
     @staticmethod
@@ -202,6 +218,7 @@ class _PHIAdapter:
 
     # expose patterns for tests
     patterns = getattr(_instance, "patterns", [])
+
 
 # Re-export for external code/tests
 PHISanitizer = _PHIAdapter

@@ -197,10 +197,12 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
             # Ensure we have a valid JWT service with proper secret key
             jwt_service: IJWTService = get_jwt_service(current_settings)
             fastapi_app.state.jwt_service = jwt_service  # Store the JWT service in app state
-            
+
             # Apply patch to fix datetime.utcnow() deprecation warnings in jose.jwt
             patch_jose_jwt()
-            logger.info("JWT service initialized and jose.jwt patched to use timezone-aware datetime.")
+            logger.info(
+                "JWT service initialized and jose.jwt patched to use timezone-aware datetime."
+            )
         except Exception as e:
             logger.error(
                 "LIFESPAN_JWT_INIT_FAILURE: Failed to initialize JWT service: %s",

@@ -1,4 +1,5 @@
 """Unit tests for Symptom Forecasting Model Service."""
+
 import pytest
 
 pytest.skip(
@@ -191,7 +192,9 @@ class TestSymptomForecastingModelService:
             assert "confidence_intervals" in result["forecast"]
 
     @pytest.mark.asyncio
-    async def test_predict_symptom_progression_invalid_days(self, service, sample_patient_data) -> None:
+    async def test_predict_symptom_progression_invalid_days(
+        self, service, sample_patient_data
+    ) -> None:
         """Test prediction with invalid forecast days."""
         # Setup
         patient_id = UUID(sample_patient_data["patient_id"])

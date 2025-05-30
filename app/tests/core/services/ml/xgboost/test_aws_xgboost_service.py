@@ -49,9 +49,10 @@ from app.presentation.api.schemas.xgboost import (  # Renamed TreatmentCategory 
 def mock_aws_clients():
     """Fixture to mock all AWS clients used by the service."""
     # Patch AWS client and shim_client in AWSXGBoostService module
-    with patch("app.core.services.ml.xgboost.aws.boto3.client") as mock_client, patch(
-        "app.core.services.ml.xgboost.aws.shim_client"
-    ) as mock_shim_client:
+    with (
+        patch("app.core.services.ml.xgboost.aws.boto3.client") as mock_client,
+        patch("app.core.services.ml.xgboost.aws.shim_client") as mock_shim_client,
+    ):
         # Mock SageMaker clients
         mock_sagemaker = MagicMock()
         mock_sagemaker_runtime = MagicMock()

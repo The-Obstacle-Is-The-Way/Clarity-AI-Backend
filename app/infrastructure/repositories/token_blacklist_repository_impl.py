@@ -101,12 +101,6 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             logger.error(f"Failed to check token blacklist: {e!s}")
             return False
 
-
-
-
-
-
-
     async def remove_expired(self) -> int:
         """Remove expired tokens from the blacklist.
 
@@ -130,7 +124,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             # Get all blacklisted JTIs
             pattern = f"{JTI_PREFIX}*"
             keys = await self.redis.keys(pattern)
-            
+
             result = []
             for key in keys:
                 # Extract JTI from key
@@ -139,11 +133,8 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
                 ttl = await self.redis.ttl(key)
                 if ttl > 0:
                     expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl)
-                    result.append({
-                        "token_jti": jti,
-                        "expires_at": expires_at
-                    })
-            
+                    result.append({"token_jti": jti, "expires_at": expires_at})
+
             return result
         except RedisError as e:
             logger.error(f"Failed to get all blacklisted tokens: {e!s}")
@@ -165,7 +156,3 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         except RedisError as e:
             logger.error(f"Failed to remove token from blacklist: {e!s}")
             return False
-
-
-
-

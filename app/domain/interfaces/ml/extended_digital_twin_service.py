@@ -66,9 +66,7 @@ class IExtendedDigitalTwinIntegrationService(IDigitalTwinIntegrationService):
 
     @abstractmethod
     async def simulate_intervention(
-        self,
-        twin_id: UUID,
-        intervention: dict[str, Any]
+        self, twin_id: UUID, intervention: dict[str, Any]
     ) -> dict[str, Any]:
         """
         Simulate the effect of an intervention on a digital twin.
@@ -92,7 +90,7 @@ class IExtendedDigitalTwinIntegrationService(IDigitalTwinIntegrationService):
     ) -> dict[str, Any]:
         """
         Generate comprehensive patient insights by integrating multiple ML services.
-        
+
         Args:
             patient_id: The ID of the patient
             options: Options for controlling which insights to generate
@@ -101,7 +99,7 @@ class IExtendedDigitalTwinIntegrationService(IDigitalTwinIntegrationService):
                 include_medication_predictions: Whether to include medication predictions
                 forecast_days: Number of days to forecast symptoms
                 biometric_lookback_days: Number of days to look back for biometric data
-        
+
         Returns:
             A dictionary containing comprehensive patient insights
 

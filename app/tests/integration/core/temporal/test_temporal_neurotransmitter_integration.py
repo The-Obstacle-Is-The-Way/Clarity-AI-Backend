@@ -5,6 +5,7 @@ These tests validate the complete vertical stack from API to infrastructure,
 ensuring that all components work together seamlessly with proper horizontal
 coverage across all neurotransmitters and brain regions.
 """
+
 import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
@@ -357,9 +358,12 @@ async def test_api_integration_with_service(
     This test verifies that the API layer correctly integrates with the service layer.
     """
     # Setup - patch dependencies to use our service instance
-    with mock_current_user, patch(
-        "app.api.routes.temporal_neurotransmitter.get_temporal_neurotransmitter_service",
-        return_value=AsyncMock(return_value=temporal_service),
+    with (
+        mock_current_user,
+        patch(
+            "app.api.routes.temporal_neurotransmitter.get_temporal_neurotransmitter_service",
+            return_value=AsyncMock(return_value=temporal_service),
+        ),
     ):
         # Test 1: Generate time series
         time_series_response = await test_client.post(  # Use test_client fixture

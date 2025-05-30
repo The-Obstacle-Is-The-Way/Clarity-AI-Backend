@@ -2,6 +2,7 @@
 Minimal placeholder XGBoost schemas for integration tests.
 Replace with real schemas as needed for production.
 """
+
 from typing import Any
 
 from pydantic import BaseModel, Field

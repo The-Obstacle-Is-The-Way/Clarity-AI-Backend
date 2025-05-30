@@ -5,6 +5,7 @@ This module provides a complete implementation of the MentaLLaMA interface expec
 by test code while following clean architecture principles. It serves as an adapter
 to the domain-driven MentaLLaMAServiceInterface.
 """
+
 import random
 import uuid
 from datetime import datetime
@@ -139,9 +140,13 @@ class MockMentaLLaMA:
             {
                 "text": "Mock insight from text: " + text[:30] + "...",
                 "category": "DIAGNOSTIC",  # String format as expected by tests
-                "severity": "MODERATE"
-                if any(word in text.lower() for word in ["sad", "down", "depressed", "hopeless"])
-                else "LOW",
+                "severity": (
+                    "MODERATE"
+                    if any(
+                        word in text.lower() for word in ["sad", "down", "depressed", "hopeless"]
+                    )
+                    else "LOW"
+                ),
                 "confidence": 0.85,
                 "evidence": "Evidence from text",
                 "timestamp": datetime.now(UTC).isoformat(),
@@ -234,9 +239,9 @@ class MockMentaLLaMA:
                 "key_indicators": indicators,
             },
             "recommendations": {
-                "suggested_assessments": ["PHQ-9", "Beck Depression Inventory"]
-                if is_detected
-                else ["Routine screening"],
+                "suggested_assessments": (
+                    ["PHQ-9", "Beck Depression Inventory"] if is_detected else ["Routine screening"]
+                ),
                 "follow_up": "Within 1 week" if is_detected else "Routine",
             },
             "metadata": {
@@ -288,9 +293,9 @@ class MockMentaLLaMA:
             "risk_level": "moderate" if has_risk_keywords else "low",
             "confidence": 0.8,
             "risk_factors": ["suicidal_ideation"] if has_risk_keywords else [],
-            "recommendations": ["immediate_follow_up"]
-            if has_risk_keywords
-            else ["routine_monitoring"],
+            "recommendations": (
+                ["immediate_follow_up"] if has_risk_keywords else ["routine_monitoring"]
+            ),
             "risk_assessment": {  # This field is expected by the test
                 "overall_risk_level": "moderate" if has_risk_keywords else "low",
                 "identified_risks": identified_risks,
@@ -411,14 +416,14 @@ class MockMentaLLaMA:
             "score": score,
             "positive_indicators": positive_count,
             "negative_indicators": negative_count,
-            "sentiment_label": "positive"
-            if score > 0.6
-            else ("neutral" if score >= 0.4 else "negative"),
+            "sentiment_label": (
+                "positive" if score > 0.6 else ("neutral" if score >= 0.4 else "negative")
+            ),
             "sentiment": {
                 "overall_score": score,
-                "classification": "positive"
-                if score > 0.6
-                else ("neutral" if score >= 0.4 else "negative"),
+                "classification": (
+                    "positive" if score > 0.6 else ("neutral" if score >= 0.4 else "negative")
+                ),
                 "confidence": 0.8,
             },
             "emotions": {
@@ -507,9 +512,9 @@ class MockMentaLLaMA:
                 "insights": [
                     f"{dimension.capitalize()} wellness is {self._get_score_label(score)}"
                 ],
-                "recommendations": [f"Consider ways to improve {dimension} wellness"]
-                if score < 0.5
-                else [],
+                "recommendations": (
+                    [f"Consider ways to improve {dimension} wellness"] if score < 0.5 else []
+                ),
             }
             for dimension, score in results.items()
         ]
@@ -550,9 +555,11 @@ class MockMentaLLaMA:
             "analysis": {
                 "insights": insights,
                 "recommendations": recommendations,
-                "overall_assessment": "Overall wellness needs attention"
-                if poor_dimensions
-                else "Overall wellness is good",
+                "overall_assessment": (
+                    "Overall wellness needs attention"
+                    if poor_dimensions
+                    else "Overall wellness is good"
+                ),
             },
             "recommendations": recommendations,
             "metadata": {

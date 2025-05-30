@@ -4,6 +4,7 @@ Domain entity representing the core Digital Twin.
 This entity aggregates and manages the state and configuration
 of a patient's digital representation.
 """
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -43,9 +44,9 @@ class DigitalTwinState:
     dominant_symptoms: list[str] = field(default_factory=list)
     current_treatment_effectiveness: str | None = None  # e.g., 'improving', 'stable', 'worsening'
     # Add other relevant state indicators like predicted trajectory, adherence scores etc.
-    predicted_phq9_trajectory: list[
-        dict[str, Any]
-    ] | None = None  # List of {"week": int, "score": float}
+    predicted_phq9_trajectory: list[dict[str, Any]] | None = (
+        None  # List of {"week": int, "score": float}
+    )
 
 
 @dataclass

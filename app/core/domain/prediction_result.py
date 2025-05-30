@@ -5,6 +5,7 @@ This module contains the domain models for prediction results across ML services
 Following clean architecture principles, this exists in the core domain layer
 to avoid dependencies on infrastructure or external services.
 """
+
 from datetime import datetime
 from typing import Any
 from uuid import UUID

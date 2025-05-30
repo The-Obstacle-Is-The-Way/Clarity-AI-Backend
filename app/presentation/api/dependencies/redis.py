@@ -1,7 +1,7 @@
 """
 Redis Service Dependency Provider
 
-This module provides dependency injection for Redis-related services, 
+This module provides dependency injection for Redis-related services,
 following clean architecture principles by allowing the presentation layer
 to depend on abstractions (interfaces) rather than concrete implementations.
 """

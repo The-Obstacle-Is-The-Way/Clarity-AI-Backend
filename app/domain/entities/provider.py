@@ -36,7 +36,7 @@ class ProviderStatus(Enum):
 
 class ProviderRole(Enum):
     """Role of a provider - alias for ProviderType for backward compatibility."""
-    
+
     PSYCHIATRIST = "psychiatrist"
     PSYCHOLOGIST = "psychologist"
     THERAPIST = "therapist"
@@ -48,7 +48,7 @@ class ProviderRole(Enum):
 
 class ProviderSpecialty(Enum):
     """Specialty areas for providers."""
-    
+
     GENERAL_PSYCHIATRY = "general_psychiatry"
     CHILD_ADOLESCENT_PSYCHIATRY = "child_adolescent_psychiatry"
     ADDICTION_PSYCHIATRY = "addiction_psychiatry"
@@ -73,7 +73,7 @@ class ProviderSpecialty(Enum):
 
 class Credential:
     """Represents a professional credential for a provider."""
-    
+
     def __init__(
         self,
         type: str,
@@ -85,7 +85,7 @@ class Credential:
     ):
         """
         Initialize a credential.
-        
+
         Args:
             type: Type of credential (e.g., "MD", "PhD", "License")
             issuer: Institution that issued the credential
@@ -100,14 +100,14 @@ class Credential:
         self.expiration_date = expiration_date
         self.identifier = identifier
         self.verification_url = verification_url
-    
+
     @property
     def is_expired(self) -> bool:
         """Check if the credential is expired."""
         if self.expiration_date is None:
             return False
         return datetime.now() > self.expiration_date
-    
+
     @property
     def expires_soon(self) -> bool:
         """Check if the credential expires within 30 days."""
@@ -119,7 +119,7 @@ class Credential:
 
 class AvailabilitySlot:
     """Represents an availability slot for a provider."""
-    
+
     def __init__(
         self,
         day_of_week: int,
@@ -130,7 +130,7 @@ class AvailabilitySlot:
     ):
         """
         Initialize an availability slot.
-        
+
         Args:
             day_of_week: Day of the week (0 = Monday, 6 = Sunday)
             start_time: Start time of availability
@@ -142,7 +142,7 @@ class AvailabilitySlot:
             raise ValidationError("Day of week must be between 0 (Monday) and 6 (Sunday)")
         if start_time >= end_time:
             raise ValidationError("Start time must be before end time")
-        
+
         self.day_of_week = day_of_week
         self.start_time = start_time
         self.end_time = end_time

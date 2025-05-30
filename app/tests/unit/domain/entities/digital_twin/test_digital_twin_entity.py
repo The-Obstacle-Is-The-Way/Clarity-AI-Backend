@@ -4,6 +4,7 @@ Unit tests for the Digital Twin entity.
 This module contains tests for the core Digital Twin entity, verifying its
 initialization and state/configuration updates.
 """
+
 import time
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
@@ -113,7 +114,7 @@ class TestDigitalTwin:
             "overall_risk_level": "high",
             "dominant_symptoms": ["anhedonia", "fatigue", "suicidal_ideation"],
             "current_treatment_effectiveness": "worsening",
-            "predicted_phq9_trajectory": [{"week": 1, "score": 18.5}]
+            "predicted_phq9_trajectory": [{"week": 1, "score": 18.5}],
             # "last_sync_time" is updated automatically
         }
 

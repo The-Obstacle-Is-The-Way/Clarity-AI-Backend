@@ -52,7 +52,7 @@ class MockPATService(PATService):
         except ValueError:
             # Return empty list for unknown assessment types
             return []
-            
+
         # Mock questions for different assessment types
         questions = {
             AssessmentType.PHQ9: [
@@ -137,12 +137,12 @@ class MockPATService(PATService):
                 severity=f"Unknown assessment type: {assessment_type}",
                 responses=responses,
             )
-            
+
         # Initialize default values
         raw_score: float = 0.0
         normalized_score: float = 0.0
         severity = "Unknown"
-        
+
         # Calculate scores based on assessment type
         if assessment_enum == AssessmentType.PHQ9:
             # For PHQ-9, sum the scores (0-27 range)
@@ -264,7 +264,7 @@ class MockPATService(PATService):
             Dictionary with trend analysis results
         """
         results = self.get_assessment_history(patient_id)
-        
+
         # Convert string to AssessmentType enum
         try:
             assessment_enum = AssessmentType(assessment_type)
@@ -351,14 +351,14 @@ class MockPATService(PATService):
         except ValueError:
             # Return empty list for unknown assessment types
             return []
-        
+
         for i in range(count):
             timestamp = base_date + timedelta(days=i * days_between)
-            
+
             # Generate random responses based on assessment type
             # Use explicit type annotation to help MyPy understand the type
             responses: dict[str, int | float | str] = {}
-            
+
             if assessment_enum == AssessmentType.PHQ9:
                 # Convert to the more general type to satisfy MyPy
                 responses = {f"phq{j}": self.rng.randint(0, 3) for j in range(1, 10)}

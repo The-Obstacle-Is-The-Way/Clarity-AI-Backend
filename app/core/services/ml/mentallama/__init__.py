@@ -234,18 +234,18 @@ class MentaLLaMA(MentaLLaMAInterface):
             "processed_at": datetime.datetime.now(timezone.utc).isoformat(),
             "sentiment": {
                 "score": sentiment_score,
-                "label": "positive"
-                if sentiment_score > 0.2
-                else "negative"
-                if sentiment_score < -0.2
-                else "neutral",
+                "label": (
+                    "positive"
+                    if sentiment_score > 0.2
+                    else "negative" if sentiment_score < -0.2 else "neutral"
+                ),
                 "positive_words": positive_count,
                 "negative_words": negative_count,
             },
             "language_stats": {
-                "avg_word_length": sum(len(word) for word in words) / word_count
-                if word_count > 0
-                else 0,
+                "avg_word_length": (
+                    sum(len(word) for word in words) / word_count if word_count > 0 else 0
+                ),
                 "sentence_count": text.count(".") + text.count("!") + text.count("?"),
             },
             "options_used": options,
@@ -732,20 +732,20 @@ class MentaLLaMA(MentaLLaMAInterface):
             "processed_at": datetime.datetime.now(timezone.utc).isoformat(),
             "sentiment": {
                 "score": sentiment_score,
-                "label": "positive"
-                if sentiment_score > 0.2
-                else "negative"
-                if sentiment_score < -0.2
-                else "neutral",
+                "label": (
+                    "positive"
+                    if sentiment_score > 0.2
+                    else "negative" if sentiment_score < -0.2 else "neutral"
+                ),
                 "positive_words": positive_count,
                 "negative_words": negative_count,
             },
             "emotions": {
                 "primary": primary_emotion,
                 "detected": emotion_counts,
-                "intensity": max(emotion_counts.values()) / len(words) * 10
-                if emotion_counts
-                else 0,
+                "intensity": (
+                    max(emotion_counts.values()) / len(words) * 10 if emotion_counts else 0
+                ),
             },
             "language_stats": {
                 "avg_word_length": sum(len(word) for word in words) / len(words) if words else 0,
@@ -1592,11 +1592,11 @@ class MentaLLaMA(MentaLLaMAInterface):
 
         return {
             "score": sentiment_score,
-            "label": "positive"
-            if sentiment_score > 0.2
-            else "negative"
-            if sentiment_score < -0.2
-            else "neutral",
+            "label": (
+                "positive"
+                if sentiment_score > 0.2
+                else "negative" if sentiment_score < -0.2 else "neutral"
+            ),
             "positive_count": positive_count,
             "negative_count": negative_count,
         }
@@ -1656,11 +1656,11 @@ class MentaLLaMA(MentaLLaMAInterface):
             },
             "engagement": {
                 "score": engagement_score,
-                "level": "high"
-                if engagement_score > 0.7
-                else "medium"
-                if engagement_score > 0.4
-                else "low",
+                "level": (
+                    "high"
+                    if engagement_score > 0.7
+                    else "medium" if engagement_score > 0.4 else "low"
+                ),
             },
             "themes": themes,
             "sentiment_progression": self._analyze_sentiment_progression(user_messages),
@@ -1799,23 +1799,21 @@ class MentaLLaMA(MentaLLaMAInterface):
         trend = (
             "improving"
             if sentiment_change > 0.2
-            else "declining"
-            if sentiment_change < -0.2
-            else "stable"
+            else "declining" if sentiment_change < -0.2 else "stable"
         )
 
         return {
             "trend": trend,
-            "start_sentiment": "positive"
-            if start_sentiment > 0.2
-            else "negative"
-            if start_sentiment < -0.2
-            else "neutral",
-            "end_sentiment": "positive"
-            if end_sentiment > 0.2
-            else "negative"
-            if end_sentiment < -0.2
-            else "neutral",
+            "start_sentiment": (
+                "positive"
+                if start_sentiment > 0.2
+                else "negative" if start_sentiment < -0.2 else "neutral"
+            ),
+            "end_sentiment": (
+                "positive"
+                if end_sentiment > 0.2
+                else "negative" if end_sentiment < -0.2 else "neutral"
+            ),
             "sentiment_change": sentiment_change,
             "sentiment_values": sentiments,
         }

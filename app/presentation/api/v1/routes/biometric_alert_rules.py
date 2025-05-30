@@ -335,15 +335,15 @@ async def update_alert_rule(
             id=updated_rule.id,
             name=updated_rule.name,
             description=updated_rule.description,
-            biometric_type=updated_rule.conditions[0].metric_type.value
-            if updated_rule.conditions
-            else None,
-            threshold_level=updated_rule.conditions[0].threshold_value
-            if updated_rule.conditions
-            else None,
-            comparison_operator=updated_rule.conditions[0].operator.value
-            if updated_rule.conditions
-            else None,
+            biometric_type=(
+                updated_rule.conditions[0].metric_type.value if updated_rule.conditions else None
+            ),
+            threshold_level=(
+                updated_rule.conditions[0].threshold_value if updated_rule.conditions else None
+            ),
+            comparison_operator=(
+                updated_rule.conditions[0].operator.value if updated_rule.conditions else None
+            ),
             is_active=updated_rule.is_active,
             created_by=str(updated_rule.provider_id) if updated_rule.provider_id else "unknown",
             updated_by=str(current_user.id),

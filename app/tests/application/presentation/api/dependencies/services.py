@@ -4,6 +4,7 @@ PAT service dependency for FastAPI.
 This module exposes a named DI provider so that unit tests may override
 the PAT service via FastAPI's dependency_overrides.
 """
+
 import logging
 
 from fastapi import Depends, HTTPException, status

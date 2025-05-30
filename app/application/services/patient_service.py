@@ -3,6 +3,7 @@ Application Service for Patient operations.
 
 Orchestrates use cases related to patient data management.
 """
+
 from __future__ import annotations
 
 import logging

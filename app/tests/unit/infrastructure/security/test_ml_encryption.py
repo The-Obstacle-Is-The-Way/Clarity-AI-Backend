@@ -280,7 +280,7 @@ class TestMLEncryptionService:
         # None should raise ValueError for security
         with pytest.raises(ValueError, match="Embedding cannot be None"):
             ml_encryption_service.encrypt_embedding(None)
-        
+
         with pytest.raises(ValueError, match="Cannot decrypt None embedding"):
             ml_encryption_service.decrypt_embedding(None)
 

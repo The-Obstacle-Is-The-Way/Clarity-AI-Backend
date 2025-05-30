@@ -1,6 +1,7 @@
 """
 Text utility functions for the Novamind platform.
 """
+
 import datetime
 
 

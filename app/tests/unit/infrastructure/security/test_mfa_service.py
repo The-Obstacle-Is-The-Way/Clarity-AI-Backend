@@ -106,7 +106,9 @@ class TestMFAService:
         mock_totp_instance.verify.assert_called_once_with("654321")
 
     @patch("random.choice")
-    def test_generate_verification_code(self, mock_choice: MagicMock, mfa_service: MFAService) -> None:
+    def test_generate_verification_code(
+        self, mock_choice: MagicMock, mfa_service: MFAService
+    ) -> None:
         """Test generating a verification code."""
         mock_choice.return_value = "1"
         code = mfa_service.generate_verification_code(6)

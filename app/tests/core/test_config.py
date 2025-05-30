@@ -4,6 +4,7 @@ Tests for the configuration module.
 This module tests that application configuration loads correctly
 and handles environment variables properly.
 """
+
 import os
 
 import pytest

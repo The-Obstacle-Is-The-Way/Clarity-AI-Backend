@@ -37,7 +37,9 @@ class BiometricTwinModel(Base, TimestampMixin):
 
     __tablename__ = "biometric_twins"
 
-    id: Mapped[uuid.UUID] = mapped_column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     patient_id: Mapped[uuid.UUID] = mapped_column(
         SQLAlchemyUUID(as_uuid=True),
         ForeignKey("patients.id"),
@@ -45,7 +47,9 @@ class BiometricTwinModel(Base, TimestampMixin):
         index=True,
     )
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, default=now_utc)
-    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime, nullable=False, default=now_utc, onupdate=now_utc
+    )
     baseline_established: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     connected_devices: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     config: Mapped[dict | None] = mapped_column(JSONEncodedDict, nullable=True)
@@ -78,7 +82,9 @@ class BiometricDataPointModel(Base):
 
     __tablename__ = "biometric_data_points"
 
-    data_id: Mapped[uuid.UUID] = mapped_column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    data_id: Mapped[uuid.UUID] = mapped_column(
+        SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     twin_id: Mapped[uuid.UUID] = mapped_column(
         SQLAlchemyUUID(as_uuid=True),
         ForeignKey("biometric_twins.id"),
@@ -110,7 +116,9 @@ class BiometricDataPointModel(Base):
 class BiometricTimeseriesDataModel(Base, TimestampMixin):
     __tablename__ = "biometric_timeseries_data"
 
-    id: Mapped[uuid.UUID] = mapped_column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     biometric_twin_id: Mapped[uuid.UUID] = mapped_column(
         SQLAlchemyUUID(as_uuid=True),
         ForeignKey("biometric_twins.id"),
@@ -118,7 +126,9 @@ class BiometricTimeseriesDataModel(Base, TimestampMixin):
         index=True,
     )
     data_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    timestamp: Mapped[datetime.datetime] = mapped_column(DateTime, default=now_utc, nullable=False, index=True)
+    timestamp: Mapped[datetime.datetime] = mapped_column(
+        DateTime, default=now_utc, nullable=False, index=True
+    )
     value_numeric: Mapped[float | None] = mapped_column(Float, nullable=True)
     value_string: Mapped[str | None] = mapped_column(String, nullable=True)
     value_json: Mapped[dict | None] = mapped_column(JSONEncodedDict, nullable=True)

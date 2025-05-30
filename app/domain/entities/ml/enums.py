@@ -1,7 +1,7 @@
 """
 Machine Learning model enums.
 
-This module contains enumerations related to machine learning models 
+This module contains enumerations related to machine learning models
 and their predictions.
 """
 

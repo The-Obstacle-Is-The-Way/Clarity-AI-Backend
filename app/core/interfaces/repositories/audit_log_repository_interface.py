@@ -1,7 +1,7 @@
 """
 Interface for Audit Log Repository.
 
-This module defines the interface for repository classes that handle 
+This module defines the interface for repository classes that handle
 HIPAA-compliant audit log persistence operations.
 """
 

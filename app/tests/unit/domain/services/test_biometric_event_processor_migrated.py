@@ -146,7 +146,9 @@ class TestBiometricEventProcessor:
 
         assert len(alerts) == 0
 
-    def test_process_data_point_matching_rule(self, sample_data_point, sample_rule, mock_observer) -> None:
+    def test_process_data_point_matching_rule(
+        self, sample_data_point, sample_rule, mock_observer
+    ) -> None:
         """Test that process_data_point returns alerts for matching rules and notifies observers."""
         processor = BiometricEventProcessor()
         processor.add_rule(sample_rule)

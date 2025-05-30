@@ -1,6 +1,7 @@
 """
 Repository implementation for temporal sequence storage and retrieval.
 """
+
 from uuid import UUID
 
 import sqlalchemy as sa

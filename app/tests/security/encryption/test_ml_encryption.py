@@ -236,7 +236,9 @@ class TestEncryptionService:
         decrypted_array = ml_service.decrypt_tensor(encrypted_array)
         assert np.array_equal(decrypted_array, array_data)
 
-    def test_encryption_is_non_deterministic_but_decrypts_correctly(self, encryption_service) -> None:
+    def test_encryption_is_non_deterministic_but_decrypts_correctly(
+        self, encryption_service
+    ) -> None:
         """Test that encryption is non-deterministic but decrypts correctly."""
         # Arrange
         original_data = "Sensitive patient data"

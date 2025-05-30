@@ -5,6 +5,7 @@ These tests verify that the Enhanced Digital Twin components work together
 correctly, including the core service, knowledge graph, belief network,
 and event system.
 """
+
 import datetime
 import uuid
 from uuid import UUID
@@ -41,14 +42,12 @@ from app.infrastructure.factories.enhanced_mock_digital_twin_factory import (
 
 
 @pytest.fixture
-def enhanced_services() -> (
-    tuple[
-        EnhancedDigitalTwinCoreService,
-        EnhancedMentalLLaMAService,
-        EnhancedXGBoostService,
-        EnhancedPATService,
-    ]
-):
+def enhanced_services() -> tuple[
+    EnhancedDigitalTwinCoreService,
+    EnhancedMentalLLaMAService,
+    EnhancedXGBoostService,
+    EnhancedPATService,
+]:
     """Fixture to create enhanced mock services for testing."""
     return EnhancedMockDigitalTwinFactory.create_enhanced_mock_services()
 

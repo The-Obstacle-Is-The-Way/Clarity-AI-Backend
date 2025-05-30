@@ -185,14 +185,14 @@ class Alert:
         """
         return {
             "id": self.id,
-            "alert_type": self.alert_type.value
-            if isinstance(self.alert_type, AlertType)
-            else self.alert_type,
+            "alert_type": (
+                self.alert_type.value if isinstance(self.alert_type, AlertType) else self.alert_type
+            ),
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
             "status": self.status.value if isinstance(self.status, AlertStatus) else self.status,
-            "priority": self.priority.value
-            if isinstance(self.priority, AlertPriority)
-            else self.priority,
+            "priority": (
+                self.priority.value if isinstance(self.priority, AlertPriority) else self.priority
+            ),
             "message": self.message,
             "data": self.data,
             "user_id": self.user_id,

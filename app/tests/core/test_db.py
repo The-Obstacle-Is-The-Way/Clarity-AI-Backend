@@ -3,6 +3,7 @@ Tests for the database utilities.
 
 This module tests the database connection utilities for SQLAlchemy.
 """
+
 import os
 
 import pytest

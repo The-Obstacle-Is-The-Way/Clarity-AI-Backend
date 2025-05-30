@@ -41,8 +41,8 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
 
         # Add the request ID to the response headers
         response.headers["x-request-id"] = request_id
-        response.headers[
-            "request_id"
-        ] = request_id  # Also add lowercase version for test compatibility
+        response.headers["request_id"] = (
+            request_id  # Also add lowercase version for test compatibility
+        )
 
         return response

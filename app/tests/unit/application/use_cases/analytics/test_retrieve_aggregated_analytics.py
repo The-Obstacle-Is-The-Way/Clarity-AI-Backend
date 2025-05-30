@@ -248,9 +248,7 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         }
 
         # Act
-        await use_case.execute(
-            aggregate_type="count", dimensions=["event_type"], filters=filters
-        )
+        await use_case.execute(aggregate_type="count", dimensions=["event_type"], filters=filters)
 
         # Assert - should sanitize filters
         call_args = mock_analytics_repository.get_aggregates.call_args[1]
@@ -261,7 +259,9 @@ class TestRetrieveAggregatedAnalyticsUseCase:
         assert isinstance(call_args["filters"]["platform"], str)
 
     @pytest.mark.asyncio
-    async def test_caching_behavior(self, use_case, mock_analytics_repository, mock_cache_service) -> None:
+    async def test_caching_behavior(
+        self, use_case, mock_analytics_repository, mock_cache_service
+    ) -> None:
         """
         Test that results are cached and cache is used on subsequent requests.
         """

@@ -5,6 +5,7 @@ This module provides adapter classes that allow compatibility between
 different implementations of Digital Twin entities following clean architecture
 and SOLID principles.
 """
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -176,10 +177,10 @@ class DigitalTwinStateAdapter:
     def _validate_and_convert_brain_regions(self) -> None:
         """Validate and convert brain region data to proper adapter format."""
         validated_regions: dict[BrainRegion, BrainRegionStateAdapter] = {}
-        
+
         for key, value in self.brain_regions.items():
             brain_region = ensure_enum_value(key, BrainRegion)
-            
+
             if not isinstance(value, BrainRegionStateAdapter):
                 # Convert to adapter if not already
                 adapter = BrainRegionStateAdapter(
@@ -194,16 +195,16 @@ class DigitalTwinStateAdapter:
                 validated_regions[brain_region] = adapter
             else:
                 validated_regions[brain_region] = value
-                
+
         self.brain_regions = validated_regions
 
     def _validate_and_convert_neurotransmitters(self) -> None:
         """Validate and convert neurotransmitter data to proper adapter format."""
         validated_neurotransmitters: dict[Neurotransmitter, NeurotransmitterStateAdapter] = {}
-        
+
         for key, value in self.neurotransmitters.items():
             neurotransmitter = ensure_enum_value(key, Neurotransmitter)
-            
+
             if not isinstance(value, NeurotransmitterStateAdapter):
                 # Convert to adapter if not already
                 adapter = NeurotransmitterStateAdapter(
@@ -217,26 +218,30 @@ class DigitalTwinStateAdapter:
                 validated_neurotransmitters[neurotransmitter] = adapter
             else:
                 validated_neurotransmitters[neurotransmitter] = value
-                
+
         self.neurotransmitters = validated_neurotransmitters
 
     def _validate_and_convert_neural_connections(self) -> None:
         """Validate and convert neural connection data to proper adapter format."""
         validated_connections: list[NeuralConnectionAdapter] = []
-        
+
         for conn in self.neural_connections:
             if not isinstance(conn, NeuralConnectionAdapter):
                 # Convert to adapter if not already
                 adapter = NeuralConnectionAdapter(
-                    source_region=ensure_enum_value(getattr(conn, "source_region", BrainRegion.PREFRONTAL_CORTEX), BrainRegion),
-                    target_region=ensure_enum_value(getattr(conn, "target_region", BrainRegion.PREFRONTAL_CORTEX), BrainRegion),
+                    source_region=ensure_enum_value(
+                        getattr(conn, "source_region", BrainRegion.PREFRONTAL_CORTEX), BrainRegion
+                    ),
+                    target_region=ensure_enum_value(
+                        getattr(conn, "target_region", BrainRegion.PREFRONTAL_CORTEX), BrainRegion
+                    ),
                     strength=getattr(conn, "strength", 0.5),
                     confidence=getattr(conn, "confidence", 0.5),
                 )
                 validated_connections.append(adapter)
             else:
                 validated_connections.append(conn)
-                
+
         self.neural_connections = validated_connections
 
     def create_copy(self) -> "DigitalTwinStateAdapter":
@@ -306,7 +311,9 @@ class DigitalTwinStateAdapter:
         self.brain_regions[validated_region] = state
         self.updated_at = datetime.now()
 
-    def update_neurotransmitter(self, neurotransmitter: Neurotransmitter, state: NeurotransmitterStateAdapter) -> None:
+    def update_neurotransmitter(
+        self, neurotransmitter: Neurotransmitter, state: NeurotransmitterStateAdapter
+    ) -> None:
         """Update neurotransmitter state with validation."""
         validated_nt = ensure_enum_value(neurotransmitter, Neurotransmitter)
         self.neurotransmitters[validated_nt] = state

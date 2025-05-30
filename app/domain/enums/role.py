@@ -1,9 +1,10 @@
 """
 Role enumeration for the Novamind Digital Twin Backend.
 
-This module defines the role types used for authentication and 
+This module defines the role types used for authentication and
 authorization throughout the application.
 """
+
 from enum import Enum
 
 

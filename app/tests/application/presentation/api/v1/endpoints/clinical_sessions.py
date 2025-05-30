@@ -4,6 +4,7 @@ API Endpoints for Clinical Session Records.
 Provides endpoints for creating, retrieving, and updating clinical session notes
 and structured data.
 """
+
 from datetime import datetime
 from uuid import UUID
 
@@ -174,8 +175,9 @@ async def list_clinical_sessions(
     patient_id: UUID | None = Query(None, description="Filter by patient ID"),
     provider_id: UUID | None = Query(None, description="Filter by provider ID"),
     appointment_id: UUID | None = Query(None, description="Filter by appointment ID"),
-    start_date: datetime
-    | None = Query(None, description="Filter by session start date (inclusive)"),
+    start_date: datetime | None = Query(
+        None, description="Filter by session start date (inclusive)"
+    ),
     end_date: datetime | None = Query(None, description="Filter by session end date (exclusive)"),
     session_type: SessionType | None = Query(None, description="Filter by session type"),
     limit: int = Query(50, ge=1, le=200, description="Maximum sessions to return"),
@@ -188,7 +190,6 @@ async def list_clinical_sessions(
     Requires appropriate permissions.
     """
     # TODO: Add authorization based on query params and user role
-
 
     # Simplistic fetch - replace with specific repo calls based on params
     if patient_id:

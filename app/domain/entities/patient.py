@@ -169,8 +169,9 @@ class Patient:
     def __post_init__(self):
         """Initialize the object after dataclass initialization."""
         # Convert string id to UUID if necessary
-        if isinstance(self.id, str):  
+        if isinstance(self.id, str):
             from uuid import UUID
+
             try:
                 # Only attempt conversion if it looks like a valid UUID
                 if len(self.id) == 36 and self.id.count("-") == 4:
@@ -439,7 +440,7 @@ class Patient:
         """Update this patient from a dictionary, with decryption if needed."""
         # Attempt to detect and decrypt PHI fields
         if self.encryption_service is not None:
-            try:  
+            try:
                 for field in self.phi_fields:
                     if field in data and data[field] is not None:
                         # Check if the field value looks encrypted
@@ -496,6 +497,7 @@ class Patient:
     def social_security_number_lve(self, value: str | None) -> None:
         """LVE setter for social security number."""
         self.ssn = value
+
 
 # NOTE: Descriptor now defined inside the class body (above) eliminating the
 # need for late binding and avoiding mypy ``attr-defined`` complaints.

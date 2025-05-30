@@ -1,7 +1,7 @@
 """
 Audit Logger Interface.
 
-This module defines the interface for audit logging operations required 
+This module defines the interface for audit logging operations required
 for HIPAA compliance and security auditing purposes.
 """
 

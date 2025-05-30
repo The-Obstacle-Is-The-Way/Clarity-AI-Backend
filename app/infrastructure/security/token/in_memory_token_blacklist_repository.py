@@ -52,9 +52,7 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
         """
         return hashlib.sha256(token.encode()).hexdigest()
 
-    async def add_to_blacklist(
-        self, token_jti: str, expires_at: datetime
-    ) -> None:
+    async def add_to_blacklist(self, token_jti: str, expires_at: datetime) -> None:
         """
         Add a token to the blacklist.
 
@@ -114,10 +112,6 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
             logger.error(f"Failed to check token blacklist: {e!s}")
             # For security, assume token is blacklisted if check fails
             return True
-
-
-
-
 
     async def remove_expired(self) -> int:
         """

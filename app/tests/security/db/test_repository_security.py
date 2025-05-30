@@ -7,7 +7,8 @@ These tests verify that repositories handling PHI/ePHI properly:
     3. Never expose raw PHI in logs or exceptions
     4. Validate access permissions before operations
     5. Maintain audit trails for all operations
-    """
+"""
+
 import logging
 import uuid
 from typing import NoReturn
@@ -280,27 +281,27 @@ async def test_authorization_check_before_operations() -> None:
     assert check_permission(doctor_user, "123", "edit"), "Doctors should have edit access"
 
     # Patients should only have access to their own data
-    assert (
-        check_permission(patient_user, "789", "view")
+    assert check_permission(
+        patient_user, "789", "view"
     ), "Patients should have view access to own records"
-    assert (
-        check_permission(patient_user, "789", "edit")
+    assert check_permission(
+        patient_user, "789", "edit"
     ), "Patients should have edit access to own records"
 
     # Patients should NOT have access to other patients' data
-    assert (
-        not check_permission(patient_user, "123", "view")
+    assert not check_permission(
+        patient_user, "123", "view"
     ), "Patients should not access others' records"
-    assert (
-        not check_permission(patient_user, "123", "edit")
+    assert not check_permission(
+        patient_user, "123", "edit"
     ), "Patients should not edit others' records"
 
     # Unrelated users should have no access
-    assert (
-        not check_permission(unrelated_user, "123", "view")
+    assert not check_permission(
+        unrelated_user, "123", "view"
     ), "Unrelated users should have no access"
-    assert (
-        not check_permission(unrelated_user, "123", "edit")
+    assert not check_permission(
+        unrelated_user, "123", "edit"
     ), "Unrelated users should have no edit rights"
 
 

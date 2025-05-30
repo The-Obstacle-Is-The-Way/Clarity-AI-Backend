@@ -4,6 +4,7 @@ SQLAlchemy implementation of the BiometricAlertRepository.
 This module provides a concrete implementation of the BiometricAlertRepository
 interface using SQLAlchemy ORM for database operations.
 """
+
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
@@ -59,9 +60,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             alert_model_id = str(alert.alert_id)
 
             # Use modern SQLAlchemy 2.0 pattern with execute and select
-            query = select(BiometricAlertModel).where(
-                BiometricAlertModel.id == alert_model_id
-            )
+            query = select(BiometricAlertModel).where(BiometricAlertModel.id == alert_model_id)
             result = await self.session.execute(query)
             existing_model = result.scalar_one_or_none()
 
@@ -290,7 +289,9 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         try:
             # Build the query for unacknowledged alerts
             # Unacknowledged alerts have status NEW
-            query = select(BiometricAlertModel).where(BiometricAlertModel.status == AlertStatusEnum.NEW)
+            query = select(BiometricAlertModel).where(
+                BiometricAlertModel.status == AlertStatusEnum.NEW
+            )
 
             if patient_id:
                 query = query.where(BiometricAlertModel.patient_id == str(patient_id))
@@ -566,9 +567,9 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
                 patient_id=patient_id,
                 rule_id=str(model.rule_id) if model.rule_id else None,
                 rule_name=str(model.rule_name) if model.rule_name else "",
-                priority=AlertPriority(model.priority)
-                if model.priority
-                else AlertPriority.INFORMATIONAL,
+                priority=(
+                    AlertPriority(model.priority) if model.priority else AlertPriority.INFORMATIONAL
+                ),
                 data_point=data_point_mock,
                 message=str(model.message) if model.message else "",
                 context=dict(model.context) if model.context else {},
@@ -599,11 +600,11 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
                 patient_id=str(entity.patient_id) if entity.patient_id else None,
                 rule_id=entity.rule_id,
                 rule_name=entity.rule_name or "",  # Ensure non-null string
-                priority=entity.priority.value
-                if entity.priority and hasattr(entity.priority, "value")
-                else str(entity.priority)
-                if entity.priority
-                else "INFORMATIONAL",
+                priority=(
+                    entity.priority.value
+                    if entity.priority and hasattr(entity.priority, "value")
+                    else str(entity.priority) if entity.priority else "INFORMATIONAL"
+                ),
                 message=entity.message or "",  # Ensure non-null string
                 context=entity.context or {},  # Ensure non-null dict
                 created_at=entity.created_at
@@ -636,9 +637,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             model.priority = (
                 entity.priority.value
                 if entity.priority and hasattr(entity.priority, "value")
-                else str(entity.priority)
-                if entity.priority
-                else "INFORMATIONAL"
+                else str(entity.priority) if entity.priority else "INFORMATIONAL"
             )
             model.message = entity.message or ""  # Ensure non-null string
             model.context = entity.context or {}  # Ensure non-null dict

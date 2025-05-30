@@ -26,16 +26,16 @@ if TYPE_CHECKING:
 class Base(DeclarativeBase, AsyncAttrs):
     """
     SQLAlchemy 2.0 declarative base with async support.
-    
+
     This provides type-safe base class following modern SQLAlchemy patterns.
     Combines DeclarativeBase for proper typing with AsyncAttrs for async support.
-    
+
     Follows SOLID principles:
     - Single Responsibility: Pure base class definition
     - Open/Closed: Extensible through inheritance
     - Dependency Inversion: Depends on abstractions (DeclarativeBase)
     """
-    
+
     # Use the shared metadata from registry for consistency
     metadata = metadata
 
@@ -46,7 +46,7 @@ class TimestampMixin:
 
     This mixin provides standard timestamp tracking for database models,
     automatically setting and updating timestamps.
-    
+
     Follows Single Responsibility Principle - handles only timestamp concerns.
     """
 
@@ -69,7 +69,7 @@ class BaseSQLModel(Base):
 
     This class provides common functionality for all models,
     including a primary key and a string representation method.
-    
+
     Follows SOLID principles:
     - Single Responsibility: Common model functionality
     - Open/Closed: Extensible for domain-specific models

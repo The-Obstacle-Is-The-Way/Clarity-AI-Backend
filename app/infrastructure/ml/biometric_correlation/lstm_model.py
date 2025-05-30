@@ -271,11 +271,11 @@ class BiometricCorrelationModel:
                             "feature_index": i,
                             "value": float(feature_data[j]),
                             "z_score": float(z_score),
-                            "severity": "high"
-                            if abs(z_score) > 5
-                            else "medium"
-                            if abs(z_score) > 4
-                            else "low",
+                            "severity": (
+                                "high"
+                                if abs(z_score) > 5
+                                else "medium" if abs(z_score) > 4 else "low"
+                            ),
                         }
 
                         anomalies.append(anomaly)
@@ -290,11 +290,9 @@ class BiometricCorrelationModel:
             anomalies_by_feature[str(i)] = {
                 "anomaly_count": len(anomalies),
                 "anomalies": anomalies,
-                "severity": "high"
-                if len(anomalies) > 5
-                else "medium"
-                if len(anomalies) > 2
-                else "low",
+                "severity": (
+                    "high" if len(anomalies) > 5 else "medium" if len(anomalies) > 2 else "low"
+                ),
             }
 
         return {

@@ -4,6 +4,7 @@ Tests for the XGBoost API routes.
 This module tests the functionality of the XGBoost ML API endpoints,
 ensuring they handle requests correctly and return appropriate responses.
 """
+
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 

@@ -27,7 +27,9 @@ class AuthenticationError(ApplicationError):
 class AuthorizationError(ApplicationError):
     """Exception raised when a user is not authorized to perform an action."""
 
-    def __init__(self, message: str = "Not authorized to perform this action", *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, message: str = "Not authorized to perform this action", *args: Any, **kwargs: Any
+    ) -> None:
         """
         Initialize authorization error.
 
@@ -42,7 +44,9 @@ class AuthorizationError(ApplicationError):
 class TokenExpiredError(AuthenticationError):
     """Exception raised when an authentication token has expired."""
 
-    def __init__(self, message: str = "Authentication token has expired", *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, message: str = "Authentication token has expired", *args: Any, **kwargs: Any
+    ) -> None:
         """
         Initialize token expired error.
 
@@ -57,7 +61,9 @@ class TokenExpiredError(AuthenticationError):
 class InvalidTokenError(AuthenticationError):
     """Exception raised when an authentication token is invalid."""
 
-    def __init__(self, message: str = "Invalid authentication token", *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, message: str = "Invalid authentication token", *args: Any, **kwargs: Any
+    ) -> None:
         """
         Initialize invalid token error.
 

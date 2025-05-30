@@ -107,7 +107,9 @@ def decode_token(token: str) -> dict[str, Any]:
     settings = get_settings()
 
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY.get_secret_value(), algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(
+            token, settings.JWT_SECRET_KEY.get_secret_value(), algorithms=[settings.JWT_ALGORITHM]
+        )
         return payload
     except JWTError as e:
         logger.warning(f"JWT token validation failed: {e}")

@@ -133,7 +133,9 @@ class TestProcessAnalyticsEventUseCase:
             assert kwargs.get("session_id") == session_id
 
     @pytest.mark.asyncio
-    async def test_execute_with_minimal_parameters(self, use_case, mock_analytics_repository) -> None:
+    async def test_execute_with_minimal_parameters(
+        self, use_case, mock_analytics_repository
+    ) -> None:
         """
         Test processing an analytics event with only required parameters.
         """
@@ -195,9 +197,7 @@ class TestProcessAnalyticsEventUseCase:
         session_id = "session-xyz"
 
         # Act
-        await use_case.execute(
-            event_type=event_type, event_data=event_data, session_id=session_id
-        )
+        await use_case.execute(event_type=event_type, event_data=event_data, session_id=session_id)
 
         # Assert - Should log the event type but not the PHI
         # Verify through logger mock

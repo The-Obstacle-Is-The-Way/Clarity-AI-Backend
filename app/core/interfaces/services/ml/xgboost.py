@@ -4,6 +4,7 @@ Core domain interfaces for XGBoost ML services.
 This module defines the interface contracts for XGBoost-based ML services,
 following clean architecture principles and the dependency inversion principle.
 """
+
 from abc import ABC, abstractmethod
 from typing import Any
 

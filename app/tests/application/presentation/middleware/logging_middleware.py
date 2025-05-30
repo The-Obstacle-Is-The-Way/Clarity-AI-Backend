@@ -300,9 +300,11 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 sanitized_value = self._sanitize_dict(value)
             elif isinstance(value, list):
                 sanitized_value = [
-                    self._sanitize_dict(item)
-                    if isinstance(item, dict)
-                    else self.anonymizer.anonymize_text(str(item))
+                    (
+                        self._sanitize_dict(item)
+                        if isinstance(item, dict)
+                        else self.anonymizer.anonymize_text(str(item))
+                    )
                     for item in value
                 ]
             elif value is not None:

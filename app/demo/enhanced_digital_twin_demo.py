@@ -8,6 +8,7 @@ through the Enhanced Digital Twin Core Service.
 Usage:
     python -m app.demo.enhanced_digital_twin_demo
 """
+
 import asyncio
 import datetime
 import logging

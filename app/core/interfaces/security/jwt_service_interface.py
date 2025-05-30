@@ -1,7 +1,7 @@
 """
 JWT Service Interface.
 
-This module defines the interface for JWT (JSON Web Token) operations, 
+This module defines the interface for JWT (JSON Web Token) operations,
 supporting authentication and authorization in the application
 while maintaining HIPAA compliance and clean architecture.
 """

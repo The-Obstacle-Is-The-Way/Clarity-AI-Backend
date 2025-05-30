@@ -4,6 +4,7 @@ TRANSCENDENT QUANTUM VALIDATION
 This script directly tests the Patient contact_info architecture
 without dependencies on complex SQLAlchemy/database infrastructure.
 """
+
 import os
 import sys
 import unittest

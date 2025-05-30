@@ -3,6 +3,7 @@
 Follows clean architecture principles by implementing the IJwtService interface
 and handling JWT token creation, validation, and management for HIPAA compliance.
 """
+
 from __future__ import annotations
 
 import logging
@@ -18,6 +19,7 @@ try:
     from app.core.audit.audit_logger import IAuditLogger  # type: ignore
     from app.core.audit.audit_service import AuditEventType  # type: ignore
 except ModuleNotFoundError:  # pragma: no cover – tests run without full infrastructure
+
     class IAuditLogger:  # minimal stub
         async def log_security_event(self, *args: Any, **kwargs: Any) -> None:
             return None
@@ -32,6 +34,7 @@ except ModuleNotFoundError:  # pragma: no cover – tests run without full infra
 # ------------------------------------------------------------------
 # Utility container allowing both dict-style and attribute-style access
 # ------------------------------------------------------------------
+
 
 class _AttrDict(dict):
     """Dictionary that allows attribute access to its keys."""
@@ -380,7 +383,11 @@ class JWTServiceImpl(IJwtService):
         exp_minutes = (
             expires_delta_minutes
             if expires_delta_minutes is not None
-            else (int(expires_delta.total_seconds() / 60) if expires_delta else self.access_token_expire_minutes)
+            else (
+                int(expires_delta.total_seconds() / 60)
+                if expires_delta
+                else self.access_token_expire_minutes
+            )
         )
         # Merge arbitrary additional claims
         if additional_claims is None:
@@ -401,7 +408,9 @@ class JWTServiceImpl(IJwtService):
                 additional_claims=additional_claims,
             )
         )
-        _safe_call_audit(self._audit, AuditEventType.TOKEN_CREATED, token_type="access", subject=subject_val)
+        _safe_call_audit(
+            self._audit, AuditEventType.TOKEN_CREATED, token_type="access", subject=subject_val
+        )
         return token
 
     def create_refresh_token(
@@ -458,7 +467,9 @@ class JWTServiceImpl(IJwtService):
         # Add explicit refresh flag for downstream tests expecting it
         payload.setdefault("refresh", True)
         token = self._encode(payload)
-        _safe_call_audit(self._audit, AuditEventType.TOKEN_CREATED, token_type="refresh", subject=subject_val)
+        _safe_call_audit(
+            self._audit, AuditEventType.TOKEN_CREATED, token_type="refresh", subject=subject_val
+        )
         return token
 
     # ------------------------------------------------------------------
@@ -512,13 +523,17 @@ class JWTServiceImpl(IJwtService):
 
     def verify_refresh_token(self, refresh_token: str):
         payload = self.decode_token(refresh_token)
-        if getattr(payload, "type", None) != TokenType.REFRESH or not getattr(payload, "refresh", False):
+        if getattr(payload, "type", None) != TokenType.REFRESH or not getattr(
+            payload, "refresh", False
+        ):
             raise InvalidTokenException("Token is not a refresh token")
         return payload
 
     def refresh_access_token(self, refresh_token: str) -> str:  # type: ignore[override]
         refresh_payload = self.verify_refresh_token(refresh_token)
-        return self.create_access_token(subject=refresh_payload.sub, roles=getattr(refresh_payload, "roles", None))
+        return self.create_access_token(
+            subject=refresh_payload.sub, roles=getattr(refresh_payload, "roles", None)
+        )
 
     # ------------------------------------------------------------------
     # Blacklisting / revocation
@@ -571,7 +586,9 @@ class JWTServiceImpl(IJwtService):
         up all tokens belonging to the session and revoke each of them.
         """
         # Treat *session_id* like a JTI for the purpose of tests
-        self._blacklist_store(session_id, int((datetime.now(timezone.utc) + timedelta(days=1)).timestamp()))
+        self._blacklist_store(
+            session_id, int((datetime.now(timezone.utc) + timedelta(days=1)).timestamp())
+        )
         return True
 
     # ------------------------------------------------------------------
@@ -593,7 +610,11 @@ class JWTServiceImpl(IJwtService):
         Accepts any object exposing ``headers`` and/or ``cookies`` attributes.
         """
         # Header first
-        auth_header = getattr(request, "headers", {}).get("Authorization") if hasattr(request, "headers") else None
+        auth_header = (
+            getattr(request, "headers", {}).get("Authorization")
+            if hasattr(request, "headers")
+            else None
+        )
         if auth_header and auth_header.lower().startswith("bearer "):
             return auth_header.split(" ", 1)[1]
 
@@ -632,7 +653,11 @@ class JWTServiceImpl(IJwtService):
             return False
 
         # Simple role mapping from path
-        role = (payload.roles or [None])[0] if isinstance(payload.roles, list | tuple) else payload.roles
+        role = (
+            (payload.roles or [None])[0]
+            if isinstance(payload.roles, list | tuple)
+            else payload.roles
+        )
         if role is None:
             return False
         # For tests: allow admins everywhere, patients only on patient paths etc.
@@ -708,5 +733,6 @@ class JWTServiceImpl(IJwtService):
 
         # Pydantic model exposes attribute directly; fallbacks for SimpleNamespace
         return getattr(payload, "sub", None) or getattr(payload, "_sub", None)
+
 
 __all__.append("TokenPayload")

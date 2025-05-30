@@ -461,7 +461,9 @@ class TestAuditLogMiddleware:
         call_next.assert_called_once_with(request)
         mock_audit_logger.log_phi_access.assert_called_once()  # Logger was attempted
 
-    async def test_extract_user_id_from_valid_request_state(self, middleware: AuditLogMiddleware) -> None:
+    async def test_extract_user_id_from_valid_request_state(
+        self, middleware: AuditLogMiddleware
+    ) -> None:
         """Test _extract_user_id successfully gets user ID from request.state.user.id."""
         user_id_val = str(uuid.uuid4())
         # _prepare_request_mock now correctly sets request.state.user with an object having an 'id' attribute
@@ -470,7 +472,9 @@ class TestAuditLogMiddleware:
         extracted_user_id = await middleware._extract_user_id(request)
         assert extracted_user_id == user_id_val
 
-    async def test_extract_user_id_when_no_current_user(self, middleware: AuditLogMiddleware) -> None:
+    async def test_extract_user_id_when_no_current_user(
+        self, middleware: AuditLogMiddleware
+    ) -> None:
         """Test _extract_user_id returns None if request.state.user is None."""
         request = self._prepare_request_mock(
             path="/any", method="GET", user_id=None

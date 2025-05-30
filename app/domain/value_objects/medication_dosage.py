@@ -42,7 +42,7 @@ class MedicationDosage:
     def __post_init__(self) -> None:
         """Validate the dosage values"""
         self.validate_dosage()
-        
+
         if self.frequency_per_day <= 0:
             raise ValueError("Frequency must be positive")
 

@@ -205,9 +205,11 @@ class Biometric:
         """
         return {
             "id": self.id,
-            "biometric_type": self.biometric_type.value
-            if isinstance(self.biometric_type, BiometricType)
-            else self.biometric_type,
+            "biometric_type": (
+                self.biometric_type.value
+                if isinstance(self.biometric_type, BiometricType)
+                else self.biometric_type
+            ),
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
             "value": self.value,
             "device_id": self.device_id,

@@ -88,7 +88,9 @@ class SessionExpiredException(AuthenticationException):
 class InsufficientPermissionsException(AuthorizationException):
     """Exception raised when a user does not have sufficient permissions."""
 
-    def __init__(self, message: str = "Insufficient permissions", *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, message: str = "Insufficient permissions", *args: Any, **kwargs: Any
+    ) -> None:
         super().__init__(message, 403, *args, **kwargs)
 
 
@@ -102,7 +104,9 @@ class RoleRequiredException(AuthorizationException):
 class MaxSessionsExceededException(AuthenticationException):
     """Exception raised when a user has exceeded the maximum number of active sessions."""
 
-    def __init__(self, message: str = "Maximum sessions exceeded", *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, message: str = "Maximum sessions exceeded", *args: Any, **kwargs: Any
+    ) -> None:
         super().__init__(message, 401, *args, **kwargs)
 
 
@@ -112,7 +116,7 @@ class UserNotFoundException(AuthenticationException):
     def __init__(self, message: str = "User not found", *args: Any, **kwargs: Any) -> None:
         """
         Initialize UserNotFoundException with comprehensive type safety.
-        
+
         Args:
             message: Error message describing the user not found condition
             *args: Additional positional arguments for extensibility
@@ -124,5 +128,7 @@ class UserNotFoundException(AuthenticationException):
 class UserAlreadyExistsException(AuthenticationException):
     """Exception raised when attempting to register a user that already exists."""
 
-    def __init__(self, message: str = "User with this email already exists", *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, message: str = "User with this email already exists", *args: Any, **kwargs: Any
+    ) -> None:
         super().__init__(message, 409, *args, **kwargs)

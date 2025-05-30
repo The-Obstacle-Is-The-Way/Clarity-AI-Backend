@@ -133,9 +133,13 @@ class TestBiometricIntegrationService:
         mock_repository.get_by_patient_id.return_value = mock_twin
         result = service.get_biometric_data(patient_id=patient_id, data_type="heart_rate")
         assert isinstance(result, list)
-        mock_twin.get_biometric_data.assert_called_with(
-            service._to_biometric_type("heart_rate")
-        ) if hasattr(service, "_to_biometric_type") else True
+        (
+            mock_twin.get_biometric_data.assert_called_with(
+                service._to_biometric_type("heart_rate")
+            )
+            if hasattr(service, "_to_biometric_type")
+            else True
+        )
 
     def test_get_biometric_data_no_twin(self, service, mock_repository) -> None:
         patient_id = uuid4()

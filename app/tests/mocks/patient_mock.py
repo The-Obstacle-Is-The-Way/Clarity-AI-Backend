@@ -312,9 +312,11 @@ class Patient:
             "address": self.address,
             "emergency_contacts": self.emergency_contacts,
             "insurance_info": self.insurance_info,
-            "insurance_status": self.insurance_status.value
-            if isinstance(self.insurance_status, InsuranceStatus)
-            else self.insurance_status,
+            "insurance_status": (
+                self.insurance_status.value
+                if isinstance(self.insurance_status, InsuranceStatus)
+                else self.insurance_status
+            ),
             "medical_history": self.medical_history,
             "medications": self.medications,
             "allergies": self.allergies,
