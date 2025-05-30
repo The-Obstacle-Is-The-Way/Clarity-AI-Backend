@@ -11,11 +11,13 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     DateTime,
+)
+from sqlalchemy import Enum as SQLAlchemyEnum
+from sqlalchemy import (
     ForeignKey,
     String,
     Text,
 )
-from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.entities.appointment import AppointmentStatus

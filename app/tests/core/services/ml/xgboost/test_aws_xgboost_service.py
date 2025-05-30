@@ -26,12 +26,16 @@ from app.core.services.ml.xgboost import (  # Assuming ModelType and PrivacyLeve
 from app.core.services.ml.xgboost.aws import AWSXGBoostService
 
 # Import Exceptions from the service exception module
+from app.core.services.ml.xgboost.exceptions import (
+    ResourceNotFoundError,  # Added for resource not found errors
+)
+from app.core.services.ml.xgboost.exceptions import (
+    ValidationError,  # Added for input validation errors
+)
 from app.core.services.ml.xgboost.exceptions import (  # InvalidFeatureError,   # Does not exist in exceptions module
     ModelNotFoundError,
-    ResourceNotFoundError,  # Added for resource not found errors
     ServiceConfigurationError,
     ServiceConnectionError,
-    ValidationError,  # Added for input validation errors
 )
 
 # Import Enums from the correct schema location

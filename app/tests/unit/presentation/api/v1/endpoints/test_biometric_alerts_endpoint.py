@@ -11,7 +11,8 @@ from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, TypeVar
-from unittest.mock import ANY, AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock
+from unittest.mock import MagicMock
 from unittest.mock import MagicMock as Mock
 
 import pytest
@@ -1675,7 +1676,6 @@ async def app_with_mock_template_service(
     )
 
     # Store original
-
     # Replace with mock
     app.dependency_overrides[get_alert_rule_template_service] = lambda: mock_template_service
 

@@ -31,15 +31,9 @@ import jwt
 from pydantic import BaseModel
 
 from app.config.settings import Settings
-from app.core.exceptions.auth_exceptions import (
-    AuthenticationError as TokenBlacklistedException,
-)
-from app.core.exceptions.auth_exceptions import (
-    InvalidTokenError as InvalidTokenException,
-)
-from app.core.exceptions.auth_exceptions import (
-    TokenExpiredError as TokenExpiredException,
-)
+from app.core.exceptions.auth_exceptions import AuthenticationError as TokenBlacklistedException
+from app.core.exceptions.auth_exceptions import InvalidTokenError as InvalidTokenException
+from app.core.exceptions.auth_exceptions import TokenExpiredError as TokenExpiredException
 from app.core.interfaces.repositories.token_blacklist_repository_interface import (
     ITokenBlacklistRepository,
 )

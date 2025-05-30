@@ -17,10 +17,12 @@ from pydantic import ValidationError
 from sqlalchemy import (
     Boolean,
     DateTime,
+)
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import (
     ForeignKey,
     String,
 )
-from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.entities.digital_twin_enums import Gender  # Corrected Gender import

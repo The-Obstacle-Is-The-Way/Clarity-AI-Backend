@@ -20,9 +20,7 @@ from app.core.exceptions import PersistenceError
 from app.core.utils.logging import get_logger
 from app.domain.entities.patient import Patient as PatientEntity
 from app.domain.repositories.patient_repository import PatientRepository
-from app.infrastructure.persistence.sqlalchemy.models.patient import (
-    Patient as PatientModel,
-)
+from app.infrastructure.persistence.sqlalchemy.models.patient import Patient as PatientModel
 
 # Use the custom logger
 logger = get_logger(__name__)

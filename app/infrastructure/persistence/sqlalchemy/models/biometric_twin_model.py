@@ -13,13 +13,15 @@ import uuid
 
 from sqlalchemy import (
     JSON,
+)
+from sqlalchemy import UUID as SQLAlchemyUUID
+from sqlalchemy import (
     Boolean,
     DateTime,
     Float,
     ForeignKey,
     String,
 )
-from sqlalchemy import UUID as SQLAlchemyUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.utils.datetime_utils import now_utc

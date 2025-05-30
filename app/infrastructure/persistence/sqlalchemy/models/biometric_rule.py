@@ -11,13 +11,15 @@ from datetime import datetime
 
 from sqlalchemy import (
     JSON,
+)
+from sqlalchemy import UUID as SQLAlchemyUUID
+from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
     String,
     Text,
 )
-from sqlalchemy import UUID as SQLAlchemyUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.sqlalchemy.models.base import (

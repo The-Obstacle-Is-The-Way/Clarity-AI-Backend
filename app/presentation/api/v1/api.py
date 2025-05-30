@@ -10,12 +10,8 @@ from fastapi import APIRouter
 
 # Import individual endpoint routers. Do NOT execute application logic here -
 # only import routers to avoid side-effects during module import.
-from app.presentation.api.v1.endpoints.audit_logs import (
-    router as audit_logs_router,
-)
-from app.presentation.api.v1.endpoints.biometric_alerts import (
-    router as alerts_router,
-)
+from app.presentation.api.v1.endpoints.audit_logs import router as audit_logs_router
+from app.presentation.api.v1.endpoints.biometric_alerts import router as alerts_router
 
 # Public router exported to the application factory
 api_router: APIRouter = APIRouter()

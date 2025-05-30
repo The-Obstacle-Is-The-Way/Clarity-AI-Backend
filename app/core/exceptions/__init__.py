@@ -10,11 +10,15 @@ from app.core.errors.security_exceptions import (
     InsufficientPermissionsError,
     InvalidCredentialsError,
     RateLimitExceededError,
-    SessionExpiredError,
-    TokenValidationError,
 )
 from app.core.errors.security_exceptions import SecurityException as CoreSecurityException
+from app.core.errors.security_exceptions import (
+    SessionExpiredError,
+)
 from app.core.errors.security_exceptions import TokenExpiredError as SecurityTokenExpiredError
+from app.core.errors.security_exceptions import (
+    TokenValidationError,
+)
 
 # Application specific errors and codes
 from app.core.exceptions.application_error import (

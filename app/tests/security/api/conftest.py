@@ -17,8 +17,9 @@ from jose import jwt as jose_jwt  # Use jose for JWT operations in tests
 from app.core.config.settings import Settings
 
 # Import User entity for type hinting
-from app.core.domain.entities.user import User, UserRole, UserStatus
+from app.core.domain.entities.user import User
 from app.core.domain.entities.user import User as DomainUser
+from app.core.domain.entities.user import UserRole, UserStatus
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.jwt_service import JWTServiceInterface

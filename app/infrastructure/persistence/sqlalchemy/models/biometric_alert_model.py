@@ -11,13 +11,17 @@ import uuid
 
 from sqlalchemy import (
     JSON,
+)
+from sqlalchemy import UUID as SQLAlchemyUUID
+from sqlalchemy import (
     DateTime,
+)
+from sqlalchemy import Enum as SQLAlchemyEnum
+from sqlalchemy import (
     ForeignKey,
     String,
     Text,
 )
-from sqlalchemy import UUID as SQLAlchemyUUID
-from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.entities.biometric_alert import AlertStatusEnum
