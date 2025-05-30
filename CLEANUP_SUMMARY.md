@@ -35,6 +35,12 @@
    - Ensured graceful fallbacks for missing services
    - Database defaults to SQLite for development
 
+6. **Health Check Scripts**
+   - `make preflight` - Pre-installation system checks
+   - `make health-check` - Post-installation validation
+   - `make validate` - Alias for health check
+   - Automated dependency verification
+
 ## 🚀 Installation Experience Now
 
 ### For Your Technical Cofounder:
