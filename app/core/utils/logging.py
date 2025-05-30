@@ -210,9 +210,10 @@ def log_method_calls(
     # first, then strings, then fall back to ints.  This prevents the false
     # positive "unreachable" error triggered when `LogLevel` values are
     # considered a subtype of `int`.
+    numeric_level: int
     if isinstance(level, LogLevel):
         # LogLevel enum values are already integers (10, 20, 30, etc.)
-        numeric_level: int = level.value
+        numeric_level = level.value
     elif isinstance(level, str):
         # Resolve string names (e.g., "INFO") to their numeric constant; default INFO
         numeric_level = int(getattr(logging, level.upper(), logging.INFO))

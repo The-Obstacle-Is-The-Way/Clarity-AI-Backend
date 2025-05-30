@@ -146,6 +146,18 @@ health: ## Check application health
 	@echo "🏥 Checking application health..."
 	@curl -s http://localhost:8000/api/v1/health | python -m json.tool || echo "❌ Application not responding"
 
+preflight: ## Run pre-installation system checks
+	@echo "🚁 Running pre-flight checks..."
+	python scripts/preflight_check.py
+
+health-check: ## Run comprehensive health check
+	@echo "🏥 Running comprehensive health check..."
+	python scripts/simple_health.py
+
+validate: ## Validate installation (alias for health-check)
+	@echo "🔍 Validating installation..."
+	python scripts/simple_health.py
+
 logs: ## Show application logs (if running with Docker)
 	@echo "📋 Showing recent logs..."
 	docker compose -f docker-compose.test.yml logs --tail=50 -f
