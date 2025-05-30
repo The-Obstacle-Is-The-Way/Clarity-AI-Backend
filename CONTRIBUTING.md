@@ -1,6 +1,7 @@
 # Contributing to Clarity-AI Backend
 
-Thank you for your interest in contributing to the Clarity-AI Backend project. This document provides guidelines and workflows to help you contribute effectively.
+Thank you for your interest in contributing to the Clarity-AI Backend project. This document provides 
+guidelines and workflows to help you contribute effectively.
 
 ## Code of Conduct
 
@@ -14,35 +15,40 @@ Thank you for your interest in contributing to the Clarity-AI Backend project. T
 ### Environment Setup
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/The-Obstacle-Is-The-Way/Clarity-AI-Backend.git
    cd Clarity-AI-Backend
    ```
 
 2. **Set up virtual environment with UV (recommended)**
+
    ```bash
    # Install UV if not already installed
-   curl -LsSf https://astral.sh/uv/install.sh | sh
+   curl -LsSf https://astral.sh/UV/install.sh | sh
    
    # Create and activate virtual environment
-   uv venv .venv
+   UV venv .venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    
    # Install dependencies
-   uv sync
+   UV sync
    ```
 
 3. **Set up pre-commit hooks**
+
    ```bash
    pre-commit install
    ```
 
 4. **Start services with Docker**
+
    ```bash
-   docker compose -f docker-compose.test.yml up -d
+   Docker compose -f Docker-compose.test.yml up -d
    ```
 
 5. **Run database migrations**
+
    ```bash
    alembic upgrade head
    ```
@@ -53,13 +59,13 @@ Ensure all tests pass before submitting contributions:
 
 ```bash
 # Run all tests
-pytest
+Pytest
 
 # Run specific test file
-pytest app/tests/path/to/test_file.py
+Pytest app/tests/path/to/test_file.py
 
 # Run with coverage report
-pytest --cov=app
+Pytest --cov=app
 ```
 
 ## Contribution Workflow
@@ -126,7 +132,7 @@ Types include:
 
 Example:
 
-```
+```bash
 feat(auth): add JWT refresh token support
 
 Implement JWT refresh token mechanism to enhance security.
@@ -205,4 +211,6 @@ If you need help with your contribution:
 
 ## Thank You
 
-Your contributions help improve the Clarity-AI Backend project. We appreciate your efforts to make psychiatric care more data-informed while maintaining rigorous standards for code quality and accuracy in documentation.
+Your contributions help improve the Clarity-AI Backend project. We appreciate your efforts to make 
+psychiatric care more data-informed while maintaining rigorous standards for code quality and accuracy 
+in documentation.

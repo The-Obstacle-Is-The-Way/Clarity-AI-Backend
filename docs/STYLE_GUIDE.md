@@ -1,6 +1,7 @@
 # Clarity-AI Documentation Style Guide
 
-This style guide establishes consistent standards for all Clarity-AI Backend documentation. Following these guidelines ensures documentation is accurate, easy to understand, and maintainable.
+This style guide establishes consistent standards for all Clarity-AI Backend documentation. Following 
+these guidelines ensures documentation is accurate, easy to understand, and maintainable.
 
 ## Core Principles
 
@@ -16,7 +17,8 @@ This style guide establishes consistent standards for all Clarity-AI Backend doc
 - **Person**: Use second person ("you") when addressing the reader
 - **Tense**: Use present tense for current behavior
 - **Active Voice**: Prefer active voice over passive voice
-- **Technical Level**: Assume the reader has software development experience but may not be familiar with psychiatric domain concepts
+- **Technical Level**: Assume the reader has software development experience but may not be familiar
+  with psychiatric domain concepts
 
 ## Accuracy Standards
 
@@ -48,63 +50,76 @@ This style guide establishes consistent standards for all Clarity-AI Backend doc
 
 - Use bullet lists for unordered items
 - Use numbered lists for sequential steps or prioritized items
-- Use a hyphen (`-`) for bullet list markers
-- Use `1.` for all numbered list items (Markdown will render correct numbers)
+- Be consistent with punctuation (either use periods for all items or none)
 - Leave a blank line before and after lists
+- Indent nested lists correctly
 
-### Paragraphs
+### Code Blocks
 
-- Keep paragraphs concise (3-5 sentences)
-- Use a blank line to separate paragraphs
-- Group related paragraphs under descriptive headings
+- Use fenced code blocks with language specification
+- Leave a blank line before and after code blocks
+- For inline code, use backticks (`)
+- For multi-line code samples, use triple backticks with language specification
 
-## Markdown Formatting
+Example:
+
+```python
+def calculate_risk_score(patient_id: UUID) -> float:
+    """Calculate the risk score for a patient."""
+    patient = get_patient_by_id(patient_id)
+    return risk_assessment_service.calculate_score(patient)
+```
+
+### Tables
+
+- Use tables for structured data
+- Include a header row
+- Align columns consistently
+- Keep tables simple and readable
+- Use a minimum of three hyphens per column in the separator row
+
+Example:
+
+| Component | Responsibility | Layer |
+|-----------|----------------|-------|
+| Entity | Core business object | Domain |
+| Repository | Data access | Infrastructure |
+| Service | Business logic | Application |
+| Controller | Request handling | Presentation |
+
+## Formatting
 
 ### Emphasis
 
-- Use **bold** (`**bold**`) for UI elements, important terms, and emphasis
-- Use *italics* (`*italics*`) for new terms and subtle emphasis
-- Avoid using ALL CAPS for emphasis
-- Use highlighting sparingly
+- Use **bold** for emphasis of important concepts
+- Use *italics* for new terms or parameters
+- Use `code` formatting for code elements, file names, and paths
+- Do not use underlining or all caps for emphasis
 
-### Code Formatting
+### Links
 
-- Use backticks (`` ` ``) for inline code references
-- Use triple backticks (`` ``` ``) with language identifier for code blocks
-- For terminal commands, use `bash` as the language identifier
-- Include language identifier for syntax highlighting (e.g., `` ```python ``)
-
-Example:
-````
-```python
-async def get_patient(patient_id: UUID) -> Optional[Patient]:
-    """Get a patient by ID."""
-    return await repository.get_by_id(patient_id)
-```
-````
-
-### Links and References
-
-- Use descriptive link text, not "click here" or bare URLs
-- For internal links, use relative paths
-- For external links, use absolute URLs with HTTPS
-- Reference other documents using their canonical names
+- Use descriptive link text that makes sense out of context
+- Use relative links for internal documentation
+- Use absolute links for external resources
+- Check links regularly to ensure they are not broken
 
 Example:
-```
-[API Documentation](../api/overview.md)
+
+```markdown
+See the [project structure](./content/development/project_structure.md) for more information.
 ```
 
 ### Images
 
-- Use descriptive alt text for all images
+- Include descriptive alt text for all images
 - Keep image file sizes reasonable (< 200KB when possible)
 - Prefer SVG for diagrams and PNG for screenshots
 - Store images in the `/docs/content/assets/` directory
 - Use descriptive filenames (e.g., `clean_architecture_diagram.png`)
 
 Example:
-```
+
+```markdown
 ![Clean Architecture Diagram](../assets/clean_architecture_diagram.png)
 ```
 

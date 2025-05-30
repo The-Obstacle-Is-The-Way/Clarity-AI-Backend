@@ -2,18 +2,23 @@
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/The-Obstacle-Is-The-Way/Clarity-AI-Backend/actions) [![Coverage](https://img.shields.io/badge/coverage-85%25-green)](https://github.com/The-Obstacle-Is-The-Way/Clarity-AI-Backend/coverage) [![HIPAA Compliant](https://img.shields.io/badge/HIPAA-compliant-blue)](./docs/content/compliance/HIPAA_Compliance.md) [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE) [![Dependencies](https://img.shields.io/badge/deps-UV%20managed-blueviolet)](uv.lock)
 
-> A HIPAA‑compliant platform designed to create computational representations of psychiatric patients—integrating clinical data, biometrics, and other inputs to provide clinicians with additional insights. Clarity AI aims to augment psychiatric care by offering objective analytics, clinical alerts, and documentation assistance.
+> A HIPAA‑compliant platform designed to create computational representations of psychiatric patients—integrating 
+> clinical data, biometrics, and other inputs to provide clinicians with additional insights. Clarity AI aims to 
+> augment psychiatric care by offering objective analytics, clinical alerts, and documentation assistance.
 
 ## What is a Digital Twin for Mental Health?
 
-A digital twin is a computational representation of a patient's mental health state that evolves over time as new data is incorporated. In psychiatry, digital twins integrate diverse data streams (biometric, clinical, genetic, behavioral) to create personalized models that aim to:
+A digital twin is a computational representation of a patient's mental health state that evolves over time 
+as new data is incorporated. In psychiatry, digital twins integrate diverse data streams (biometric, clinical, 
+genetic, behavioral) to create personalized models that aim to:
 
 - **Provide Continuous Monitoring**: Track quantitative metrics between appointments
 - **Identify Patterns**: Surface correlations between various data points
 - **Assist Clinical Decision-Making**: Provide additional data for clinicians to consider
 - **Enable Personalization**: Help tailor interventions based on individual characteristics
 
-This approach is designed to complement traditional psychiatric assessment methods, which often rely on self-reporting and periodic clinical observations, with additional quantitative measurements.
+This approach is designed to complement traditional psychiatric assessment methods, which often rely on 
+self-reporting and periodic clinical observations, with additional quantitative measurements.
 
 ![Conceptual diagram of a Digital Twin for Health (DT4H), showing the connection between physical entity data and digital twin applications.](./docs/images/digital_twin_concept.png)
 
@@ -58,7 +63,9 @@ The backend provides infrastructure for multiple ML services:
 
 ## Research Context
 
-The digital twin approach to psychiatric care represents an emerging field of research. This platform provides the technical infrastructure to explore the potential of computational models in mental health, with the understanding that:
+The digital twin approach to psychiatric care represents an emerging field of research. This platform 
+provides the technical infrastructure to explore the potential of computational models in mental health, 
+with the understanding that:
 
 - The efficacy of these approaches requires rigorous clinical validation
 - Integration of technology into psychiatric care must be done thoughtfully and ethically
@@ -76,12 +83,14 @@ The digital twin approach to psychiatric care represents an emerging field of re
 ### Installation
 
 1. Clone the repository
+
    ```bash
    git clone https://github.com/The-Obstacle-Is-The-Way/Clarity-AI-Backend.git
    cd Clarity-AI-Backend
    ```
 
 2. Install dependencies using UV
+
    ```bash
    pip install uv
    uv venv
@@ -90,17 +99,20 @@ The digital twin approach to psychiatric care represents an emerging field of re
    ```
 
 3. Set up environment variables
+
    ```bash
    cp .env.example .env
    # Edit .env with your configuration
    ```
 
 4. Initialize the database
+
    ```bash
    python -m scripts.initialize_db
    ```
 
 5. Run the application
+
    ```bash
    uvicorn app.main:app --reload
    ```
@@ -124,7 +136,8 @@ Comprehensive documentation is available in the [docs](./docs) directory:
 
 ## Contributing
 
-We welcome contributions to the Clarity-AI Backend project. See [CONTRIBUTING.md](./CONTRIBUTING.md) for comprehensive guidelines on how to contribute.
+We welcome contributions to the Clarity-AI Backend project. See [CONTRIBUTING.md](./CONTRIBUTING.md) for 
+comprehensive guidelines on how to contribute.
 
 ## License
 
