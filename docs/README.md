@@ -1,6 +1,7 @@
 # Clarity-AI Backend Documentation
 
-Welcome to the Clarity-AI Backend documentation. This repository contains comprehensive documentation for the Clarity-AI Backend system, which provides a HIPAA-compliant platform for psychiatric care.
+Welcome to the Clarity-AI Backend documentation. This repository contains comprehensive documentation 
+for the Clarity-AI Backend system, which provides a HIPAA-compliant platform for psychiatric care.
 
 ## Documentation Structure
 
@@ -45,27 +46,25 @@ docs/
 - [Installation Guide](./content/development/installation_guide.md) - Installation instructions
 - [Technical Status](./content/development/technical_status.md) - Current technical status
 - [Test Status](./content/development/test_status.md) - Testing status and coverage
-- [Dependency Analysis](./content/development/dependency_analysis.md) - Analysis of project dependencies
+- [Dependency Analysis](./content/development/dependency_analysis.md) - Analysis of dependencies
 - [Technical Audit](./content/development/technical_audit.md) - Technical audit results
 - [Tools Reference](./content/development/tools_reference.md) - Development tools
 - [Development Roadmap](./content/development/roadmap.md) - Future development plans
 
 ### Infrastructure Documentation
 
-- [Data Access](./content/infrastructure/README.md) - Data access patterns
+- [Infrastructure Overview](./content/infrastructure/README.md) - Overview of infrastructure components
+- [Data Access](./content/infrastructure/data_access.md) - Data access patterns
 - [Deployment Readiness](./content/infrastructure/deployment_readiness.md) - Deployment guidelines
 
 ## Documentation Standards
 
-All documentation follows the standards defined in the [Style Guide](./STYLE_GUIDE.md) and adheres to the [Naming Conventions](./NAMING_CONVENTIONS.md). Contributors should familiarize themselves with these documents before making changes.
+The documentation follows strict standards to ensure quality and consistency:
 
-Our documentation standards include:
-
-1. **Truth-Seeking**: All documentation must be accurate and avoid unsubstantiated claims
-2. **HIPAA Compliance**: Documentation must adhere to HIPAA guidelines for patient data
-3. **Clean Architecture**: Documentation reflects the clean architecture of the codebase
-4. **Consistency**: Documentation follows consistent styling and naming conventions
-5. **Completeness**: Documentation covers all aspects of the system
+- **Style Guide**: All documentation follows the [Style Guide](./STYLE_GUIDE.md)
+- **Naming Conventions**: File and directory names follow [Naming Conventions](./NAMING_CONVENTIONS.md)
+- **Markdown Linting**: All Markdown files are linted for syntax and style
+- **Content Validation**: Regular checks ensure documentation covers all aspects of the system
 
 ## Templates
 

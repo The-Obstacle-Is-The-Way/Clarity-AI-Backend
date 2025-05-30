@@ -1,6 +1,7 @@
 # Clarity-AI Documentation Naming Conventions
 
-This document defines the naming conventions for all documentation assets in the Clarity-AI Backend project. Consistent naming enhances discoverability, clarifies document purpose, and improves overall documentation quality.
+This document defines the naming conventions for all documentation assets in the Clarity-AI Backend project. 
+Consistent naming enhances discoverability, clarifies document purpose, and improves overall documentation quality.
 
 ## File Naming Conventions
 
@@ -49,67 +50,62 @@ Examples:
 ### Diagram Files
 
 - For source files (e.g., draw.io), use: `[subject]_diagram_source.[extension]`
-- For exported image files, use: `[subject]_diagram.[extension]`
+- For rendered images, use: `[subject]_diagram.[extension]`
 
 Examples:
-- `authentication_flow_diagram_source.drawio`
-- `authentication_flow_diagram.svg`
+- `data_flow_diagram_source.drawio`
+- `data_flow_diagram.png`
 
-## Directory Naming Conventions
+## Directory Structure Conventions
 
-### Documentation Root Structure
+### Content Organization
 
-The documentation is organized in a hierarchical structure with standardized directory names:
+Main documentation is organized in the following directory structure:
 
 ```
 docs/
-├── content/              # Core documentation content
-│   ├── architecture/     # Architecture documentation
-│   ├── api/              # API documentation
-│   ├── implementation/   # Implementation details
-│   ├── development/      # Development guides
-│   └── reference/        # Reference materials
-├── templates/            # Documentation templates
-├── assets/               # Images, diagrams, etc.
-└── audit/                # Documentation audit reports
+├── content/
+│   ├── api/
+│   ├── architecture/
+│   ├── compliance/
+│   ├── development/
+│   └── infrastructure/
+├── templates/
+├── archive/
+├── STYLE_GUIDE.md
+└── NAMING_CONVENTIONS.md
 ```
 
-### Subdirectory Naming Rules
+### Directory Naming
 
 - Use lowercase letters for all directory names
-- Use descriptive singular nouns
-- Avoid deeply nested directories (aim for max 3 levels)
+- Use simple, descriptive names
+- Avoid compound words where possible
+- Use singular form for category names
+- Create subdirectories for logical groupings
 
-## Document Structure Naming
+## Document Structure Conventions
 
 ### Section Headings
 
-- Use title case for all headings in documentation
-- Use sentence case for subsection headings (H3 and below)
-- Follow a consistent numbering or hierarchy pattern
-- Include descriptive section identifiers that reflect content
+- Use title case for section headings
+- Follow a logical hierarchy (H1 → H2 → H3)
+- Include only one H1 (title) per document
+- Keep headings concise and descriptive
 
-### Standard Section Names
+### Standard Document Sections
 
-For consistency, use these standard section names when applicable:
+Standard documents should follow a consistent structure with these sections:
 
-| Section Purpose | Standard Name |
-|-----------------|---------------|
-| Introduction | "Overview" or "Introduction" |
-| Prerequisites | "Prerequisites" |
-| Installation steps | "Installation" |
-| Configuration | "Configuration" |
-| API details | "API Reference" |
-| Usage examples | "Examples" |
-| Architecture | "Architecture" |
-| Troubleshooting | "Troubleshooting" |
-| Further reading | "Further Reading" |
+1. **Title**: Document title (H1)
+2. **Overview**: Brief introduction
+3. **Main Content**: Organized by sections
+4. **References**: Links to related resources
+5. **Change Log**: Document revision history (optional)
 
-## API Documentation Naming
+### API Documentation Structure
 
-### Endpoint Documentation Structure
-
-For API endpoint documentation, use these standard section names:
+API endpoint documentation should include these sections:
 
 1. "Endpoint Description"
 2. "Request Parameters"
@@ -140,6 +136,7 @@ When indicating documentation versions, follow these patterns:
 - For documentation tied to software releases: `release-[version]`
 
 Example:
+
 ```
 api_reference_v1.md
 architecture_overview_v2.md
@@ -163,6 +160,7 @@ When defining navigation in `mkdocs.yml`, use these conventions:
 - Use descriptive link text, not filenames
 
 Example:
+
 ```yaml
 nav:
   - Home: index.md
@@ -186,6 +184,7 @@ When linking to other documentation files:
 - Use descriptive link text
 
 Example:
+
 ```markdown
 See the [API Reference](../api/api_reference.md) for endpoint details.
 ```
@@ -199,6 +198,7 @@ For section links within documents:
 - Remove punctuation
 
 Example:
+
 ```markdown
 See the [Authentication section](#authentication) for more details.
 ```
