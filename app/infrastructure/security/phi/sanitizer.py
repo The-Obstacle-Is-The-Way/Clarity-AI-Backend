@@ -308,7 +308,7 @@ class HashRedactor(Redactor):
         if not text:
             return ""
 
-        hash_value = hashlib.md5(text.encode()).hexdigest()[:8]
+        hash_value = hashlib.md5(text.encode(), usedforsecurity=False).hexdigest()[:8]
         return f"[HASH:{hash_value}]"
 
 
