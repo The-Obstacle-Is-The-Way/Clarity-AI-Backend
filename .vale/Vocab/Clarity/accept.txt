@@ -1,0 +1,34 @@
+Clarity-AI
+FastAPI
+HIPAA
+PostgreSQL
+SQLite
+Redis
+Docker
+JWT
+OpenAPI
+Swagger
+UV
+MkDocs
+Python
+JavaScript
+TypeScript
+MentaLLaMA
+XGBoost
+Pytest
+SQLAlchemy
+Pydantic
+UUID
+AsyncSession
+UTC
+PHI
+ePHI
+TLS
+repository
+entity
+schema
+biometric
+digital twin
+API endpoint
+clean architecture
+SOLID principles
