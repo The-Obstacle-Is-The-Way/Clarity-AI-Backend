@@ -1,100 +1,78 @@
-# Clarity AI Backend Documentation
+# Clarity-AI Backend Documentation
 
-[![Clean Architecture](https://img.shields.io/badge/architecture-clean-blue)](https://github.com/Clarity-AI-Backend/) [![HIPAA Compliant](https://img.shields.io/badge/HIPAA-compliant-blue)](https://github.com/Clarity-AI-Backend/) [![Enterprise Ready](https://img.shields.io/badge/enterprise-ready-green)](.) [![UV Managed](https://img.shields.io/badge/deps-UV%20managed-blueviolet)](../uv.lock)
-
-A **enterprise-grade** HIPAA-compliant psychiatric digital twin platform implementing clean architecture principles with **1000x+ performance improvements** in dependency management.
-
-## 🚀 **Enterprise Modernization (2025)**
-
-Our documentation reflects **professional engineering practices** suitable for technical leadership review:
-
-- ✅ **Performance Excellence**: UV dependency management (1000x+ faster than traditional pip)
-- ✅ **Security Baseline**: Comprehensive vulnerability and license auditing
-- ✅ **Modern Tooling**: Industry-leading Python ecosystem adoption (UV, Ruff, modern testing)
-- ✅ **Audit Ready**: Professional documentation trail for investment review
+Welcome to the Clarity-AI Backend documentation. This repository contains comprehensive documentation for the Clarity-AI Backend system, which provides a HIPAA-compliant platform for psychiatric care.
 
 ## Documentation Structure
 
-### **🎯 Getting Started (Updated)**
-- [Installation Guide](./INSTALLATION_GUIDE.md) - **UV-powered setup** (22ms dependency resolution)
-- [Development Guide](./Development_Guide.md) - **Modern workflow** with enterprise tooling
-- [Deployment Readiness](./DEPLOYMENT_READINESS.md) - **Production-ready** AWS deployment
+The documentation is organized into the following sections:
 
-### **📊 Enterprise Security & Compliance**
-- [Dependency Analysis](./DEPENDENCY_ANALYSIS_REPORT.md) - **Security baseline**, SBOM, license compliance
-- [HIPAA Compliance](./HIPAA_Compliance.md) - Security measures, PHI protection, audit logging
-- [Technical Audit Report](./TECHNICAL_AUDIT_REPORT.md) - Comprehensive security assessment
-
-### Core Architecture
-- [Architecture Overview](./Architecture_Overview.md) - Clean architecture implementation, layers, and design patterns
-- [Project Structure](./Project_Structure.md) - Directory organization and code structure
-
-### Domain Layer
-- [Domain Model](./Domain_Model.md) - Core business entities, value objects, and domain services
-
-### Technical Implementation
-- [API Reference](./API_Reference.md) - API endpoints, security, and versioning
-- [Data Access](./Data_Access.md) - Database, repositories, and caching
-- [ML Integration](./ML_Integration.md) - Machine learning models and integration
-
-### Status & Roadmap
-- [Test Status](./TEST_STATUS.md) - Current test coverage and planned improvements
-- [Development Roadmap](./DEVELOPMENT_ROADMAP.md) - Implementation plan and future enhancements
-- [Technical Status](./TECHNICAL_STATUS.md) - Current implementation status
-
-## **🏆 Technical Leadership Quick Start**
-
-New technical stakeholders and developers should:
-
-1. **Review Enterprise Setup**: Start with [Installation Guide](./INSTALLATION_GUIDE.md) for **UV-powered development** (1000x+ faster)
-2. **Understand Performance**: Review [Dependency Analysis](./DEPENDENCY_ANALYSIS_REPORT.md) for **quantifiable improvements**
-3. **Examine Security**: Check [HIPAA Compliance](./HIPAA_Compliance.md) and security audit documentation
-4. **Architecture Foundation**: Review [Architecture Overview](./Architecture_Overview.md) for clean architecture principles
-5. **Production Ready**: Consult [Deployment Readiness](./DEPLOYMENT_READINESS.md) for AWS deployment
-
-## **⚡ Modern Development Workflow**
-
-### **UV-Powered Setup (Recommended)**
-```bash
-# Install UV (1000x+ faster dependency management)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Lightning-fast environment setup
-uv sync  # 22ms vs 30+ seconds with traditional pip
-
-# Start development
-uvicorn app.main:app --reload
+```
+docs/
+├── content/                  # Main documentation content
+│   ├── api/                  # API documentation
+│   ├── architecture/         # Architecture documentation
+│   ├── compliance/           # Compliance documentation
+│   ├── development/          # Development guides
+│   └── infrastructure/       # Infrastructure documentation
+├── templates/                # Documentation templates
+├── STYLE_GUIDE.md            # Documentation style guide
+└── NAMING_CONVENTIONS.md     # Naming conventions
 ```
 
-### **Professional Tooling Stack**
-- **UV**: Ultra-fast package management
-- **Ruff**: Lightning-fast linting and formatting
-- **Safety + pip-audit**: Dual vulnerability scanning
-- **Trivy**: Container security scanning
-- **pytest**: Modern testing framework
+## Main Sections
 
-## **📋 Enterprise Audit Trail**
+### API Documentation
 
-Professional security and compliance documentation:
+- [API Overview](./content/api/README.md) - Overview of the API endpoints
+- API reference documentation for individual endpoints
 
-- **[Security Baseline](../artifacts/vulnerability_baseline_analysis.md)**: Vulnerability assessment and remediation
-- **[License Compliance](../artifacts/license_compliance_analysis.md)**: 89% permissive licenses, risk analysis
-- **[SBOM](../artifacts/sbom_baseline.json)**: Complete Software Bill of Materials
-- **[Performance Analysis](../artifacts/uv_performance_validation.md)**: 1000x+ improvement validation
-- **[Technical Summary](../TECHNICAL_COFOUNDER_AUDIT_SUMMARY.md)**: Executive audit summary
+### Architecture Documentation
 
-## API Documentation
+- [Architecture Overview](./content/architecture/overview.md) - High-level architecture
+- [Clean Architecture Diagram](./content/architecture/clean_architecture_diagram.md) - Visualization of architectural layers
+- [Domain Model](./content/architecture/domain_model.md) - Core domain entities and relationships
+- [ML Integration](./content/architecture/ml_integration.md) - Integration with machine learning services
 
-Interactive API documentation is available at:
-- **Swagger UI**: http://localhost:8000/docs (recommended)
-- **ReDoc**: http://localhost:8000/redoc (alternative)
+### Compliance Documentation
 
-## **Investment Ready Features**
+- [HIPAA Compliance](./content/compliance/hipaa_compliance.md) - HIPAA compliance measures
 
-This documentation demonstrates:
-- ✅ **Technical Competence**: Modern tooling and performance optimization
-- ✅ **Security Awareness**: Comprehensive vulnerability and compliance auditing
-- ✅ **Professional Standards**: Enterprise-grade documentation and processes
-- ✅ **Performance Focus**: Quantifiable improvements in development efficiency
+### Development Documentation
 
-**Ready for technical co-founder demonstration and investment review.** 🚀
+- [Development Guide](./content/development/README.md) - Guide for developers
+- [Project Structure](./content/development/project_structure.md) - Codebase structure and organization
+- [Directory Tree](./content/development/directory_tree.md) - Visual representation of directory structure
+- [Installation Guide](./content/development/installation_guide.md) - Installation instructions
+- [Technical Status](./content/development/technical_status.md) - Current technical status
+- [Test Status](./content/development/test_status.md) - Testing status and coverage
+- [Dependency Analysis](./content/development/dependency_analysis.md) - Analysis of project dependencies
+- [Technical Audit](./content/development/technical_audit.md) - Technical audit results
+- [Tools Reference](./content/development/tools_reference.md) - Development tools
+- [Development Roadmap](./content/development/roadmap.md) - Future development plans
+
+### Infrastructure Documentation
+
+- [Data Access](./content/infrastructure/data_access.md) - Data access patterns
+- [Deployment Readiness](./content/infrastructure/deployment_readiness.md) - Deployment guidelines
+
+## Documentation Standards
+
+All documentation follows the standards defined in the [Style Guide](./STYLE_GUIDE.md) and adheres to the [Naming Conventions](./NAMING_CONVENTIONS.md). Contributors should familiarize themselves with these documents before making changes.
+
+## Templates
+
+Documentation templates are available in the [templates](./templates) directory for creating consistent documentation:
+
+- [API Endpoint Template](./templates/API_ENDPOINT_TEMPLATE.md)
+- [Architecture Component Template](./templates/ARCHITECTURE_COMPONENT_TEMPLATE.md)
+- [README Template](./templates/README_TEMPLATE.md)
+- [Domain Entity Template](./templates/DOMAIN_ENTITY_TEMPLATE.md)
+
+## Documentation Tools
+
+The project uses several tools to maintain documentation quality:
+
+- **MkDocs with Material theme**: Static site generation for documentation
+- **Vale**: Prose linting for style enforcement
+- **Markdownlint**: Markdown syntax linting
+- **Pre-commit hooks**: Automated checks before commits
