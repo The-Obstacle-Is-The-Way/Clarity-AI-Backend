@@ -36,6 +36,12 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import declarative_base
 
+# Expose async_sessionmaker under the name `sessionmaker` for backward-compatibility
+# with tests and legacy code that expect `sessionmaker` to be available in this
+# module (mirroring the synchronous SQLAlchemy API). This is simply an alias;
+# both names reference the same callable.
+sessionmaker = async_sessionmaker  # type: ignore[assignment]
+
 # Use the new canonical config location
 from app.config.settings import Settings, get_settings
 
@@ -102,10 +108,10 @@ def get_engine(settings: Settings | None = None) -> AsyncEngine:
 
 
 # Global variable for session factory
-_async_session_local: async_sessionmaker[AsyncSession] | None = None
+_async_session_local: sessionmaker[AsyncSession] | None = None
 
 
-def get_session_local(engine: AsyncEngine | None = None) -> async_sessionmaker[AsyncSession]:
+def get_session_local(engine: AsyncEngine | None = None) -> sessionmaker[AsyncSession]:
     """Gets or creates the async session factory."""
     global _async_session_local
     # If called with explicit engine, always recreate the session factory
@@ -114,7 +120,7 @@ def get_session_local(engine: AsyncEngine | None = None) -> async_sessionmaker[A
     if _async_session_local is None:
         if engine is None:
             engine = get_engine()  # Get engine using current settings
-        _async_session_local = async_sessionmaker(
+        _async_session_local = sessionmaker(
             bind=engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
         )
     return _async_session_local

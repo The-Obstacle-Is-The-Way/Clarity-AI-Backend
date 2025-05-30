@@ -189,7 +189,7 @@ def log_execution_time(func=None, *, logger=None, level=LogLevel.DEBUG):
 
 def log_method_calls(
     logger: logging.Logger | None = None,
-    level: LogLevel | int = LogLevel.DEBUG,
+    level: LogLevel | int | str = LogLevel.DEBUG,
     log_args: bool = True,
     log_results: bool = True,
 ) -> Callable[[type], type]:
@@ -205,15 +205,13 @@ def log_method_calls(
     Returns:
         Decorator function
     """
-    # Convert provided level to a standard logging int
-    numeric_level: int
-    if isinstance(level, LogLevel):
-        numeric_level = level.value
-    elif isinstance(level, int):
-        numeric_level = level
-    else:
-        # Fallback: resolve string names (e.g., "INFO") to their numeric constant.
-        numeric_level = int(getattr(logging, str(level).upper(), logging.INFO))
+    if isinstance(level, str):
+        # Resolve string names (e.g., "INFO") to their numeric constant; default INFO
+        numeric_level: int = int(getattr(logging, level.upper(), logging.INFO))
+    elif isinstance(level, LogLevel):
+        numeric_level = int(level.value)
+    else:  # int already
+        numeric_level = int(level)
 
     def decorator(cls: type) -> type:
         # Get class methods (excluding magic methods)

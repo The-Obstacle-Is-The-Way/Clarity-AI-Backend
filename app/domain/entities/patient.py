@@ -121,7 +121,7 @@ class Patient:
     date_of_birth: datetime | str
 
     # Optional fields with defaults
-    id: UUID | None = None
+    id: UUID | str | None = None
     gender: str | None = None
     name: str | None = None
     first_name: str | None = None
@@ -162,9 +162,8 @@ class Patient:
     def __post_init__(self):
         """Initialize the object after dataclass initialization."""
         # Convert string id to UUID if necessary
-        if isinstance(self.id, str):  # type: ignore[redundant-expr]
-            from uuid import UUID
-
+        if isinstance(self.id, str):  
+            from uuid import UUID  
             try:
                 # Only attempt conversion if it looks like a valid UUID
                 if len(self.id) == 36 and self.id.count("-") == 4:
@@ -433,17 +432,25 @@ class Patient:
         """Update this patient from a dictionary, with decryption if needed."""
         # Attempt to detect and decrypt PHI fields
         if self.encryption_service is not None:
-            for field in self.phi_fields:
-                if field in data and data[field] is not None:
-                    # Check if the field value looks encrypted
-                    if isinstance(data[field], str) and data[field].startswith("v1:"):
-                        try:
-                            data[field] = self.encryption_service.decrypt(data[field])
-                        except Exception as e:
-                            import logging
+            try:  
+                for field in self.phi_fields:
+                    if field in data and data[field] is not None:
+                        # Check if the field value looks encrypted
+                        if isinstance(data[field], str) and data[field].startswith("v1:"):
+                            try:
+                                data[field] = self.encryption_service.decrypt(data[field])
+                            except Exception as e:
+                                import logging
 
-                            _logger = logging.getLogger(__name__)
-                            _logger.error(f"Failed to decrypt field {field}: {e}")
+                                _logger = logging.getLogger(__name__)
+                                _logger.error(f"Failed to decrypt field {field}: {e}")
+
+            except ImportError:
+                # If encryption service is not available, just log a warning
+                import logging
+
+                _logger = logging.getLogger(__name__)
+                _logger.warning("Encryption service not available - PHI will not be encrypted")
 
         # Update fields from dictionary
         for key, value in data.items():
@@ -485,4 +492,4 @@ class Patient:
 
 
 # Attach the descriptor to the class after definition
-Patient.contact_info = PatientContactInfoDescriptor()  # type: ignore[attr-defined]
+Patient.contact_info = PatientContactInfoDescriptor()  
