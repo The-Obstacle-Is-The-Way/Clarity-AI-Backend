@@ -33,10 +33,10 @@ dependencies = [
     "pydantic==2.9.1",
     "pydantic-settings==2.4.0",
     "python-dotenv==1.0.1",
-    "python-jose[cryptography]==3.3.0", # From requirements-security.txt
-    "python-multipart==0.0.9",
+    "python-jose[cryptography]==3.4.0", # From requirements-security.txt - Updated for security
+    "python-multipart==0.0.18", # Updated for security
     "pyyaml==6.0.2",
-    "redis",
+    "redis>=6.2.0", # Updated for security
     "requests",
     "scikit-learn==1.5.2", # From requirements-analytics.txt
     "scipy==1.15.0", # From requirements-analytics.txt
