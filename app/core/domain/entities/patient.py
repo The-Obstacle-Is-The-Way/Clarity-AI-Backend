@@ -169,7 +169,7 @@ class Patient(BaseModel):
         "populate_by_name": True,  # Allows using alias if defined, useful for _lve fields
     }
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any):  # type: ignore[override]
         # Ensure contact_info gets populated from top-level email/phone if provided directly
         # and contact_info itself isn't in data or is missing fields.
         raw_contact_info = data.pop("contact_info", None)
@@ -202,7 +202,7 @@ class Patient(BaseModel):
 
     @field_validator("date_of_birth", mode="before")
     @classmethod
-    def ensure_dob_is_past(cls, v):
+    def ensure_dob_is_past(cls, v: Any) -> date:
         if isinstance(v, str):
             try:
                 v = date.fromisoformat(v)
@@ -216,7 +216,7 @@ class Patient(BaseModel):
 
     @field_validator("gender", mode="before")
     @classmethod
-    def validate_gender(cls, v):
+    def validate_gender(cls, v: Any) -> Gender | None:
         """Validate and normalize gender values"""
         if v is None:
             return None

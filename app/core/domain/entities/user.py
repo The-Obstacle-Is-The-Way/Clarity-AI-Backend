@@ -121,7 +121,7 @@ class User(BaseModel):
                 return True
         return False
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Populate full_name from first_name and last_name if not provided."""
         if self.full_name is None and self.first_name and self.last_name:
             self.full_name = f"{self.first_name} {self.last_name}"
