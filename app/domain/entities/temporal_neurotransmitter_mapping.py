@@ -142,7 +142,8 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         sequence = self.temporal_sequences.get(sequence_name)
         if sequence is None:
             raise KeyError(f"Sequence '{sequence_name}' not found")
-        latest_val = sequence.values[-1] if sequence.values else 0.0
+        # Cast to float to satisfy static checker; values are floats by design
+        latest_val = float(sequence.values[-1]) if sequence.values else 0.0
         return min(1.0, latest_val * receptor_density)
 
     def simulate_cascade_effects(
@@ -336,10 +337,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         )
 
         # Store in our mapping
-        key = (brain_region, neurotransmitter)
-        if key not in self.temporal_sequences:
-            self.temporal_sequences[key] = []
-        self.temporal_sequences[key].append(sequence)
+        self.temporal_sequences[sequence.name] = sequence
 
         return sequence
 

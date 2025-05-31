@@ -147,11 +147,11 @@ def log_execution_time(func=None, *, logger=None, level=LogLevel.DEBUG):
 
         # Ensure level is converted to an int understood by stdlib logging
         if isinstance(level, LogLevel):
-            log_level_int: int = level_to_int.get(level, logging.DEBUG)
+            numeric_level = level_to_int.get(level, logging.DEBUG)
         elif isinstance(level, str):
-            log_level_int = int(getattr(logging, level.upper(), logging.DEBUG))
+            numeric_level = int(getattr(logging, level.upper(), logging.DEBUG))
         else:  # already an int
-            log_level_int = int(level)
+            numeric_level = int(level)
 
         @wraps(fn)
         def wrapper(*args, **kwargs):
@@ -166,7 +166,7 @@ def log_execution_time(func=None, *, logger=None, level=LogLevel.DEBUG):
                 duration_ms = (end_time - start_time).total_seconds() * 1000
 
                 # Use the integer log level
-                log.log(log_level_int, f"Function '{fn.__name__}' executed in {duration_ms:.2f} ms")
+                log.log(numeric_level, f"Function '{fn.__name__}' executed in {duration_ms:.2f} ms")
 
                 return result
             except Exception as e:
