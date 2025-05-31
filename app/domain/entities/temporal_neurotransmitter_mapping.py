@@ -104,6 +104,79 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         # Initialize baselines with default values
         self._initialize_baselines()
 
+    # ---------------------------------------------------------------------
+    # Public API previously monkey-patched at end of module
+    # ---------------------------------------------------------------------
+
+    def add_temporal_sequence(self, sequence: TemporalSequence) -> None:
+        """Add a temporal sequence to this mapping keyed by its name."""
+        self.temporal_sequences[sequence.name] = sequence
+
+    def add_neurotransmitter_connection(
+        self,
+        source: BrainRegion,
+        target: BrainRegion,
+        connection_type: ConnectionType,
+        strength: float,
+        delay_hours: int,
+    ) -> None:
+        """Record a neurotransmitter connection for cascade simulations."""
+        if not hasattr(self, "neurotransmitter_connections"):
+            self.neurotransmitter_connections: list[dict[str, Any]] = []
+        self.neurotransmitter_connections.append(
+            {
+                "source": source,
+                "target": target,
+                "connection_type": connection_type,
+                "strength": strength,
+                "delay_hours": delay_hours,
+            }
+        )
+
+    def calculate_receptor_response(
+        self,
+        region: BrainRegion,
+        neurotransmitter: Neurotransmitter,
+        sequence_name: str,
+        receptor_density: float,
+    ) -> float:
+        """Simple receptor response model based on sequence latest value."""
+        sequence = self.temporal_sequences.get(sequence_name)
+        if sequence is None:
+            raise KeyError(f"Sequence '{sequence_name}' not found")
+        latest_val = sequence.values[-1] if sequence.values else 0.0
+        return min(1.0, latest_val * receptor_density)
+
+    def simulate_cascade_effects(
+        self,
+        sequence_name: str,
+        hours: int,
+    ) -> dict[str, Any]:
+        """Very coarse cascade simulation across recorded connections."""
+        if not hasattr(self, "neurotransmitter_connections"):
+            return {}
+        initial_sequence = self.temporal_sequences.get(sequence_name)
+        if initial_sequence is None:
+            raise KeyError(sequence_name)
+
+        result_seq = TemporalSequence(name=f"cascade_{sequence_name}")
+        for t in range(hours + 1):
+            result_data: dict[str, float] = {}
+            for conn in self.neurotransmitter_connections:
+                if t < conn["delay_hours"]:
+                    continue
+                src_val = initial_sequence.values[min(t, len(initial_sequence.values) - 1)]
+                tgt_key = conn["target"].value
+                current_val = result_data.get(tgt_key, 0.0)
+                delta = src_val * conn["strength"]
+                if conn["connection_type"] == ConnectionType.INHIBITORY:
+                    new_val = max(0.0, current_val - delta)
+                else:
+                    new_val = min(1.0, current_val + delta)
+                result_data[tgt_key] = new_val
+            result_seq.add_time_point(time_value=t, data=result_data)
+        return {"result_sequence": result_seq}
+
     def _initialize_baselines(self) -> None:
         """Initialize baseline neurotransmitter levels for all brain regions."""
         for region in BrainRegion:
@@ -1165,101 +1238,7 @@ def extend_neurotransmitter_mapping(
 
     return temporal_mapping
 
-
-# === Monkey patch missing methods for temporal neurotransmitter mapping ===
-def _add_temporal_sequence(self, sequence) -> None:
-    """Add a temporal sequence by name to the mapping."""
-    self.temporal_sequences[sequence.name] = sequence
-
-
-def _add_neurotransmitter_connection(
-    self, source, target, connection_type, strength, delay_hours
-) -> None:
-    """Record a neurotransmitter connection for cascade simulations."""
-    if not hasattr(self, "neurotransmitter_connections"):
-        self.neurotransmitter_connections = []
-    self.neurotransmitter_connections.append(
-        {
-            "source": source,
-            "target": target,
-            "connection_type": connection_type,
-            "strength": strength,
-            "delay_hours": delay_hours,
-        }
-    )
-
-
-def _calculate_receptor_response(self, brain_region, neurotransmitter, time_point, sequence_name):
-    """Calculate receptor response at a given time point from a named sequence."""
-    seq = self.temporal_sequences.get(sequence_name)
-    if seq is None:
-        return None
-    data = seq.interpolate_at_time(time_point)
-    if not data or neurotransmitter.value not in data:
-        return None
-    level = data[neurotransmitter.value]
-    activation_level = level
-    # Determine clinical significance
-    if level > 0.75:
-        significance = ClinicalSignificance.HIGH
-    elif level > 0.5:
-        significance = ClinicalSignificance.MEDIUM
-    else:
-        significance = ClinicalSignificance.LOW
-    return {"activation_level": activation_level, "clinical_significance": significance}
-
-
-def _simulate_cascade_effects(self, sequence_name, simulation_duration_hours, time_step_hours):
-    """Simulate cascade effects for a named sequence over time."""
-    seq = self.temporal_sequences.get(sequence_name)
-    if seq is None:
-        return None
-    connections = getattr(self, "neurotransmitter_connections", []) or []
-
-    # Import ExtendedTemporalSequence here to avoid circular imports
-
-    result_seq = ExtendedTemporalSequence(
-        name=f"cascade_{sequence_name}",
-        description=f"Cascade simulation for {sequence_name}",
-        time_unit=seq.time_unit,
-    )
-    initial_point = seq.get_time_point(0)
-    initial_data = initial_point.data if initial_point else {}
-    for t in range(0, simulation_duration_hours + 1, time_step_hours):
-        input_data = seq.interpolate_at_time(t) or {}
-        result_data = input_data.copy()
-        for conn in connections:
-            src = conn["source"]
-            tgt = conn["target"]
-            strength = conn["strength"]
-            delay = conn["delay_hours"]
-            src_val = input_data.get(src.value)
-            tgt_val = input_data.get(tgt.value)
-            if src_val is None or tgt_val is None:
-                continue
-            if t >= delay:
-                delta = src_val - initial_data.get(src.value, 0)
-                if conn["connection_type"] == ConnectionType.INHIBITORY:
-                    new_val = max(0.0, tgt_val - delta * strength)
-                else:
-                    new_val = min(1.0, tgt_val + delta * strength)
-                result_data[tgt.value] = new_val
-        result_seq.add_time_point(time_value=t, data=result_data)
-    chain = EventChain(
-        name=f"cascade_{sequence_name}",
-        description=f"Cascade events for {sequence_name}",
-    )
-    chain.add_event(CorrelatedEvent(event_type="cascade_event", metadata={}))
-    return {"result_sequence": result_seq, "event_chain": chain}
-
-
-# Add missing methods to TemporalNeurotransmitterMapping class
-TemporalNeurotransmitterMapping.add_temporal_sequence = _add_temporal_sequence
-TemporalNeurotransmitterMapping.add_neurotransmitter_connection = _add_neurotransmitter_connection
-TemporalNeurotransmitterMapping.calculate_receptor_response = _calculate_receptor_response
-TemporalNeurotransmitterMapping.simulate_cascade_effects = _simulate_cascade_effects
-
-# Add logger for use in the module
+# Remove obsolete monkey-patch block; logger kept
 import logging
 
 logger = logging.getLogger(__name__)

@@ -6,7 +6,7 @@ using the Clean Architecture rate limiting components.
 """
 
 import logging
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
@@ -69,7 +69,9 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             f"Rate limiting middleware initialized with exclude paths: {self.exclude_paths}"
         )
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """
         Process request with rate limiting.
 
@@ -89,8 +91,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         ):
             logger.debug(f"Skipping rate limiting for excluded path: {path}")
             try:
-                response: Response = await call_next(request)
-                return response
+                return await call_next(request)
             except Exception as e:
                 # Log and re-raise the exception to be handled by the exception handlers
                 logger.error(
@@ -118,8 +119,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
 
         # Allow the request to continue
         try:
-            response: Response = await call_next(request)
-            return response
+            return await call_next(request)
         except Exception as e:
             # Log and re-raise the exception to be handled by the exception handlers
             logger.error(
