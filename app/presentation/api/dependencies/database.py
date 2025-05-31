@@ -7,7 +7,7 @@ following clean architecture principles with proper dependency injection pattern
 
 import logging
 from collections.abc import AsyncGenerator, Callable
-from typing import Annotated, TypeVar, Any
+from typing import Annotated, TypeVar, Any, cast
 
 from fastapi import Depends, Request
 from sqlalchemy.exc import SQLAlchemyError
@@ -164,13 +164,15 @@ def get_repository(repo_type: type[T]) -> Callable[[AsyncSession], T]:
 
 # Specific dependency for Patient Repository
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
-    PatientRepository,
-)
-
 
 async def get_patient_repository_dependency(
     session: AsyncSession = Depends(get_db),
 ) -> IPatientRepository:
-    """Provides an instance of IPatientRepository (PatientRepository)."""
-    return PatientRepository(db_session=session)
+    """Provides a concrete PatientRepository implementation cast to its interface."""
+    # Import concrete implementation lazily to avoid circular deps
+    from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
+        PatientRepositoryImpl,
+    )
+
+    concrete = PatientRepositoryImpl(db_session=session)
+    return cast(IPatientRepository, concrete)

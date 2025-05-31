@@ -10,7 +10,7 @@ import random
 import uuid
 from datetime import datetime, timedelta
 from enum import Enum, auto
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from uuid import UUID
 
 import numpy as np
@@ -33,6 +33,9 @@ from app.domain.entities.temporal_events import (
 )
 from app.domain.entities.temporal_sequence import ExtendedTemporalSequence, TemporalSequence
 from app.domain.utils.datetime_utils import UTC
+
+if TYPE_CHECKING:
+    from app.domain.entities.temporal_events import TemporalEvent  # pragma: no cover
 
 class EventType(Enum):
     """Types of neurotransmitter events that can be tracked."""
@@ -84,7 +87,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         self.temporal_sequences: dict[str, TemporalSequence[Any]] = {}
 
         # Track events
-        self.events: dict[UUID, TemporalEvent] = {}
+        self.events: dict[UUID, 'TemporalEvent'] = {}
 
         # Track correlations between events
         self.correlations: dict[UUID, dict[UUID, float]] = {}
@@ -160,7 +163,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
             else:
                 idx = min(
                     range(len(sequence.timestamps)),  # type: ignore[attr-defined]
-                    key=lambda i: abs(sequence.timestamps[i] - time_point),  # type: ignore[attr-defined]
+                    key=lambda i: abs(float(sequence.timestamps[i]) - float(time_point)),  # type: ignore[attr-defined]
                 )
                 raw_value = sequence.values[idx]  # type: ignore[attr-defined]
 
