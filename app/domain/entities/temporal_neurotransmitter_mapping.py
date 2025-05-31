@@ -244,6 +244,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
                 CorrelatedEvent(
                     timestamp=datetime.now(UTC),
                     value=tp.data if hasattr(tp, "data") else tp,
+                    correlation_id=event_chain.correlation_id,
                 )
             )
 
