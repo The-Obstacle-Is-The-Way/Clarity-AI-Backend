@@ -213,8 +213,8 @@ def log_method_calls(
     # considered a subtype of `int`.
     numeric_level: int
     if isinstance(level, LogLevel):
-        # LogLevel enum values are already integers (10, 20, 30, etc.)
-        numeric_level = level.value
+        # Convert enum name (e.g., DEBUG) to stdlib logging constant.
+        numeric_level = int(getattr(logging, level.name, logging.INFO))
     elif isinstance(level, str):
         # Resolve string names (e.g., "INFO") to their numeric constant; default INFO
         numeric_level = int(getattr(logging, level.upper(), logging.INFO))
