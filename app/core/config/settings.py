@@ -76,7 +76,7 @@ class Settings(BaseSettings):
 
     # Database Settings
     DATABASE_URL: str = "sqlite+aiosqlite:///./novamind.db"
-    ASYNC_DATABASE_URL: str | None = None  # Will be set based on DATABASE_URL if None
+    ASYNC_DATABASE_URL: str = ""  # Populated from DATABASE_URL if not provided
     DB_ECHO_LOG: bool = False  # Whether to echo SQL queries in logs
 
     # Logging Settings
@@ -198,6 +198,13 @@ class Settings(BaseSettings):
         if self.ENVIRONMENT in ("production", "test"):
             self.DEBUG = False
 
+        return self
+
+    @model_validator(mode="after")
+    def _populate_async_database_url(self) -> Self:  # noqa: D401
+        """Ensure ASYNC_DATABASE_URL is always set for type safety."""
+        if not self.ASYNC_DATABASE_URL:
+            self.ASYNC_DATABASE_URL = self.DATABASE_URL.replace("sqlite://", "sqlite+aiosqlite://")
         return self
 
 
