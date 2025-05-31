@@ -7,9 +7,11 @@ to responses, helping to protect against common web vulnerabilities.
 
 import logging
 from collections.abc import Callable
+from typing import Callable, Awaitable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response as StarletteResponse
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +48,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # If custom headers are provided, use those instead
         self.headers = security_headers if security_headers is not None else self.default_headers
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """
         Process the request and add security headers to the response.
 
@@ -58,7 +62,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             The HTTP response with added security headers
         """
         # Get response from downstream handlers
-        response = await call_next(request)
+        response: Response = await call_next(request)
 
         # Add security headers to response
         for header_name, header_value in self.headers.items():

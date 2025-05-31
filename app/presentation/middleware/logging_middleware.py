@@ -7,6 +7,7 @@ authentication, authorization, and PHI (Protected Health Information) protection
 
 import logging
 from collections.abc import Callable
+from typing import Callable, Awaitable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -33,7 +34,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.auth_service = auth_service
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """
         Process the request and validate authentication.
 
@@ -51,7 +54,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         # 3. Set the authenticated user in the request state
         # 4. Handle authentication failures appropriately
 
-        response = await call_next(request)
+        response: Response = await call_next(request)
         return response
 
 
@@ -72,7 +75,9 @@ class PHIMiddleware(BaseHTTPMiddleware):
         """
         super().__init__(app)
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """
         Process the request and protect PHI data.
 
@@ -89,7 +94,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
         # 2. Set up response processors to detect and sanitize PHI in responses
         # 3. Configure special error handling to prevent PHI in error messages
 
-        response = await call_next(request)
+        response: Response = await call_next(request)
         return response
 
 
@@ -111,7 +116,9 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.logger = logging.getLogger("api.access")
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """
         Process the request and log access information.
 
@@ -126,7 +133,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         self.logger.info(f"Request: {request.method} {request.url.path}")
 
         # Process the request through the application stack
-        response = await call_next(request)
+        response: Response = await call_next(request)
 
         # Log response information
         self.logger.info(f"Response: {response.status_code}")

@@ -6,16 +6,13 @@ following HIPAA-compliant security practices in a clean architecture design.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-# Attempt to import User, handle potential circular dependency gracefully
-try:
-    from app.domain.entities.user import User
-except ImportError:
-    # Use Any as a fallback if User cannot be imported
-    from typing import Any
-
-    User = Any
+if TYPE_CHECKING:
+    # Real import used only for type checking to avoid circular dependencies at runtime
+    from app.domain.entities.user import User  # pragma: no cover
+else:
+    User = Any  # type: ignore[assignment]
 
 
 class IAuthenticationService(ABC):
