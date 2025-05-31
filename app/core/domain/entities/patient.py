@@ -169,7 +169,7 @@ class Patient(BaseModel):
         "populate_by_name": True,  # Allows using alias if defined, useful for _lve fields
     }
 
-    def __init__(self, **data: Any):  # type: ignore[override]
+    def __init__(self, **data: Any):
         # Ensure contact_info gets populated from top-level email/phone if provided directly
         # and contact_info itself isn't in data or is missing fields.
         raw_contact_info = data.pop("contact_info", None)
