@@ -172,7 +172,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
                         base_ts = t_val.timestamp()
                     else:
                         base_ts = float(t_val)  # type: ignore[arg-type]
-                    return abs(base_ts - time_point_value)
+                    return abs(base_ts - time_point_value)  # type: ignore[unreachable]
 
                 idx = min(range(len(sequence.timestamps)), key=_time_diff)  # type: ignore[attr-defined]
                 raw_value = sequence.values[idx]  # type: ignore[attr-defined]
