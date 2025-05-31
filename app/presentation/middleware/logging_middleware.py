@@ -6,11 +6,12 @@ authentication, authorization, and PHI (Protected Health Information) protection
 """
 
 import logging
-from collections.abc import Callable
-from typing import Callable, Awaitable
+from collections.abc import Awaitable, Callable
+from typing import Awaitable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
     and ensures proper authentication across all secure endpoints.
     """
 
-    def __init__(self, app, auth_service=None):
+    def __init__(self, app: ASGIApp, auth_service: object | None = None) -> None:
         """
         Initialize the authentication middleware.
 
@@ -66,7 +67,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
     sensitive PHI from being exposed in logs, error messages, or URL parameters.
     """
 
-    def __init__(self, app):
+    def __init__(self, app: ASGIApp) -> None:
         """
         Initialize the PHI protection middleware.
 
@@ -106,7 +107,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     responses for monitoring, debugging, and audit purposes.
     """
 
-    def __init__(self, app):
+    def __init__(self, app: ASGIApp) -> None:
         """
         Initialize the logging middleware.
 

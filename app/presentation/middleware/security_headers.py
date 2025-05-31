@@ -6,12 +6,11 @@ to responses, helping to protect against common web vulnerabilities.
 """
 
 import logging
-from collections.abc import Callable
-from typing import Callable, Awaitable
+from collections.abc import Awaitable, Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response as StarletteResponse
+from starlette.types import ASGIApp
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     security against XSS, clickjacking, and other web vulnerabilities.
     """
 
-    def __init__(self, app, security_headers: dict[str, str] | None = None):
+    def __init__(self, app: ASGIApp, security_headers: dict[str, str] | None = None) -> None:
         """
         Initialize the security headers middleware.
 

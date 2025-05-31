@@ -65,10 +65,10 @@ class MentalLlamaSettings(BaseSettings):
 
     @field_validator("model_mappings", mode="before")
     @classmethod
-    def parse_model_mappings(cls, v: str | dict) -> dict[str, str]:
+    def parse_model_mappings(cls, v: str | dict[str, str]) -> dict[str, str]:
         if isinstance(v, str):
             try:
-                parsed = json.loads(v)
+                parsed: dict[str, str] = json.loads(v)
                 if isinstance(parsed, dict):
                     return parsed
                 raise ValueError("Invalid JSON format for MENTALLAMA_MODEL_MAPPINGS: expected dict")
@@ -279,7 +279,9 @@ class Settings(BaseSettings):
 
     @field_validator("PHI_WHITELIST_PATTERNS", mode="before")
     @classmethod
-    def parse_phi_whitelist(cls, v: str | dict | None) -> dict[str, list[str]] | None:
+    def parse_phi_whitelist(
+        cls, v: str | dict[str, list[str]] | None
+    ) -> dict[str, list[str]] | None:
         if isinstance(v, str):
             try:
                 parsed = json.loads(v)
