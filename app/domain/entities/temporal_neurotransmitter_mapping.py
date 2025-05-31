@@ -10,14 +10,13 @@ import random
 import uuid
 from datetime import datetime, timedelta
 from enum import Enum, auto
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, cast
 from uuid import UUID
 
 import numpy as np
 
 from app.domain.entities.digital_twin_enums import (
     BrainRegion,
-    ClinicalSignificance,
     ConnectionType,
     Neurotransmitter,
     TemporalResolution,
@@ -168,7 +167,11 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
                 timestamps = sequence.timestamps  # type: ignore[attr-defined]
 
                 def _to_ts(val: Any) -> float:
-                    return val.timestamp() if isinstance(val, datetime) else float(val)
+                    """Convert datetime or numeric-like value to float timestamp."""
+                    if isinstance(val, datetime):
+                        return val.timestamp()
+                    # At this point mypy cannot prove that `val` is numeric-like; help it.
+                    return float(cast(int | float | str, val))
 
                 idx = min(
                     range(len(timestamps)),  # type: ignore[arg-type]
