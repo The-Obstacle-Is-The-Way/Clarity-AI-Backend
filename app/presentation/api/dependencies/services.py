@@ -6,7 +6,7 @@ services and repositories within the API endpoints.
 """
 
 import logging
-from typing import Annotated, Any, cast
+from typing import Annotated, cast
 
 from fastapi import Depends
 
@@ -15,6 +15,9 @@ from app.application.services.audit_log_service import AuditLogService
 # Correct service/factory imports
 from app.application.services.digital_twin_service import DigitalTwinApplicationService
 from app.core.interfaces.services.audit_logger_interface import IAuditLogger
+from app.core.interfaces.repositories.audit_log_repository_interface import (
+    IAuditLogRepository,
+)
 
 # from app.infrastructure.ml.pat.bedrock_pat import BedrockPAT # Example PAT implementation
 from app.infrastructure.ml.pat.service import PATService  # Correct path
@@ -64,7 +67,7 @@ def get_pat_service() -> PATService:
 
 
 async def get_audit_logger(
-    repository=Depends(get_audit_log_repository),
+    repository: IAuditLogRepository = Depends(get_audit_log_repository),
 ) -> IAuditLogger:
     """
     Get the audit logger for the current request.
