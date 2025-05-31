@@ -30,10 +30,9 @@ from app.domain.entities.neurotransmitter_mapping import (
 from app.domain.entities.temporal_events import (
     CorrelatedEvent,
     EventChain,
-    TemporalEvent,
 )
 from app.domain.entities.temporal_sequence import ExtendedTemporalSequence, TemporalSequence
-
+from app.domain.utils.datetime_utils import UTC
 
 class EventType(Enum):
     """Types of neurotransmitter events that can be tracked."""
@@ -150,23 +149,36 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
             raise KeyError(f"Sequence '{sequence_name}' not found")
 
         # Attempt to interpolate or fetch the value at the requested time.
-        value: float | list[float] | None
+        raw_value: Any | None
         if hasattr(sequence, "interpolate_at_time"):
-            # ExtendedTemporalSequence path
-            value = sequence.interpolate_at_time(time_point)  # type: ignore[attr-defined]
+            # ExtendedTemporalSequence returns a **dict** mapping neurotransmitter names to values
+            raw_value = sequence.interpolate_at_time(time_point)  # type: ignore[attr-defined]
         else:
-            # Fallback: choose closest timestamp index
+            # Fallback to generic TemporalSequence behaviour (vector or scalar)
             if not getattr(sequence, "timestamps", []):
-                value = None
+                raw_value = None
             else:
-                # naive nearest match
-                idx = min(range(len(sequence.timestamps)), key=lambda i: abs(sequence.timestamps[i] - time_point))  # type: ignore[attr-defined]
-                value = sequence.values[idx]
+                idx = min(
+                    range(len(sequence.timestamps)),  # type: ignore[attr-defined]
+                    key=lambda i: abs(sequence.timestamps[i] - time_point),  # type: ignore[attr-defined]
+                )
+                raw_value = sequence.values[idx]  # type: ignore[attr-defined]
 
-        if value is None:
+        # Normalise raw_value into a float (0-1 range)
+        activation_level: float
+        if raw_value is None:
             activation_level = 0.0
+        elif isinstance(raw_value, dict):
+            # Extract using neurotransmitter key
+            nt_key = (
+                neurotransmitter.value if hasattr(neurotransmitter, "value") else str(neurotransmitter)
+            )
+            activation_level = float(raw_value.get(nt_key, 0.0))
+        elif isinstance(raw_value, (list, tuple)):
+            activation_level = float(raw_value[0])
         else:
-            activation_level = float(value[0] if isinstance(value, list) else value)
+            # Already a scalar numeric
+            activation_level = float(raw_value)
 
         activation_level = min(1.0, max(0.0, activation_level * receptor_density))
 
@@ -195,21 +207,47 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         if not hasattr(self, "neurotransmitter_connections"):
             return {}
 
-        result_seq = ExtendedTemporalSequence(name=f"cascade_{sequence_name}")
+        # Minimal valid ExtendedTemporalSequence instantiation (simplified mode)
+        result_seq = ExtendedTemporalSequence(
+            name=f"cascade_{sequence_name}",
+            description="cascade simulation",
+            time_unit="hours",
+        )
 
         steps = range(0, simulation_duration_hours + 1, time_step_hours)
         for t in steps:
             data: dict[str, float] = {}
             for conn in getattr(self, "neurotransmitter_connections", []):
-                # simplistic inhibition/excitation representation
-                sign = -1 if conn.connection_type == ConnectionType.INHIBITORY else 1
-                magnitude = conn.strength * sign
-                if conn.delay_hours and t < conn.delay_hours:
+                # Connection stored as dict; retrieve fields by key.
+                connection_type = conn["connection_type"]
+                sign = -1 if connection_type == ConnectionType.INHIBITORY else 1
+                strength = float(conn["strength"])
+                delay = int(conn["delay_hours"])
+
+                if delay and t < delay:
                     continue
-                data[conn.target.value] = max(0.0, min(1.0, 0.5 + magnitude))
+
+                magnitude = strength * sign
+
+                target_enum = conn["target"]
+                target_key = (
+                    target_enum.value if hasattr(target_enum, "value") else str(target_enum)
+                )
+
+                data[target_key] = max(0.0, min(1.0, 0.5 + magnitude))
             result_seq.add_time_point(time_value=t, data=data)
 
-        return {"result_sequence": result_seq}
+        # Build a minimal correlated event chain representing the cascade
+        event_chain = EventChain(name=f"cascade_{sequence_name}")
+        for tp in getattr(result_seq, "time_points", []):
+            event_chain.add_event(
+                CorrelatedEvent(
+                    timestamp=datetime.now(UTC),
+                    value=tp.data if hasattr(tp, "data") else tp,
+                )
+            )
+
+        return {"result_sequence": result_seq, "event_chain": event_chain}
 
     def _initialize_baselines(self) -> None:
         """Initialize baseline neurotransmitter levels for all brain regions."""
