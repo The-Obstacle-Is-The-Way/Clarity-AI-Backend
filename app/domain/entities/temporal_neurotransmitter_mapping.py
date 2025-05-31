@@ -165,16 +165,16 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
                     time_point.timestamp() if isinstance(time_point, datetime) else float(time_point)
                 )
 
-                def _time_diff(i: int) -> float:  # type: ignore[attr-defined]
-                    """Helper to compute absolute time difference in seconds."""
-                    t_val = sequence.timestamps[i]
-                    if isinstance(t_val, datetime):
-                        base_ts = t_val.timestamp()
-                    else:
-                        base_ts = float(t_val)  # type: ignore[arg-type]
-                    return abs(base_ts - time_point_value)  # type: ignore[unreachable]
+                timestamps = sequence.timestamps  # type: ignore[attr-defined]
 
-                idx = min(range(len(sequence.timestamps)), key=_time_diff)  # type: ignore[attr-defined]
+                def _to_ts(val: Any) -> float:
+                    return val.timestamp() if isinstance(val, datetime) else float(val)
+
+                idx = min(
+                    range(len(timestamps)),  # type: ignore[arg-type]
+                    key=lambda i: abs(_to_ts(timestamps[i]) - time_point_value),
+                )
+
                 raw_value = sequence.values[idx]  # type: ignore[attr-defined]
 
         # Normalise raw_value into a float (0-1 range)
