@@ -35,7 +35,7 @@ def get_jwt_service_from_request(request: Request) -> IJwtService:
     """
     # Check for test override first
     if hasattr(request.app.state, "jwt_service") and request.app.state.jwt_service:
-        return request.app.state.jwt_service
+        return cast(IJwtService, request.app.state.jwt_service)
 
     # Normal production path
     settings = get_settings()

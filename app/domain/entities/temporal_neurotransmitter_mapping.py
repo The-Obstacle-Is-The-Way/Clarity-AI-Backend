@@ -161,23 +161,28 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
             if not getattr(sequence, "timestamps", []):
                 raw_value = None
             else:
-                idx = min(
-                    range(len(sequence.timestamps)),  # type: ignore[attr-defined]
-                    key=lambda i: abs(float(sequence.timestamps[i]) - float(time_point)),  # type: ignore[attr-defined]
-                )
+                def _time_diff(i: int) -> float:  # type: ignore[attr-defined]
+                    t_val = sequence.timestamps[i]
+                    if isinstance(t_val, datetime):
+                        base = t_val.timestamp()
+                    else:
+                        base = float(t_val)
+                    return abs(base - float(time_point))
+
+                idx = min(range(len(sequence.timestamps)), key=_time_diff)  # type: ignore[attr-defined]
                 raw_value = sequence.values[idx]  # type: ignore[attr-defined]
 
         # Normalise raw_value into a float (0-1 range)
         activation_level: float
         if raw_value is None:
             activation_level = 0.0
-        elif isinstance(raw_value, dict):
+        elif isinstance(raw_value, dict):  # noqa
             # Extract using neurotransmitter key
             nt_key = (
                 neurotransmitter.value if hasattr(neurotransmitter, "value") else str(neurotransmitter)
             )
             activation_level = float(raw_value.get(nt_key, 0.0))
-        elif isinstance(raw_value, (list, tuple)):
+        elif isinstance(raw_value, (list, tuple)):  # noqa
             activation_level = float(raw_value[0])
         else:
             # Already a scalar numeric
@@ -1242,6 +1247,8 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
                     sequences[secondary_nt] = secondary_sequence
 
         # Add a simulated event for this treatment
+        from app.domain.entities.temporal_events import TemporalEvent  # local import to avoid circular
+
         event_id = uuid.uuid4()
         self.events[event_id] = TemporalEvent(
             event_type="medication_effect",
