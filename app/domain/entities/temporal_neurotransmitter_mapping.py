@@ -81,10 +81,8 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         """
         super().__init__(patient_id=patient_id)
 
-        # Track temporal sequences
-        self.temporal_sequences: dict[
-            tuple[BrainRegion, Neurotransmitter], list[TemporalSequence]
-        ] = {}
+        # Map sequence name -> TemporalSequence instance
+        self.temporal_sequences: dict[str, TemporalSequence[Any]] = {}
 
         # Track events
         self.events: dict[UUID, TemporalEvent] = {}
@@ -159,7 +157,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         if initial_sequence is None:
             raise KeyError(sequence_name)
 
-        result_seq = TemporalSequence(name=f"cascade_{sequence_name}")
+        result_seq: TemporalSequence[float] = TemporalSequence(name=f"cascade_{sequence_name}")
         for t in range(hours + 1):
             result_data: dict[str, float] = {}
             for conn in self.neurotransmitter_connections:
