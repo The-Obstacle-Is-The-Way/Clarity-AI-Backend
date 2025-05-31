@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from uuid import UUID
 from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -58,7 +58,7 @@ class TokenPayload(BaseModel):
     # Dict-like helpers for compatibility with legacy code expecting dicts
     # ---------------------------------------------------------------------
 
-    def get(self, key: str, default: Any | None = None) -> Any:  # type: ignore[override]
+    def get(self, key: str, default: Any | None = None) -> Any:
         """Dictionary-style access helper.
 
         Older parts of the codebase (and some external libraries) still treat the
@@ -71,9 +71,9 @@ class TokenPayload(BaseModel):
         return getattr(self, key, default)
 
     # Support ``in`` checks (``key in payload``)
-    def __contains__(self, item: str) -> bool:  # noqa: D401
+    def __contains__(self, item: str) -> bool:
         return hasattr(self, item)
 
     # Allow index access ``payload["sub"]``
-    def __getitem__(self, item: str) -> Any:  # type: ignore[override]
+    def __getitem__(self, item: str) -> Any:
         return getattr(self, item)
