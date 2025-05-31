@@ -161,7 +161,10 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
             if not getattr(sequence, "timestamps", []):
                 raw_value = None
             else:
-                time_point_value: float = float(time_point)
+                if isinstance(time_point, datetime):
+                    time_point_value = time_point.timestamp()
+                else:
+                    time_point_value = float(time_point)
 
                 def _time_diff(i: int) -> float:  # type: ignore[attr-defined]
                     """Helper to compute absolute time difference in seconds."""
