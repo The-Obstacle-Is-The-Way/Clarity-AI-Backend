@@ -59,16 +59,30 @@ The file exists at `endpoints/biometric_alert_rules.py` but tests indicate there
 
 **Status**: Partially implemented
 
-The route file exists at `routes/patient.py` but tests suggest missing functionality.
+The route file exists at `routes/patient.py` but tests suggest missing functionality. SPARC analysis confirms this with evidence of TODO comments and placeholder implementations.
 
 **Referenced In**:
 - Main router (`api_router.py`): `from app.presentation.api.v1.routes.patient import router as patient_router`
 - Memory reference: "The API route file `app/presentation/api/v1/routes/patient.py` is missing. Imports in the corresponding test file `app/tests/unit/presentation/api/v1/endpoints/test_patient_endpoints.py` have been temporarily commented out to allow test collection."
 
+**SPARC Findings**:
+```python
+router = APIRouter()
+
+# TODO: Implement patient endpoints
+@router.post("/")
+async def create_patient_endpoint(
+    patient_data: dict[str, Any]) -> dict[str, Any]:
+    """To be implemented."""
+    pass
+```
+
 **Required Actions**:
 - Complete implementation of all required endpoints
+- Remove placeholder code and TODOs
 - Ensure proper dependency injection with `get_patient_service`
 - Verify that test imports can be uncommented and tests pass
+- Add proper request validation with Pydantic models
 
 ## Other Missing or Problematic Routes
 
