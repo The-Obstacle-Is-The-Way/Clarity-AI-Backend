@@ -82,8 +82,9 @@ class RefreshTokenRequestDTO(BaseModel):
 
     refresh_token: str
 
+    @classmethod
     @field_validator("refresh_token")
-    def refresh_token_must_be_valid(self, v):
+    def refresh_token_must_be_valid(cls, v:str) -> str:
         """Validate that the refresh token field is not empty."""
         if not v or len(v) < 10:  # Arbitrary minimum length for token validation
             raise ValueError("Invalid refresh token format")

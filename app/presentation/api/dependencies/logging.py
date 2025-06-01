@@ -34,6 +34,6 @@ AuditLoggerDep = Annotated[IAuditLogger, Depends(get_audit_logger)]
 
 
 __all__ = [
-    "get_audit_logger",
     "AuditLoggerDep",
+    "get_audit_logger",
 ]
