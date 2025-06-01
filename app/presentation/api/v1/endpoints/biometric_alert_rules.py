@@ -20,7 +20,7 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions.application import ApplicationError
+# Import is below
 
 from app.application.services.biometric_alert_rule_service import (
     BiometricAlertRuleService,
@@ -55,7 +55,7 @@ router = APIRouter(
 
 def get_rule_service(
     rule_repo: BiometricRuleRepoDep,
-    db_session=Depends(get_db_session),
+    db_session: AsyncSession = Depends(get_db_session),
 ) -> BiometricAlertRuleService:
     """Get alert rule service with proper repositories."""
     template_repo = get_repository_instance(BiometricAlertTemplateRepository, db_session)
