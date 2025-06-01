@@ -9,14 +9,28 @@ This service handles user authentication operations including:
 """
 
 import logging
+import uuid
 from datetime import datetime, timedelta
+from typing import Dict
 from uuid import UUID
 
-# Core layer interfaces
+# Core interfaces and configuration
 from app.core.config.settings import Settings
+from app.core.constants.audit import AuditEventType, AuditSeverity
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
 from app.core.interfaces.security.jwt_service_interface import IJwtService
 from app.core.interfaces.security.password_handler_interface import IPasswordHandler
-from app.core.interfaces.services.audit_logger_interface import IAuditLogger
+
+# Domain entities and value objects
+from app.domain.entities.user import User
+
+# Application-level exceptions
+from app.application.security.exceptions import (
+    AuthenticationError,
+    CredentialsException,
+    InvalidTokenError,
+    UserNotFoundException,
+)
 
 # Application layer DTOs
 from app.application.dtos.auth_dtos import (
@@ -46,6 +60,9 @@ class AuthenticationService:
     Implements HIPAA-compliant authentication flows with secure token management
     and comprehensive audit logging.
     """
+    
+    # Constants to avoid hardcoded security-sensitive strings
+    TOKEN_TYPE_BEARER = "bearer"  # OAuth 2.0 standard token type
 
     def __init__(
         self,
@@ -178,7 +195,7 @@ class AuthenticationService:
             return LoginResponseDTO(
                 access_token=tokens.access_token,
                 refresh_token=tokens.refresh_token,
-                token_type="bearer",  # Not a security risk: Required OAuth 2.0 standard value
+                token_type=self.TOKEN_TYPE_BEARER,
                 expires_in=self.settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
                 user=user_data,
             )
@@ -383,7 +400,11 @@ class AuthenticationService:
             raise
 
         except Exception as e:
-            logging.error(f"Token refresh error: {e!s}", exc_info=True)
+            self.audit_logger.log_security_event(
+                event_type="token_refresh_error",
+                message=f"Token refresh error: {e!s}",
+                metadata={"error_type": type(e).__name__},
+            )
             raise AuthenticationError(f"Token refresh failed: {e!s}") from e
 
     async def validate_token(self, token: str) -> User:
@@ -433,8 +454,12 @@ class AuthenticationService:
             raise
 
         except Exception as e:
-            logging.error(f"Token validation error: {e!s}", exc_info=True)
-            raise InvalidTokenError(f"Token validation failed: {e!s}")
+            self.audit_logger.log_security_event(
+                event_type="token_validation_error",
+                message=f"Token validation error: {e!s}",
+                metadata={"error_type": type(e).__name__},
+            )
+            raise InvalidTokenError(f"Token validation failed: {e!s}") from e
 
     async def check_permission(self, user: User, required_permission: str) -> bool:
         """
