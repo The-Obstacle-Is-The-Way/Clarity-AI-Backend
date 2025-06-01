@@ -20,15 +20,13 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Import is below
-
 from app.application.services.biometric_alert_rule_service import (
     BiometricAlertRuleService,
 )
+from app.core.exceptions.application_error import ApplicationError
 from app.core.interfaces.services.alert_rule_template_service_interface import (
     AlertRuleTemplateServiceInterface,
 )
-from app.core.exceptions.application_error import ApplicationError
 from app.domain.repositories.biometric_alert_template_repository import (
     BiometricAlertTemplateRepository,
 )
@@ -110,7 +108,7 @@ async def get_alert_rules(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve alert rules",
-        )
+        ) from e
 
 
 @router.get("/patients/{patient_id}", response_model=list[AlertRuleResponse])
@@ -149,11 +147,11 @@ async def get_patient_alert_rules(
         return result
 
     except Exception as e:
-        logger.error(f"Error getting alert rules for patient {patient_id}: {e!s}")
+        logger.error(f"Error getting patient alert rules: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve alert rules for patient: {e!s}",
-        )
+            detail="Failed to retrieve patient alert rules",
+        ) from e
 
 
 @router.get("/templates", response_model=list[AlertRuleTemplateResponse])
@@ -203,8 +201,8 @@ async def get_rule_templates(
         logger.error(f"Error getting alert rule templates: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve alert rule templates: {e!s}",
-        )
+            detail="Failed to retrieve alert rule templates",
+        ) from e
 
 
 @router.get("/{rule_id}", response_model=AlertRuleResponse)
@@ -247,15 +245,15 @@ async def get_alert_rule(
             # If it's an entity, convert it using the from_entity method
             return AlertRuleResponse.from_entity(rule)
 
-    except HTTPException:
+    except HTTPException as e:
         # Re-raise HTTP exceptions
-        raise
+        raise e from e
     except Exception as e:
         logger.error(f"Error getting alert rule {rule_id}: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve alert rule",
-        )
+        ) from e
 
 
 @router.get("/{rule_id}/active", response_model=AlertRuleResponse)
@@ -377,7 +375,7 @@ async def create_alert_rule_from_template(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to create rule from template: {e!s}",
-        )
+        ) from e
 
 
 @router.put("/{rule_id}", response_model=AlertRuleResponse)
@@ -425,15 +423,15 @@ async def update_alert_rule(
             # If it's an entity, convert it using the from_entity method
             return AlertRuleResponse.from_entity(updated_rule)
 
-    except HTTPException:
+    except HTTPException as e:
         # Re-raise HTTP exceptions
-        raise
+        raise e from e
     except Exception as e:
         logger.error(f"Error updating alert rule {rule_id}: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to update alert rule: {e!s}",
-        )
+        ) from e
 
 
 @router.delete("/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -466,15 +464,15 @@ async def delete_alert_rule(
                 detail="Alert rule not found or could not be deleted",
             )
 
-    except HTTPException:
+    except HTTPException as e:
         # Re-raise HTTP exceptions
-        raise
+        raise e from e
     except Exception as e:
         logger.error(f"Error deleting alert rule {rule_id}: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete alert rule: {e!s}",
-        )
+        ) from e
 
 
 @router.patch("/{rule_id}/active", response_model=AlertRuleResponse)
@@ -530,15 +528,15 @@ async def update_rule_active_status(
             # If it's an entity, convert it using the from_entity method
             return AlertRuleResponse.from_entity(updated_rule)
 
-    except HTTPException:
+    except HTTPException as e:
         # Re-raise HTTP exceptions
-        raise
+        raise e from e
     except Exception as e:
-        logger.error(f"Error updating rule {rule_id} active status: {e!s}")
+        logger.error(f"Error toggling alert rule active status: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update alert rule status: {e!s}",
-        )
+            detail=f"Failed to toggle alert rule active status: {e!s}",
+        ) from e
 
 
 @router.post(
@@ -621,4 +619,4 @@ async def create_alert_rule_template(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to create alert rule template: {e!s}",
-        )
+        ) from e
