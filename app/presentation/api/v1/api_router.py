@@ -26,7 +26,7 @@ from app.presentation.api.v1.endpoints.auth import router as auth_router
 from app.presentation.api.v1.endpoints.biometric import router as biometric_router
 from app.presentation.api.v1.endpoints.digital_twin import router as digital_twin_router
 from app.presentation.api.v1.endpoints.mentallama import router as mentallama_router
-from app.presentation.api.v1.routes.ml import router as ml_router
+from app.presentation.api.v1.endpoints.ml import router as ml_router
 from app.presentation.api.v1.endpoints.patient import router as patient_router_endpoint
 from app.presentation.api.v1.routes.temporal_neurotransmitter import (
     router as temporal_neurotransmitter_router,
@@ -57,7 +57,7 @@ api_v1_router.include_router(
     tags=["Biometric Alert Rules"],
 )
 
-api_v1_router.include_router(ml_router, prefix="/ml", tags=["Machine Learning"])
+api_v1_router.include_router(ml_router, prefix="/ml", tags=["Machine Learning"])  # Using endpoints version
 api_v1_router.include_router(mentallama_router, prefix="/mentallama", tags=["MentaLLaMA"])  # Using endpoints version
 api_v1_router.include_router(
     temporal_neurotransmitter_router,
