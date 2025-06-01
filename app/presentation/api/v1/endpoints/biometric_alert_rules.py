@@ -6,9 +6,7 @@ following clean architecture principles with proper separation of concerns.
 Fixed template creation and patient alert rules routing.
 """
 
-import json
 import logging
-from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 
 from fastapi import (
