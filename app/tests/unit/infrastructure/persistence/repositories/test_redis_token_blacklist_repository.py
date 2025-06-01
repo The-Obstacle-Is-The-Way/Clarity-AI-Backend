@@ -173,7 +173,7 @@ class TestRedisTokenBlacklistRepository:
     async def test_remove_expired_entries(self, token_blacklist_repo) -> None:
         """Test removing expired entries (no-op in Redis implementation)."""
         # Act
-        result = await token_blacklist_repo.remove_expired_entries()
+        result = await token_blacklist_repo.remove_expired()
 
         # Assert - should always return 0 as Redis handles this automatically
         assert result == 0
@@ -182,7 +182,8 @@ class TestRedisTokenBlacklistRepository:
     async def test_clear_expired_tokens(self, token_blacklist_repo) -> None:
         """Test clearing expired tokens (no-op in Redis implementation)."""
         # Act
-        result = await token_blacklist_repo.clear_expired_tokens()
+        # This is the same as remove_expired but with a different name for backward compatibility
+        result = await token_blacklist_repo.remove_expired()
 
         # Assert - should always return 0 as Redis handles this automatically via TTL
         assert result == 0
