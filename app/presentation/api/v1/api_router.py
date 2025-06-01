@@ -7,7 +7,7 @@ Aggregates all endpoint routers for this version.
 
 from fastapi import APIRouter
 
-from app.presentation.api.v1.endpoints.analytics_endpoints import router as analytics_event_router
+from app.presentation.api.v1.endpoints.analytics import router as analytics_router
 
 # Import our new biometric alert rules endpoint
 from app.presentation.api.v1.endpoints.biometric_alert_rules import (
@@ -18,12 +18,12 @@ from app.presentation.api.v1.endpoints.biometric_alert_rules import (
 from app.presentation.api.v1.endpoints.biometric_alerts import (
     router as biometric_alerts_endpoint_router,
 )
-from app.presentation.api.v1.routes.actigraphy import router as actigraphy_router
+from app.presentation.api.v1.endpoints.actigraphy import router as actigraphy_router_endpoint
 
 # Corrected imports pointing to the canonical router location
-from app.presentation.api.v1.routes.analytics import router as analytics_query_router
-from app.presentation.api.v1.routes.auth import router as auth_router
-from app.presentation.api.v1.routes.biometric import router as biometric_router
+# Removed old analytics routes import - now using consolidated endpoints file
+from app.presentation.api.v1.endpoints.auth import router as auth_router
+from app.presentation.api.v1.endpoints.biometric import router as biometric_router
 from app.presentation.api.v1.routes.digital_twin import router as digital_twin_router
 from app.presentation.api.v1.routes.mentallama import router as mentallama_router
 from app.presentation.api.v1.routes.ml import router as ml_router
@@ -37,13 +37,11 @@ from app.presentation.api.v1.routes.xgboost import router as xgboost_router
 api_v1_router = APIRouter()
 
 # Include routers using the new variable names
-api_v1_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
-api_v1_router.include_router(actigraphy_router, prefix="/actigraphy", tags=["Actigraphy"])
-# Include the existing analytics query router
-api_v1_router.include_router(analytics_query_router, prefix="/analytics", tags=["Analytics Query"])
-# Include the new analytics event ingestion router
-api_v1_router.include_router(analytics_event_router, prefix="/analytics", tags=["Analytics Events"])
-api_v1_router.include_router(biometric_router, prefix="/biometrics", tags=["Biometrics"])
+api_v1_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])  # Using endpoints version
+api_v1_router.include_router(actigraphy_router_endpoint, prefix="/actigraphy", tags=["Actigraphy"])
+# Use consolidated analytics endpoints
+api_v1_router.include_router(analytics_router, prefix="/analytics", tags=["Analytics"])
+api_v1_router.include_router(biometric_router, prefix="/biometrics", tags=["Biometrics"])  # Using endpoints version
 
 # Prefer our endpoint implementation over the route version
 api_v1_router.include_router(

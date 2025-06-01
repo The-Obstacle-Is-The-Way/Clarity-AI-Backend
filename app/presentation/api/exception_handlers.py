@@ -8,11 +8,13 @@ utilities to ensure proper HIPAA-compliant error responses and audit logging.
 import logging
 import traceback
 import uuid
+from collections.abc import Awaitable, Callable
+from typing import TypeVar, cast
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
@@ -39,6 +41,12 @@ from app.presentation.api.dependencies.audit_logger import get_audit_logger
 logger = logging.getLogger(__name__)
 
 
+# Define generic exception type for better type annotations
+ExcType = TypeVar('ExcType', bound=Exception)
+
+# Type alias for exception handlers to improve type safety
+ExceptionHandler = Callable[[Request, ExcType], Awaitable[Response]]
+
 def register_exception_handlers(app: FastAPI) -> None:
     """
     Register all exception handlers with the FastAPI application.
@@ -50,22 +58,46 @@ def register_exception_handlers(app: FastAPI) -> None:
     Args:
         app: FastAPI application instance
     """
-    # Type safety is maintained through runtime type checking in FastAPI
+    # Register handlers with appropriate type casts to satisfy mypy
     # Register handlers for standard exceptions
-    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
-    app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    app.add_exception_handler(
+        StarletteHTTPException, 
+        cast(Callable[[Request, Exception], Awaitable[Response]], http_exception_handler)
+    )
+    app.add_exception_handler(
+        RequestValidationError, 
+        cast(Callable[[Request, Exception], Awaitable[Response]], validation_exception_handler)
+    )
     
     # Register handlers for application-specific exceptions
-    app.add_exception_handler(APIError, api_error_handler)
+    app.add_exception_handler(
+        APIError, 
+        cast(Callable[[Request, Exception], Awaitable[Response]], api_error_handler)
+    )
     
     # Register handlers for specific authentication/authorization errors
-    app.add_exception_handler(AuthenticationError, authentication_error_handler)
-    app.add_exception_handler(AuthorizationError, authorization_error_handler)
-    app.add_exception_handler(InvalidTokenError, invalid_token_handler)
-    app.add_exception_handler(TokenExpiredError, token_expired_handler)
+    app.add_exception_handler(
+        AuthenticationError, 
+        cast(Callable[[Request, Exception], Awaitable[Response]], authentication_error_handler)
+    )
+    app.add_exception_handler(
+        AuthorizationError, 
+        cast(Callable[[Request, Exception], Awaitable[Response]], authorization_error_handler)
+    )
+    app.add_exception_handler(
+        InvalidTokenError, 
+        cast(Callable[[Request, Exception], Awaitable[Response]], invalid_token_handler)
+    )
+    app.add_exception_handler(
+        TokenExpiredError, 
+        cast(Callable[[Request, Exception], Awaitable[Response]], token_expired_handler)
+    )
     
     # Register handler for all other unhandled exceptions
-    app.add_exception_handler(Exception, unhandled_exception_handler)
+    app.add_exception_handler(
+        Exception, 
+        cast(Callable[[Request, Exception], Awaitable[Response]], unhandled_exception_handler)
+    )
     
     logger.info("HIPAA-compliant exception handlers registered")
 
@@ -232,11 +264,16 @@ async def application_validation_error_handler(
         error_type="application_validation_error"
     )
     
-    # Create sanitized response
+    # For validation errors, we want to preserve the original message
+    # since validation error messages don't contain PHI and are needed by clients
+    error_message = str(exc)
+    
+    # Create response with original validation error message
     content = ErrorResponse(
         error_id=error_id,
         error_type="application_validation_error",
-        message=sanitize_error_message(str(exc))
+        message=error_message,
+        detail=error_message  # Ensure detail field has the validation message too
     ).model_dump()
     content["status_code"] = HTTP_400_BAD_REQUEST
     
