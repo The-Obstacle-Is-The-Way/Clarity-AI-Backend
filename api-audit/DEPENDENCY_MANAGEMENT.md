@@ -16,11 +16,14 @@ This document analyzes the dependency injection patterns in the Clarity AI Backe
 
 ### 2. Direct Infrastructure Dependencies
 
-Several API route files import concrete implementations directly from the infrastructure layer, violating clean architecture principles:
+Several API route files import concrete implementations directly from the infrastructure layer, violating clean architecture principles. SPARC analysis confirmed this issue with multiple instances detected:
 
 ```python
 # Direct infrastructure import (violates clean architecture)
 from app.infrastructure.logging.audit_logger import audit_log_phi_access
+
+# Example from SPARC analysis
+from app.infrastructure.aws.real_aws_services import S3Service
 
 # Proper interface import (follows clean architecture)
 from app.core.interfaces.services.alert_service_interface import AlertServiceInterface
@@ -30,6 +33,7 @@ This pattern makes it difficult to:
 - Replace implementations for testing
 - Swap infrastructure components
 - Maintain clear separation between layers
+- Ensure HIPAA compliance across implementation changes
 
 ### 3. Inconsistent Dependency Function Signatures
 
@@ -62,11 +66,13 @@ Many services are injected without proper interface definitions:
 
 ### 5. Redis Dependency Management
 
-Redis client (`app.state.redis`) and pool (`app.state.redis_pool`) are initialized directly in the `lifespan` manager in `app_factory.py` and stored in `app.state`. This approach:
+Redis client (`app.state.redis`) and pool (`app.state.redis_pool`) are initialized directly in the `lifespan` manager in `app_factory.py` and stored in `app.state`. SPARC analysis confirmed this as a violation of clean architecture principles, as it creates direct dependencies on infrastructure components in the application layer. This approach:
 
 - Violates dependency injection principles
 - Makes testing difficult
 - Creates tight coupling between FastAPI and Redis implementation
+- Complicates cloud migration scenarios
+- Prevents proper interface abstraction
 
 ## Impact on Testing
 
@@ -78,11 +84,27 @@ These dependency management issues directly impact test capabilities:
 
 ## Impact on HIPAA Compliance
 
-Proper dependency management is crucial for HIPAA compliance:
+Proper dependency management is crucial for HIPAA compliance. SPARC analysis revealed specific violations that create PHI exposure risks:
+
+```python
+async def __call__(self, request: Request, call_next):
+    try:
+        response = await call_next(request)
+        return response
+    except Exception as e:
+        # Inconsistent error handling exposes PHI
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(e)}  # PHI exposure risk
+        )
+```
+
+These issues affect multiple compliance areas:
 
 1. **Audit Logging**: Inconsistent injection of audit loggers risks missing critical security events
 2. **Error Handling**: Proper PHI sanitization depends on consistent error handling through dependencies
 3. **Access Control**: Authentication/authorization depends on properly injected security services
+4. **Exception Management**: Direct exposure of exception details risks PHI leakage
 
 ## Recommendations
 
