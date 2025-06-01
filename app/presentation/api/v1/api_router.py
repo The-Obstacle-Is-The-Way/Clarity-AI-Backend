@@ -24,7 +24,7 @@ from app.presentation.api.v1.endpoints.actigraphy import router as actigraphy_ro
 # Removed old analytics routes import - now using consolidated endpoints file
 from app.presentation.api.v1.endpoints.auth import router as auth_router
 from app.presentation.api.v1.endpoints.biometric import router as biometric_router
-from app.presentation.api.v1.routes.digital_twin import router as digital_twin_router
+from app.presentation.api.v1.endpoints.digital_twin import router as digital_twin_router
 from app.presentation.api.v1.routes.mentallama import router as mentallama_router
 from app.presentation.api.v1.routes.ml import router as ml_router
 from app.presentation.api.v1.endpoints.patient import router as patient_router_endpoint
@@ -65,7 +65,7 @@ api_v1_router.include_router(
     tags=["Temporal Neurotransmitter"],
 )
 api_v1_router.include_router(xgboost_router, prefix="/xgboost", tags=["XGBoost"])
-api_v1_router.include_router(digital_twin_router, prefix="/digital-twins", tags=["Digital Twins"])
+api_v1_router.include_router(digital_twin_router, prefix="/digital-twin", tags=["digital-twin"])  
 # Use the endpoint implementation instead of the route version
 api_v1_router.include_router(patient_router_endpoint, prefix="/patients", tags=["Patients"])
 

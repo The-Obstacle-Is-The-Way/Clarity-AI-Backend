@@ -5,11 +5,9 @@ This module provides dependency injection for the biometric service
 following clean architecture principles and SOLID design patterns.
 """
 
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import Depends
-
-from typing import cast
 
 from app.core.interfaces.services.biometric_service_interface import BiometricServiceInterface
 from app.infrastructure.services.biometric.biometric_service import BiometricService
