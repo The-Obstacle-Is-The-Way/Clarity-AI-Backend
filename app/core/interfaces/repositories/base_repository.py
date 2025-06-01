@@ -7,7 +7,7 @@ All concrete repository interfaces should extend this base.
 """
 
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Any
 from uuid import UUID
 
 # Generic type variable for domain entities
@@ -96,7 +96,7 @@ class BaseRepositoryInterface(Generic[T], ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def count(self, **filters) -> int:
+    async def count(self, **filters: Any) -> int:
         """
         Count the number of entities matching the given filters.
 

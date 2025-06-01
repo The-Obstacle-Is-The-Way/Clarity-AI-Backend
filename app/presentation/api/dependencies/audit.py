@@ -11,11 +11,9 @@ from app.core.interfaces.repositories.audit_log_repository_interface import (
     IAuditLogRepository,
 )
 from app.core.interfaces.services.audit_logger_interface import IAuditLogger
-from app.infrastructure.persistence.repositories.audit_log_repository import (
-    SQLAlchemyAuditLogRepository,
-)
+from app.infrastructure.persistence.repositories.audit_log_repository import AuditLogRepository
 
-from .repository import get_repository
+from app.presentation.api.dependencies.repositories import get_repository
 
 
 def get_audit_log_repository() -> IAuditLogRepository:
@@ -25,7 +23,7 @@ def get_audit_log_repository() -> IAuditLogRepository:
     Returns:
         IAuditLogRepository: Audit log repository implementation
     """
-    return get_repository(SQLAlchemyAuditLogRepository)
+    return get_repository(AuditLogRepository)
 
 
 def get_audit_log_service(

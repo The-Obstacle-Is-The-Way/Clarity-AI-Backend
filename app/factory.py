@@ -78,6 +78,9 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
         else:
             current_settings = global_get_settings()
             fastapi_app.state.settings = current_settings
+            # At this point, ensure settings is not None for type checker
+            assert current_settings is not None, "Settings must be initialized"
+
             logger.info(
                 "LIFESPAN_SETTINGS_RESOLVED: Using global settings. Env: %s",
                 current_settings.ENVIRONMENT,

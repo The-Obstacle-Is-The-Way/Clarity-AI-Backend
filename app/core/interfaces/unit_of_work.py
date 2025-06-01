@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from types import TracebackType
+from typing import Any
 
 
 class IUnitOfWork(ABC):
@@ -70,36 +71,36 @@ class IUnitOfWork(ABC):
     # Repository property protocols
     @property
     @abstractmethod
-    def users(self):
+    def users(self) -> Any:
         """Access to the user repository within this transaction."""
         pass
 
     @property
     @abstractmethod
-    def patients(self):
+    def patients(self) -> Any:
         """Access to the patient repository within this transaction."""
         pass
 
     @property
     @abstractmethod
-    def digital_twins(self):
+    def digital_twins(self) -> Any:
         """Access to the digital twin repository within this transaction."""
         pass
 
     @property
     @abstractmethod
-    def biometric_rules(self):
+    def biometric_rules(self) -> Any:
         """Access to the biometric rule repository within this transaction."""
         pass
 
     @property
     @abstractmethod
-    def biometric_alerts(self):
+    def biometric_alerts(self) -> Any:
         """Access to the biometric alert repository within this transaction."""
         pass
 
     @property
     @abstractmethod
-    def biometric_twins(self):
+    def biometric_twins(self) -> Any:
         """Access to the biometric twin repository within this transaction."""
         pass

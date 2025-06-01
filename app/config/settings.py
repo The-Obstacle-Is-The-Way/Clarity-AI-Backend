@@ -65,15 +65,17 @@ class MentalLlamaSettings(BaseSettings):
 
     @field_validator("model_mappings", mode="before")
     @classmethod
-    def parse_model_mappings(cls, v: str | dict) -> dict[str, str]:
+    def parse_model_mappings(cls, v: str | dict[str, str]) -> dict[str, str]:
         if isinstance(v, str):
             try:
-                parsed = json.loads(v)
-                if isinstance(parsed, dict):
-                    return parsed
-                raise ValueError("Invalid JSON format for MENTALLAMA_MODEL_MAPPINGS: expected dict")
-            except json.JSONDecodeError:
-                raise ValueError("Invalid JSON string for MENTALLAMA_MODEL_MAPPINGS")
+                parsed: dict[str, str] = json.loads(v)
+            except json.JSONDecodeError as err:
+                raise ValueError("Invalid JSON string for MENTALLAMA_MODEL_MAPPINGS") from err
+            if isinstance(parsed, dict):
+                return parsed
+            raise ValueError(
+                "Invalid JSON format for MENTALLAMA_MODEL_MAPPINGS: expected dict"
+            )
         return v
 
 
@@ -253,10 +255,7 @@ class Settings(BaseSettings):
             if v.startswith("[") and v.endswith("]"):
                 try:
                     # Try parsing as JSON list
-                    parsed = json.loads(v)
-                    if isinstance(parsed, list):
-                        return [str(item) for item in parsed]
-                    raise ValueError("Invalid JSON format: expected list")
+                    parsed: list[str] = json.loads(v)
                 except json.JSONDecodeError:
                     # Fallback to comma-separated if JSON fails
                     return [origin.strip() for origin in v.strip("[]").split(",") if origin.strip()]
@@ -279,15 +278,17 @@ class Settings(BaseSettings):
 
     @field_validator("PHI_WHITELIST_PATTERNS", mode="before")
     @classmethod
-    def parse_phi_whitelist(cls, v: str | dict | None) -> dict[str, list[str]] | None:
+    def parse_phi_whitelist(
+        cls, v: str | dict[str, list[str]] | None
+    ) -> dict[str, list[str]] | None:
         if isinstance(v, str):
             try:
-                parsed = json.loads(v)
-                if isinstance(parsed, dict):
-                    return parsed
-                raise ValueError("Invalid JSON format for PHI_WHITELIST_PATTERNS: expected dict")
-            except json.JSONDecodeError:
-                raise ValueError("Invalid JSON string for PHI_WHITELIST_PATTERNS")
+                parsed: dict[str, list[str]] = json.loads(v)
+            except json.JSONDecodeError as err:
+                raise ValueError("Invalid JSON string for PHI_WHITELIST_PATTERNS") from err
+            if isinstance(parsed, dict):
+                return parsed
+            raise ValueError("Invalid JSON format for PHI_WHITELIST_PATTERNS: expected dict")
         return v
 
     @field_validator("PHI_EXCLUDE_PATHS", mode="before")
@@ -296,14 +297,14 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             if v.startswith("[") and v.endswith("]"):
                 try:
-                    parsed = json.loads(v)
-                    if isinstance(parsed, list):
-                        return [str(item) for item in parsed]
-                    raise ValueError("Invalid JSON format: expected list")
+                    parsed: list[str] = json.loads(v)
                 except json.JSONDecodeError:
+                    # Fallback to manual splitting
                     return [path.strip() for path in v.strip("[]").split(",") if path.strip()]
-            else:
-                return [path.strip() for path in v.split(",") if path.strip()]
+                if isinstance(parsed, list):
+                    return [str(item) for item in parsed]
+                raise ValueError("Invalid JSON format: expected list")
+            return [path.strip() for path in v.split(",") if path.strip()]
         elif isinstance(v, list):
             return v
         raise ValueError(f"Invalid PHI_EXCLUDE_PATHS: {v}")
