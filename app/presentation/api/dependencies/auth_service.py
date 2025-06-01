@@ -6,20 +6,24 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from app.infrastructure.security.password.password_handler import PasswordHandler
+from app.core.interfaces.security.password_handler_interface import IPasswordHandler
+from app.core.interfaces.security.jwt_service_interface import IJwtService
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
 from app.domain.interfaces.user_repository import UserRepositoryInterface
-from app.infrastructure.security.jwt.jwt_service import JWTService, get_jwt_service
+
+from app.application.security.authentication_service import AuthenticationService
+
 from app.presentation.api.dependencies.repositories import get_user_repository
-from app.presentation.api.dependencies.security import get_password_handler
-from app.infrastructure.security.auth.authentication_service import (
-    AuthenticationService,
-)
+from app.presentation.api.dependencies.security import get_password_handler, get_jwt_service
+from app.presentation.api.dependencies.logging import get_audit_logger
+from app.core.config.settings import get_settings
 
 
 def get_auth_service(
-    password_handler: PasswordHandler = Depends(get_password_handler),
+    password_handler: IPasswordHandler = Depends(get_password_handler),
     user_repository: UserRepositoryInterface = Depends(get_user_repository),
-    jwt_service: JWTService = Depends(get_jwt_service),
+    jwt_service: IJwtService = Depends(get_jwt_service),
+    audit_logger: IAuditLogger = Depends(get_audit_logger),
 ) -> AuthenticationService:
     """Dependency injector for AuthenticationService.
 
@@ -29,9 +33,11 @@ def get_auth_service(
     # Direct instantiation is more predictable for FastAPI
     # This avoids issues with container resolution and interface type hints
     return AuthenticationService(
-        password_handler=password_handler,
         user_repository=user_repository,
         jwt_service=jwt_service,
+        password_service=password_handler,
+        audit_logger=audit_logger,
+        settings=get_settings()
     )
 
 

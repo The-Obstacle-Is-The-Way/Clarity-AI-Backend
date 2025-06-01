@@ -29,9 +29,9 @@ from app.domain.exceptions import (
     UserNotFoundError,
 )
 from app.domain.interfaces.user_repository import UserRepositoryInterface
-from app.infrastructure.logging.audit_logger import AuditLogger
-from app.infrastructure.security.jwt.jwt_service import JWTService
-from app.infrastructure.security.password.password_service import PasswordService
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
+from app.core.interfaces.security.jwt_service_interface import IJwtService
+from app.core.interfaces.security.password_handler_interface import IPasswordHandler
 
 
 class AuthenticationService:
@@ -45,9 +45,9 @@ class AuthenticationService:
     def __init__(
         self,
         user_repository: UserRepositoryInterface,
-        jwt_service: JWTService,
-        password_service: PasswordService,
-        audit_logger: AuditLogger,
+        jwt_service: IJwtService,
+        password_service: IPasswordHandler,
+        audit_logger: IAuditLogger,
         settings: Settings,
     ):
         """
