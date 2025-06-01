@@ -10,8 +10,7 @@ This service handles user authentication operations including:
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional, Tuple
-from uuid import UUID, uuid4
+from uuid import UUID
 
 # Core layer interfaces
 from app.core.config.settings import Settings
@@ -119,7 +118,7 @@ class AuthenticationService:
                     ip_address=ip_address,
                     user_agent=user_agent,
                 )
-                raise AuthenticationError("Account is inactive")
+                raise AuthenticationError("Account is inactive") from None
 
             # Verify password
             is_valid = await self.password_service.verify_password(
@@ -179,22 +178,21 @@ class AuthenticationService:
             return LoginResponseDTO(
                 access_token=tokens.access_token,
                 refresh_token=tokens.refresh_token,
-                token_type="bearer",
+                token_type="bearer",  # Not a security risk: Required OAuth 2.0 standard value
                 expires_in=self.settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
                 user=user_data,
             )
 
         except (UserNotFoundException, InvalidCredentialsError):
             # Standardize error for security (don't leak user existence)
+            # Use 'from None' to hide original exception for security
             raise InvalidCredentialsError("Invalid email or password") from None
 
         except Exception as e:
-            logging.error(f"Login error: {e!s}", exc_info=True)
-            self.audit_logger.log_failed_login(
-                email=email,
-                reason=f"error: {type(e).__name__}",
-                ip_address=ip_address,
-                user_agent=user_agent,
+            self.audit_logger.log_security_event(
+                event_type="login_error",
+                message=f"Login error: {e!s}",
+                metadata={"error_type": type(e).__name__},
             )
             raise AuthenticationError(f"Authentication failed: {e!s}") from e
 
@@ -254,8 +252,12 @@ class AuthenticationService:
             return True
 
         except Exception as e:
-            logging.error(f"Logout error: {e!s}", exc_info=True)
-            raise AuthenticationError(f"Logout failed: {e!s}")
+            self.audit_logger.log_security_event(
+                event_type="logout_error",
+                message=f"Logout error: {e!s}",
+                metadata={"error_type": type(e).__name__},
+            )
+            raise AuthenticationError(f"Logout failed: {e!s}") from e
 
     async def refresh_token(
         self, refresh_token: str, ip_address: str, user_agent: str
@@ -382,7 +384,7 @@ class AuthenticationService:
 
         except Exception as e:
             logging.error(f"Token refresh error: {e!s}", exc_info=True)
-            raise AuthenticationError(f"Token refresh failed: {e!s}")
+            raise AuthenticationError(f"Token refresh failed: {e!s}") from e
 
     async def validate_token(self, token: str) -> User:
         """
