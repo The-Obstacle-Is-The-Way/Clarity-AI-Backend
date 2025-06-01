@@ -6,7 +6,7 @@ Create a standardized, clean architecture-compliant API structure for the Clarit
 
 ## Implementation Phases
 
-This plan divides the standardization process into four distinct phases to minimize disruption and ensure quality at each step.
+This plan divides the standardization process into four distinct phases to minimize disruption and ensure quality at each step. Based on SPARC analysis findings, special attention will be given to PHI exposure risks and critical Clean Architecture violations.
 
 ### Phase 1: Core Architecture Standardization
 
@@ -89,9 +89,34 @@ Create a comprehensive markdown document detailing all available dependencies:
 | `get_alert_service` | `IAlertService` | `AlertService` | Alert management |
 ```
 
-### Phase 2: Endpoint Consolidation
+#### 1.4 Define Centralized Error Handling
 
-**Goal**: Standardize all API endpoints into a single pattern while maintaining backward compatibility.
+Based on SPARC's discovery of PHI exposure risks, implement a centralized error handling system:
+
+```python
+# app/core/utils/error_handling.py
+from fastapi import Request, status
+from fastapi.responses import JSONResponse
+from app.core.interfaces.logging import IAuditLogger
+
+async def handle_exception(request: Request, exc: Exception, audit_logger: IAuditLogger) -> JSONResponse:
+    """Handle exceptions without exposing PHI.
+    
+    Sanitizes error messages and logs the full error details securely.
+    """
+    # Log the full error with PHI for audit purposes
+    await audit_logger.log_error(request.url.path, str(exc), request.client.host)
+    
+    # Return sanitized error without PHI
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "An internal server error occurred"}
+    )
+```
+
+### Phase 2: Endpoint Consolidation and HIPAA Compliance
+
+**Goal**: Standardize all API endpoints into a single pattern while maintaining backward compatibility and ensuring HIPAA compliance.
 
 #### 2.1 Choose Standard Pattern
 
@@ -121,7 +146,21 @@ Implement the following missing endpoints:
 
 4. **Biometric Alert Rules**: Update `app/presentation/api/v1/endpoints/biometric_alert_rules.py`
    - Implement missing handlers for `PATCH /alerts/{id}/status` and `POST /patients/{id}/trigger`
-   - Ensure proper error handling with PHI sanitization
+   - Replace code like this identified by SPARC:
+   ```python
+   try:
+       # Implementation
+   except Exception as e:
+       # Unsafe: Exposes PHI
+       return JSONResponse(status_code=500, content={"detail": str(e)})
+   ```
+   - With centralized error handling:
+   ```python
+   try:
+       # Implementation
+   except Exception as e:
+       return await handle_exception(request, e, audit_logger)
+   ```
 
 #### 2.3 Update API Router
 
@@ -161,11 +200,24 @@ async def test_create_patient_with_valid_data(client, auth_headers):
 
 #### 3.3 Validate HIPAA Compliance
 
-Create specific tests to verify HIPAA compliance:
+Create specific tests to verify HIPAA compliance, addressing the PHI exposure issues identified by SPARC:
 
-1. PHI sanitization in error responses
+1. PHI sanitization in error responses:
+   ```python
+   async def test_error_response_sanitizes_phi(client, auth_headers):
+       """Test that error responses do not leak PHI."""
+       # Trigger an error that would contain PHI
+       response = await client.get("/api/v1/patients/invalid-id", headers=auth_headers)
+       
+       # Verify sanitized response
+       assert response.status_code == 500
+       assert response.json() == {"detail": "An internal server error occurred"}
+       assert "invalid-id" not in response.text  # Ensure PHI not leaked
+   ```
+
 2. Proper audit logging of access events
 3. Authorization checks for patient data access
+4. Exception handling middleware compliance
 
 ### Phase 4: Documentation & Finalization
 
@@ -205,21 +257,24 @@ Once all tests pass with the new structure:
 
 ## Implementation Timeline
 
-| Phase | Task | Estimated Time | Dependencies |
-|-------|------|----------------|--------------|
-| 1.1 | Define Missing Interfaces | 1 day | None |
-| 1.2 | Standardize Dependency Structure | 2 days | 1.1 |
-| 1.3 | Create Dependency Documentation | 1 day | 1.2 |
-| 2.1 | Choose Standard Pattern | 0.5 days | 1.1-1.3 |
-| 2.2 | Implement Missing Endpoints | 3 days | 2.1 |
-| 2.3 | Update API Router | 0.5 days | 2.2 |
-| 3.1 | Create Test Plan | 1 day | 2.1-2.3 |
-| 3.2 | Implement Missing Tests | 3 days | 3.1 |
-| 3.3 | Validate HIPAA Compliance | 1 day | 3.2 |
-| 4.1 | Generate OpenAPI Documentation | 1 day | 3.1-3.3 |
-| 4.2 | Create API Style Guide | 1 day | 4.1 |
-| 4.3 | Remove Deprecated Routes | 1 day | 4.2 |
-| **Total** | | **~15 days** | |
+Based on SPARC analysis findings, we've adjusted priorities to address critical HIPAA risks first:
+
+| Phase | Task | Estimated Time | Dependencies | Priority |
+|-------|------|----------------|--------------|----------|
+| 1.1 | Define Missing Interfaces | 1 day | None | High |
+| 1.2 | Standardize Dependency Structure | 2 days | 1.1 | High |
+| 1.3 | Create Dependency Documentation | 1 day | 1.2 | Medium |
+| 1.4 | Define Centralized Error Handling | 1 day | 1.1 | Critical |
+| 2.1 | Choose Standard Pattern | 0.5 days | 1.1-1.4 | Medium |
+| 2.2 | Implement Missing Endpoints | 3 days | 2.1 | High |
+| 2.3 | Update API Router | 0.5 days | 2.2 | Medium |
+| 3.1 | Create Test Plan | 1 day | 2.1-2.3 | Medium |
+| 3.2 | Implement Missing Tests | 3 days | 3.1 | High |
+| 3.3 | Validate HIPAA Compliance | 1 day | 3.2 | Critical |
+| 4.1 | Generate OpenAPI Documentation | 1 day | 3.1-3.3 | Low |
+| 4.2 | Create API Style Guide | 1 day | 4.1 | Low |
+| 4.3 | Remove Deprecated Routes | 1 day | 4.2 | Medium |
+| **Total** | | **~16 days** | | |
 
 ## Risk Management
 
