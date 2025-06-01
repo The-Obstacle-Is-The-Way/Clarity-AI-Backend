@@ -8,47 +8,34 @@ This service handles user authentication operations including:
 - HIPAA-compliant authorization
 """
 
-import logging
-import uuid
 from datetime import datetime, timedelta
-from typing import Dict
 from uuid import UUID
 
-# Core interfaces and configuration
-from app.core.config.settings import Settings
-from app.core.constants.audit import AuditEventType, AuditSeverity
-from app.core.interfaces.services.audit_logger_interface import IAuditLogger
-from app.core.interfaces.security.jwt_service_interface import IJwtService
-from app.core.interfaces.security.password_handler_interface import IPasswordHandler
-
-# Domain entities and value objects
-from app.domain.entities.user import User
-
-# Application-level exceptions
-from app.application.security.exceptions import (
-    AuthenticationError,
-    CredentialsException,
-    InvalidTokenError,
-    UserNotFoundException,
-)
-
-# Application layer DTOs
+# Application-level exceptions and DTOs
 from app.application.dtos.auth_dtos import (
     LoginResponseDTO,
     TokenPairDTO,
     UserSessionDTO,
 )
-
-# Domain layer entities and exceptions
-from app.domain.entities.user import User
-from app.domain.exceptions import (
+from app.application.security.exceptions import (
     AuthenticationError,
-    InvalidCredentialsError,
     InvalidTokenError,
+    UserNotFoundException,
+)
+
+# Core interfaces and configuration
+from app.core.config.settings import Settings
+from app.core.domain.entities.user import User
+from app.core.interfaces.security.jwt_service_interface import IJwtService
+from app.core.interfaces.security.password_handler_interface import IPasswordHandler
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
+
+# Domain interfaces and exceptions
+from app.domain.exceptions import (
+    InvalidCredentialsError,
     MissingTokenError,
     PermissionDeniedError,
     TokenExpiredError,
-    UserNotFoundException,
 )
 from app.domain.interfaces.user_repository import UserRepositoryInterface
 
@@ -62,7 +49,9 @@ class AuthenticationService:
     """
     
     # Constants to avoid hardcoded security-sensitive strings
-    TOKEN_TYPE_BEARER = "bearer"  # OAuth 2.0 standard token type
+    # Token type used in Authorization headers
+    # This is not a password but a standard OAuth 2.0 token type identifier
+    TOKEN_TYPE_BEARER = "bearer"  # noqa: S105 - Not a password, standard OAuth identifier
 
     def __init__(
         self,
