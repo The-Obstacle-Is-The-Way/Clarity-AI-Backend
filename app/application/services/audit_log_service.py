@@ -147,7 +147,7 @@ class AuditLogService(IAuditLogger):
         status: str = "failure",
         severity: AuditSeverity = AuditSeverity.HIGH,
         metadata: dict[str, Any] | None = None,
-        event_type: AuditEventType | str = AuditEventType.LOGIN_FAILURE,
+        event_type: AuditEventType | str = AuditEventType.LOGIN_FAILED,
     ) -> str:
         """
         Log a security-related event for audit purposes.
@@ -158,7 +158,7 @@ class AuditLogService(IAuditLogger):
             status: Result of the action (success, failure, etc.)
             severity: Severity level of the event
             metadata: Additional contextual information about the event
-            event_type: Type of security event (default is LOGIN_FAILURE)
+            event_type: Type of security event (default is LOGIN_FAILED)
 
         Returns:
             ID of the created audit log entry

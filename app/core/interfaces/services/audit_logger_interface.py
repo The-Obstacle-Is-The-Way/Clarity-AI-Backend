@@ -54,10 +54,13 @@ class AuditEventType(str, Enum):
 class AuditSeverity(str, Enum):
     """Severity levels for audit events."""
     
-    INFO = "info"
-    WARNING = "warning"
-    ERROR = "error"
-    CRITICAL = "critical"
+    CRITICAL = "critical"  # Severe events requiring immediate attention
+    HIGH = "high"          # High priority events requiring attention soon
+    ERROR = "error"        # Error conditions
+    WARNING = "warning"    # Warning conditions
+    INFO = "info"          # Informational messages
+    DEBUG = "debug"        # Debug-level messages
+    TRACE = "trace"        # Detailed trace information
 
 
 class IAuditLogger(ABC):
