@@ -10,14 +10,23 @@ This service handles user authentication operations including:
 
 import logging
 from datetime import datetime, timedelta
-from uuid import UUID
+from typing import Any, Dict, Optional, Tuple
+from uuid import UUID, uuid4
 
+# Core layer interfaces
+from app.core.config.settings import Settings
+from app.core.interfaces.security.jwt_service_interface import IJwtService
+from app.core.interfaces.security.password_handler_interface import IPasswordHandler
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
+
+# Application layer DTOs
 from app.application.dtos.auth_dtos import (
     LoginResponseDTO,
     TokenPairDTO,
     UserSessionDTO,
 )
-from app.core.config.settings import Settings
+
+# Domain layer entities and exceptions
 from app.domain.entities.user import User
 from app.domain.exceptions import (
     AuthenticationError,
@@ -29,9 +38,6 @@ from app.domain.exceptions import (
     UserNotFoundException,
 )
 from app.domain.interfaces.user_repository import UserRepositoryInterface
-from app.core.interfaces.services.audit_logger_interface import IAuditLogger
-from app.core.interfaces.security.jwt_service_interface import IJwtService
-from app.core.interfaces.security.password_handler_interface import IPasswordHandler
 
 
 class AuthenticationService:
@@ -178,9 +184,9 @@ class AuthenticationService:
                 user=user_data,
             )
 
-        except (UserNotFoundError, InvalidCredentialsError):
+        except (UserNotFoundException, InvalidCredentialsError):
             # Standardize error for security (don't leak user existence)
-            raise InvalidCredentialsError("Invalid email or password")
+            raise InvalidCredentialsError("Invalid email or password") from None
 
         except Exception as e:
             logging.error(f"Login error: {e!s}", exc_info=True)
@@ -190,7 +196,7 @@ class AuthenticationService:
                 ip_address=ip_address,
                 user_agent=user_agent,
             )
-            raise AuthenticationError(f"Authentication failed: {e!s}")
+            raise AuthenticationError(f"Authentication failed: {e!s}") from e
 
     async def logout(self, user_id: str, session_id: str, all_sessions: bool = False) -> bool:
         """
