@@ -10,7 +10,7 @@ from typing import Annotated, cast
 from fastapi import Depends
 
 from app.core.interfaces.services.biometric_service_interface import BiometricServiceInterface
-from app.infrastructure.services.biometric.biometric_service import BiometricService
+from app.infrastructure.services.biometric_service import BiometricService
 
 
 def get_biometric_service() -> BiometricServiceInterface:

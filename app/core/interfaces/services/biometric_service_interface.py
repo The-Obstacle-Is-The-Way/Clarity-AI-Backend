@@ -140,3 +140,13 @@ class BiometricServiceInterface(ABC):
             Quality metrics including completeness, consistency, and potential issues
         """
         raise NotImplementedError
+
+
+# Backwards-compatibility alias for legacy imports
+IBiometricService = BiometricServiceInterface  # pylint: disable=invalid-name
+
+# Public exports
+__all__ = [
+    "BiometricServiceInterface",
+    "IBiometricService",
+]

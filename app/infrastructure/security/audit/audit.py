@@ -188,7 +188,7 @@ class AuditLogger(IAuditLogger):
 
         return event_id
 
-    def log_phi_access(
+    async def log_phi_access(
         self,
         actor_id: str,
         patient_id: str,
@@ -552,6 +552,94 @@ class AuditLogger(IAuditLogger):
         except Exception as e:
             logger.error(f"Failed to send log to external audit service: {e!s}")
 
+    # ---------------------------------------------------------------------
+    # Implementations required by IAuditLogger (stubbed to maintain compat)
+    # ---------------------------------------------------------------------
+
+    async def log_authentication(
+        self,
+        user_id: uuid.UUID | None,
+        status: str,
+        ip_address: str,
+        user_agent: str,
+        details: dict[str, Any] | None = None,
+    ) -> None:  # noqa: D401
+        """Alias to log_auth_event for interface compatibility."""
+        self.log_auth_event(
+            actor_id=str(user_id) if user_id else "unknown",
+            event_type="authentication",
+            success=status == "success",
+            details=details or {"ip_address": ip_address, "user_agent": user_agent},
+            user_id=str(user_id) if user_id else None,
+        )
+
+    async def log_authorization(
+        self,
+        user_id: uuid.UUID,
+        resource_type: str,
+        resource_id: str | None,
+        action: str,
+        status: str,
+        details: dict[str, Any] | None = None,
+    ) -> None:  # noqa: D401
+        self.log_security_event(
+            event_type=AuditEventType.ACCESS_GRANTED if status == "granted" else AuditEventType.ACCESS_DENIED,
+            description=f"{action} {resource_type}:{resource_id}",
+            severity=AuditSeverity.INFO,
+            user_id=str(user_id),
+            metadata=details,
+        )
+
+    async def log_error(
+        self,
+        error_id: str,
+        error_type: str,
+        original_message: str,
+        sanitized_message: str,
+        status_code: int,
+        request_path: str,
+        request_method: str,
+        details: dict[str, Any] | None = None,
+    ) -> None:  # noqa: D401
+        self.logger.error(
+            json.dumps(
+                {
+                    "event": "error",
+                    "error_id": error_id,
+                    "error_type": error_type,
+                    "original_message": original_message,
+                    "sanitized_message": sanitized_message,
+                    "status_code": status_code,
+                    "request_path": request_path,
+                    "request_method": request_method,
+                    "details": details or {},
+                }
+            )
+        )
+
+    async def log_operation(
+        self,
+        user_id: uuid.UUID,
+        operation_type: str,
+        resource_type: str,
+        resource_id: str | None,
+        status: str,
+        details: dict[str, Any] | None = None,
+    ) -> None:  # noqa: D401
+        self.logger.info(
+            json.dumps(
+                {
+                    "event": "operation",
+                    "user_id": str(user_id),
+                    "operation_type": operation_type,
+                    "resource_type": resource_type,
+                    "resource_id": resource_id,
+                    "status": status,
+                    "details": details or {},
+                }
+            )
+        )
+
 
 # Try to initialize the audit logger, fall back to dummy implementation on error
 try:
@@ -575,22 +663,18 @@ except Exception as e:
                 "DummyAuditLogger.log_security_event called but logger not properly initialized"
             )
 
-        def log_phi_access(
+        async def log_phi_access(
             self,
-            actor_id: str,
-            patient_id: str,
-            action: str,
+            user_id: uuid.UUID | str,  # type: ignore[override]
             resource_type: str,
-            status: str,
-            phi_fields: list[str] | None = None,
-            reason: str | None = None,
-            request: Any | None = None,
-            request_context: dict[str, Any] | None = None,
-        ) -> str:
+            resource_id: str,
+            action: str,
+            details: dict[str, Any] | None = None,
+        ) -> None:  # noqa: D401
+            """Stub implementation for PHI access logging."""
             logger.warning(
                 "DummyAuditLogger.log_phi_access called but logger not properly initialized"
             )
-            return str(uuid.uuid4())
 
         def log_data_access(
             self,
@@ -628,6 +712,8 @@ except Exception as e:
             success: bool,
             details: dict[str, Any] | None = None,
             user_id: str | None = None,
+            description: str | None = None,
+            ip_address: str | None = None,
         ) -> str:
             """Log authentication-related events."""
             logger.warning(
@@ -642,6 +728,8 @@ except Exception as e:
             details: dict[str, Any] | None = None,
             actor_id: str | None = None,
             user_id: str | None = None,
+            severity: AuditSeverity = AuditSeverity.INFO,
+            metadata: dict[str, Any] | None = None,
         ) -> str:
             """Log system-level events for operational auditing."""
             logger.warning(
@@ -689,6 +777,60 @@ except Exception as e:
 
         def _send_to_external_audit_service(self, *args, **kwargs) -> None:
             pass
+
+        # --- Added implementations to satisfy IAuditLogger abstract methods ---
+        async def log_authentication(
+            self,
+            user_id: uuid.UUID | None,  # type: ignore[override]
+            status: str,
+            ip_address: str,
+            user_agent: str,
+            details: dict[str, Any] | None = None,
+        ) -> None:  # noqa: D401
+            logger.warning(
+                "DummyAuditLogger.log_authentication called but logger not properly initialized"
+            )
+
+        async def log_authorization(
+            self,
+            user_id: uuid.UUID,  # type: ignore[override]
+            resource_type: str,
+            resource_id: str | None,
+            action: str,
+            status: str,
+            details: dict[str, Any] | None = None,
+        ) -> None:  # noqa: D401
+            logger.warning(
+                "DummyAuditLogger.log_authorization called but logger not properly initialized"
+            )
+
+        async def log_error(
+            self,
+            error_id: str,
+            error_type: str,
+            original_message: str,
+            sanitized_message: str,
+            status_code: int,
+            request_path: str,
+            request_method: str,
+            details: dict[str, Any] | None = None,
+        ) -> None:  # noqa: D401
+            logger.warning(
+                "DummyAuditLogger.log_error called but logger not properly initialized"
+            )
+
+        async def log_operation(
+            self,
+            user_id: uuid.UUID,  # type: ignore[override]
+            operation_type: str,
+            resource_type: str,
+            resource_id: str | None,
+            status: str,
+            details: dict[str, Any] | None = None,
+        ) -> None:  # noqa: D401
+            logger.warning(
+                "DummyAuditLogger.log_operation called but logger not properly initialized"
+            )
 
     audit_logger = DummyAuditLogger()
     logger.warning("Using DummyAuditLogger as fallback due to initialization error")
