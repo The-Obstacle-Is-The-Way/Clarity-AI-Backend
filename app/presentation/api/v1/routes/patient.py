@@ -6,7 +6,6 @@ architecture, and HIPAA-compliant error handling.
 """
 
 import logging
-from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, status
@@ -56,15 +55,27 @@ router = APIRouter()
     tags=["Patients"],
 )
 async def read_patient(
-    patient_domain_entity: Patient = Depends(get_validated_patient_id_for_read),
-    service: PatientService = Depends(get_patient_service),
+    patient_id: UUID = Depends(get_validated_patient_id_for_read),
+    service: PatientServiceDep = Depends(),
 ) -> PatientRead:
     """
     Retrieve a patient by their ID.
-    The actual patient object is already fetched and authorized by the dependency.
+    
+    Args:
+        patient_id: UUID of the patient to retrieve
+        service: Patient service dependency
+        
+    Returns:
+        Patient data if found
+        
+    Raises:
+        HTTPException: If patient not found
     """
-    logger.info(f"Endpoint read_patient: Returning data for patient {patient_domain_entity.id}")
-    return PatientRead.model_validate(patient_domain_entity)
+    logger.info(f"Endpoint read_patient: Fetching patient with ID {patient_id}")
+    patient = await service.get_patient_by_id(patient_id)
+    if patient is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
+    return patient
 
 @router.post(
     "/",
@@ -140,6 +151,7 @@ async def update_patient(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
     return updated_patient
 
+
 @router.delete(
     "/{patient_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -165,9 +177,10 @@ async def delete_patient(
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
 
+
 @router.get(
     "/",
-    response_model=List[PatientRead],
+    response_model=list[PatientRead],
     name="patients:list_patients",
     summary="List all patients",
     dependencies=[Depends(require_roles([UserRole.ADMIN, UserRole.CLINICIAN]))]
