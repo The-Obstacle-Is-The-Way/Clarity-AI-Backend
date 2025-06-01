@@ -8,7 +8,6 @@ utilities to ensure proper HIPAA-compliant error responses and audit logging.
 import logging
 import traceback
 import uuid
-from typing import Any, cast
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -109,8 +108,8 @@ async def _log_error(
             "request_method": request.method,
         }
         
-        # Audit log the error
-        await audit_logger.log_error(
+        # Audit log the error - call directly without await since log_error is not async
+        audit_logger.log_error(
             error_id=error_id,
             error_type=error_type,
             original_message=original_message,

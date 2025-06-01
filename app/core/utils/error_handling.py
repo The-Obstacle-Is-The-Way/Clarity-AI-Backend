@@ -68,13 +68,26 @@ class ResourceNotFoundError(APIError):
 
 
 class ErrorResponse(BaseModel):
-    """Standard error response model for API responses."""
+    """Standardized error response format.
+    
+    Includes both the 'message' field for our custom format and 'detail' field for
+    compatibility with FastAPI standard error responses.
+    """
     
     error_id: str
-    status_code: int
-    message: str
     error_type: str
+    message: str
+    detail: str | None = None  # For compatibility with FastAPI standard error responses
+    status_code: int = 500
     details: dict[str, Any] | None = None
+    
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
+        """Override model_dump to ensure detail field is set from message if not explicitly provided."""
+        data = super().model_dump(**kwargs)
+        # Ensure detail is populated from message if not set
+        if data.get('detail') is None and data.get('message') is not None:
+            data['detail'] = data['message']
+        return data
 
 
 def sanitize_error_message(message: str) -> str:

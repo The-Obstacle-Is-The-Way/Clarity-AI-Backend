@@ -11,11 +11,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 
 from app.application.services.biometric_alert_rule_service import BiometricAlertRuleService
-from app.core.domain.entities.patient import Patient
+from app.application.services.patient_service import PatientService
 from app.core.domain.entities.user import UserRole
 from app.presentation.api.dependencies.auth import CurrentUserDep, DomainUser, require_roles
 from app.presentation.api.dependencies.patient import get_patient_id as get_validated_patient_id_for_read
-from app.presentation.api.dependencies.services.patient_service import PatientServiceDep
+from app.presentation.api.dependencies.services.patient_service import get_patient_service
 from app.presentation.api.schemas.patient import (
     PatientCreateRequest,
     PatientCreateResponse,
@@ -56,7 +56,8 @@ router = APIRouter()
 )
 async def read_patient(
     patient_id: UUID = Depends(get_validated_patient_id_for_read),
-    service: PatientServiceDep = Depends(),
+    service: PatientService = Depends(get_patient_service),
+    current_user: DomainUser | None = None,
 ) -> PatientRead:
     """
     Retrieve a patient by their ID.
@@ -86,9 +87,9 @@ async def read_patient(
 )
 async def create_patient(
     patient_data: PatientCreateRequest,
-    service: PatientServiceDep = Depends(),
-    current_user: CurrentUserDep = Depends(),
-) -> Patient:
+    service: PatientService = Depends(get_patient_service),
+    current_user: DomainUser = Depends(CurrentUserDep),
+) -> PatientCreateResponse:
     """Create a new patient.
 
     Args:
@@ -128,9 +129,9 @@ async def create_patient(
     dependencies=[Depends(require_roles([UserRole.ADMIN, UserRole.CLINICIAN]))]
 )
 async def update_patient(
-    patient_id: UUID,
-    patient_update_data: PatientUpdateRequest,
-    service: PatientServiceDep = Depends(),
+    patient_id: UUID = Path(..., description="Patient ID"),
+    patient_update_data: PatientUpdateRequest = ...,
+    service: PatientService = Depends(get_patient_service),
 ) -> PatientRead:
     """Update an existing patient.
     
@@ -160,8 +161,8 @@ async def update_patient(
     dependencies=[Depends(require_roles([UserRole.ADMIN]))]
 )
 async def delete_patient(
-    patient_id: UUID,
-    service: PatientServiceDep = Depends(),
+    patient_id: UUID = Path(..., description="Patient ID"),
+    service: PatientService = Depends(get_patient_service),
 ) -> None:
     """Delete a patient.
     
@@ -186,7 +187,7 @@ async def delete_patient(
     dependencies=[Depends(require_roles([UserRole.ADMIN, UserRole.CLINICIAN]))]
 )
 async def list_patients(
-    service: PatientServiceDep = Depends(),
+    service: PatientService = Depends(get_patient_service),
 ) -> list[PatientRead]:
     """List all patients.
     

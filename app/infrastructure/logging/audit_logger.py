@@ -488,6 +488,242 @@ class AuditLogger(IAuditLogger):
         return []
 
     # ------------------------------------------------------------------
+    # IAuditLogger interface implementations
+    # ------------------------------------------------------------------
+
+    def log_event(
+        self,
+        event_type: AuditEventType | str,
+        severity: AuditSeverity | str,
+        description: str,
+        user_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Log a general audit event.
+        
+        Args:
+            event_type: Type of event from AuditEventType enum or string
+            severity: Severity level from AuditSeverity enum or string
+            description: Human-readable description of the event
+            user_id: ID of the user associated with the event, if any
+            metadata: Additional details about the event
+        """
+        # Format the log data
+        data = metadata or {}
+        if user_id:
+            data["user_id"] = user_id
+            
+        # Choose the logging method based on severity
+        log_method = self._get_log_method(severity)
+        
+        # Log the event
+        log_method(
+            f"{description}",
+            extra={
+                "event_type": event_type,
+                "user_id": user_id,
+                "timestamp": format_date_iso(utcnow()),
+                "data": json.dumps(data),
+            },
+        )
+    
+    def _get_log_method(self, severity: AuditSeverity | str) -> callable:
+        """Get the appropriate logging method based on severity."""
+        if isinstance(severity, str):
+            severity = severity.lower()
+            
+        severity_map = {
+            AuditSeverity.CRITICAL: self._logger.critical,
+            AuditSeverity.HIGH: self._logger.critical,  # Use critical for high as well
+            AuditSeverity.ERROR: self._logger.error,
+            AuditSeverity.WARNING: self._logger.warning,
+            AuditSeverity.INFO: self._logger.info,
+            AuditSeverity.DEBUG: self._logger.debug,
+            AuditSeverity.TRACE: self._logger.debug,  # Use debug for trace level
+            
+            # String versions
+            "critical": self._logger.critical,
+            "high": self._logger.critical,
+            "error": self._logger.error,
+            "warning": self._logger.warning,
+            "info": self._logger.info,
+            "debug": self._logger.debug,
+            "trace": self._logger.debug,
+        }
+        
+        return severity_map.get(severity, self._logger.info)
+        
+    def log_authentication(self, 
+        user_id: str, 
+        event_type: AuditEventType, 
+        success: bool, 
+        ip_address: str | None = None, 
+        details: dict[str, Any] | None = None
+    ) -> None:
+        """Log authentication events.
+
+        Args:
+            user_id: ID of the user being authenticated
+            event_type: Type of authentication event
+            success: Whether authentication was successful
+            ip_address: IP address of the client, if available
+            details: Additional details about the authentication
+        """
+        severity = AuditSeverity.INFO if success else AuditSeverity.WARNING
+        status = "success" if success else "failed"
+        
+        metadata = details or {}
+        if ip_address:
+            metadata["ip_address"] = ip_address
+        
+        # Use existing log_auth_event method for implementation
+        self.log_auth_event(
+            event_type=event_type,
+            user_id=user_id,
+            success=success,
+            description=f"Authentication {status}: {event_type}",
+            ip_address=ip_address,
+            metadata=metadata
+        )
+
+    def log_authorization(self, 
+        user_id: str, 
+        resource_type: str, 
+        resource_id: str | None, 
+        action: str, 
+        success: bool, 
+        details: dict[str, Any] | None = None
+    ) -> None:
+        """Log authorization events.
+
+        Args:
+            user_id: ID of the user requesting access
+            resource_type: Type of resource being accessed
+            resource_id: ID of the resource being accessed, if applicable
+            action: Action being attempted
+            success: Whether authorization was successful
+            details: Additional details about the authorization
+        """
+        event_type = AuditEventType.ACCESS_GRANTED if success else AuditEventType.ACCESS_DENIED
+        severity = AuditSeverity.INFO if success else AuditSeverity.WARNING
+        status = "success" if success else "failed"
+        
+        metadata = details or {}
+        metadata.update({
+            "resource_type": resource_type,
+            "action": action,
+            "status": status
+        })
+        
+        if resource_id:
+            metadata["resource_id"] = resource_id
+            
+        self.log_event(
+            event_type=event_type,
+            severity=severity,
+            description=f"Authorization {status} for {action} on {resource_type}" + 
+                       (f" ID: {resource_id}" if resource_id else ""),
+            user_id=user_id,
+            metadata=metadata
+        )
+
+    def log_error(self, 
+        error_id: str, 
+        error_type: str, 
+        original_message: str, 
+        sanitized_message: str, 
+        status_code: int, 
+        request_path: str, 
+        request_method: str, 
+        details: dict[str, Any] | None = None
+    ) -> None:
+        """Log error events with special handling for PHI sanitization.
+
+        Args:
+            error_id: Unique identifier for the error
+            error_type: Type of error
+            original_message: Original unsanitized error message
+            sanitized_message: Sanitized message safe for client response
+            status_code: HTTP status code associated with the error
+            request_path: Path of the request that triggered the error
+            request_method: HTTP method of the request
+            details: Additional details about the error
+        """
+        severity = AuditSeverity.ERROR
+        if status_code >= 500:
+            event_type = AuditEventType.ERROR_CONDITION
+        else:
+            event_type = AuditEventType.API_ERROR
+            
+        metadata = details or {}
+        metadata.update({
+            "error_id": error_id,
+            "error_type": error_type,
+            "status_code": status_code,
+            "request_path": request_path,
+            "request_method": request_method,
+            # We never log the original message to avoid PHI leakage
+            "message": sanitized_message
+        })
+        
+        self.log_event(
+            event_type=event_type,
+            severity=severity,
+            description=f"Error {error_id}: {sanitized_message}",
+            user_id=None,  # Error might not be associated with a user
+            metadata=metadata
+        )
+
+    def log_operation(self, 
+        user_id: str, 
+        operation_type: str, 
+        resource_type: str, 
+        resource_id: str | None, 
+        status: str, 
+        details: dict[str, Any] | None = None
+    ) -> None:
+        """Log general operations.
+
+        Args:
+            user_id: ID of the user performing the operation
+            operation_type: Type of operation (e.g., "create", "delete")
+            resource_type: Type of resource being operated on
+            resource_id: ID of the resource being operated on, if applicable
+            status: Status of the operation (e.g., "success", "failed")
+            details: Additional details about the operation
+        """
+        # Map operation types to event types
+        operation_event_map = {
+            "create": AuditEventType.PHI_CREATED,
+            "read": AuditEventType.PHI_ACCESS,
+            "update": AuditEventType.PHI_MODIFIED,
+            "delete": AuditEventType.PHI_DELETED,
+        }
+        
+        event_type = operation_event_map.get(operation_type.lower(), AuditEventType.API_CALL)
+        severity = AuditSeverity.INFO if status == "success" else AuditSeverity.WARNING
+        
+        metadata = details or {}
+        metadata.update({
+            "operation_type": operation_type,
+            "resource_type": resource_type,
+            "status": status
+        })
+        
+        if resource_id:
+            metadata["resource_id"] = resource_id
+            
+        self.log_event(
+            event_type=event_type,
+            severity=severity,
+            description=f"{operation_type.capitalize()} operation on {resource_type}" + 
+                       (f" ID: {resource_id}" if resource_id else "") + 
+                       f" - {status}",
+            user_id=user_id,
+            metadata=metadata
+        )
+
+    # ------------------------------------------------------------------
     # IAuditLogger interface compliance helpers
     # ------------------------------------------------------------------
 

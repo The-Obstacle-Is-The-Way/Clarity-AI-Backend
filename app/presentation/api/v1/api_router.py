@@ -27,7 +27,7 @@ from app.presentation.api.v1.routes.biometric import router as biometric_router
 from app.presentation.api.v1.routes.digital_twin import router as digital_twin_router
 from app.presentation.api.v1.routes.mentallama import router as mentallama_router
 from app.presentation.api.v1.routes.ml import router as ml_router
-from app.presentation.api.v1.routes.patient import router as patient_router
+from app.presentation.api.v1.endpoints.patient import router as patient_router_endpoint
 from app.presentation.api.v1.routes.temporal_neurotransmitter import (
     router as temporal_neurotransmitter_router,
 )
@@ -68,7 +68,8 @@ api_v1_router.include_router(
 )
 api_v1_router.include_router(xgboost_router, prefix="/xgboost", tags=["XGBoost"])
 api_v1_router.include_router(digital_twin_router, prefix="/digital-twins", tags=["Digital Twins"])
-api_v1_router.include_router(patient_router, prefix="/patients", tags=["patients"])
+# Use the endpoint implementation instead of the route version
+api_v1_router.include_router(patient_router_endpoint, prefix="/patients", tags=["Patients"])
 
 
 # Add a simple health check endpoint for v1
