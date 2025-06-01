@@ -1,159 +1,206 @@
 """
-Interface for audit logging services to maintain a clean architecture boundary between
-layers and ensure HIPAA compliance for security logging.
+Audit logger interface definition.
 
-This interface defines the contract that all audit logging implementations must follow,
-allowing the application layer to depend on abstractions rather than concrete implementations.
+This module defines the interface for audit logging services, ensuring proper
+abstraction between the application layer and concrete infrastructure implementations.
+Follows the Interface Segregation Principle (ISP) from SOLID.
 """
-
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any
+from uuid import UUID
 
 
 class AuditEventType(str, Enum):
-    """Standardized audit event types for consistent logging across the application."""
-
+    """Types of audit events that can be logged."""
+    
     # Authentication events
-    LOGIN = "LOGIN"
-    LOGOUT = "LOGOUT"
-    LOGIN_FAILURE = "LOGIN_FAILURE"
-    LOGIN_SUCCESS = "LOGIN_SUCCESS"  # Added for test compatibility
-    PASSWORD_CHANGE = "PASSWORD_CHANGE"
-    PASSWORD_RESET = "PASSWORD_RESET"
-
+    LOGIN = "login"
+    LOGOUT = "logout"
+    LOGIN_FAILED = "login_failed"
+    PASSWORD_CHANGED = "password_changed"
+    PASSWORD_RESET = "password_reset"
+    ACCOUNT_LOCKED = "account_locked"
+    
+    # Authorization events
+    ACCESS_DENIED = "access_denied"
+    ACCESS_GRANTED = "access_granted"
+    PERMISSION_CHANGED = "permission_changed"
+    
+    # PHI access events
+    PHI_ACCESS = "phi_access"
+    PHI_EXPORT = "phi_export"
+    PHI_MODIFICATION = "phi_modification"
+    
     # Token events
-    TOKEN_CREATION = "TOKEN_CREATION"
-    TOKEN_CREATED = "TOKEN_CREATED"  # Added for JWT service compatibility
-    TOKEN_VALIDATION = "TOKEN_VALIDATION"
-    TOKEN_VALIDATION_FAILED = "TOKEN_VALIDATION_FAILED"
-    TOKEN_REFRESH = "TOKEN_REFRESH"
-    TOKEN_REVOCATION = "TOKEN_REVOCATION"
-    TOKEN_REVOKED = "TOKEN_REVOKED"  # Added for JWT service compatibility
-    TOKEN_BLACKLISTED = "TOKEN_BLACKLISTED"  # Added for JWT service compatibility
-
-    # Access control events
-    ACCESS_GRANTED = "ACCESS_GRANTED"
-    ACCESS_DENIED = "ACCESS_DENIED"
-    PERMISSION_CHANGE = "PERMISSION_CHANGE"
-
+    TOKEN_ISSUED = "token_issued"
+    TOKEN_REFRESHED = "token_refreshed"
+    TOKEN_VALIDATED = "token_validated"
+    TOKEN_VALIDATION_FAILED = "token_validation_failed"
+    TOKEN_REVOCATION = "token_revocation"
+    
     # Data events
-    DATA_ACCESS = "DATA_ACCESS"
-    PHI_ACCESS = "PHI_ACCESS"  # Added for HIPAA logging
-    DATA_MODIFICATION = "DATA_MODIFICATION"
-    DATA_DELETION = "DATA_DELETION"
-    DATA_EXPORT = "DATA_EXPORT"
-
-    # Security events
-    SECURITY_ALERT = "SECURITY_ALERT"  # Added for security anomaly detection
-
+    DATA_CREATED = "data_created"
+    DATA_READ = "data_read"
+    DATA_UPDATED = "data_updated"
+    DATA_DELETED = "data_deleted"
+    
     # System events
-    SYSTEM_STARTUP = "SYSTEM_STARTUP"
-    SYSTEM_SHUTDOWN = "SYSTEM_SHUTDOWN"
-    CONFIG_CHANGE = "CONFIG_CHANGE"
-    ERROR = "ERROR"
-    WARNING = "WARNING"
+    SYSTEM_ERROR = "system_error"
+    SYSTEM_WARNING = "system_warning"
+    API_CALL = "api_call"
 
 
 class AuditSeverity(str, Enum):
-    """Standardized severity levels for audit events."""
-
-    DEBUG = "DEBUG"
-    INFO = "INFO"
-    WARNING = "WARNING"
-    ERROR = "ERROR"
-    CRITICAL = "CRITICAL"
-    HIGH = "HIGH"  # Added for backward compatibility
+    """Severity levels for audit events."""
+    
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    CRITICAL = "critical"
 
 
 class IAuditLogger(ABC):
-    """Interface for HIPAA-compliant audit logging services.
-
-    This interface ensures all audit logging implementations provide consistent
-    methods for recording security events, errors, and other audit information
-    while maintaining separation of concerns in the clean architecture.
     """
-
+    Interface for audit logging services.
+    
+    All audit logging implementations must adhere to this interface.
+    This follows the Dependency Inversion Principle by allowing high-level modules
+    to depend on this abstraction rather than concrete implementations.
+    """
+    
     @abstractmethod
-    async def log_security_event(
+    async def log_phi_access(
         self,
-        event_type: AuditEventType,
-        description: str,
-        severity: AuditSeverity = AuditSeverity.INFO,
-        user_id: str | None = None,
-        metadata: dict[str, Any] | None = None,
-    ) -> None:
-        """Log a security-related event for audit purposes.
-
-        Args:
-            event_type: Type of security event (e.g., LOGIN, LOGOUT, TOKEN_ISSUED)
-            description: Human-readable description of the event
-            severity: Severity level (INFO, WARNING, ERROR)
-            user_id: Optional user identifier associated with the event
-            metadata: Additional contextual information about the event
-        """
-        pass
-
-    @abstractmethod
-    def log_data_access(
-        self,
+        user_id: UUID,
         resource_type: str,
         resource_id: str,
         action: str,
-        user_id: str,
-        reason: str | None = None,
-        metadata: dict[str, Any] | None = None,
+        details: dict[str, Any] | None = None
     ) -> None:
-        """Log access to sensitive data for HIPAA compliance.
-
+        """
+        Log access to PHI (Protected Health Information).
+        
         Args:
-            resource_type: Type of resource being accessed (e.g., PATIENT, RECORD)
-            resource_id: Identifier of the resource
-            action: Action performed (e.g., VIEW, EDIT, DELETE)
-            user_id: User who performed the action
-            reason: Optional reason for access
-            metadata: Additional contextual information about the access
+            user_id: ID of the user accessing PHI
+            resource_type: Type of resource being accessed (e.g., "patient", "medical_record")
+            resource_id: ID of the resource being accessed
+            action: Action being performed (e.g., "read", "update")
+            details: Additional details about the access
         """
         pass
-
+    
     @abstractmethod
-    def log_api_request(
+    async def log_authentication(
         self,
-        endpoint: str,
-        method: str,
+        user_id: UUID | None,
+        status: str,
+        ip_address: str,
+        user_agent: str,
+        details: dict[str, Any] | None = None
+    ) -> None:
+        """
+        Log authentication events (successful or failed).
+        
+        Args:
+            user_id: ID of the user if authentication was successful, None otherwise
+            status: Status of the authentication (e.g., "success", "failed")
+            ip_address: IP address of the client
+            user_agent: User agent of the client
+            details: Additional details about the authentication event
+        """
+        pass
+    
+    @abstractmethod
+    async def log_authorization(
+        self,
+        user_id: UUID,
+        resource_type: str,
+        resource_id: str | None,
+        action: str,
+        status: str,
+        details: dict[str, Any] | None = None
+    ) -> None:
+        """
+        Log authorization events.
+        
+        Args:
+            user_id: ID of the user
+            resource_type: Type of resource being accessed
+            resource_id: ID of the resource being accessed, if applicable
+            action: Action being attempted (e.g., "read", "update")
+            status: Status of the authorization (e.g., "granted", "denied")
+            details: Additional details about the authorization event
+        """
+        pass
+    
+    @abstractmethod
+    async def log_error(
+        self,
+        error_id: str,
+        error_type: str,
+        original_message: str,
+        sanitized_message: str,
         status_code: int,
-        user_id: str | None = None,
-        request_id: str | None = None,
-        duration_ms: float | None = None,
-        metadata: dict[str, Any] | None = None,
+        request_path: str,
+        request_method: str,
+        details: dict[str, Any] | None = None
     ) -> None:
-        """Log API request information for audit trails.
-
+        """
+        Log error events with special handling for PHI sanitization.
+        
         Args:
-            endpoint: API endpoint that was accessed
-            method: HTTP method used (GET, POST, etc.)
-            status_code: HTTP status code of the response
-            user_id: Optional user identifier who made the request
-            request_id: Optional unique identifier for the request
-            duration_ms: Optional request duration in milliseconds
-            metadata: Additional contextual information about the request
+            error_id: Unique identifier for the error
+            error_type: Type of error
+            original_message: Original unsanitized error message
+            sanitized_message: Sanitized message safe for client response
+            status_code: HTTP status code associated with the error
+            request_path: Path of the request that triggered the error
+            request_method: HTTP method of the request
+            details: Additional details about the error
         """
         pass
-
+    
     @abstractmethod
-    def log_system_event(
+    async def log_operation(
         self,
-        event_type: str,
-        description: str,
-        severity: AuditSeverity = AuditSeverity.INFO,
-        metadata: dict[str, Any] | None = None,
+        user_id: UUID,
+        operation_type: str,
+        resource_type: str,
+        resource_id: str | None,
+        status: str,
+        details: dict[str, Any] | None = None
     ) -> None:
-        """Log system-level events for operational auditing.
-
+        """
+        Log general operations.
+        
         Args:
-            event_type: Type of system event
+            user_id: ID of the user performing the operation
+            operation_type: Type of operation (e.g., "create", "delete")
+            resource_type: Type of resource being operated on
+            resource_id: ID of the resource being operated on, if applicable
+            status: Status of the operation (e.g., "success", "failed")
+            details: Additional details about the operation
+        """
+        pass
+        
+    @abstractmethod
+    def log_security_event(
+        self,
+        event_type: AuditEventType,
+        user_id: str,
+        description: str,
+        severity: AuditSeverity,
+        metadata: dict[str, Any] | None = None
+    ) -> None:
+        """
+        Log security-related events.
+        
+        Args:
+            event_type: Type of security event from AuditEventType enum
+            user_id: ID of the user associated with the event
             description: Human-readable description of the event
-            severity: Severity level (INFO, WARNING, ERROR)
-            metadata: Additional contextual information about the event
+            severity: Severity level from AuditSeverity enum
+            metadata: Additional details about the security event
         """
         pass

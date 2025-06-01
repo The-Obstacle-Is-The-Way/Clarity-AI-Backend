@@ -1,98 +1,51 @@
-# Clarity-AI Documentation Update Project
+# Clarity AI Backend Refactoring Project Requirements
 
-## Overview
-The Clarity-AI Backend codebase has undergone significant changes, but the documentation has not been consistently updated to reflect these changes. This project aims to audit all documentation files, update them to accurately reflect the current codebase structure, resolve broken links, ensure consistency across documents, and implement a maintainable documentation strategy.
+## Project Overview
+The Clarity AI Backend requires significant refactoring to adhere to Clean Architecture principles, implement SOLID design patterns, and ensure HIPAA compliance. The current codebase contains architectural violations, missing implementations, and inconsistent dependency injection patterns that need to be addressed.
 
-## Goals
-1. Ensure all documentation accurately reflects the current codebase structure and functionality
-2. Resolve broken links and references in documentation
-3. Standardize documentation format and naming conventions
-4. Add missing documentation for implemented features
-5. Remove or archive outdated documentation
-6. Implement visualization tools to help understand the codebase architecture
-7. Create a documentation maintenance strategy
+## Critical Requirements
 
-## Requirements
+### HIPAA Compliance
+1. Implement centralized error handling to prevent PHI exposure in API responses
+2. Ensure all error messages are sanitized before being returned to clients
+3. Maintain comprehensive audit logging of all PHI access
+4. Enforce proper authentication and authorization throughout the API
+5. Implement secure session management with token blacklisting
 
-### Documentation Accuracy
-- Audit all README files and documentation against the actual codebase
-- Update all directory and file path references to match current structure
-- Ensure code examples match implemented code
-- Fix API reference documentation to match actual API implementations
-- Update architecture diagrams to reflect current design
+### Clean Architecture Compliance
+1. Move all interface definitions to the core layer
+2. Replace direct infrastructure imports with proper dependency injection
+3. Ensure presentation layer only depends on application layer through interfaces
+4. Implement missing interfaces (IAuditLogger, IPasswordHandler, ITokenBlacklistRepository)
+5. Standardize interface naming and method signatures
 
-### Link Resolution
-- Check and fix all internal links between documentation files
-- Verify and update links to external resources
-- Create missing referenced files or update references to existing files
-- Implement a link verification system for future documentation
+### API Standardization
+1. Complete missing route implementations (patient.py, actigraphy.py)
+2. Implement missing endpoints (PATCH /alerts/{id}/status, POST /patients/{id}/trigger)
+3. Move dependency providers to dedicated modules
+4. Standardize response models and error handling
+5. Ensure consistent API documentation
 
-### Documentation Standardization
-- Standardize documentation format across all files
-- Implement consistent naming conventions
-- Ensure all documentation follows Markdown best practices
-- Create document templates for different types of documentation
+### Middleware Enhancements
+1. Fix/implement RequestIdMiddleware
+2. Correct RateLimitingMiddleware implementation
+3. Determine requirements for LoggingMiddleware
+4. Ensure middleware components follow clean architecture
 
-### Feature Documentation
-- Add documentation for implemented features not currently documented
-- Update existing documentation to reflect feature changes
-- Remove documentation for deprecated features
-- Clearly mark experimental or upcoming features
+### Testing Infrastructure
+1. Standardize database handling in tests
+2. Implement missing test fixtures
+3. Create Pydantic models for request validation
+4. Fix interface inconsistencies causing test failures
+5. Ensure high test coverage for all implementations
 
-### Documentation Organization
-- Organize documentation in a logical, hierarchical structure
-- Create an index/table of contents for all documentation
-- Implement versioning for documentation that reflects codebase versions
-- Establish clear separation between user guides, developer documentation, and API references
+## Technical Requirements
 
-### Visualization Tools
-- Generate and include up-to-date class diagrams
-- Create dependency graphs for major components
-- Implement architecture diagrams that reflect the clean architecture
-- Include sequence diagrams for key workflows
-
-### Maintenance Strategy
-- Establish documentation update procedures for code changes
-- Create guidelines for documentation contributions
-- Implement automated documentation checking tools
-- Document the documentation maintenance process itself
-
-## Specific Issues Identified
-
-### README.md
-- Broken link to CONTRIBUTING.md which doesn't exist
-- Some badges may not reflect current build status or coverage
-- Architecture references may not match current implementation
-
-### Project Structure Documentation
-- Directory structure doesn't fully match current codebase
-- Some file paths are incorrect or outdated
-- Missing newly added directories and files
-
-### API Reference
-- Some documented endpoints don't exist or are implemented differently
-- Missing documentation for new endpoints
-- Inconsistent status indications (implemented, in progress, etc.)
-
-### HIPAA Compliance Documentation
-- Code examples may not match current implementation
-- Security practices may have been updated but not documented
-
-### Architecture Documentation
-- Class and component relationships may have changed
-- Clean architecture implementation details may have evolved
-- Missing documentation for new architectural patterns
-
-### Installation Guide
-- Dependency management instructions may be outdated
-- Environment setup steps may need updating
-- Docker configuration references may not match current files
-
-## Success Criteria
-1. All documentation files accurately reflect the current codebase
-2. No broken links or references in any documentation
-3. Consistent format and style across all documentation
-4. Complete documentation coverage for all implemented features
-5. Clear, logical organization of documentation files
-6. Up-to-date visual representations of code architecture
-7. Documented maintenance process for future documentation updates
+1. All code must follow SOLID principles
+2. Dependency injection must be used consistently
+3. Error handling must be centralized and HIPAA-compliant
+4. Repository pattern must be implemented correctly
+5. Interfaces must be in the core layer with implementations in infrastructure
+6. API routes must use dependency providers from dedicated modules
+7. All endpoints must have comprehensive test coverage
+8. Database access must follow clean architecture patterns

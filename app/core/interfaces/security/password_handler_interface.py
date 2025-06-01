@@ -1,166 +1,87 @@
 """
-Interface for Password Handler.
+Password handler interface definition.
 
-This module defines the interface for password handling services that manage
-secure password operations such as hashing, verification, and validation
-in compliance with HIPAA security requirements.
+This module defines the interface for password handling services, ensuring proper
+abstraction between the application layer and concrete infrastructure implementations.
+Follows the Interface Segregation Principle (ISP) from SOLID.
 """
-
 from abc import ABC, abstractmethod
-from typing import Any
 
 
 class IPasswordHandler(ABC):
     """
     Interface for password handling services.
-
-    Implementations of this interface should handle secure password operations
-    including hashing, verification, and validation in accordance with
-    security best practices and HIPAA requirements.
+    
+    All password handling implementations must adhere to this interface.
+    This follows the Dependency Inversion Principle by allowing high-level modules
+    to depend on this abstraction rather than concrete implementations.
     """
-
+    
     @abstractmethod
-    def get_password_hash(self, password: str) -> str:
+    async def hash_password(self, password: str) -> str:
         """
-        Hashes a plain text password.
-
+        Hash a plaintext password.
+        
         Args:
-            password: The plain text password.
-
+            password: The plaintext password to hash
+            
         Returns:
-            The hashed password.
+            The hashed password as a string
         """
         pass
-
+    
     @abstractmethod
-    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+    async def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """
-        Verifies a plain text password against a hashed password.
-
+        Verify if a plaintext password matches a hashed password.
+        
         Args:
-            plain_password: The plain text password.
-            hashed_password: The hashed password to compare against.
-
-        Returns:
-            True if the password matches, False otherwise.
-        """
-        pass
-
-    @abstractmethod
-    def password_needs_rehash(self, hashed_password: str) -> bool:
-        """
-        Check if a password hash needs to be upgraded.
-
-        Args:
-            hashed_password: Currently stored password hash
-
-        Returns:
-            True if rehashing is recommended, False otherwise
-        """
-        pass
-
-    @abstractmethod
-    def generate_secure_password(self, length: int = 16) -> str:
-        """
-        Generate a cryptographically secure random password.
-
-        Args:
-            length: Length of password to generate (default: 16)
-
-        Returns:
-            Secure random password string
-        """
-        pass
-
-    @abstractmethod
-    def hash_password(self, password: str) -> str:
-        """
-        Alias for get_password_hash (retained for backwards-compat).
-
-        Args:
-            password: The plain text password to hash
-
-        Returns:
-            A securely hashed password string
-        """
-        pass
-
-    @abstractmethod
-    def check_password(self, plain_password: str, hashed_password: str) -> bool:
-        """
-        Alias for verify_password (retained for backwards-compat).
-
-        Args:
-            plain_password: The plain text password to verify
+            plain_password: The plaintext password to verify
             hashed_password: The hashed password to compare against
-
+            
         Returns:
             True if the password matches, False otherwise
         """
         pass
-
+    
     @abstractmethod
-    def validate_password_strength(self, password: str) -> tuple[bool, str | None]:
+    async def generate_reset_token(self, user_id: str) -> str:
         """
-        Validate password strength against HIPAA-compliant security requirements.
-
+        Generate a secure token for password reset operations.
+        
         Args:
-            password: Password to validate
-
+            user_id: The ID of the user requesting a password reset
+            
         Returns:
-            Tuple of (is_valid, error_message)
+            A secure token string
         """
         pass
-
+    
     @abstractmethod
-    def validate_password_complexity(self, password: str) -> tuple[bool, str]:
+    async def verify_reset_token(self, token: str) -> str:
         """
-        Validate if a password meets complexity requirements.
-
+        Verify a password reset token and extract the user ID.
+        
         Args:
-            password: Password to validate
-
+            token: The reset token to verify
+            
         Returns:
-            Tuple of (is_valid, error_message)
+            The user ID if the token is valid
+            
+        Raises:
+            ValueError: If the token is invalid or expired
         """
         pass
-
+    
     @abstractmethod
-    def is_common_password(self, password: str) -> bool:
+    async def password_meets_requirements(self, password: str) -> bool:
         """
-        Check if a password has been compromised in known breaches.
-
+        Check if a password meets security requirements.
+        
         Args:
-            password: Password to check
-
+            password: The password to check
+            
         Returns:
-            True if the password appears to be breached, False otherwise
-        """
-        pass
-
-    @abstractmethod
-    def suggest_password_improvement(self, password: str) -> str:
-        """
-        Provide improvement suggestions for a password.
-
-        Args:
-            password: Password to analyze
-
-        Returns:
-            Suggestion message
-        """
-        pass
-
-    @abstractmethod
-    def get_password_strength_feedback(self, password: str) -> dict[str, Any]:
-        """
-        Get detailed feedback on password strength.
-
-        Args:
-            password: The password to analyze
-
-        Returns:
-            dict[str, Any]: Detailed feedback containing strength score,
-                            suggestions for improvement, and other metrics
+            True if the password meets requirements, False otherwise
         """
         pass

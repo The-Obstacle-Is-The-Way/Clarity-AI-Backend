@@ -404,6 +404,11 @@ def create_application(
     else:
         logger.info("RateLimitingMiddleware skipped: No REDIS_URL configured.")
 
+    # Register HIPAA-compliant exception handlers
+    from app.presentation.api.exception_handlers import register_exception_handlers
+    register_exception_handlers(app_instance)
+    logger.info("HIPAA-compliant exception handlers registered")
+
     # API Routers
     app_instance.include_router(api_v1_router, prefix=current_settings.API_V1_STR)
     logger.info("API v1 router included at prefix: %s", current_settings.API_V1_STR)

@@ -12,14 +12,15 @@ from app.core.interfaces.security.jwt_service_interface import IJwtService
 from app.core.interfaces.security.password_handler_interface import IPasswordHandler
 from app.core.interfaces.services.audit_logger_interface import IAuditLogger
 from app.domain.interfaces.user_repository import UserRepositoryInterface
-from app.presentation.api.dependencies.logging import get_audit_logger
-from app.presentation.api.dependencies.repositories import get_user_repository
-from app.presentation.api.dependencies.security import get_jwt_service, get_password_handler
+from app.presentation.api.dependencies.audit_logger import get_audit_logger
+from app.presentation.api.dependencies.jwt import get_jwt_service_from_request
+from app.presentation.api.dependencies.password_handler import get_password_handler
+from app.presentation.api.dependencies.user_repository import get_user_repository
 
 def get_auth_service(
     password_handler: IPasswordHandler = Depends(get_password_handler),
     user_repository: UserRepositoryInterface = Depends(get_user_repository),
-    jwt_service: IJwtService = Depends(get_jwt_service),
+    jwt_service: IJwtService = Depends(get_jwt_service_from_request),
     audit_logger: IAuditLogger = Depends(get_audit_logger),
 ) -> AuthenticationService:
     """Dependency injector for AuthenticationService.
