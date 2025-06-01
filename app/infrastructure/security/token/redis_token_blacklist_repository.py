@@ -147,7 +147,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
 
             # Set expiration date to 1 year in the future to ensure tokens stay blacklisted
             # even beyond their natural expiration
-            expires_at = datetime.now(timezone.utc) + timedelta(days=365)
+            expires_at = datetime.now(UTC) + timedelta(days=365)
 
             # Blacklist each JTI
             for jti_info in session_jti_list:
