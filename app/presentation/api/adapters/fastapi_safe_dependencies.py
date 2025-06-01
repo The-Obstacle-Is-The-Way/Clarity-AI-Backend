@@ -21,7 +21,7 @@ from app.infrastructure.repositories.sqla.user_repository import SQLAlchemyUserR
 from app.infrastructure.security.jwt.jwt_service_impl import JWTServiceImpl
 
 T = TypeVar("T")
-ConcreteT = TypeVar("ConcreteT")
+ConcreteT = TypeVar("ConcreteT", bound=Any)
 
 
 def adapt_interface_dependency(
@@ -41,10 +41,10 @@ def adapt_interface_dependency(
         A dependency function that returns a concrete type
     """
 
-    def adapted_dependency(*args: Any, **kwargs: Any) -> ConcreteT:
+    def adapted_dependency(*args: Any, **kwargs: Any) -> ConcreteT:  # type: ignore[override]
         impl = interface_dependency(*args, **kwargs)
-        # No actual conversion happens here - it's just type hints for FastAPI
-        return cast(concrete_type, impl)
+        # No runtime conversion; cast solely for type checking.
+        return cast(ConcreteT, impl)
 
     return adapted_dependency
 

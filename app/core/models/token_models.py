@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -52,3 +53,27 @@ class TokenPayload(BaseModel):
         extra="allow",  # Allow extra fields for forward compatibility
         populate_by_name=True,  # Allow populating by field name
     )
+
+    # ---------------------------------------------------------------------
+    # Dict-like helpers for compatibility with legacy code expecting dicts
+    # ---------------------------------------------------------------------
+
+    def get(self, key: str, default: Any | None = None) -> Any:
+        """Dictionary-style access helper.
+
+        Older parts of the codebase (and some external libraries) still treat the
+        JWT *payload* as a plain mapping and access fields via ``payload.get(...)``.
+        To avoid widespread refactors we expose a thin helper that proxies to
+        ``getattr`` and keeps *mypy* satisfied by guaranteeing a return value of
+        ``Any``.
+        """
+
+        return getattr(self, key, default)
+
+    # Support ``in`` checks (``key in payload``)
+    def __contains__(self, item: str) -> bool:
+        return hasattr(self, item)
+
+    # Allow index access ``payload["sub"]``
+    def __getitem__(self, item: str) -> Any:
+        return getattr(self, item)

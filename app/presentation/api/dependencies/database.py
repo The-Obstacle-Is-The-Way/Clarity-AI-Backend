@@ -7,7 +7,7 @@ following clean architecture principles with proper dependency injection pattern
 
 import logging
 from collections.abc import AsyncGenerator, Callable
-from typing import Annotated, TypeVar
+from typing import Annotated, TypeVar, Any, cast
 
 from fastapi import Depends, Request
 from sqlalchemy.exc import SQLAlchemyError
@@ -36,14 +36,15 @@ async def get_session_factory_from_request_state(
         )
         raise RuntimeError("request has no state attribute, cannot get session factory.")
 
-    factory = getattr(request.state, "actual_session_factory", None)
+    from typing import cast
+    factory = cast(async_sessionmaker[AsyncSession] | None, getattr(request.state, "actual_session_factory", None))
 
     if factory is None:
         logger.error(
             "DEPENDENCY:get_session_factory_from_request_state: 'actual_session_factory' NOT FOUND on request.state."
         )
         # More detailed logging of request.state content
-        req_state_content_for_log = "N/A"
+        req_state_content_for_log: str | dict[str, type[Any]] = "N/A"
         if hasattr(request.state, "_state") and isinstance(request.state._state, dict):
             req_state_content_for_log = {k: type(v) for k, v in request.state._state.items()}
         elif isinstance(request.state, dict):
@@ -53,7 +54,7 @@ async def get_session_factory_from_request_state(
                 k: type(v) for k, v in request.state.__dict__.items() if not k.startswith("_")
             }
         else:
-            req_state_content_for_log = dir(request.state)
+            req_state_content_for_log = {attr: type(getattr(request.state, attr)) for attr in dir(request.state)}
         logger.error(
             f"DEPENDENCY:get_session_factory_from_request_state: Content of request.state: {req_state_content_for_log}"
         )
@@ -163,13 +164,15 @@ def get_repository(repo_type: type[T]) -> Callable[[AsyncSession], T]:
 
 # Specific dependency for Patient Repository
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
-    PatientRepository,
-)
-
 
 async def get_patient_repository_dependency(
     session: AsyncSession = Depends(get_db),
 ) -> IPatientRepository:
-    """Provides an instance of IPatientRepository (PatientRepository)."""
-    return PatientRepository(db_session=session)
+    """Provides a concrete PatientRepository implementation cast to its interface."""
+    # Import concrete implementation lazily to avoid circular deps
+    from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
+        PatientRepositoryImpl,
+    )
+
+    concrete = PatientRepositoryImpl(db_session=session)
+    return cast(IPatientRepository, concrete)

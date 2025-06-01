@@ -60,9 +60,9 @@ dev = [
     "ipykernel",
     "isort==5.13.2",
     "jupyter==1.0.0",
-    "mypy==1.12.1",
+    "mypy>=1.9,<1.11",
     "pre-commit",
-    "ruff==0.7.2",
+    "ruff>=0.4.5",
     "watchfiles==0.23.0",
 ]
 
@@ -89,6 +89,12 @@ standalone = [
 ]
 
 [tool.ruff]
+# Auto-fix on commit
+fix = true
+# Target Python 3.12 bytecode / stdlib
+target-version = "py312"
+# Additional ignores: allow non-crypto random (S311)
+extend-ignore = ["S311"]
 # Exclude a variety of commonly ignored directories.
 exclude = [
     ".bzr",
@@ -120,7 +126,7 @@ line-length = 100
 indent-width = 4
 
 # Assume Python 3.10.
-target-version = "py310"
+# target-version = "py310"
 
 [tool.ruff.lint]
 # Enable flake8-bugbear (`B`) rules.

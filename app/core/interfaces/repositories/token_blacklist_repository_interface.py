@@ -50,7 +50,7 @@ class ITokenBlacklistRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_all_blacklisted(self) -> list[dict]:
+    async def get_all_blacklisted(self) -> list[dict[str, datetime]]:
         """Get all blacklisted tokens.
 
         Returns:

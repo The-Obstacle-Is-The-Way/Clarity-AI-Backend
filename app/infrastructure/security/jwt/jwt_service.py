@@ -541,3 +541,15 @@ def get_jwt_service(
         audit_logger=audit_logger,
         settings=settings,
     )
+
+
+# Alias export for backward compatibility with tests and older modules
+# The public interface expected is `JWTService`, which maps to `JWTServiceImpl`.
+JWTService = JWTServiceImpl  # type: ignore[valid-type]
+
+# Explicit re-export list
+__all__: list[str] = [
+    "JWTServiceImpl",
+    "JWTService",
+    "get_jwt_service",
+]

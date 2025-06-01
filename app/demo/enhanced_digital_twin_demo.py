@@ -10,6 +10,7 @@ Usage:
 """
 
 import asyncio
+from typing import TYPE_CHECKING
 import datetime
 import logging
 import uuid
@@ -18,6 +19,12 @@ from uuid import UUID
 from app.infrastructure.factories.enhanced_mock_digital_twin_factory import (
     EnhancedMockDigitalTwinFactory,
 )
+
+if TYPE_CHECKING:  # pragma: no cover
+    from app.core.services.digital_twin import DigitalTwinService  # noqa: F401
+    from app.core.services.ml.mentalllama import MentalLLaMAService  # noqa: F401
+    from app.core.services.ml.xgboost import XGBoostService  # noqa: F401
+    from app.core.services.ml.pat import PATService  # noqa: F401
 
 # Configure logging
 logging.basicConfig(
@@ -44,6 +51,12 @@ class EnhancedDigitalTwinDemo:
             self.xgboost_service,
             self.pat_service,
         ) = EnhancedMockDigitalTwinFactory.create_enhanced_mock_services()
+
+        # Explicitly annotate for static type checkers
+        self.digital_twin_service: "DigitalTwinService"
+        self.mental_llama_service: "MentalLLaMAService"
+        self.xgboost_service: "XGBoostService"
+        self.pat_service: "PATService"
 
         logger.info("Enhanced Digital Twin Demo initialized")
 
@@ -426,5 +439,5 @@ async def main() -> None:
     await demo.run_demo()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     asyncio.run(main())

@@ -30,8 +30,8 @@ class AWSClientFactory:
         profile_name: str | None = None,
         aws_access_key_id: str | None = None,
         aws_secret_access_key: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """Initialize the AWS client factory.
 
         Args:

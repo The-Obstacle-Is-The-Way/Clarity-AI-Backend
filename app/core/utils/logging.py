@@ -145,12 +145,13 @@ def log_execution_time(func=None, *, logger=None, level=LogLevel.DEBUG):
         nonlocal logger, level
         log = logger or get_logger(fn.__module__)
 
-        # Ensure level is an integer
-        log_level = level
-        if isinstance(log_level, LogLevel):
-            log_level = level_to_int.get(log_level, logging.DEBUG)
-        elif not isinstance(log_level, int):
-            log_level = logging.DEBUG
+        # Ensure level is converted to an int understood by stdlib logging
+        if isinstance(level, LogLevel):
+            numeric_level = level_to_int.get(level, logging.DEBUG)
+        elif isinstance(level, str):
+            numeric_level = int(getattr(logging, level.upper(), logging.DEBUG))
+        else:  # already an int
+            numeric_level = int(level)
 
         @wraps(fn)
         def wrapper(*args, **kwargs):
@@ -165,7 +166,7 @@ def log_execution_time(func=None, *, logger=None, level=LogLevel.DEBUG):
                 duration_ms = (end_time - start_time).total_seconds() * 1000
 
                 # Use the integer log level
-                log.log(log_level, f"Function '{fn.__name__}' executed in {duration_ms:.2f} ms")
+                log.log(numeric_level, f"Function '{fn.__name__}' executed in {duration_ms:.2f} ms")
 
                 return result
             except Exception as e:
@@ -212,8 +213,8 @@ def log_method_calls(
     # considered a subtype of `int`.
     numeric_level: int
     if isinstance(level, LogLevel):
-        # LogLevel enum values are already integers (10, 20, 30, etc.)
-        numeric_level = level.value
+        # Convert enum name (e.g., DEBUG) to stdlib logging constant.
+        numeric_level = int(getattr(logging, level.name, logging.INFO))
     elif isinstance(level, str):
         # Resolve string names (e.g., "INFO") to their numeric constant; default INFO
         numeric_level = int(getattr(logging, level.upper(), logging.INFO))

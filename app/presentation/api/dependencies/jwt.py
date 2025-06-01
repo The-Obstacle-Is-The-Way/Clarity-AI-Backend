@@ -5,7 +5,7 @@ This module provides centralized dependency injection for JWT services
 used throughout the application for authentication and authorization.
 """
 
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import Depends, Request
 
@@ -35,7 +35,7 @@ def get_jwt_service_from_request(request: Request) -> IJwtService:
     """
     # Check for test override first
     if hasattr(request.app.state, "jwt_service") and request.app.state.jwt_service:
-        return request.app.state.jwt_service
+        return cast(IJwtService, request.app.state.jwt_service)
 
     # Normal production path
     settings = get_settings()
@@ -43,12 +43,14 @@ def get_jwt_service_from_request(request: Request) -> IJwtService:
     token_blacklist_repository = get_token_blacklist_repository()
     audit_logger = get_audit_logger()
 
-    return get_jwt_service(
+    concrete = get_jwt_service(
         settings=settings,
         user_repository=user_repository,
         token_blacklist_repository=token_blacklist_repository,
         audit_logger=audit_logger,
     )
+
+    return cast(IJwtService, concrete)
 
 
 # Type annotation for dependency injection
