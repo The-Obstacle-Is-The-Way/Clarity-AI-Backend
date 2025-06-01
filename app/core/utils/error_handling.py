@@ -103,6 +103,11 @@ def sanitize_error_message(message: str) -> str:
     Returns:
         A sanitized version of the message
     """
+    # Preserve validation errors - they typically don't contain PHI
+    # and clients need to see them to correct their input
+    if message.startswith("Invalid") or "validation" in message.lower():
+        return message
+    
     # Current implementation is basic - will expand with pattern matching
     # to detect and remove potential PHI patterns in future sprints
     

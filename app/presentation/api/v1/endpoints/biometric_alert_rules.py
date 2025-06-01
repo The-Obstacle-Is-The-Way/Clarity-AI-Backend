@@ -6,7 +6,9 @@ following clean architecture principles with proper separation of concerns.
 Fixed template creation and patient alert rules routing.
 """
 
+import json
 import logging
+from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 
 from fastapi import (
@@ -18,6 +20,9 @@ from fastapi import (
     Request,
     status,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions.application import ApplicationError
 
 from app.application.services.biometric_alert_rule_service import (
     BiometricAlertRuleService,
@@ -25,6 +30,7 @@ from app.application.services.biometric_alert_rule_service import (
 from app.core.interfaces.services.alert_rule_template_service_interface import (
     AlertRuleTemplateServiceInterface,
 )
+from app.core.exceptions.application_error import ApplicationError
 from app.domain.repositories.biometric_alert_template_repository import (
     BiometricAlertTemplateRepository,
 )
@@ -307,12 +313,19 @@ async def create_alert_rule(
             # If it's an entity, convert it using the from_entity method
             return AlertRuleResponse.from_entity(created_rule)
 
+    except ApplicationError as e:
+        # Handle application errors directly to preserve the original error message
+        logger.error(f"Error creating alert rule: {e!s}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),  # Use the raw error message without the prefix
+        ) from e
     except Exception as e:
         logger.error(f"Error creating alert rule: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to create alert rule: {e!s}",
-        )
+        ) from e
 
 
 @router.post(

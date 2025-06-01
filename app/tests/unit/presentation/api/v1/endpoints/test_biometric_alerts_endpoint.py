@@ -725,14 +725,16 @@ class TestBiometricAlertsEndpoints:
             "/api/v1/biometric-alert-rules", headers=headers, json=invalid_payload
         )
 
-        # Debug info if needed
-        if response.status_code != 400:
-            print(f"Response: {response.status_code} - {response.text}")
+        # Debug info to see response details
+        print(f"Response: {response.status_code} - {response.text}")
+        print(f"Response JSON: {response.json()}")
 
         # Verify response indicates validation error
         assert response.status_code == 400
         response_data = response.json()
+        print(f"Response data: {response_data}")
         assert "detail" in response_data
+        print(f"Detail field content: {response_data['detail']}")
         assert "Invalid rule data" in response_data["detail"]
 
         # Verify service was called
