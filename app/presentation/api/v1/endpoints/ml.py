@@ -7,7 +7,6 @@ testability, and HIPAA compliance.
 """
 
 import logging
-from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
