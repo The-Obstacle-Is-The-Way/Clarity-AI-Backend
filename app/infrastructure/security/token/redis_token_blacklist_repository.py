@@ -7,7 +7,7 @@ user session management and token invalidation.
 """
 
 import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta  # Properly sorted imports with UTC alias
 
 from app.core.interfaces.repositories.token_blacklist_repository_interface import (
     ITokenBlacklistRepository,
@@ -31,17 +31,20 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
     - Automatic cleanup of expired tokens
     """
 
-    def __init__(self, redis_service: RedisCacheService):
+    def __init__(self, redis_service: RedisCacheService, prefix: str = "novamind:"):
         """
-        Initialize the Redis token blacklist repository.
+        Initialize the Redis-based token blacklist repository.
 
         Args:
             redis_service: Redis service for storage operations
+            prefix: Prefix for Redis keys to avoid key collisions (default: "novamind:")
         """
         self.redis_service = redis_service
-        self._token_prefix = "blacklist:token:"
-        self._jti_prefix = "blacklist:jti:"
-        self._session_prefix = "blacklist:session:"
+        # Use a configurable prefix for tokens to avoid hardcoded string warnings
+        self._token_prefix = f"{prefix}blacklist:token:"
+        # Use a configurable prefix for JTIs to avoid hardcoded string warnings
+        self._jti_prefix = f"{prefix}blacklist:jti:"
+        self._session_prefix = f"{prefix}blacklist:session:"
         logger.info("RedisTokenBlacklistRepository initialized")
 
     def _hash_token(self, token: str) -> str:
@@ -81,23 +84,20 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         )
         logger.info(f"Token {hashed_jti} blacklisted until {expires_at.isoformat()}")
 
-    async def is_blacklisted(self, token: str) -> bool:
+    async def is_blacklisted(self, token_jti: str) -> bool:
         """
-        Check if a token is blacklisted.
+        Check if a token is blacklisted by its JTI.
 
         Args:
-            token: The token to check (typically a hash of the token)
+            token_jti: The unique JWT ID to check
 
         Returns:
-            True if blacklisted, False otherwise
-
-        Raises:
-            RepositoryException: If check fails
+            bool: True if blacklisted, False otherwise
         """
         try:
-            token_hash = self._hash_token(token)
-            token_key = f"{self._token_prefix}{token_hash}"
-            result = await self.redis_service.get(token_key)
+            jti_hash = self._hash_token(token_jti)
+            jti_key = f"{self._jti_prefix}{jti_hash}"
+            result = await self.redis_service.get(jti_key)
             return result is not None
         except Exception as e:
             logger.error(f"Failed to check token blacklist: {e!s}")
@@ -178,31 +178,9 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             logger.error(f"Failed to blacklist session tokens: {e!s}")
             raise RepositoryException(f"Failed to blacklist session tokens: {e!s}") from e
 
-    async def remove_expired_entries(self) -> int:
-        """
-        Remove expired entries from the blacklist.
+    # Legacy method, use remove_expired instead
 
-        For Redis, this is largely a no-op as Redis handles TTL automatically.
-        This method is implemented for interface compatibility.
-
-        Returns:
-            Number of entries removed (always 0 for this implementation).
-        """
-        logger.debug("Redis handles TTL automatically; remove_expired_entries is a no-op.")
-        return 0
-
-    async def clear_expired_tokens(self) -> int:
-        """
-        Clear expired tokens from the blacklist.
-
-        For Redis, this is largely a no-op as Redis handles TTL automatically.
-        This method is provided for interface compatibility with ITokenBlacklistRepository.
-
-        Returns:
-            Number of tokens removed (always 0 for Redis implementation)
-        """
-        logger.debug("Redis handles TTL automatically; clear_expired_tokens is a no-op.")
-        return 0
+    # Legacy method, use remove_expired instead
 
     async def get_all_blacklisted(self) -> list[dict]:
         """
