@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, ValidationInfo
 
 from app.core.domain.entities.alert import AlertPriority, AlertStatus, AlertType
 from app.core.utils.date_utils import utcnow
@@ -33,7 +33,7 @@ class AlertBase(BaseModelConfig):
 
     @field_validator("timestamp")
     @classmethod
-    def validate_timestamp(cls, v):
+    def validate_timestamp(cls, v: datetime) -> datetime:
         """Ensure timestamp is not in the future."""
         if v > utcnow():
             raise ValueError("Timestamp cannot be in the future")
@@ -58,11 +58,9 @@ class AlertUpdateRequest(BaseModelConfig):
 
     @field_validator("resolved_at")
     @classmethod
-    def validate_resolved_at(cls, v, info):
+    def validate_resolved_at(cls, v: datetime | None, info: ValidationInfo) -> datetime | None:
         """Ensure resolved_at is only set when status is RESOLVED."""
-        # In v2, we need to access the data differently
-        values = info.data
-        if v and values.get("status") != AlertStatus.RESOLVED:
+        if v is not None and info.data.get("status") != AlertStatus.RESOLVED:
             raise ValueError("Resolved timestamp can only be set when status is RESOLVED")
         return v
 

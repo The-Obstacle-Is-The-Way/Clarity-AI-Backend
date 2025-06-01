@@ -7,6 +7,7 @@ This module provides dependency injection for biometric alert related services.
 # pylint: disable=missing-module-docstring
 
 from fastapi import Depends
+from typing import cast
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.services.biometric_alert_rule_service import (
@@ -133,6 +134,17 @@ async def get_biometric_alert_rule_service(
     Returns:
         An instance of BiometricAlertRuleService
     """
-    return BiometricAlertRuleService(
-        rule_repository=rule_repository, template_repository=template_repository
+    from app.infrastructure.repositories.sqlalchemy.biometric_alert_rule_repository import (
+        SQLAlchemyBiometricAlertRuleRepository as ConcreteRuleRepo,
+    )
+    from app.infrastructure.repositories.memory.biometric_alert_template_repository import (
+        InMemoryBiometricAlertTemplateRepository as ConcreteTemplateRepo,
+    )
+
+    concrete_rule_repo = cast(ConcreteRuleRepo, rule_repository)
+    concrete_template_repo = cast(ConcreteTemplateRepo, template_repository)
+
+    return BiometricAlertRuleService(  # type: ignore[arg-type]
+        rule_repository=concrete_rule_repo,
+        template_repository=concrete_template_repo,
     )

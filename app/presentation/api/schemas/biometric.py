@@ -29,7 +29,7 @@ class BiometricBase(BaseModelConfig):
 
     @field_validator("timestamp")
     @classmethod
-    def validate_timestamp(cls, v):
+    def validate_timestamp(cls, v: datetime) -> datetime:
         """Ensure timestamp is not in the future."""
         if v > utcnow():
             raise ValueError("Timestamp cannot be in the future")
@@ -85,7 +85,7 @@ class BiometricBatchUploadRequest(BaseModelConfig):
 
     @field_validator("records")
     @classmethod
-    def validate_records_length(cls, v):
+    def validate_records_length(cls, v: list["BiometricBatchItem"]) -> list["BiometricBatchItem"]:
         """Ensure records list has between 1 and 100 items."""
         if len(v) < 1:
             raise ValueError("At least one record is required")

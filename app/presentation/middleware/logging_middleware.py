@@ -6,10 +6,12 @@ authentication, authorization, and PHI (Protected Health Information) protection
 """
 
 import logging
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
+from typing import Awaitable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +24,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
     and ensures proper authentication across all secure endpoints.
     """
 
-    def __init__(self, app, auth_service=None):
+    def __init__(self, app: ASGIApp, auth_service: object | None = None) -> None:
         """
         Initialize the authentication middleware.
 
@@ -33,7 +35,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.auth_service = auth_service
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """
         Process the request and validate authentication.
 
@@ -51,7 +55,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         # 3. Set the authenticated user in the request state
         # 4. Handle authentication failures appropriately
 
-        response = await call_next(request)
+        response: Response = await call_next(request)
         return response
 
 
@@ -63,7 +67,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
     sensitive PHI from being exposed in logs, error messages, or URL parameters.
     """
 
-    def __init__(self, app):
+    def __init__(self, app: ASGIApp) -> None:
         """
         Initialize the PHI protection middleware.
 
@@ -72,7 +76,9 @@ class PHIMiddleware(BaseHTTPMiddleware):
         """
         super().__init__(app)
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """
         Process the request and protect PHI data.
 
@@ -89,7 +95,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
         # 2. Set up response processors to detect and sanitize PHI in responses
         # 3. Configure special error handling to prevent PHI in error messages
 
-        response = await call_next(request)
+        response: Response = await call_next(request)
         return response
 
 
@@ -101,7 +107,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     responses for monitoring, debugging, and audit purposes.
     """
 
-    def __init__(self, app):
+    def __init__(self, app: ASGIApp) -> None:
         """
         Initialize the logging middleware.
 
@@ -111,7 +117,9 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.logger = logging.getLogger("api.access")
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """
         Process the request and log access information.
 
@@ -126,7 +134,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         self.logger.info(f"Request: {request.method} {request.url.path}")
 
         # Process the request through the application stack
-        response = await call_next(request)
+        response: Response = await call_next(request)
 
         # Log response information
         self.logger.info(f"Response: {response.status_code}")

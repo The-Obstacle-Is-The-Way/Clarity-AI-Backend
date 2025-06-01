@@ -169,7 +169,7 @@ class ActigraphySummaryResponse(BaseSchema):
 class ActigraphyDataResponse(BaseSchema):
     data_id: str
     raw_data: Any
-    metadata: dict
+    metadata: dict[str, Any]
     timestamp: str | None = None
     message: str | None = None
 
