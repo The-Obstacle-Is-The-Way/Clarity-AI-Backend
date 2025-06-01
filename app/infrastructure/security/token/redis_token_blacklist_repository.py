@@ -71,7 +71,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         hashed_jti = self._hash_token(token_jti)
 
         # Calculate TTL in seconds from now until expiration
-        current_time = datetime.now(timezone.utc)
+        current_time = datetime.now(UTC)
         if expires_at <= current_time:
             # Token is already expired, no need to blacklist
             return
