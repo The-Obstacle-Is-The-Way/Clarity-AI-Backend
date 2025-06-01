@@ -23,6 +23,20 @@ class PatientCreateRequest(PatientBase):
     pass
 
 
+class PatientUpdateRequest(BaseModel):
+    """Schema for updating a patient record.
+    
+    All fields are optional since this is for partial updates.
+    """
+    first_name: str | None = Field(None, description="Patient's first name")
+    last_name: str | None = Field(None, description="Patient's last name")
+    date_of_birth: date | None = Field(None, description="Patient's date of birth")
+    email: EmailStr | None = Field(None, description="Patient's email address")
+    phone_number: str | None = Field(None, description="Patient's phone number")
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
 class PatientRead(PatientBase):
     id: uuid.UUID = Field(..., description="Unique identifier for the patient")
     created_at: datetime | None = Field(None, description="When the patient record was created")

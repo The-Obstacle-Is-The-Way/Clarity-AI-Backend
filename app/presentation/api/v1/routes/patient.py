@@ -1,40 +1,33 @@
-# Fixed biometric alert routes integration
+"""Patient management API routes.
+
+This module defines the API routes for managing patient resources, including CRUD operations
+and related biometric alert rules. All endpoints use proper dependency injection, interface-based
+architecture, and HIPAA-compliant error handling.
+"""
+
 import logging
+from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.application.services.biometric_alert_rule_service import (
-    BiometricAlertRuleService,
-)
-from app.application.services.patient_service import PatientService
+from app.application.services.biometric_alert_rule_service import BiometricAlertRuleService
 from app.core.domain.entities.patient import Patient
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
-    PatientRepositoryImpl as SQLPatientRepoImpl,
-)
-from app.presentation.api.dependencies.auth import CurrentUserDep, DomainUser
-from app.presentation.api.dependencies.database import get_db
-from app.presentation.api.dependencies.patient import (
-    get_patient_id as get_validated_patient_id_for_read,
-)
-from app.presentation.api.schemas.patient import (  # PatientUpdateRequest, # COMMENTED OUT TEMPORARILY
+from app.core.domain.entities.user import UserRole
+from app.presentation.api.dependencies.auth import CurrentUserDep, DomainUser, require_roles
+from app.presentation.api.dependencies.patient import get_patient_id as get_validated_patient_id_for_read
+from app.presentation.api.dependencies.services.patient_service import PatientServiceDep
+from app.presentation.api.schemas.patient import (
     PatientCreateRequest,
     PatientCreateResponse,
     PatientRead,
+    PatientUpdateRequest,
 )
 from app.presentation.api.v1.endpoints.biometric_alert_rules import (
     get_patient_alert_rules,
     get_rule_service,
 )
 from app.presentation.api.v1.schemas.biometric_alert_rules import AlertRuleResponse
-
-
-# Placeholder dependency - replace with actual service implementation later
-def get_patient_service(db_session: AsyncSession = Depends(get_db)) -> PatientService:
-    """Dependency provider for PatientService."""
-    repo = SQLPatientRepoImpl(db_session=db_session)
-    return PatientService(repository=repo)
 
 
 logger = logging.getLogger(__name__)
@@ -73,26 +66,38 @@ async def read_patient(
     logger.info(f"Endpoint read_patient: Returning data for patient {patient_domain_entity.id}")
     return PatientRead.model_validate(patient_domain_entity)
 
-
 @router.post(
     "/",
     response_model=PatientCreateResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Create Patient",
-    description="Create a new patient record.",
+    name="patients:create_patient",
+    summary="Create a new patient",
 )
-async def create_patient_endpoint(
+async def create_patient(
     patient_data: PatientCreateRequest,
-    service: PatientService = Depends(get_patient_service),
-    current_user: DomainUser = Depends(CurrentUserDep),
-) -> PatientCreateResponse:
-    """Create a new patient."""
-    logger.info(
-        f"User {current_user.id} attempting to create patient: {patient_data.first_name} {patient_data.last_name}"
-    )
+    service: PatientServiceDep = Depends(),
+    current_user: CurrentUserDep = Depends(),
+) -> Patient:
+    """Create a new patient.
+
+    Args:
+        patient_data: Patient data for creation
+        service: Patient service dependency
+        current_user: The authenticated user creating the patient
+
+    Returns:
+        The newly created patient
+
+    Raises:
+        HTTPException: If there's an error during creation
+    """
+    logger.info(f"Endpoint create_patient called by user {current_user.id}")
     try:
-        created_patient = await service.create_patient(patient_data, created_by_id=current_user.id)
-        return created_patient
+        # Ensure we have the creator's ID
+        new_patient = await service.create_patient(
+            patient_data=patient_data, created_by=current_user.id
+        )
+        return new_patient
     except Exception as e:
         logger.error(f"Error creating patient by user {current_user.id}: {e}", exc_info=True)
         raise HTTPException(
@@ -101,29 +106,93 @@ async def create_patient_endpoint(
         ) from e
 
 
-# Add other routes (PUT, DELETE, LIST) later
-
-# @router.put(
-#     "/{patient_id}",
-#     response_model=PatientRead,
-#     name="patients:update_patient",
-#     summary="Update an existing patient",
-#     dependencies=[Depends(require_roles([UserRole.ADMIN, UserRole.CLINICIAN]))]
-# )
-# async def update_patient(
-#     patient_id: UUID,
-#     patient_update_data: PatientUpdateRequest, # COMMENTED OUT TEMPORARILY
-#     service: PatientService = Depends(get_patient_service),
-#     # current_user: CurrentUserDep = Depends(get_current_user) # Authorization handled by require_roles
-# ) -> PatientRead:
-#     logger.info(f"Endpoint update_patient called for patient_id: {patient_id}")
-#     updated_patient = await service.update_patient(patient_id, patient_update_data)
-#     if updated_patient is None:
-#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
-#     return updated_patient
 
 
-@router.get("/{patient_id}/biometric-alert-rules")
+
+@router.put(
+    "/{patient_id}",
+    response_model=PatientRead,
+    name="patients:update_patient",
+    summary="Update an existing patient",
+    dependencies=[Depends(require_roles([UserRole.ADMIN, UserRole.CLINICIAN]))]
+)
+async def update_patient(
+    patient_id: UUID,
+    patient_update_data: PatientUpdateRequest,
+    service: PatientServiceDep = Depends(),
+) -> PatientRead:
+    """Update an existing patient.
+    
+    Args:
+        patient_id: The ID of the patient to update
+        patient_update_data: New patient data for update
+        service: Patient service dependency
+        
+    Returns:
+        The updated patient
+        
+    Raises:
+        HTTPException: If the patient is not found
+    """
+    logger.info(f"Endpoint update_patient called for patient_id: {patient_id}")
+    updated_patient = await service.update_patient(patient_id, patient_update_data)
+    if updated_patient is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
+    return updated_patient
+
+@router.delete(
+    "/{patient_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    name="patients:delete_patient",
+    summary="Delete a patient",
+    dependencies=[Depends(require_roles([UserRole.ADMIN]))]
+)
+async def delete_patient(
+    patient_id: UUID,
+    service: PatientServiceDep = Depends(),
+) -> None:
+    """Delete a patient.
+    
+    Args:
+        patient_id: The ID of the patient to delete
+        service: Patient service dependency
+        
+    Raises:
+        HTTPException: If the patient is not found
+    """
+    logger.info(f"Endpoint delete_patient called for patient_id: {patient_id}")
+    deleted = await service.delete_patient(patient_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
+
+@router.get(
+    "/",
+    response_model=List[PatientRead],
+    name="patients:list_patients",
+    summary="List all patients",
+    dependencies=[Depends(require_roles([UserRole.ADMIN, UserRole.CLINICIAN]))]
+)
+async def list_patients(
+    service: PatientServiceDep = Depends(),
+) -> list[PatientRead]:
+    """List all patients.
+    
+    Args:
+        service: Patient service dependency
+        
+    Returns:
+        List of all patients
+    """
+    logger.info("Endpoint list_patients called")
+    return await service.get_all_patients()
+
+
+@router.get(
+    "/{patient_id}/biometric-alert-rules",
+    response_model=list[AlertRuleResponse],
+    name="patients:get_biometric_alert_rules",
+    summary="Get biometric alert rules for a patient"
+)
 async def get_patient_biometric_alert_rules(
     patient_id: UUID = Path(..., description="Patient ID"),
     current_user: DomainUser | None = None,
