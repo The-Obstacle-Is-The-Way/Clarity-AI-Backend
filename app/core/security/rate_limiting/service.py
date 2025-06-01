@@ -39,6 +39,19 @@ class RateLimiterService(ABC):
             True if the request is allowed, False if rate limited
         """
         pass
+        
+    @abstractmethod
+    async def process_request(self, request: Request) -> bool:
+        """
+        Process a request and update rate limit counters.
+        
+        Args:
+            request: The incoming HTTP request
+            
+        Returns:
+            True if the request is allowed, False if rate limited
+        """
+        pass
 
 
 # Placeholder implementation/factory
@@ -60,6 +73,23 @@ class InMemoryRateLimiter(RateLimiterService):
         Args:
             request: The incoming HTTP request
 
+        Returns:
+            True, always allowing requests
+        """
+        # In test environments, always allow requests
+        client_ip = request.client.host if request.client else "unknown"
+        return await self.is_allowed(client_ip)
+        
+    async def process_request(self, request: Request) -> bool:
+        """
+        Process a request and update rate limit counters.
+        
+        In this simplified implementation, we always allow requests
+        without tracking counters.
+        
+        Args:
+            request: The incoming HTTP request
+            
         Returns:
             True, always allowing requests
         """

@@ -37,6 +37,7 @@ from app.infrastructure.services.redis.redis_service import (
 from app.presentation.api.v1.api_router import api_v1_router
 from app.presentation.middleware.authentication import AuthenticationMiddleware
 from app.presentation.middleware.logging import LoggingMiddleware
+from app.presentation.middleware.request_id import RequestIdMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -354,6 +355,10 @@ def create_application(
             [str(origin) for origin in current_settings.BACKEND_CORS_ORIGINS],
         )
 
+    # Add request ID middleware (must be first in chain)
+    app_instance.add_middleware(RequestIdMiddleware)
+    logger.info("RequestIdMiddleware added.")
+    
     # Add logging middleware (goes near beginning of chain to log everything)
     app_instance.add_middleware(LoggingMiddleware)
     logger.info("LoggingMiddleware added.")
