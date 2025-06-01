@@ -13,7 +13,10 @@ from typing import Any, TypeVar, cast
 
 from fastapi import Request
 
-from app.infrastructure.logging.audit_logger import AuditLogger
+# Core layer interfaces
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
+
+# Infrastructure layer implementations for casting
 from app.infrastructure.repositories.memory_token_blacklist_repository import (
     MemoryTokenBlacklistRepository,
 )
@@ -63,17 +66,19 @@ def get_token_blacklist_repository_safe() -> MemoryTokenBlacklistRepository:
     return cast(MemoryTokenBlacklistRepository, repo)
 
 
-def get_audit_logger_safe() -> AuditLogger:
+def get_audit_logger_safe() -> IAuditLogger:  # Return as IAuditLogger for proper typing
     """
-    Provides a concrete audit logger for FastAPI compatibility.
+    Provides an audit logger interface implementation for FastAPI compatibility.
 
     Returns:
-        A concrete AuditLogger instance
+        An implementation of IAuditLogger adapted for FastAPI
     """
-    from app.presentation.api.dependencies.audit_logger import get_audit_logger
+    from app.presentation.api.dependencies.logging import get_audit_logger
 
+    # Get the interface implementation through the proper dependency provider
     logger = get_audit_logger()
-    return cast(AuditLogger, logger)
+    # Return the interface implementation directly, using Any return type for FastAPI compatibility
+    return logger
 
 
 def get_user_repository_safe() -> SQLAlchemyUserRepository:

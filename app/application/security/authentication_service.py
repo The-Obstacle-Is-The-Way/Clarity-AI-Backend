@@ -26,7 +26,7 @@ from app.domain.exceptions import (
     MissingTokenError,
     PermissionDeniedError,
     TokenExpiredError,
-    UserNotFoundError,
+    UserNotFoundException,
 )
 from app.domain.interfaces.user_repository import UserRepositoryInterface
 from app.core.interfaces.services.audit_logger_interface import IAuditLogger

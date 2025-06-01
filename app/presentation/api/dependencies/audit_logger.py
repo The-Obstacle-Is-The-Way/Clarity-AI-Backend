@@ -9,10 +9,11 @@ from typing import Annotated
 
 from fastapi import Depends
 
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
 from app.infrastructure.logging.audit_logger import AuditLogger
 
 
-def get_audit_logger():
+def get_audit_logger() -> IAuditLogger:
     """
     Provides an audit logger implementation.
 
@@ -25,6 +26,12 @@ def get_audit_logger():
 
 
 # Type annotation for dependency injection
-# Use concrete implementation for FastAPI compatibility while preserving
-# clean architecture inside the application
-AuditLoggerDep = Annotated[AuditLogger, Depends(get_audit_logger)]
+# Use the interface type for dependency injection to ensure proper
+# dependency inversion principle according to Clean Architecture
+AuditLoggerDep = Annotated[IAuditLogger, Depends(get_audit_logger)]
+
+
+__all__ = [
+    "AuditLoggerDep",
+    "get_audit_logger",
+]
